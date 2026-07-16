@@ -14,9 +14,13 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/settings_provider.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../../../editor/state/selection_controller.dart';
+import '../../domain/context_engine/page_context.dart';
 import '../../domain/features/explainer.dart';
+import '../../domain/features/quiz_generator.dart';
 import '../ai_providers.dart';
 import '../explain_notifier.dart';
+import '../quiz_notifier.dart';
+import '../quiz/quiz_sheet.dart';
 import 'ai_context_view.dart';
 import 'ai_explain_view.dart';
 
@@ -154,11 +158,13 @@ class _SidebarFooter extends ConsumerWidget {
         const Divider(height: 1, color: AppColors.border),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Row(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Expanded(child: _SummarizeBar(onSummarize: onSummarize)),
-              const SizedBox(width: 8),
-              Expanded(child: _ExplainBar(pageKey: pageKey)),
+              _SummarizeBar(onSummarize: onSummarize),
+              _ExplainBar(pageKey: pageKey),
+              _QuizBar(pageKey: pageKey),
             ],
           ),
         ),
@@ -265,6 +271,51 @@ class _ExplainBar extends ConsumerWidget {
   }
 }
 
+/// The sidebar's Quiz launcher: builds a gradeable quiz from the current page
+/// (difficulty from the detected level; coding questions only when the page
+/// looks like programming) and opens the quiz sheet. Entirely `features/ai`.
+class _QuizBar extends ConsumerWidget {
+  final ScenePageKey pageKey;
+  const _QuizBar({required this.pageKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _startQuiz(context, ref),
+      child: const _ActionChip(
+        icon: Icons.quiz_outlined,
+        label: 'Quiz',
+        enabled: true,
+      ),
+    );
+  }
+
+  void _startQuiz(BuildContext context, WidgetRef ref) {
+    final extractor = ref.read(pageContentExtractorProvider);
+    final recognition = ref.read(handwritingRecognitionServiceProvider);
+    final languageCode = ref.read(settingsProvider).recognitionLanguage;
+    final pageId = pageKey.pageId;
+
+    final context0 = ref.read(pageContextProvider(pageKey)).valueOrNull;
+    final level = context0?.estimatedLevel ?? KnowledgeLevel.intermediate;
+    final allowCoding =
+        context0 != null && QuizGenerator.looksLikeProgramming(context0);
+
+    ref.read(quizNotifierProvider.notifier).generate(QuizRequest(
+          level: level,
+          allowCoding: allowCoding,
+          resolveText: () async {
+            await recognition.ensureModelDownloaded(languageCode);
+            final content =
+                await extractor.extractPage(pageId, languageCode: languageCode);
+            return content.combinedText;
+          },
+        ));
+    showQuizSheet(context);
+  }
+}
+
 /// A pill-styled action trigger shared by the Summarize/Explain launchers.
 class _ActionChip extends StatelessWidget {
   final IconData icon;
@@ -280,24 +331,20 @@ class _ActionChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final fg = enabled ? AppColors.accentStrong : AppColors.textMuted;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       decoration: BoxDecoration(
         color: enabled ? AppColors.accentWash : AppColors.surfaceHighlight,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: fg),
           const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-              style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: fg),
-            ),
+          Text(
+            label,
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w600, color: fg),
           ),
         ],
       ),

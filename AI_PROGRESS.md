@@ -11,9 +11,10 @@ One AI platform (`features/ai/`) with one runtime, one router, one page-read
 path. Phase 1 builds the master-plan features on it, **Live Context Engine
 first** (decision #7) per `ai_prompts/02_phase1_context_engine_core_features.md`
 + INTEGRATION_ROADMAP §5. Loops 1.1 (Context Engine core), 1.2 (AI Sidebar
-shell), 1.3 (Summarize levels), 1.4 (Explain) and 1.5 (Writing Assistant —
-sidebar-list UI, Nabil-approved) done; next is Loop 1.6 (Quiz Generator).
-Device validation (R5) is still open, owned by the user.
+shell), 1.3 (Summarize levels), 1.4 (Explain), 1.5 (Writing Assistant) and 1.6
+(Quiz Generator) done; next is **Loop 1.7 (Flashcards) — ⚠️ STOP CONDITION**
+(CSV vs `.apkg` export decision before adding a dependency). Device validation
+(R5) is still open, owned by the user.
 
 ## The situation (context for any fresh session)
 On 2026-07-16 we discovered Afnan had already shipped a complete AI
@@ -423,6 +424,44 @@ the sidebar.
 - NOTE: not device-run (no device; R5 is Nabil-owned). Worth an on-device eyeball
   of suggestion quality + the 2-LLM-calls-per-pause cadence (context + writing).
 
+### Loop 1.6 — Quiz Generator ✅
+Gradeable quizzes built from the current page, taken and scored in a sheet.
+- `ai/domain/features/quiz_generator.dart`: `QuestionType`
+  (mcq / trueFalse / fillBlank / coding), `QuizQuestion` (prompt, options,
+  correctIndex, correctAnswer, explanation) with grading helpers
+  (`isCorrectChoice`, `isCorrectText` — case/space/punctuation-insensitive) and
+  a tolerant `fromJson` that **drops any ungradeable entry** (mcq whose answer
+  isn't one of its options, non-boolean true/false, blank prompt, unknown type).
+  `generate(text, level, allowCoding, count)` reuses the **Loop 1.1 robustness
+  ladder** ({"questions":[…]} schema, greedy, `tryExtractJsonObject`, one retry,
+  parse). Difficulty from `PageContext.estimatedLevel` (beginner→easy /
+  intermediate→medium / advanced→hard). **Coding questions gated** on
+  `looksLikeProgramming(context)` (keyword match over topic/subtopics/
+  concepts/entities) — never for a history notebook. Malformed → `[]`;
+  `AiException` propagates.
+- `ai/presentation/quiz_notifier.dart`: generate state machine (idle →
+  generating → ready/error), download-offer on a missing model, `_minWords = 15`
+  gate, `QuizRequest.resolveText` resolved fresh per attempt. Session-scoped
+  provider (quiz survives a sidebar close while the taker works).
+- `ai/presentation/quiz/quiz_sheet.dart`: a near-full-height sheet — generation
+  progress / download / error, then an interactive `_QuizRunner`. Radio-style
+  options (mcq/TF), text fields (fill-blank/coding); **Check answers** grades
+  locally, reveals correct answers + explanations, shows a live `score / total`;
+  coding is **self-assessed** ("I got this right"); Retake resets. Nothing
+  persisted (durable score history = Phase 2 Learning Memory).
+- `ai/presentation/sidebar/ai_sidebar.dart`: footer is now a `Wrap` of three
+  launchers — Summarize / Explain / **Quiz**. Quiz reads the current page's
+  level + programming-ness from `pageContextProvider`, resolves the page text via
+  the extractor, and opens the sheet — all in `features/ai`.
+- Tests (+18 → **387/387**, analyze clean): `quiz_generator_test` (parse all
+  types, drop-ungradeable, retry-fail, difficulty + coding gating in the prompt,
+  budget, grading helpers, programming detection), `quiz_notifier_test`
+  (ready / too-thin / empty / missing-model / reset), `quiz_sheet_test` (renders,
+  grades 1/2 and 2/2 through real taps).
+- NOTE: not device-run (no device; R5 is Nabil-owned). DoD's "valid, gradeable
+  MCQ + True/False from real page content" is met; on-device pass should sanity-
+  check question quality on a real note.
+
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
@@ -432,14 +471,17 @@ the sidebar.
   files that don't exist on 2.0), his legacy `note_editor_screen.dart` wiring.
 
 ## Next Loop
-**Loop 1.6 — Quiz Generator.** Types: MCQ + True/False minimum (also
-fill-in-the-blank; coding challenges ONLY when the detected topic/entities are
-programming — don't generate them for a history notebook). Difficulty
-easy/medium/hard informed by `PageContext.estimatedLevel`. New
-`ai/domain/features/quiz_generator.dart` producing structured `QuizQuestion`
-(question, options, correctAnswer, explanation) — **reuse the Loop 1.1 robustness
-ladder** for the JSON (same schema-with-fallback as the Context Engine /
-Writing Assistant). Simple quiz-taking UI (sheet/screen) that scores the attempt;
-store the raw result in a lightweight in-memory structure only — durable "quiz
-score history" is Phase 2 Learning Memory, don't build persistence twice. Then
-1.7 Flashcards (⚠️ STOP: CSV vs `.apkg` export decision; Isar-persistent).
+**Loop 1.7 — Flashcards. ⚠️ STOP CONDITION** — confirm the export approach
+(plain-SQLite `.apkg` vs CSV-first) with Nabil *before* adding a dependency
+(phase spec §Loop 1.7 + handoff §0). Scope when it proceeds: auto-generate cards
+from `PageContext.keyConcepts` + `definitions`;
+`ai/domain/models/flashcard.dart` + an Isar `@collection` under
+`features/ai/data/` (**this one IS persistent** — flashcards are durable, unlike
+the in-memory quiz attempt). Export to Anki: `.apkg` is a SQLite DB with a
+specific schema — verify a maintained plain-SQLite package exists before
+committing; if too heavy for the loop, ship **CSV first** (Anki imports CSV) and
+flag `.apkg` as a fast-follow here. Isar schema change → register the new
+collection in `main.dart`'s open call (like `SummaryCacheSchema`).
+
+After 1.7: Phase 1 Definition of Done (§4 of the phase spec) — verify all six
+features work fully offline; then device validation (R5, Nabil-owned).

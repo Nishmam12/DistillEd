@@ -1,0 +1,511 @@
+// The quiz-taking surface: a near-full-height sheet that renders generation
+// progress, then the interactive quiz, grades the attempt locally, and reveals
+// answers + explanations. Nothing is persisted — durable score history is
+// Phase 2's Learning Memory.
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/constants/app_colors.dart';
+import '../../data/llm/llm_model_spec.dart';
+import '../../domain/features/quiz_generator.dart';
+import '../ai_providers.dart';
+import '../quiz_notifier.dart';
+
+const Color _correct = Color(0xFF2E7D32);
+const Color _wrong = AppColors.accentRed;
+
+/// Opens the quiz sheet. Call after kicking off [QuizNotifier.generate].
+void showQuizSheet(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AppColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) => const _QuizSheet(),
+  );
+}
+
+class _QuizSheet extends ConsumerWidget {
+  const _QuizSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(quizNotifierProvider);
+    return SafeArea(
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.92,
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        child: switch (state) {
+          QuizIdle() || QuizGenerating() =>
+            const _Status(label: 'Building your quiz…'),
+          QuizDownloadingModel(:final progress) =>
+            _Downloading(progress: progress),
+          QuizReady(:final questions) => _QuizRunner(questions: questions),
+          QuizError() => _ErrorView(state: state),
+        },
+      ),
+    );
+  }
+}
+
+class _Status extends StatelessWidget {
+  final String label;
+  const _Status({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _SheetTitle('Quiz'),
+        const SizedBox(height: 28),
+        const CircularProgressIndicator(color: AppColors.accent),
+        const SizedBox(height: 16),
+        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+}
+
+class _Downloading extends ConsumerWidget {
+  final int progress;
+  const _Downloading({required this.progress});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sizeGb = LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _SheetTitle('Downloading model'),
+        const SizedBox(height: 8),
+        Text(
+          '${LlmModelSpec.active.displayName} · '
+          '${sizeGb.toStringAsFixed(1)} GB — one-time download',
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 20),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: progress / 100,
+            minHeight: 8,
+            color: AppColors.accent,
+            backgroundColor: AppColors.surfaceHighlight,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text('$progress%',
+            style: const TextStyle(color: AppColors.textSecondary)),
+        TextButton(
+          onPressed: () =>
+              ref.read(quizNotifierProvider.notifier).cancelModelDownload(),
+          child: const Text('Cancel',
+              style: TextStyle(color: AppColors.textSecondary)),
+        ),
+      ],
+    );
+  }
+}
+
+class _ErrorView extends ConsumerWidget {
+  final QuizError state;
+  const _ErrorView({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(quizNotifierProvider.notifier);
+    final sizeGb = LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _SheetTitle('Quiz'),
+        const SizedBox(height: 20),
+        const Icon(Icons.error_outline, color: _wrong, size: 40),
+        const SizedBox(height: 12),
+        Text(state.message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+        const SizedBox(height: 20),
+        if (state.offerModelDownload)
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            onPressed: notifier.downloadModelAndRetry,
+            child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
+                style: const TextStyle(color: AppColors.textOnAccent)),
+          )
+        else if (state.retryable)
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            onPressed: notifier.retry,
+            child: const Text('Try again',
+                style: TextStyle(color: AppColors.textOnAccent)),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close',
+              style: TextStyle(color: AppColors.textSecondary)),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuizRunner extends StatefulWidget {
+  final List<QuizQuestion> questions;
+  const _QuizRunner({required this.questions});
+
+  @override
+  State<_QuizRunner> createState() => _QuizRunnerState();
+}
+
+class _QuizRunnerState extends State<_QuizRunner> {
+  final Map<int, int> _choice = {}; // question index → selected option
+  final Map<int, TextEditingController> _text = {};
+  final Set<int> _selfCorrect = {}; // coding questions self-marked correct
+  bool _checked = false;
+
+  @override
+  void dispose() {
+    for (final c in _text.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  TextEditingController _controller(int i) =>
+      _text.putIfAbsent(i, () => TextEditingController());
+
+  bool _isCorrect(int i) {
+    final q = widget.questions[i];
+    if (q.isChoice) return _choice[i] == q.correctIndex;
+    if (q.type == QuestionType.fillBlank) {
+      return q.isCorrectText(_text[i]?.text ?? '');
+    }
+    return _selfCorrect.contains(i); // coding: self-assessed
+  }
+
+  int get _score {
+    var n = 0;
+    for (var i = 0; i < widget.questions.length; i++) {
+      if (_isCorrect(i)) n++;
+    }
+    return n;
+  }
+
+  void _reset() => setState(() {
+        _choice.clear();
+        for (final c in _text.values) {
+          c.clear();
+        }
+        _selfCorrect.clear();
+        _checked = false;
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    final total = widget.questions.length;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: _SheetTitle('Quiz')),
+            if (_checked)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.accentWash,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text('$_score / $total',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.accentStrong)),
+              ),
+            IconButton(
+              tooltip: 'Close',
+              icon: const Icon(Icons.close,
+                  size: 20, color: AppColors.textSecondary),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Flexible(
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: total,
+            itemBuilder: (context, i) => _QuestionCard(
+              index: i,
+              question: widget.questions[i],
+              checked: _checked,
+              selected: _choice[i],
+              controller: _controller(i),
+              selfMarked: _selfCorrect.contains(i),
+              onSelect: _checked
+                  ? null
+                  : (o) => setState(() => _choice[i] = o),
+              onSelfMark: (v) => setState(() {
+                if (v) {
+                  _selfCorrect.add(i);
+                } else {
+                  _selfCorrect.remove(i);
+                }
+              }),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (!_checked)
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            onPressed: () => setState(() => _checked = true),
+            child: const Text('Check answers',
+                style: TextStyle(color: AppColors.textOnAccent)),
+          )
+        else
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _reset,
+                  child: const Text('Retake',
+                      style: TextStyle(color: AppColors.accent)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  style:
+                      FilledButton.styleFrom(backgroundColor: AppColors.accent),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Done',
+                      style: TextStyle(color: AppColors.textOnAccent)),
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+class _QuestionCard extends StatelessWidget {
+  final int index;
+  final QuizQuestion question;
+  final bool checked;
+  final int? selected;
+  final TextEditingController controller;
+  final bool selfMarked;
+  final ValueChanged<int>? onSelect;
+  final ValueChanged<bool> onSelfMark;
+
+  const _QuestionCard({
+    required this.index,
+    required this.question,
+    required this.checked,
+    required this.selected,
+    required this.controller,
+    required this.selfMarked,
+    required this.onSelect,
+    required this.onSelfMark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final q = question;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWarm,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Q${index + 1} · ${q.type.label}'.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: AppColors.textMuted,
+              )),
+          const SizedBox(height: 6),
+          Text(q.prompt,
+              style: const TextStyle(
+                  fontSize: 15, height: 1.35, color: AppColors.textPrimary)),
+          const SizedBox(height: 10),
+          if (q.isChoice)
+            for (var o = 0; o < q.options.length; o++)
+              _OptionRow(
+                text: q.options[o],
+                selected: selected == o,
+                state: _optionState(o),
+                onTap: onSelect == null ? null : () => onSelect!(o),
+              )
+          else
+            TextField(
+              controller: controller,
+              enabled: !checked,
+              minLines: q.type == QuestionType.coding ? 3 : 1,
+              maxLines: q.type == QuestionType.coding ? 8 : 2,
+              decoration: InputDecoration(
+                hintText: q.type == QuestionType.coding
+                    ? 'Write your solution…'
+                    : 'Your answer…',
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          if (checked) ...[
+            const SizedBox(height: 10),
+            _Result(question: q, selfMarked: selfMarked, onSelfMark: onSelfMark),
+          ],
+        ],
+      ),
+    );
+  }
+
+  _OptionState _optionState(int o) {
+    if (!checked) return _OptionState.neutral;
+    if (o == question.correctIndex) return _OptionState.correct;
+    if (o == selected) return _OptionState.wrong;
+    return _OptionState.neutral;
+  }
+}
+
+enum _OptionState { neutral, correct, wrong }
+
+class _OptionRow extends StatelessWidget {
+  final String text;
+  final bool selected;
+  final _OptionState state;
+  final VoidCallback? onTap;
+  const _OptionRow({
+    required this.text,
+    required this.selected,
+    required this.state,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final (border, icon, iconColor) = switch (state) {
+      _OptionState.correct => (_correct, Icons.check_circle, _correct),
+      _OptionState.wrong => (_wrong, Icons.cancel, _wrong),
+      _OptionState.neutral => (
+          selected ? AppColors.accent : AppColors.border,
+          selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+          selected ? AppColors.accent : AppColors.textMuted,
+        ),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: border),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: iconColor),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(text,
+                    style: const TextStyle(
+                        fontSize: 14, color: AppColors.textPrimary)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Result extends StatelessWidget {
+  final QuizQuestion question;
+  final bool selfMarked;
+  final ValueChanged<bool> onSelfMark;
+  const _Result({
+    required this.question,
+    required this.selfMarked,
+    required this.onSelfMark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final q = question;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!q.isChoice)
+          Text.rich(TextSpan(
+            style: const TextStyle(fontSize: 13, height: 1.35),
+            children: [
+              TextSpan(
+                  text: q.isSelfAssessed ? 'Reference: ' : 'Answer: ',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+              TextSpan(
+                  text: q.correctAnswer,
+                  style: const TextStyle(color: AppColors.textPrimary)),
+            ],
+          )),
+        if (q.explanation.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(q.explanation,
+              style: const TextStyle(
+                  fontSize: 13, height: 1.35, color: AppColors.textSecondary)),
+        ],
+        if (q.isSelfAssessed) ...[
+          const SizedBox(height: 4),
+          InkWell(
+            onTap: () => onSelfMark(!selfMarked),
+            child: Row(
+              children: [
+                Icon(selfMarked ? Icons.check_box : Icons.check_box_outline_blank,
+                    size: 18,
+                    color: selfMarked ? _correct : AppColors.textMuted),
+                const SizedBox(width: 8),
+                const Text('I got this right',
+                    style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SheetTitle extends StatelessWidget {
+  final String text;
+  const _SheetTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text,
+        style: const TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ));
+  }
+}

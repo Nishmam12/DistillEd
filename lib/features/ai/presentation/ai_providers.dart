@@ -14,10 +14,12 @@ import '../domain/ai_provider.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
 import '../domain/features/explainer.dart';
+import '../domain/features/quiz_generator.dart';
 import '../domain/features/writing_assistant.dart';
 import '../domain/page_content_extractor.dart';
 import 'context_engine_notifier.dart';
 import 'explain_notifier.dart';
+import 'quiz_notifier.dart';
 import 'writing_assistant_notifier.dart';
 
 final handwritingRecognitionServiceProvider =
@@ -66,6 +68,21 @@ final explainerProvider = Provider<Explainer>(
 /// Writing Assistant feature — reviews typed text for grammar/clarity/etc.
 final writingAssistantProvider = Provider<WritingAssistant>(
     (ref) => WritingAssistant(provider: ref.watch(localAiProvider)));
+
+/// Quiz Generator feature — builds gradeable questions from page content.
+final quizGeneratorProvider = Provider<QuizGenerator>(
+    (ref) => QuizGenerator(provider: ref.watch(localAiProvider)));
+
+/// Drives the quiz sheet. Session-scoped (not autoDispose): closing the sidebar
+/// must not abort an in-flight model download, and the generated quiz stays put
+/// while the taker works through it.
+final quizNotifierProvider =
+    StateNotifierProvider<QuizNotifier, QuizState>((ref) {
+  return QuizNotifier(
+    generator: ref.watch(quizGeneratorProvider),
+    downloads: ref.watch(modelDownloadManagerProvider),
+  );
+});
 
 /// Session cache of the last suggestions per page (see [pageContextCacheProvider]).
 final pageWritingCacheProvider =
