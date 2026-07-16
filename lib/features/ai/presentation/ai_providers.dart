@@ -14,9 +14,11 @@ import '../domain/ai_provider.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
 import '../domain/features/explainer.dart';
+import '../domain/features/writing_assistant.dart';
 import '../domain/page_content_extractor.dart';
 import 'context_engine_notifier.dart';
 import 'explain_notifier.dart';
+import 'writing_assistant_notifier.dart';
 
 final handwritingRecognitionServiceProvider =
     Provider<HandwritingRecognitionService>((ref) {
@@ -61,6 +63,26 @@ final contextEngineProvider = Provider<ContextEngine>(
 final explainerProvider = Provider<Explainer>(
     (ref) => Explainer(provider: ref.watch(localAiProvider)));
 
+/// Writing Assistant feature — reviews typed text for grammar/clarity/etc.
+final writingAssistantProvider = Provider<WritingAssistant>(
+    (ref) => WritingAssistant(provider: ref.watch(localAiProvider)));
+
+/// Session cache of the last suggestions per page (see [pageContextCacheProvider]).
+final pageWritingCacheProvider =
+    Provider<PageWritingCache>((ref) => PageWritingCache());
+
+/// Writing suggestions for one page. autoDispose + fed by the Context Engine's
+/// debounce, so it does no work unless the sidebar is open and content changes.
+final writingSuggestionsProvider = StateNotifierProvider.autoDispose
+    .family<WritingAssistantNotifier, List<WritingSuggestion>, ScenePageKey>(
+        (ref, key) {
+  return WritingAssistantNotifier(
+    assistant: ref.watch(writingAssistantProvider),
+    cache: ref.watch(pageWritingCacheProvider),
+    pageId: key.pageId,
+  );
+});
+
 /// Drives the sidebar's Explain surface. Session-scoped (not autoDispose):
 /// closing/reopening the sidebar must not abort an in-flight model download,
 /// and the last explanation stays available until dismissed.
@@ -85,6 +107,9 @@ final pageContextProvider = StateNotifierProvider.autoDispose
     cache: ref.watch(pageContextCacheProvider),
     pageId: key.pageId,
     languageCode: () => ref.read(settingsProvider).recognitionLanguage,
+    // Writing Assistant rides this same debounce + extraction (no second loop).
+    onContent: (content) =>
+        ref.read(writingSuggestionsProvider(key).notifier).review(content),
   );
   ref.listen(
     sceneControllerProvider(key),

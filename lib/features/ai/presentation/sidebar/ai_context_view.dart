@@ -16,6 +16,7 @@ import '../../data/llm/llm_model_spec.dart';
 import '../../domain/ai_provider.dart';
 import '../../domain/context_engine/page_context.dart';
 import '../../domain/features/explainer.dart';
+import '../../domain/features/writing_assistant.dart';
 import '../ai_providers.dart';
 import '../explain_notifier.dart';
 
@@ -43,10 +44,12 @@ class AiContextView extends ConsumerWidget {
     return switch (async) {
       AsyncData(:final value) when value.isEmpty => const _EmptyState(),
       AsyncData(:final value) => _ContextBody(
+          pageKey: pageKey,
           context: value,
           onExplainGap: (g) => explainGap(g, value.currentTopic),
         ),
       AsyncLoading() when previous != null && !previous.isEmpty => _ContextBody(
+          pageKey: pageKey,
           context: previous,
           refreshing: true,
           onExplainGap: (g) => explainGap(g, previous.currentTopic),
@@ -230,14 +233,17 @@ class _ModelNotReadyState extends ConsumerState<_ModelNotReady> {
   }
 }
 
-/// The real content: topic, level, concepts, gaps, definitions.
+/// The real content: topic, level, concepts, gaps, definitions, and any live
+/// Writing Assistant suggestions.
 class _ContextBody extends StatelessWidget {
+  final ScenePageKey pageKey;
   final PageContext context;
   final bool refreshing;
 
   /// Called when a knowledge-gap flag is tapped (null → flags aren't tappable).
   final ValueChanged<String>? onExplainGap;
   const _ContextBody({
+    required this.pageKey,
     required this.context,
     this.refreshing = false,
     this.onExplainGap,
@@ -313,6 +319,111 @@ class _ContextBody extends StatelessWidget {
             for (final entry in c.definitions.entries)
               _DefinitionRow(term: entry.key, definition: entry.value),
           ],
+          _WritingSection(pageKey: pageKey),
+        ],
+      ),
+    );
+  }
+}
+
+/// Live, dismissible Writing Assistant suggestions on the typed text. Renders
+/// nothing when there are none — a quiet study aid, never a nagging linter.
+class _WritingSection extends ConsumerWidget {
+  final ScenePageKey pageKey;
+  const _WritingSection({required this.pageKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final suggestions = ref.watch(writingSuggestionsProvider(pageKey));
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionLabel('Writing suggestions'),
+        const SizedBox(height: 8),
+        for (final s in suggestions)
+          _SuggestionCard(
+            suggestion: s,
+            onDismiss: () => ref
+                .read(writingSuggestionsProvider(pageKey).notifier)
+                .dismiss(s),
+          ),
+      ],
+    );
+  }
+}
+
+class _SuggestionCard extends StatelessWidget {
+  final WritingSuggestion suggestion;
+  final VoidCallback onDismiss;
+  const _SuggestionCard({required this.suggestion, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = suggestion;
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWarm,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(s.kind.label.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                      color: AppColors.textMuted,
+                    )),
+                const SizedBox(height: 3),
+                Text(s.message,
+                    style: const TextStyle(
+                        fontSize: 13, height: 1.35, color: AppColors.textPrimary)),
+                if (s.excerpt.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('“${s.excerpt}”',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        height: 1.3,
+                        fontStyle: FontStyle.italic,
+                        color: AppColors.textSecondary,
+                      )),
+                ],
+                if (s.replacement.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text.rich(TextSpan(
+                    style: const TextStyle(fontSize: 12, height: 1.3),
+                    children: [
+                      const TextSpan(
+                          text: 'Try: ',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted)),
+                      TextSpan(
+                          text: s.replacement,
+                          style: const TextStyle(color: AppColors.accentStrong)),
+                    ],
+                  )),
+                ],
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Dismiss',
+            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            padding: EdgeInsets.zero,
+            icon: const Icon(Icons.close, size: 16, color: AppColors.textMuted),
+            onPressed: onDismiss,
+          ),
         ],
       ),
     );

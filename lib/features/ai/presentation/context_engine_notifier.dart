@@ -21,6 +21,7 @@ import '../../../domain/model/scene_element.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
+import '../domain/page_content.dart';
 import '../domain/page_content_extractor.dart';
 
 /// Session-lifetime cache of the last successful analysis per page, keyed by
@@ -68,6 +69,12 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
   /// Read at analysis time so a settings change applies to the next run.
   final String Function() _languageCode;
 
+  /// Fired with the freshly extracted page content after each debounced pass
+  /// (empty when the page has nothing readable). Lets a sibling feature — the
+  /// Writing Assistant — run off THIS debounce and extraction instead of its
+  /// own polling loop. Never allowed to break analysis (see [_notifyContent]).
+  final void Function(PageContent content)? _onContent;
+
   /// How long after the last scene change analysis fires. Injectable for
   /// tests; ~2.5s per the phase spec ("after the user pauses, not per stroke").
   final Duration debounce;
@@ -91,6 +98,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
     required PageContextCache cache,
     required int pageId,
     required String Function() languageCode,
+    void Function(PageContent content)? onContent,
     this.debounce = const Duration(milliseconds: 2500),
   })  : _engine = engine,
         _extractor = extractor,
@@ -98,6 +106,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
         _cache = cache,
         _pageId = pageId,
         _languageCode = languageCode,
+        _onContent = onContent,
         super(const AsyncValue.loading()) {
     final cached = _cache.find(pageId);
     if (cached != null) state = AsyncValue.data(cached.context);
@@ -141,6 +150,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       if (!_hasReadableContent(_elements)) {
         _cache.save(_pageId, signature, PageContext.empty);
         if (mounted) state = const AsyncValue.data(PageContext.empty);
+        _notifyContent(PageContent.empty);
         return;
       }
 
@@ -155,6 +165,10 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
           await _engine.analyze(content, previousContext: cached?.context);
       _cache.save(_pageId, signature, context);
       if (mounted) state = AsyncValue.data(context);
+      // Fan out the already-extracted content to the Writing Assistant, off the
+      // same debounce. After analysis, so the two model calls run in sequence
+      // (the local runtime serialises them anyway) rather than contending.
+      _notifyContent(content);
     } catch (e, st) {
       // Surfaced, not swallowed: the sidebar renders the failure kind
       // (model missing → download hint; anything else → gentle retry).
@@ -168,6 +182,18 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
         // Content changed mid-run; the signature check decides if it matters.
         unawaited(_analyzeIfChanged());
       }
+    }
+  }
+
+  /// Invokes [_onContent], swallowing any failure: the Writing Assistant is
+  /// advisory and must never take down the Context Engine's analysis.
+  void _notifyContent(PageContent content) {
+    final onContent = _onContent;
+    if (onContent == null) return;
+    try {
+      onContent(content);
+    } catch (_) {
+      // Deliberately ignored — a misbehaving sibling can't break analysis.
     }
   }
 

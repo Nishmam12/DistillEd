@@ -11,9 +11,8 @@ One AI platform (`features/ai/`) with one runtime, one router, one page-read
 path. Phase 1 builds the master-plan features on it, **Live Context Engine
 first** (decision #7) per `ai_prompts/02_phase1_context_engine_core_features.md`
 + INTEGRATION_ROADMAP §5. Loops 1.1 (Context Engine core), 1.2 (AI Sidebar
-shell), 1.3 (Summarize levels: selection/page/notebook + chunk-and-reduce) and
-1.4 (Explain: per-mode streamed explanations + insert-as-note) done; next is
-Loop 1.5 (Writing Assistant — ⚠️ STOP CONDITION, needs Nabil's UI sign-off).
+shell), 1.3 (Summarize levels), 1.4 (Explain) and 1.5 (Writing Assistant —
+sidebar-list UI, Nabil-approved) done; next is Loop 1.6 (Quiz Generator).
 Device validation (R5) is still open, owned by the user.
 
 ## The situation (context for any fresh session)
@@ -382,6 +381,48 @@ Everything except insertion lives in `features/ai`.
   Nabil-owned per R5). Streaming/insert logic and render states are covered by
   widget/unit tests.
 
+### Loop 1.5 — Writing Assistant ✅
+Continuous, non-intrusive suggestions on **typed text** (grammar / clarity /
+repetition / unsupported claim / structure), collected as a dismissible list in
+the sidebar.
+- **STOP CONDITION resolved:** the spec said stop and ask if no non-intrusive UI
+  fits. Asked Nabil; he chose the **sidebar list** (over on-canvas underline
+  markers). No intrusive inline markers were shipped.
+- **Shares the Context Engine debounce — no second polling loop.** Added
+  `ContextEngineNotifier.onContent(PageContent)`, fired after its own debounced,
+  successful extraction (and with `PageContent.empty` when nothing readable). A
+  sibling `WritingAssistantNotifier` reviews the typed text off that one timer +
+  extraction. The hook is guarded (`_notifyContent` try/catch) so an advisory
+  failure can never break analysis; it doesn't fire when analysis fails.
+- `ai/domain/features/writing_assistant.dart`: `WritingSuggestion`
+  (kind / message / excerpt / replacement / confidence) + `WritingSuggestionKind`
+  (grammar/clarity/repetition/weakClaim/structure/other). `review(typedText)`
+  reuses the **Loop 1.1 robustness ladder** — strict `{"suggestions":[…]}` schema,
+  greedy decode, `ContextEngine.tryExtractJsonObject`, one stricter retry,
+  tolerant parse (blank-message dropped, unknown type → other, cap 6). Gated
+  below `minWords = 12`; budget-truncated. Malformed → `[]`; only real
+  `AiException`s propagate. **Typed text only** (ink recognition is noisier —
+  deferred).
+- `ai/presentation/writing_assistant_notifier.dart`: `StateNotifier<List<
+  WritingSuggestion>>`, no timer; typed text IS the change signature (skip when
+  unchanged); per-page `PageWritingCache` (session) mirrors `PageContextCache`;
+  `dismiss(s)` removes one; **failures degrade quietly to `[]`** (deliberate — an
+  advisory feature must never throw a red error).
+- `ai/presentation/sidebar/ai_context_view.dart`: a **Writing suggestions**
+  section under the context body — soft cards (kind label, message, optional
+  excerpt + "Try:" rewrite, dismiss ✕); renders nothing when empty.
+- Wiring: `writingAssistantProvider`, `pageWritingCacheProvider`,
+  `writingSuggestionsProvider` (autoDispose.family); `pageContextProvider` passes
+  `onContent → writingSuggestionsProvider(key).notifier.review`.
+- Tests (+17 → **369/369**, analyze clean): `writing_assistant_test` (parse,
+  short-circuit, retry recover/fail, cap, drop-blank, kind map, budget),
+  `writing_assistant_notifier_test` (publish, skip-unchanged, dismiss, quiet
+  failure, cache restore), `context_engine_notifier_test` onContent group (fires
+  on success/empty, not on failure, throwing hook can't break analysis),
+  `ai_context_view_test` (suggestions render + dismiss).
+- NOTE: not device-run (no device; R5 is Nabil-owned). Worth an on-device eyeball
+  of suggestion quality + the 2-LLM-calls-per-pause cadence (context + writing).
+
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
@@ -391,13 +432,14 @@ Everything except insertion lives in `features/ai`.
   files that don't exist on 2.0), his legacy `note_editor_screen.dart` wiring.
 
 ## Next Loop
-**Loop 1.5 — Writing Assistant. ⚠️ STOP CONDITION** — the phase spec (§Loop 1.5)
-says: if a non-intrusive UI pattern that fits InkFlow's visual language can't be
-found, *stop and ask Nabil rather than bolting on an intrusive one.* Show the UI
-approach (a mockup/description) before wiring it in broadly. Constraints when it
-proceeds: typed text only initially (ink recognition is noisier — skip
-grammar-level nitpicks on ink, keep content-level ones); **share the Context
-Engine debounce** (extend `context_engine_notifier.dart` or add a sibling
-notifier on the same timer — do NOT add a second polling loop). Then 1.6 Quiz
-(reuse the Loop 1.1 robustness ladder for structured `QuizQuestion` JSON), 1.7
-Flashcards (⚠️ STOP: CSV vs `.apkg` export decision; Isar-persistent).
+**Loop 1.6 — Quiz Generator.** Types: MCQ + True/False minimum (also
+fill-in-the-blank; coding challenges ONLY when the detected topic/entities are
+programming — don't generate them for a history notebook). Difficulty
+easy/medium/hard informed by `PageContext.estimatedLevel`. New
+`ai/domain/features/quiz_generator.dart` producing structured `QuizQuestion`
+(question, options, correctAnswer, explanation) — **reuse the Loop 1.1 robustness
+ladder** for the JSON (same schema-with-fallback as the Context Engine /
+Writing Assistant). Simple quiz-taking UI (sheet/screen) that scores the attempt;
+store the raw result in a lightweight in-memory structure only — durable "quiz
+score history" is Phase 2 Learning Memory, don't build persistence twice. Then
+1.7 Flashcards (⚠️ STOP: CSV vs `.apkg` export decision; Isar-persistent).

@@ -223,6 +223,63 @@ void main() {
     n.dispose();
   });
 
+  group('onContent (Writing Assistant hook)', () {
+    ContextEngineNotifier withHook(void Function(PageContent) onContent) =>
+        ContextEngineNotifier(
+          engine: engine,
+          extractor: extractor,
+          recognition: recognition,
+          cache: cache,
+          pageId: 1,
+          languageCode: () => 'en',
+          onContent: onContent,
+          debounce: const Duration(milliseconds: 5),
+        );
+
+    test('fires with the extracted content after a successful analysis',
+        () async {
+      final received = <PageContent>[];
+      final n = withHook(received.add);
+      n.onSceneChanged(ink);
+      await settle();
+
+      expect(received, hasLength(1));
+      expect(received.single.recognizedInkText, 'recognized note text');
+      n.dispose();
+    });
+
+    test('fires with empty content when the page has nothing readable',
+        () async {
+      final received = <PageContent>[];
+      final n = withHook(received.add);
+      n.onSceneChanged(const []);
+      await settle();
+
+      expect(received.single, PageContent.empty);
+      n.dispose();
+    });
+
+    test('does not fire when analysis fails', () async {
+      engine.throwOnAnalyze = const AiModelNotReadyException('no model');
+      final received = <PageContent>[];
+      final n = withHook(received.add);
+      n.onSceneChanged(ink);
+      await settle();
+
+      expect(received, isEmpty);
+      n.dispose();
+    });
+
+    test('a throwing hook never breaks analysis', () async {
+      final n = withHook((_) => throw StateError('boom'));
+      n.onSceneChanged(ink);
+      await settle();
+
+      expect(n.state.value?.currentTopic, 'Topic A');
+      n.dispose();
+    });
+  });
+
   group('sceneContentSignature', () {
     test('ignores erasers, empty text, and pure moves of ink', () {
       const moved = [

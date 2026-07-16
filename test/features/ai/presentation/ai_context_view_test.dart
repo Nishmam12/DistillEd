@@ -6,9 +6,11 @@ import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_ser
 import 'package:inkflow/features/ai/domain/ai_provider.dart';
 import 'package:inkflow/features/ai/domain/context_engine/context_engine.dart';
 import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
+import 'package:inkflow/features/ai/domain/features/writing_assistant.dart';
 import 'package:inkflow/features/ai/domain/page_content_extractor.dart';
 import 'package:inkflow/features/ai/presentation/ai_providers.dart';
 import 'package:inkflow/features/ai/presentation/context_engine_notifier.dart';
+import 'package:inkflow/features/ai/presentation/writing_assistant_notifier.dart';
 import 'package:inkflow/features/ai/presentation/sidebar/ai_context_view.dart';
 
 // ---- Fakes ------------------------------------------------------------------
@@ -46,6 +48,19 @@ class _FixedNotifier extends ContextEngineNotifier {
           cache: PageContextCache(),
           pageId: 1,
           languageCode: () => 'en',
+        ) {
+    state = initial;
+  }
+}
+
+/// Writing notifier pinned to a fixed suggestion list (dismiss still works via
+/// the inherited notifier).
+class _FixedWriting extends WritingAssistantNotifier {
+  _FixedWriting(List<WritingSuggestion> initial)
+      : super(
+          assistant: WritingAssistant(provider: _NoopProvider()),
+          cache: PageWritingCache(),
+          pageId: 1,
         ) {
     state = initial;
   }
@@ -131,5 +146,37 @@ void main() {
 
     expect(find.text("Couldn't read the page just now"), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
+  });
+
+  testWidgets('writing suggestions render below the context and dismiss',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          pageContextProvider(key).overrideWith((ref) => _FixedNotifier(
+              const AsyncValue.data(PageContext(
+                  currentTopic: 'Essay draft',
+                  estimatedLevel: KnowledgeLevel.intermediate,
+                  confidence: 0.6)))),
+          writingSuggestionsProvider(key).overrideWith((ref) => _FixedWriting([
+                const WritingSuggestion(
+                  kind: WritingSuggestionKind.repetition,
+                  message: 'You lean on "very" a lot here.',
+                ),
+              ])),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: AiContextView(pageKey: key)),
+        ),
+      ),
+    );
+
+    expect(find.text('WRITING SUGGESTIONS'), findsOneWidget);
+    expect(find.text('You lean on "very" a lot here.'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Dismiss'));
+    await tester.pump();
+
+    expect(find.text('You lean on "very" a lot here.'), findsNothing);
   });
 }
