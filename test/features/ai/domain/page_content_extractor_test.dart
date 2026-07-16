@@ -149,4 +149,61 @@ void main() {
     expect(
         content.sources.where((s) => s.kind == PageSourceKind.ink), hasLength(1));
   });
+
+  group('extractSelection', () {
+    test('reads only the selected elements', () async {
+      recognizedText = 'selected ink';
+      const other = TextElement(
+          id: 'other',
+          zOrder: 0,
+          geometryData: [0, 0, 100, 20],
+          text: 'not selected',
+          color: 0xFF000000);
+
+      final content = await extractor([_ink, other])
+          .extractSelection(1, {'ink1'}, languageCode: 'en');
+
+      expect(content.recognizedInkText, 'selected ink');
+      expect(content.typedText, isEmpty,
+          reason: 'the unselected text element is excluded');
+    });
+
+    test('can target a single typed element', () async {
+      recognizedText = '';
+      const keep = TextElement(
+          id: 'a',
+          zOrder: 0,
+          geometryData: [0, 10, 100, 30],
+          text: 'keep me',
+          color: 0xFF000000);
+      const drop = TextElement(
+          id: 'b',
+          zOrder: 1,
+          geometryData: [0, 40, 100, 60],
+          text: 'drop me',
+          color: 0xFF000000);
+
+      final content = await extractor([keep, drop])
+          .extractSelection(1, {'a'}, languageCode: 'en');
+
+      expect(content.typedText, 'keep me');
+    });
+
+    test('no ids yields empty content without touching recognition', () async {
+      recognizedText = 'should never be read';
+      final content = await extractor([_ink])
+          .extractSelection(1, const {}, languageCode: 'en');
+
+      expect(content.hasText, isFalse);
+      expect(content.sources, isEmpty);
+    });
+
+    test('ids absent from the page yield empty content', () async {
+      recognizedText = 'ignored';
+      final content = await extractor([_ink])
+          .extractSelection(1, {'not-on-page'}, languageCode: 'en');
+
+      expect(content.hasText, isFalse);
+    });
+  });
 }

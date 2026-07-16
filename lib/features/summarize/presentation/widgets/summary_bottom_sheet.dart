@@ -153,8 +153,8 @@ class _SuccessView extends StatelessWidget {
               const Expanded(child: _SheetTitle('Summary')),
               if (state.fromCache)
                 const _Badge('Cached')
-              else if (state.truncated)
-                const _Badge('Long note — partial'),
+              else if (state.chunked)
+                const _Badge('Long note — condensed'),
             ],
           ),
           const SizedBox(height: 12),

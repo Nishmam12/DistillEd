@@ -39,7 +39,33 @@ class PageContentExtractor {
     int pageId, {
     required String languageCode,
   }) async {
-    final elements = await _loadElements(pageId);
+    return _extractFrom(await _loadElements(pageId), languageCode);
+  }
+
+  /// Extracts AI-readable content from just the selected [elementIds] on
+  /// [pageId] — the read-only path for "summarize/explain this selection". The
+  /// same ink recognition and reading-order rules as [extractPage] apply to the
+  /// subset (ids not on the page are simply absent).
+  Future<PageContent> extractSelection(
+    int pageId,
+    Set<String> elementIds, {
+    required String languageCode,
+  }) async {
+    if (elementIds.isEmpty) return PageContent.empty;
+    final selected = [
+      for (final e in await _loadElements(pageId))
+        if (elementIds.contains(e.id)) e,
+    ];
+    return _extractFrom(selected, languageCode);
+  }
+
+  /// Shared extraction over an already-loaded element list, so page-scope and
+  /// selection-scope reads produce identical [PageContent] for the same ink and
+  /// text.
+  Future<PageContent> _extractFrom(
+    List<SceneElement> elements,
+    String languageCode,
+  ) async {
     if (elements.isEmpty) return PageContent.empty;
 
     final sources = <PageContentSource>[];

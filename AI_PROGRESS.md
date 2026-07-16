@@ -10,9 +10,10 @@ product vision remains `ai_prompts/AI_Notebook_Master_Plan.md`.
 One AI platform (`features/ai/`) with one runtime, one router, one page-read
 path. Phase 1 builds the master-plan features on it, **Live Context Engine
 first** (decision #7) per `ai_prompts/02_phase1_context_engine_core_features.md`
-+ INTEGRATION_ROADMAP §5. Loops 1.1 (Context Engine core) and 1.2 (AI Sidebar
-shell) done; next is Loop 1.3 (Summarize levels). Device validation (R5) is
-still open, owned by the user.
++ INTEGRATION_ROADMAP §5. Loops 1.1 (Context Engine core), 1.2 (AI Sidebar
+shell) and 1.3 (Summarize levels: selection/page/notebook + chunk-and-reduce)
+done; next is Loop 1.4 (Explain). Device validation (R5) is still open, owned
+by the user.
 
 ## The situation (context for any fresh session)
 On 2026-07-16 we discovered Afnan had already shipped a complete AI
@@ -279,6 +280,60 @@ of Phase 1. Coexists with the canvas (not a route, not a modal-over-canvas).
   for rich/empty/reading/model-not-ready/generic-error rendering, via a
   fixed-state notifier override of the family provider.
 
+### Loop 1.3 — Summarization levels ✅
+Summarize now works at **selection / current-page / whole-notebook** scope, and
+over-budget content is **chunk-and-reduced** instead of truncated. Extended the
+existing `SummarizationService` (no duplicate gate/cache/routing); did NOT add a
+parallel `domain/features/summarizer.dart`.
+- `ai/domain/page_content_extractor.dart`: `extractPage` refactored to delegate
+  to a private `_extractFrom(elements)`; new `extractSelection(pageId, ids)`
+  filters loaded elements to the selected ids and runs the SAME ink-recognition
+  + reading-order path — so selection/page reads produce identical `PageContent`
+  for the same content.
+- `ai/domain/text_budget.dart`: new shared `chunkByWords(text, maxWords)` —
+  packs blank-line paragraphs greedily up to the budget, hard-splits any single
+  paragraph that alone exceeds it, blank → `[]`, fits → one chunk. Centralized
+  so budgeting stays in one place.
+- `summarize/domain/services/summarization_service.dart`: sealed
+  `SummarizeScope` (`SelectionScope`/`PageScope`/`NotebookScope`) + new
+  `summarizeScope(...)`; `summarize(...)` kept as a thin `NotebookScope`
+  wrapper (app-bar entry + old tests unchanged). `_gather(scope)` resolves scope
+  → (text, ink scores). Local generation replaced truncation with
+  `_chunkAndReduce`: summarize each section (`_sectionInstruction`), then
+  summarize the joined section summaries (`_reduceInstruction`), recursing while
+  the summaries still overflow, with a `_maxReducePasses = 4` safety net that
+  falls back to a single truncated reduce for pathologically small windows.
+  `SummarizationResult.truncated` → **`chunked`** (whole note read, not cut).
+  **Cache stays notebook-only** — page/selection scopes never read or write the
+  notebook `SummaryCache` (no Isar schema change; avoids scope collisions).
+- `summarize/presentation/summarize_notifier.dart`: `SummarizeRequest.loadPageIds`
+  → `resolveScope()` (returns a `SummarizeScope`, resolved fresh per attempt so
+  notebook retries see the latest pages; selection is captured at launch).
+  `SummarizeSuccess.truncated` → `chunked`. Re-exports the scope types (they're
+  part of the request API). Sheet badge: "Long note — partial" → "condensed".
+- `ai/presentation/sidebar/ai_sidebar.dart`: a **Summarize** launcher pinned
+  below `AiContextView` (both docked panel and phone sheet). It offers *This
+  page* / *Whole notebook* always and *Selected items* only when
+  `selectionProvider` is non-empty (read-only). To keep `features/ai` free of a
+  dependency on the consumer `features/summarize`, the sidebar only emits a
+  `SummarizeScopeChoice` via an `onSummarize` callback; the **editor** (which
+  owns both) turns it into a `SummarizeRequest` in `_summarizeScope(key, choice)`
+  and shows the existing summary sheet. App-bar Summarize button kept (now a
+  one-tap `NotebookScope` path through the same method).
+- Tests (+19 → **338/338**, analyze clean): `text_budget_test` (chunkByWords
+  packing/hard-split/word-conservation), `page_content_extractor_test`
+  (extractSelection subset/empty/absent-id), `summarization_service_test`
+  (chunk-and-reduce on cloud-fallback AND local route — every section prompt ≤
+  budget, nothing truncated; page/selection scope; page & selection never touch
+  the cache; empty selection fails the gate before any model call), updated
+  `summarize_notifier_test` (scripts `summarizeScope`, `resolveScope` request),
+  `ai_sidebar_test` (scope menu options gated on selection; `onSummarize` fires).
+- NOTE: the spec's "context menu action on text/lasso selection" is served by
+  the sidebar's selection-aware launcher (read-only consumer of
+  `selectionProvider`); a dedicated on-canvas floating action was deliberately
+  deferred (it's a larger editor-UI change and the sidebar already covers the
+  requirement + acceptance criteria).
+
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
@@ -288,8 +343,9 @@ of Phase 1. Coexists with the canvas (not a route, not a modal-over-canvas).
   files that don't exist on 2.0), his legacy `note_editor_screen.dart` wiring.
 
 ## Next Loop
-**Loop 1.3** — Summarization levels: extend Summarize from whole-notebook to
-selection / current-page / notebook scopes, launched from the AI sidebar and a
-selection context action; chunk-and-reduce when content exceeds the local
-context window (don't truncate silently). Then 1.4 Explain, 1.5 Writing
-Assistant, 1.6 Quiz, 1.7 Flashcards.
+**Loop 1.4** — Explain: selection → Beginner / Intermediate / Advanced /
+Real-world modes, streamed into the sidebar, with "insert as note" via the
+editor's existing text-insertion path. Reuse the sidebar's read-only
+`selectionProvider` consumer (as Loop 1.3's Summarize launcher does) and the
+platform generation presets. Then 1.5 Writing Assistant (⚠️ STOP: show Nabil the
+UI approach first), 1.6 Quiz, 1.7 Flashcards (⚠️ STOP: CSV vs `.apkg`).

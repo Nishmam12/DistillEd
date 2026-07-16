@@ -104,7 +104,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           IconButton(
             tooltip: 'Summarize',
             icon: const Icon(Icons.auto_awesome_outlined),
-            onPressed: _startSummarize,
+            onPressed: () =>
+                _summarizeScope(key, SummarizeScopeChoice.notebook),
           ),
           IconButton(
             tooltip: 'AI insights',
@@ -163,6 +164,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             AiSidebar(
               pageKey: key,
               onClose: () => setState(() => _aiPanelOpen = false),
+              onSummarize: (choice) => _summarizeScope(key, choice),
             ),
         ],
       ),
@@ -192,27 +194,42 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     if (wide) {
       setState(() => _aiPanelOpen = !_aiPanelOpen);
     } else {
-      showAiSidebarSheet(context, key);
+      showAiSidebarSheet(context, key,
+          onSummarize: (choice) => _summarizeScope(key, choice));
     }
   }
 
-  /// Kicks off summarization for the whole notebook and shows the sheet.
+  /// Kicks off summarization at [choice]'s scope and shows the summary sheet.
   ///
   /// Page content is read through the AI platform's PageContentExtractor
   /// against the unified scene store — written through on every editor
-  /// mutation, so no page, including the one on screen, needs
-  /// special-casing. `loadPageIds` is called fresh on every attempt, so
-  /// retries see the latest pages.
-  void _startSummarize() {
+  /// mutation, so no page, including the one on screen, needs special-casing.
+  /// The scope is resolved fresh on every attempt so a notebook retry sees the
+  /// latest pages; the selection is captured now (a retry summarizes the same
+  /// items even if the user has since deselected them).
+  void _summarizeScope(ScenePageKey key, SummarizeScopeChoice choice) {
     final settings = ref.read(settingsProvider);
     final pages = ref.read(pageRepositoryProvider);
-    ref.read(summarizeNotifierProvider.notifier).run(SummarizeRequest(
-          notebookId: widget.notebookId,
-          loadPageIds: () async => [
+    final selection = ref.read(selectionProvider);
+
+    Future<SummarizeScope> resolveScope() async {
+      switch (choice) {
+        case SummarizeScopeChoice.selection:
+          return SelectionScope(pageId: key.pageId, elementIds: selection);
+        case SummarizeScopeChoice.page:
+          return PageScope(key.pageId);
+        case SummarizeScopeChoice.notebook:
+          return NotebookScope([
             for (final page
                 in await pages.getPagesForNotebook(widget.notebookId))
               page.id,
-          ],
+          ]);
+      }
+    }
+
+    ref.read(summarizeNotifierProvider.notifier).run(SummarizeRequest(
+          notebookId: widget.notebookId,
+          resolveScope: resolveScope,
           languageCode: settings.recognitionLanguage,
           cloudEnabled: settings.cloudAiEnabled,
         ));

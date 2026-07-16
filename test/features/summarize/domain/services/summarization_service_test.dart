@@ -29,10 +29,12 @@ class InMemorySummaryStore implements SummaryStore {
       entries[entry.notebookId] = entry;
 }
 
-/// Platform provider that answers with a fixed summary and records the call.
+/// Platform provider that answers with a fixed summary and records the calls.
 class FakeAiProvider implements AiProvider {
   int calls = 0;
   String reply = 'a faithful local summary';
+  final List<String> prompts = [];
+  final List<String?> systemPrompts = [];
   String? lastPrompt;
   String? lastSystemPrompt;
   AiGenerationOptions? lastOptions;
@@ -56,6 +58,8 @@ class FakeAiProvider implements AiProvider {
     final error = throwOnGenerate;
     if (error != null) throw error;
     calls++;
+    prompts.add(prompt);
+    systemPrompts.add(systemPrompt);
     lastPrompt = prompt;
     lastSystemPrompt = systemPrompt;
     lastOptions = options;
@@ -295,11 +299,11 @@ void main() {
       expect(env.cloud.lastMessages!.last.content, contains('word word'));
     });
 
-    test('cloud stub failure falls back to truncated local generation',
+    test('cloud stub failure chunk-and-reduces the long input locally',
         () async {
       final env = build(cloudOverride: StubCloudLlmClient());
-      recognizedText =
-          List.filled(env.router.localInputWordBudget + 50, 'word').join(' ');
+      final budget = env.router.localInputWordBudget;
+      recognizedText = List.filled(budget + 50, 'word').join(' ');
 
       final result = await env.service.summarize(
           notebookId: 3,
@@ -308,13 +312,97 @@ void main() {
           cloudEnabled: true);
 
       expect(result.cloudFellBack, isTrue);
-      expect(result.truncated, isTrue);
+      expect(result.chunked, isTrue);
       expect(result.summary, 'a faithful local summary');
       expect(result.modelUsed, 'gemma4-e2b-local');
-      // Prompt was cut to the budget.
-      final wordsInPrompt =
-          RegExp(r'\bword\b').allMatches(env.local.lastPrompt!);
-      expect(wordsInPrompt.length, env.router.localInputWordBudget);
+      // Every section prompt fit the budget — nothing was cut away, and the
+      // whole note was read across 2 sections + 1 reduce pass.
+      for (final prompt in env.local.prompts) {
+        expect(RegExp(r'\bword\b').allMatches(prompt).length,
+            lessThanOrEqualTo(budget));
+      }
+      expect(env.local.calls, 3);
+    });
+
+    test('over-budget local route chunk-and-reduces instead of truncating',
+        () async {
+      final env = build();
+      final budget = env.router.localInputWordBudget;
+      recognizedText = List.filled(budget + 30, 'word').join(' ');
+
+      // Cloud off + over budget → routes local; must chunk, not truncate.
+      final result = await env.service.summarize(
+          notebookId: 8,
+          pageIds: const [11],
+          languageCode: 'en',
+          cloudEnabled: false);
+
+      expect(result.chunked, isTrue);
+      expect(result.cloudFellBack, isFalse);
+      expect(result.summary, 'a faithful local summary');
+      expect(env.local.calls, greaterThan(1));
+      for (final prompt in env.local.prompts) {
+        expect(RegExp(r'\bword\b').allMatches(prompt).length,
+            lessThanOrEqualTo(budget));
+      }
+    });
+
+    test('page scope summarizes one page and never writes the cache', () async {
+      recognizedText = meaningful;
+      final env = build();
+
+      final result = await env.service.summarizeScope(
+        notebookId: 5,
+        scope: const PageScope(11),
+        languageCode: 'en',
+        cloudEnabled: false,
+      );
+
+      expect(result.summary, 'a faithful local summary');
+      expect(result.recognizedText, meaningful);
+      expect(env.store.entries, isEmpty,
+          reason: 'only notebook scope is cached');
+    });
+
+    test('selection scope reads only the selected elements', () async {
+      recognizedText = meaningful;
+      final env = build(page: [
+        ...inkPage, // id 's'
+        const TextElement(
+          id: 't',
+          zOrder: 1,
+          geometryData: [0, 100, 200, 120],
+          text: 'unrelated typed note that should be excluded',
+          color: 0xFF000000,
+        ),
+      ]);
+
+      final result = await env.service.summarizeScope(
+        notebookId: 5,
+        scope: const SelectionScope(pageId: 11, elementIds: {'s'}),
+        languageCode: 'en',
+        cloudEnabled: false,
+      );
+
+      expect(result.recognizedText, meaningful);
+      expect(result.recognizedText, isNot(contains('unrelated typed note')));
+      expect(env.store.entries, isEmpty);
+    });
+
+    test('empty selection fails the gate before any model call', () async {
+      recognizedText = meaningful;
+      final env = build();
+
+      await expectLater(
+        env.service.summarizeScope(
+          notebookId: 5,
+          scope: const SelectionScope(pageId: 11, elementIds: {}),
+          languageCode: 'en',
+          cloudEnabled: false,
+        ),
+        throwsA(isA<NotMeaningfulException>()),
+      );
+      expect(env.local.calls, 0);
     });
 
     test('offline without the model → LocalModelRequiredException(offline)',

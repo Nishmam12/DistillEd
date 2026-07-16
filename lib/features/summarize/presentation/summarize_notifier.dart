@@ -16,6 +16,11 @@ import '../../ai/data/handwriting/handwriting_recognition_service.dart';
 import '../domain/services/summarization_service.dart';
 import 'summarize_providers.dart';
 
+// The scope types are part of this notifier's request API (SummarizeRequest),
+// so callers get them without importing the service directly.
+export '../domain/services/summarization_service.dart'
+    show SummarizeScope, SelectionScope, PageScope, NotebookScope;
+
 sealed class SummarizeState {
   const SummarizeState();
 }
@@ -41,13 +46,16 @@ class SummarizeSuccess extends SummarizeState {
   final String summary;
   final String recognizedText;
   final bool fromCache;
-  final bool truncated;
+
+  /// The note exceeded the local context window and was summarized in passes
+  /// (chunk-and-reduce) — the whole note was read, not truncated.
+  final bool chunked;
   final String modelUsed;
   const SummarizeSuccess({
     required this.summary,
     required this.recognizedText,
     required this.fromCache,
-    required this.truncated,
+    required this.chunked,
     required this.modelUsed,
   });
 }
@@ -69,16 +77,16 @@ class SummarizeError extends SummarizeState {
 class SummarizeRequest {
   final int notebookId;
 
-  /// Loads the notebook's page ids in page order — called fresh on every
-  /// attempt so retries see the latest pages. Page content itself is read
-  /// through the AI platform's PageContentExtractor.
-  final Future<List<int>> Function() loadPageIds;
+  /// Resolves the scope to summarize (selection / page / notebook) — called
+  /// fresh on every attempt so a notebook retry sees the latest pages. Page
+  /// content itself is read through the AI platform's PageContentExtractor.
+  final Future<SummarizeScope> Function() resolveScope;
   final String languageCode;
   final bool cloudEnabled;
 
   const SummarizeRequest({
     required this.notebookId,
-    required this.loadPageIds,
+    required this.resolveScope,
     required this.languageCode,
     required this.cloudEnabled,
   });
@@ -112,10 +120,10 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
       // to live inside the "Reading handwriting…" state.
       await _recognition.ensureModelDownloaded(request.languageCode);
 
-      final pageIds = await request.loadPageIds();
-      final result = await _service.summarize(
+      final scope = await request.resolveScope();
+      final result = await _service.summarizeScope(
         notebookId: request.notebookId,
-        pageIds: pageIds,
+        scope: scope,
         languageCode: request.languageCode,
         cloudEnabled: request.cloudEnabled,
         onStage: (stage) {
@@ -132,7 +140,7 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
         summary: result.summary,
         recognizedText: result.recognizedText,
         fromCache: result.fromCache,
-        truncated: result.truncated,
+        chunked: result.chunked,
         modelUsed: result.modelUsed,
       );
     } catch (e) {

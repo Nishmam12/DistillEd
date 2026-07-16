@@ -77,9 +77,9 @@ class ScriptedService extends SummarizationService {
         );
 
   @override
-  Future<SummarizationResult> summarize({
+  Future<SummarizationResult> summarizeScope({
     required int notebookId,
-    required List<int> pageIds,
+    required SummarizeScope scope,
     required String languageCode,
     required bool cloudEnabled,
     void Function(SummarizeStage stage)? onStage,
@@ -123,7 +123,7 @@ class FakeStorage implements DeviceStorage {
 void main() {
   const request = SummarizeRequest(
     notebookId: 1,
-    loadPageIds: _noPageIds,
+    resolveScope: _notebookScope,
     languageCode: 'en',
     cloudEnabled: false,
   );
@@ -230,4 +230,4 @@ void main() {
   });
 }
 
-Future<List<int>> _noPageIds() async => const [];
+Future<SummarizeScope> _notebookScope() async => const NotebookScope([]);
