@@ -15,7 +15,9 @@ import '../../../../editor/state/scene_controller.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/ai_provider.dart';
 import '../../domain/context_engine/page_context.dart';
+import '../../domain/features/explainer.dart';
 import '../ai_providers.dart';
+import '../explain_notifier.dart';
 
 class AiContextView extends ConsumerWidget {
   final ScenePageKey pageKey;
@@ -29,16 +31,39 @@ class AiContextView extends ConsumerWidget {
     // so the panel never flickers back to a spinner mid-edit.
     final previous = async.valueOrNull;
 
+    // Tapping a knowledge-gap flag explains that undefined term in context —
+    // the second Explain trigger (the first is the selection launcher).
+    void explainGap(String gap, String topic) {
+      ref.read(explainNotifierProvider.notifier).run(ExplainRequest(
+            mode: ExplainMode.beginner,
+            resolveContent: () async => _gapExplainContent(gap, topic),
+          ));
+    }
+
     return switch (async) {
       AsyncData(:final value) when value.isEmpty => const _EmptyState(),
-      AsyncData(:final value) => _ContextBody(context: value),
-      AsyncLoading() when previous != null && !previous.isEmpty =>
-        _ContextBody(context: previous, refreshing: true),
+      AsyncData(:final value) => _ContextBody(
+          context: value,
+          onExplainGap: (g) => explainGap(g, value.currentTopic),
+        ),
+      AsyncLoading() when previous != null && !previous.isEmpty => _ContextBody(
+          context: previous,
+          refreshing: true,
+          onExplainGap: (g) => explainGap(g, previous.currentTopic),
+        ),
       AsyncLoading() => const _ReadingState(),
       AsyncError(:final error) => _ErrorState(pageKey: pageKey, error: error),
       _ => const _ReadingState(),
     };
   }
+}
+
+/// Prompt sent when a knowledge-gap flag is tapped: explain the flagged term,
+/// grounded in the page's detected topic when there is one.
+String _gapExplainContent(String gap, String topic) {
+  final where = topic.isEmpty ? '' : ' It appears in notes about "$topic".';
+  return 'Explain this concept, which the notes use but never define: '
+      '"$gap".$where';
 }
 
 class _ReadingState extends StatelessWidget {
@@ -209,7 +234,14 @@ class _ModelNotReadyState extends ConsumerState<_ModelNotReady> {
 class _ContextBody extends StatelessWidget {
   final PageContext context;
   final bool refreshing;
-  const _ContextBody({required this.context, this.refreshing = false});
+
+  /// Called when a knowledge-gap flag is tapped (null → flags aren't tappable).
+  final ValueChanged<String>? onExplainGap;
+  const _ContextBody({
+    required this.context,
+    this.refreshing = false,
+    this.onExplainGap,
+  });
 
   @override
   Widget build(BuildContext buildContext) {
@@ -269,7 +301,11 @@ class _ContextBody extends StatelessWidget {
           if (c.knowledgeGaps.isNotEmpty) ...[
             const _SectionLabel('Worth revisiting'),
             const SizedBox(height: 8),
-            for (final gap in c.knowledgeGaps) _GapFlag(gap),
+            for (final gap in c.knowledgeGaps)
+              _GapFlag(
+                gap,
+                onTap: onExplainGap == null ? null : () => onExplainGap!(gap),
+              ),
           ],
           if (c.definitions.isNotEmpty) ...[
             const _SectionLabel('Definitions on this page'),
@@ -365,13 +401,15 @@ class _ConceptChip extends StatelessWidget {
 }
 
 /// A knowledge gap — a gentle honey-toned nudge, deliberately NOT a red error.
+/// When [onTap] is set, tapping it asks Explain to unpack the term in context.
 class _GapFlag extends StatelessWidget {
   final String text;
-  const _GapFlag(this.text);
+  final VoidCallback? onTap;
+  const _GapFlag(this.text, {this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final content = Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -392,8 +430,23 @@ class _GapFlag extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 13, height: 1.35, color: AppColors.textPrimary)),
           ),
+          if (onTap != null) ...[
+            const SizedBox(width: 6),
+            const Padding(
+              padding: EdgeInsets.only(top: 1),
+              child: Icon(Icons.school_outlined,
+                  size: 15, color: AppColors.accentYellow),
+            ),
+          ],
         ],
       ),
+    );
+
+    if (onTap == null) return content;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: content,
     );
   }
 }

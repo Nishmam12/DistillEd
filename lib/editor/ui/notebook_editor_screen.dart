@@ -13,6 +13,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/settings_provider.dart';
+import '../../domain/commands/scene_command.dart';
+import '../../domain/model/scene_element.dart';
 import '../../features/ai/presentation/sidebar/ai_sidebar.dart';
 import '../../features/editor/domain/models/template_type.dart';
 import '../../features/editor/presentation/page_notifier.dart';
@@ -21,6 +23,7 @@ import '../../features/home/domain/models/notebook.dart';
 import '../../features/summarize/presentation/summarize_notifier.dart';
 import '../../features/summarize/presentation/widgets/summary_bottom_sheet.dart';
 import '../../shared/isar/isar_service.dart';
+import '../state/history_controller.dart';
 import '../state/library_controller.dart';
 import '../state/scene_controller.dart';
 import '../state/selection_controller.dart';
@@ -44,6 +47,9 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// Whether the docked AI panel is showing (wide screens only; on phones the
   /// AI action opens a bottom sheet instead and this stays false).
   bool _aiPanelOpen = false;
+
+  /// Disambiguates ids of AI-inserted notes created in the same microsecond.
+  int _noteSeq = 0;
 
   @override
   void initState() {
@@ -165,6 +171,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
               pageKey: key,
               onClose: () => setState(() => _aiPanelOpen = false),
               onSummarize: (choice) => _summarizeScope(key, choice),
+              onInsertNote: (text) => _insertNote(key, text),
             ),
         ],
       ),
@@ -195,8 +202,53 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       setState(() => _aiPanelOpen = !_aiPanelOpen);
     } else {
       showAiSidebarSheet(context, key,
-          onSummarize: (choice) => _summarizeScope(key, choice));
+          onSummarize: (choice) => _summarizeScope(key, choice),
+          onInsertNote: (text) => _insertNote(key, text));
     }
+  }
+
+  /// "Insert as note" from the AI sidebar: drops the text onto the current page
+  /// as a [TextElement] through the same undoable history path a manual text
+  /// box uses (never bypassing it), sized to the wrapped text and placed in the
+  /// visible viewport.
+  void _insertNote(ScenePageKey key, String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+
+    const width = 360.0;
+    const fontSize = 16.0;
+    final painter = TextPainter(
+      text: const TextSpan(text: 'x', style: TextStyle(fontSize: fontSize)),
+      textDirection: TextDirection.ltr,
+    );
+    painter.text =
+        TextSpan(text: trimmed, style: const TextStyle(fontSize: fontSize));
+    painter.layout(maxWidth: width);
+    final height = painter.height + 16;
+
+    final scene = ref.read(viewportProvider).toScene(const Offset(48, 120));
+    final zOrder = ref.read(sceneControllerProvider(key).notifier).nextZOrder();
+
+    ref.read(historyProvider(key).notifier).push(AddElementsCommand([
+          TextElement(
+            id: '${DateTime.now().microsecondsSinceEpoch}_ai${_noteSeq++}',
+            zOrder: zOrder,
+            geometryData: [
+              scene.dx,
+              scene.dy,
+              scene.dx + width,
+              scene.dy + height,
+            ],
+            text: trimmed,
+            color: 0xFF1A1A1A,
+            fontSize: fontSize,
+          ),
+        ]));
+
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Added to the page'),
+      duration: Duration(seconds: 1),
+    ));
   }
 
   /// Kicks off summarization at [choice]'s scope and shows the summary sheet.

@@ -1,19 +1,24 @@
 // The AI sidebar: the in-editor home for the Live Context Engine and the
-// launch surface for every Phase 1 feature (Explain, Quiz, Flashcards land
-// here in later loops).
+// launch surface for every Phase 1 feature (Explain lives here now; Quiz,
+// Flashcards land here in later loops).
 //
 // It coexists with the canvas — a fixed-width right-hand panel on tablet-width
 // screens ([AiSidebar]), and a bottom sheet on phone-width ([showAiSidebarSheet]).
-// Both wrap the same [AiContextView] body, so the AI's read of the page looks
-// identical in either form factor.
+// Both show the same body: the live [AiContextView], or the [AiExplainView]
+// while an explanation is streaming, plus a Summarize/Explain action footer.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/settings_provider.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../../../editor/state/selection_controller.dart';
+import '../../domain/features/explainer.dart';
+import '../ai_providers.dart';
+import '../explain_notifier.dart';
 import 'ai_context_view.dart';
+import 'ai_explain_view.dart';
 
 /// Width of the docked panel on wide screens.
 const double kAiSidebarWidth = 340;
@@ -38,11 +43,15 @@ class AiSidebar extends StatelessWidget {
   /// Launches summarization at the chosen scope (wired by the editor).
   final ValueChanged<SummarizeScopeChoice> onSummarize;
 
+  /// Hands an explanation to the editor's text-insertion path ("insert as note").
+  final ValueChanged<String> onInsertNote;
+
   const AiSidebar({
     super.key,
     required this.pageKey,
     required this.onClose,
     required this.onSummarize,
+    required this.onInsertNote,
   });
 
   @override
@@ -62,14 +71,11 @@ class AiSidebar extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                child: AiContextView(pageKey: pageKey),
+                child: _SidebarBody(
+                    pageKey: pageKey, onInsertNote: onInsertNote),
               ),
             ),
-            const Divider(height: 1, color: AppColors.border),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              child: _SummarizeBar(onSummarize: onSummarize),
-            ),
+            _SidebarFooter(pageKey: pageKey, onSummarize: onSummarize),
           ],
         ),
       ),
@@ -82,6 +88,7 @@ Future<void> showAiSidebarSheet(
   BuildContext context,
   ScenePageKey pageKey, {
   required ValueChanged<SummarizeScopeChoice> onSummarize,
+  required ValueChanged<String> onInsertNote,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -101,14 +108,63 @@ Future<void> showAiSidebarSheet(
           children: [
             _SidebarHeader(onClose: () => Navigator.of(context).pop()),
             const SizedBox(height: 8),
-            Flexible(child: AiContextView(pageKey: pageKey)),
-            const SizedBox(height: 12),
-            _SummarizeBar(onSummarize: onSummarize),
+            Flexible(
+                child:
+                    _SidebarBody(pageKey: pageKey, onInsertNote: onInsertNote)),
+            _SidebarFooter(pageKey: pageKey, onSummarize: onSummarize),
           ],
         ),
       ),
     ),
   );
+}
+
+/// The scrolling body: the streamed [AiExplainView] while an explanation is
+/// active, otherwise the live [AiContextView] (whose knowledge-gap flags are
+/// themselves an Explain trigger).
+class _SidebarBody extends ConsumerWidget {
+  final ScenePageKey pageKey;
+  final ValueChanged<String> onInsertNote;
+  const _SidebarBody({required this.pageKey, required this.onInsertNote});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final explaining = ref.watch(explainNotifierProvider) is! ExplainIdle;
+    return explaining
+        ? AiExplainView(onInsertNote: onInsertNote)
+        : AiContextView(pageKey: pageKey);
+  }
+}
+
+/// The Summarize / Explain action bar. Hidden while an explanation is on screen
+/// (the Explain view carries its own actions), so it never competes with it.
+class _SidebarFooter extends ConsumerWidget {
+  final ScenePageKey pageKey;
+  final ValueChanged<SummarizeScopeChoice> onSummarize;
+  const _SidebarFooter({required this.pageKey, required this.onSummarize});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(explainNotifierProvider) is! ExplainIdle) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Divider(height: 1, color: AppColors.border),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Row(
+            children: [
+              Expanded(child: _SummarizeBar(onSummarize: onSummarize)),
+              const SizedBox(width: 8),
+              Expanded(child: _ExplainBar(pageKey: pageKey)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// The sidebar's Summarize launcher: a menu offering selection / page /
@@ -122,48 +178,128 @@ class _SummarizeBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasSelection = ref.watch(selectionProvider).isNotEmpty;
-    return SizedBox(
-      width: double.infinity,
-      child: PopupMenuButton<SummarizeScopeChoice>(
-        tooltip: 'Summarize',
-        position: PopupMenuPosition.under,
-        onSelected: onSummarize,
-        itemBuilder: (context) => [
-          if (hasSelection)
-            const PopupMenuItem(
-              value: SummarizeScopeChoice.selection,
-              child: Text('Selected items'),
-            ),
+    return PopupMenuButton<SummarizeScopeChoice>(
+      tooltip: 'Summarize',
+      position: PopupMenuPosition.under,
+      onSelected: onSummarize,
+      itemBuilder: (context) => [
+        if (hasSelection)
           const PopupMenuItem(
-            value: SummarizeScopeChoice.page,
-            child: Text('This page'),
+            value: SummarizeScopeChoice.selection,
+            child: Text('Selected items'),
           ),
-          const PopupMenuItem(
-            value: SummarizeScopeChoice.notebook,
-            child: Text('Whole notebook'),
+        const PopupMenuItem(
+          value: SummarizeScopeChoice.page,
+          child: Text('This page'),
+        ),
+        const PopupMenuItem(
+          value: SummarizeScopeChoice.notebook,
+          child: Text('Whole notebook'),
+        ),
+      ],
+      child: const _ActionChip(
+        icon: Icons.auto_awesome_outlined,
+        label: 'Summarize',
+        enabled: true,
+      ),
+    );
+  }
+}
+
+/// The sidebar's Explain launcher: explains the current selection at a chosen
+/// depth. Disabled until the editor has a selection (the other Explain trigger
+/// is tapping a knowledge-gap flag in the context view). Resolution and
+/// streaming live entirely in `features/ai`; only "insert as note" touches the
+/// editor.
+class _ExplainBar extends ConsumerWidget {
+  final ScenePageKey pageKey;
+  const _ExplainBar({required this.pageKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasSelection = ref.watch(selectionProvider).isNotEmpty;
+    if (!hasSelection) {
+      return const Tooltip(
+        message: 'Select notes to explain',
+        child: _ActionChip(
+          icon: Icons.school_outlined,
+          label: 'Explain',
+          enabled: false,
+        ),
+      );
+    }
+    return PopupMenuButton<ExplainMode>(
+      tooltip: 'Explain selection',
+      position: PopupMenuPosition.under,
+      onSelected: (mode) => _explainSelection(ref, mode),
+      itemBuilder: (context) => [
+        for (final mode in ExplainMode.values)
+          PopupMenuItem(value: mode, child: Text(mode.label)),
+      ],
+      child: const _ActionChip(
+        icon: Icons.school_outlined,
+        label: 'Explain',
+        enabled: true,
+      ),
+    );
+  }
+
+  void _explainSelection(WidgetRef ref, ExplainMode mode) {
+    // Capture the concrete services and the selected ids now, so a later retry
+    // or mode-change re-reads the same selection safely (no stale WidgetRef).
+    final extractor = ref.read(pageContentExtractorProvider);
+    final recognition = ref.read(handwritingRecognitionServiceProvider);
+    final languageCode = ref.read(settingsProvider).recognitionLanguage;
+    final ids = ref.read(selectionProvider);
+    final pageId = pageKey.pageId;
+
+    ref.read(explainNotifierProvider.notifier).run(ExplainRequest(
+          mode: mode,
+          resolveContent: () async {
+            await recognition.ensureModelDownloaded(languageCode);
+            final content = await extractor.extractSelection(pageId, ids,
+                languageCode: languageCode);
+            return content.combinedText;
+          },
+        ));
+  }
+}
+
+/// A pill-styled action trigger shared by the Summarize/Explain launchers.
+class _ActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = enabled ? AppColors.accentStrong : AppColors.textMuted;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      decoration: BoxDecoration(
+        color: enabled ? AppColors.accentWash : AppColors.surfaceHighlight,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 16, color: fg),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: fg),
+            ),
           ),
         ],
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.accentWash,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.auto_awesome_outlined,
-                  size: 18, color: AppColors.accentStrong),
-              SizedBox(width: 8),
-              Text('Summarize',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.accentStrong,
-                  )),
-              Icon(Icons.arrow_drop_down, size: 20, color: AppColors.accentStrong),
-            ],
-          ),
-        ),
       ),
     );
   }

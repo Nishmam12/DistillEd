@@ -13,8 +13,10 @@ import '../data/providers/local_gemma_provider.dart';
 import '../domain/ai_provider.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
+import '../domain/features/explainer.dart';
 import '../domain/page_content_extractor.dart';
 import 'context_engine_notifier.dart';
+import 'explain_notifier.dart';
 
 final handwritingRecognitionServiceProvider =
     Provider<HandwritingRecognitionService>((ref) {
@@ -54,6 +56,21 @@ final pageContextCacheProvider =
 
 final contextEngineProvider = Provider<ContextEngine>(
     (ref) => ContextEngine(provider: ref.watch(localAiProvider)));
+
+/// Explain feature — streams an explanation of a passage from the local model.
+final explainerProvider = Provider<Explainer>(
+    (ref) => Explainer(provider: ref.watch(localAiProvider)));
+
+/// Drives the sidebar's Explain surface. Session-scoped (not autoDispose):
+/// closing/reopening the sidebar must not abort an in-flight model download,
+/// and the last explanation stays available until dismissed.
+final explainNotifierProvider =
+    StateNotifierProvider<ExplainNotifier, ExplainState>((ref) {
+  return ExplainNotifier(
+    explainer: ref.watch(explainerProvider),
+    downloads: ref.watch(modelDownloadManagerProvider),
+  );
+});
 
 /// Live context for one page. autoDispose: analysis runs only while something
 /// (the AI sidebar) watches. The editor's scene state is observed through a

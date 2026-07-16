@@ -11,9 +11,10 @@ One AI platform (`features/ai/`) with one runtime, one router, one page-read
 path. Phase 1 builds the master-plan features on it, **Live Context Engine
 first** (decision #7) per `ai_prompts/02_phase1_context_engine_core_features.md`
 + INTEGRATION_ROADMAP §5. Loops 1.1 (Context Engine core), 1.2 (AI Sidebar
-shell) and 1.3 (Summarize levels: selection/page/notebook + chunk-and-reduce)
-done; next is Loop 1.4 (Explain). Device validation (R5) is still open, owned
-by the user.
+shell), 1.3 (Summarize levels: selection/page/notebook + chunk-and-reduce) and
+1.4 (Explain: per-mode streamed explanations + insert-as-note) done; next is
+Loop 1.5 (Writing Assistant — ⚠️ STOP CONDITION, needs Nabil's UI sign-off).
+Device validation (R5) is still open, owned by the user.
 
 ## The situation (context for any fresh session)
 On 2026-07-16 we discovered Afnan had already shipped a complete AI
@@ -334,6 +335,53 @@ parallel `domain/features/summarizer.dart`.
   deferred (it's a larger editor-UI change and the sidebar already covers the
   requirement + acceptance criteria).
 
+### Loop 1.4 — Explain ✅
+Streamed, per-mode explanations rendered **in the sidebar**, triggered from a
+selection or a knowledge-gap flag, with "insert as note" back into the editor.
+Everything except insertion lives in `features/ai`.
+- `ai/domain/features/explainer.dart`: `ExplainMode` (beginner / intermediate /
+  advanced / child / visual / mathematical / real-world — the DoD's
+  Beginner/Intermediate/Advanced/Real-world plus the plan-doc extras), a shared
+  faithfulness preamble + per-mode instruction (`systemPromptFor`), and
+  `explain(ExplainInput) → Stream<String>` straight off the local `AiProvider`
+  (temp 0.4 / topP 0.95 / 512), content truncated to the shared input budget.
+- `ai/presentation/explain_notifier.dart`: streaming state machine
+  idle → preparing → streaming(partial) → ready(full), plus downloadingModel and
+  error (offer-download on `AiModelNotReadyException`, like Summarize).
+  `ExplainRequest.resolveContent` is a fresh-each-attempt `Future<String>`
+  resolver (a selection extraction OR a gap term), so retry/mode-change re-read
+  it; `changeMode` re-runs the same passage at a new depth. Session-scoped
+  provider (download survives a sidebar close).
+- `ai/presentation/sidebar/ai_explain_view.dart`: renders the stream live with a
+  mode selector, Copy, **Insert as note**, and a close that returns to the
+  Context view. Overflow-hardened for the 340px panel (Expanded/ellipsis title,
+  icon-only Copy, Flexible Insert).
+- `ai/presentation/sidebar/ai_sidebar.dart`: body now switches to
+  `AiExplainView` while an explanation is active (the Summarize/Explain footer
+  hides). New **Explain** launcher (mode menu, enabled only with a selection);
+  selection resolution + streaming run entirely in `features/ai` (reads the
+  extractor/recognition/settings via providers), so only insertion crosses into
+  the editor.
+- `ai/presentation/sidebar/ai_context_view.dart`: knowledge-gap flags are now
+  tappable (second Explain trigger) — tapping one explains that undefined term
+  grounded in the page topic. `onExplainGap` is optional so existing tests and
+  callers are unaffected.
+- `editor/ui/notebook_editor_screen.dart`: `onInsertNote` drops the text on the
+  current page as a `TextElement` through the **undoable history path**
+  (`historyProvider(key).push(AddElementsCommand([...]))`, `nextZOrder`, height
+  measured with a `TextPainter`, placed in the visible viewport) — the spec's
+  `text_box_overlay.dart` is the legacy editor, so this is the Canvas-2.0
+  equivalent of "don't bypass the text-insertion path".
+- Tests (+14 → **352/352**, analyze clean): `explainer_test` (chunk pass-through,
+  per-mode system prompt, preset, budget truncation, distinct prompts),
+  `explain_notifier_test` (streaming → ready, empty-content error, model-not-ready
+  → offer-download, changeMode, reset), `ai_sidebar_test` extended (Explain gated
+  on selection; mode choice runs a request; gap tap triggers explain; insert-as-
+  note fires `onInsertNote`).
+- NOTE: not device-run this session (no Android device; device validation is
+  Nabil-owned per R5). Streaming/insert logic and render states are covered by
+  widget/unit tests.
+
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
@@ -343,9 +391,13 @@ parallel `domain/features/summarizer.dart`.
   files that don't exist on 2.0), his legacy `note_editor_screen.dart` wiring.
 
 ## Next Loop
-**Loop 1.4** — Explain: selection → Beginner / Intermediate / Advanced /
-Real-world modes, streamed into the sidebar, with "insert as note" via the
-editor's existing text-insertion path. Reuse the sidebar's read-only
-`selectionProvider` consumer (as Loop 1.3's Summarize launcher does) and the
-platform generation presets. Then 1.5 Writing Assistant (⚠️ STOP: show Nabil the
-UI approach first), 1.6 Quiz, 1.7 Flashcards (⚠️ STOP: CSV vs `.apkg`).
+**Loop 1.5 — Writing Assistant. ⚠️ STOP CONDITION** — the phase spec (§Loop 1.5)
+says: if a non-intrusive UI pattern that fits InkFlow's visual language can't be
+found, *stop and ask Nabil rather than bolting on an intrusive one.* Show the UI
+approach (a mockup/description) before wiring it in broadly. Constraints when it
+proceeds: typed text only initially (ink recognition is noisier — skip
+grammar-level nitpicks on ink, keep content-level ones); **share the Context
+Engine debounce** (extend `context_engine_notifier.dart` or add a sibling
+notifier on the same timer — do NOT add a second polling loop). Then 1.6 Quiz
+(reuse the Loop 1.1 robustness ladder for structured `QuizQuestion` JSON), 1.7
+Flashcards (⚠️ STOP: CSV vs `.apkg` export decision; Isar-persistent).
