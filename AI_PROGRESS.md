@@ -119,10 +119,32 @@ The 2.0 pipeline now feeds recognition-quality ink to the ported feature:
   the current page).
 - `flutter analyze` clean, **263/263 tests pass**.
 
+### Phase R5 — Build proof ✅ / device validation ⏳ (blocked on hardware)
+Automated portion done (2026-07-16, no Android device/emulator attached):
+- `flutter build apk --debug` **succeeds** (302.5 s): LiteRT-LM android_arm64
+  native libs auto-downloaded + checksum-verified by flutter_gemma's build
+  hook, manifest merge + minSdk OK. Non-blocking warning: several plugins
+  (flutter_gemma, mlkit, pdfx, share_plus, package_info_plus) still apply KGP;
+  future Flutter versions will require updated plugins.
+- Privacy grep gate **passes**: no `http`/`dio`/`HttpClient` anywhere in
+  `lib/`; network use is exclusively model downloads (plugin-side) and the
+  router's DNS reachability probe (no note content).
+- 263/263 tests, analyze clean.
+
+**Remaining — needs a physical Android device (steps for whoever runs it):**
+1. `flutter run` (or install `build/app/outputs/flutter-apk/app-debug.apk`).
+2. Settings → check the AI + AI Models sections render; leave Cloud AI OFF.
+3. Open a notebook (editor 2.0), handwrite ~3–5 sentences of real notes.
+4. Tap the ✨ Summarize app-bar button → expect: "en" ML Kit model (~20 MB)
+   downloads inside the "Reading handwriting…" state; then an error state
+   offering the Gemma download; tap it → 2.4 GB download with progress
+   (foreground-service notification when backgrounded); then recognition →
+   summary streams into the sheet.
+5. Log HERE: recognition accuracy impression (with real `t` timing), model
+   load time, tokens/sec feel, end-to-end latency vs the ~10 s/page target,
+   and airplane-mode behavior (expect graceful offline error / local path).
+
 ## Deferred / Open Questions
-- **R5 (next):** device proof (debug apk build, model download UX, recognition
-  quality on real 2.0 ink with real `t` timing, end-to-end latency vs ~10s
-  target) — log actual numbers here when run. Then push `Inkdot-2.0`.
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
   then repoint Summarize.
