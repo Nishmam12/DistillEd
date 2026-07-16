@@ -137,77 +137,82 @@ const SceneElementRecordSchema = CollectionSchema(
       name: r'pointSim',
       type: IsarType.boolList,
     ),
-    r'points': PropertySchema(
+    r'pointT': PropertySchema(
       id: 23,
+      name: r'pointT',
+      type: IsarType.longList,
+    ),
+    r'points': PropertySchema(
+      id: 24,
       name: r'points',
       type: IsarType.doubleList,
     ),
     r'relativeImagePath': PropertySchema(
-      id: 24,
+      id: 25,
       name: r'relativeImagePath',
       type: IsarType.string,
     ),
     r'rotation': PropertySchema(
-      id: 25,
+      id: 26,
       name: r'rotation',
       type: IsarType.double,
     ),
     r'roughness': PropertySchema(
-      id: 26,
+      id: 27,
       name: r'roughness',
       type: IsarType.double,
     ),
     r'seed': PropertySchema(
-      id: 27,
+      id: 28,
       name: r'seed',
       type: IsarType.long,
     ),
     r'shapeType': PropertySchema(
-      id: 28,
+      id: 29,
       name: r'shapeType',
       type: IsarType.byte,
       enumMap: _SceneElementRecordshapeTypeEnumValueMap,
     ),
     r'sourceDescription': PropertySchema(
-      id: 29,
+      id: 30,
       name: r'sourceDescription',
       type: IsarType.string,
     ),
     r'startArrowhead': PropertySchema(
-      id: 30,
+      id: 31,
       name: r'startArrowhead',
       type: IsarType.byte,
       enumMap: _SceneElementRecordstartArrowheadEnumValueMap,
     ),
     r'startBindingId': PropertySchema(
-      id: 31,
+      id: 32,
       name: r'startBindingId',
       type: IsarType.string,
     ),
     r'strokeStyle': PropertySchema(
-      id: 32,
+      id: 33,
       name: r'strokeStyle',
       type: IsarType.byte,
       enumMap: _SceneElementRecordstrokeStyleEnumValueMap,
     ),
     r'strokeWidth': PropertySchema(
-      id: 33,
+      id: 34,
       name: r'strokeWidth',
       type: IsarType.double,
     ),
     r'text': PropertySchema(
-      id: 34,
+      id: 35,
       name: r'text',
       type: IsarType.string,
     ),
     r'textAlign': PropertySchema(
-      id: 35,
+      id: 36,
       name: r'textAlign',
       type: IsarType.byte,
       enumMap: _SceneElementRecordtextAlignEnumValueMap,
     ),
     r'zOrder': PropertySchema(
-      id: 36,
+      id: 37,
       name: r'zOrder',
       type: IsarType.long,
     )
@@ -266,6 +271,7 @@ int _sceneElementRecordEstimateSize(
   bytesCount += 3 + object.geometryData.length * 8;
   bytesCount += 3 + object.groupId.length * 3;
   bytesCount += 3 + object.pointSim.length;
+  bytesCount += 3 + object.pointT.length * 8;
   bytesCount += 3 + object.points.length * 8;
   bytesCount += 3 + object.relativeImagePath.length * 3;
   bytesCount += 3 + object.sourceDescription.length * 3;
@@ -303,20 +309,21 @@ void _sceneElementRecordSerialize(
   writer.writeDouble(offsets[20], object.opacity);
   writer.writeLong(offsets[21], object.pageId);
   writer.writeBoolList(offsets[22], object.pointSim);
-  writer.writeDoubleList(offsets[23], object.points);
-  writer.writeString(offsets[24], object.relativeImagePath);
-  writer.writeDouble(offsets[25], object.rotation);
-  writer.writeDouble(offsets[26], object.roughness);
-  writer.writeLong(offsets[27], object.seed);
-  writer.writeByte(offsets[28], object.shapeType.index);
-  writer.writeString(offsets[29], object.sourceDescription);
-  writer.writeByte(offsets[30], object.startArrowhead.index);
-  writer.writeString(offsets[31], object.startBindingId);
-  writer.writeByte(offsets[32], object.strokeStyle.index);
-  writer.writeDouble(offsets[33], object.strokeWidth);
-  writer.writeString(offsets[34], object.text);
-  writer.writeByte(offsets[35], object.textAlign.index);
-  writer.writeLong(offsets[36], object.zOrder);
+  writer.writeLongList(offsets[23], object.pointT);
+  writer.writeDoubleList(offsets[24], object.points);
+  writer.writeString(offsets[25], object.relativeImagePath);
+  writer.writeDouble(offsets[26], object.rotation);
+  writer.writeDouble(offsets[27], object.roughness);
+  writer.writeLong(offsets[28], object.seed);
+  writer.writeByte(offsets[29], object.shapeType.index);
+  writer.writeString(offsets[30], object.sourceDescription);
+  writer.writeByte(offsets[31], object.startArrowhead.index);
+  writer.writeString(offsets[32], object.startBindingId);
+  writer.writeByte(offsets[33], object.strokeStyle.index);
+  writer.writeDouble(offsets[34], object.strokeWidth);
+  writer.writeString(offsets[35], object.text);
+  writer.writeByte(offsets[36], object.textAlign.index);
+  writer.writeLong(offsets[37], object.zOrder);
 }
 
 SceneElementRecord _sceneElementRecordDeserialize(
@@ -358,28 +365,29 @@ SceneElementRecord _sceneElementRecordDeserialize(
   object.opacity = reader.readDouble(offsets[20]);
   object.pageId = reader.readLong(offsets[21]);
   object.pointSim = reader.readBoolList(offsets[22]) ?? [];
-  object.points = reader.readDoubleList(offsets[23]) ?? [];
-  object.relativeImagePath = reader.readString(offsets[24]);
-  object.rotation = reader.readDouble(offsets[25]);
-  object.roughness = reader.readDouble(offsets[26]);
-  object.seed = reader.readLong(offsets[27]);
+  object.pointT = reader.readLongList(offsets[23]) ?? [];
+  object.points = reader.readDoubleList(offsets[24]) ?? [];
+  object.relativeImagePath = reader.readString(offsets[25]);
+  object.rotation = reader.readDouble(offsets[26]);
+  object.roughness = reader.readDouble(offsets[27]);
+  object.seed = reader.readLong(offsets[28]);
   object.shapeType = _SceneElementRecordshapeTypeValueEnumMap[
-          reader.readByteOrNull(offsets[28])] ??
+          reader.readByteOrNull(offsets[29])] ??
       ShapeType.line;
-  object.sourceDescription = reader.readString(offsets[29]);
+  object.sourceDescription = reader.readString(offsets[30]);
   object.startArrowhead = _SceneElementRecordstartArrowheadValueEnumMap[
-          reader.readByteOrNull(offsets[30])] ??
+          reader.readByteOrNull(offsets[31])] ??
       Arrowhead.none;
-  object.startBindingId = reader.readString(offsets[31]);
+  object.startBindingId = reader.readString(offsets[32]);
   object.strokeStyle = _SceneElementRecordstrokeStyleValueEnumMap[
-          reader.readByteOrNull(offsets[32])] ??
+          reader.readByteOrNull(offsets[33])] ??
       StrokeStyle.solid;
-  object.strokeWidth = reader.readDouble(offsets[33]);
-  object.text = reader.readString(offsets[34]);
+  object.strokeWidth = reader.readDouble(offsets[34]);
+  object.text = reader.readString(offsets[35]);
   object.textAlign = _SceneElementRecordtextAlignValueEnumMap[
-          reader.readByteOrNull(offsets[35])] ??
+          reader.readByteOrNull(offsets[36])] ??
       TextAlignKind.left;
-  object.zOrder = reader.readLong(offsets[36]);
+  object.zOrder = reader.readLong(offsets[37]);
   return object;
 }
 
@@ -445,40 +453,42 @@ P _sceneElementRecordDeserializeProp<P>(
     case 22:
       return (reader.readBoolList(offset) ?? []) as P;
     case 23:
-      return (reader.readDoubleList(offset) ?? []) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 24:
-      return (reader.readString(offset)) as P;
+      return (reader.readDoubleList(offset) ?? []) as P;
     case 25:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 26:
       return (reader.readDouble(offset)) as P;
     case 27:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 28:
+      return (reader.readLong(offset)) as P;
+    case 29:
       return (_SceneElementRecordshapeTypeValueEnumMap[
               reader.readByteOrNull(offset)] ??
           ShapeType.line) as P;
-    case 29:
-      return (reader.readString(offset)) as P;
     case 30:
+      return (reader.readString(offset)) as P;
+    case 31:
       return (_SceneElementRecordstartArrowheadValueEnumMap[
               reader.readByteOrNull(offset)] ??
           Arrowhead.none) as P;
-    case 31:
-      return (reader.readString(offset)) as P;
     case 32:
+      return (reader.readString(offset)) as P;
+    case 33:
       return (_SceneElementRecordstrokeStyleValueEnumMap[
               reader.readByteOrNull(offset)] ??
           StrokeStyle.solid) as P;
-    case 33:
-      return (reader.readDouble(offset)) as P;
     case 34:
-      return (reader.readString(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 35:
+      return (reader.readString(offset)) as P;
+    case 36:
       return (_SceneElementRecordtextAlignValueEnumMap[
               reader.readByteOrNull(offset)] ??
           TextAlignKind.left) as P;
-    case 36:
+    case 37:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2506,6 +2516,151 @@ extension SceneElementRecordQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'pointSim',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+      pointTElementEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'pointT',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+      pointTElementGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'pointT',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+      pointTElementLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'pointT',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+      pointTElementBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'pointT',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+      pointTLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'pointT',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+      pointTIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'pointT',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+      pointTIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'pointT',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+      pointTLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'pointT',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+      pointTLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'pointT',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+      pointTLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'pointT',
         lower,
         includeLower,
         upper,
@@ -4890,6 +5045,13 @@ extension SceneElementRecordQueryWhereDistinct
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
+      distinctByPointT() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'pointT');
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
       distinctByPoints() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'points');
@@ -5145,6 +5307,13 @@ extension SceneElementRecordQueryProperty
       pointSimProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'pointSim');
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, List<int>, QQueryOperations>
+      pointTProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'pointT');
     });
   }
 

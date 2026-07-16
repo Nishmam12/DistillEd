@@ -43,6 +43,10 @@ class SceneElementRecord {
   // --- freehand only ---
   List<double> points = const []; // [x, y, pressure, ...]
   List<bool> pointSim = const []; // per-point simulatePressure
+  // Per-point capture timestamp in ms (StrokePoint.t); -1 encodes "unknown".
+  // Empty for rows written before this field existed — both decode to t=null,
+  // and handwriting recognition synthesizes timing for those strokes.
+  List<int> pointT = const [];
   bool isEraser = false;
 
   // --- shape only ---

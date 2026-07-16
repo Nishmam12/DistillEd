@@ -31,12 +31,15 @@ class SceneElementRecordMapper {
         r.isEraser = element.isEraser;
         final pts = <double>[];
         final sim = <bool>[];
+        final t = <int>[];
         for (final p in element.points) {
           pts..add(p.x)..add(p.y)..add(p.pressure);
           sim.add(p.simulatePressure);
+          t.add(p.t ?? -1); // -1 = unknown; see SceneElementRecord.pointT
         }
         r.points = pts;
         r.pointSim = sim;
+        r.pointT = t;
       case SceneShapeElement():
         r.shapeType = element.shapeType;
         r.geometryData = List<double>.from(element.geometryData);
@@ -80,13 +83,15 @@ class SceneElementRecordMapper {
       case SceneElementKind.freehand:
         final points = <StrokePoint>[];
         for (int i = 0; i + 2 < r.points.length; i += 3) {
-          final simIndex = i ~/ 3;
+          final idx = i ~/ 3;
+          final t = idx < r.pointT.length ? r.pointT[idx] : -1;
           points.add(StrokePoint(
             x: r.points[i],
             y: r.points[i + 1],
             pressure: r.points[i + 2],
             simulatePressure:
-                simIndex < r.pointSim.length ? r.pointSim[simIndex] : false,
+                idx < r.pointSim.length ? r.pointSim[idx] : false,
+            t: t < 0 ? null : t,
           ));
         }
         return FreehandElement(

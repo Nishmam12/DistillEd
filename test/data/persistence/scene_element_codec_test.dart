@@ -15,7 +15,7 @@ void main() {
         opacity: 0.6,
         isEraser: true,
         points: [
-          StrokePoint(x: 1, y: 2, pressure: 0.4, simulatePressure: true),
+          StrokePoint(x: 1, y: 2, pressure: 0.4, simulatePressure: true, t: 500),
           StrokePoint(x: 3, y: 4, pressure: 0.9),
         ],
       ),
@@ -77,7 +77,9 @@ void main() {
     expect(f.isEraser, true);
     expect(f.points.length, 2);
     expect(f.points[0].simulatePressure, true);
+    expect(f.points[0].t, 500); // capture timestamp survives
     expect(f.points[1].pressure, 0.9);
+    expect(f.points[1].t, isNull); // absent timestamp stays null
 
     final s = back[1] as SceneShapeElement;
     expect(s.shapeType, ShapeType.diamond);
@@ -102,6 +104,22 @@ void main() {
     final fr = back[4] as FrameElement;
     expect(fr.name, 'My frame');
     expect(fr.geometryData, [10, 10, 200, 200]);
+  });
+
+  test('freehand JSON written before pointT existed decodes with t = null', () {
+    final el = SceneElementCodec.decode({
+      'id': 'legacy',
+      'kind': 'freehand',
+      'zOrder': 0,
+      'points': [1.0, 2.0, 0.5, 3.0, 4.0, 0.5], // two points, no pointT key
+      'pointSim': [false, false],
+      'color': 0xFF000000,
+      'size': 2.0,
+    });
+    final f = el as FreehandElement;
+    expect(f.points.length, 2);
+    expect(f.points[0].t, isNull);
+    expect(f.points[1].t, isNull);
   });
 
   test('decode tolerates missing optional fields with defaults', () {

@@ -3,10 +3,13 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../editor/state/scene_controller.dart';
+import '../../editor/presentation/page_notifier.dart';
 import '../data/cache/summary_store.dart';
 import '../data/llm/cloud_llm_client.dart';
 import '../data/llm/local_llm_service.dart';
 import '../data/llm/model_download_manager.dart';
+import '../data/scene_notebook_ink_loader.dart';
 import '../domain/services/ai_router.dart';
 import '../domain/services/handwriting_recognition_service.dart';
 import '../domain/services/summarization_service.dart';
@@ -42,5 +45,14 @@ final summarizationServiceProvider = Provider<SummarizationService>((ref) {
     localLlm: ref.watch(localLlmServiceProvider),
     cloud: ref.watch(cloudLlmClientProvider),
     store: IsarSummaryStore(),
+  );
+});
+
+/// Editor-2.0 ink source: freehand elements from the unified scene store,
+/// adapted to the recognition pipeline's stroke shape.
+final sceneNotebookInkLoaderProvider = Provider<SceneNotebookInkLoader>((ref) {
+  return SceneNotebookInkLoader(
+    store: ref.watch(sceneElementStoreProvider),
+    pagesOf: ref.watch(pageRepositoryProvider).getPagesForNotebook,
   );
 });

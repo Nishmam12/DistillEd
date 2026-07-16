@@ -33,6 +33,9 @@ class SceneElementCodec {
             for (final p in e.points) ...[p.x, p.y, p.pressure],
           ],
           'pointSim': [for (final p in e.points) p.simulatePressure],
+          // Capture timestamps (ms); -1 = unknown. Absent in JSON written
+          // before this key existed — both decode to t=null.
+          'pointT': [for (final p in e.points) p.t ?? -1],
           'color': e.color,
           'size': e.size,
           'isEraser': e.isEraser,
@@ -103,7 +106,7 @@ class SceneElementCodec {
           opacity: opacity,
           isLocked: isLocked,
           groupId: groupId,
-          points: _points(m['points'], m['pointSim']),
+          points: _points(m['points'], m['pointSim'], m['pointT']),
           color: (m['color'] as num).toInt(),
           size: _d(m['size'], 1.0),
           isEraser: m['isEraser'] as bool? ?? false,
@@ -181,17 +184,22 @@ class SceneElementCodec {
     }
   }
 
-  static List<StrokePoint> _points(dynamic flat, dynamic sim) {
+  static List<StrokePoint> _points(dynamic flat, dynamic sim, dynamic tRaw) {
     final p = _doubles(flat);
     final s = (sim is List) ? sim.map((e) => e == true).toList() : const <bool>[];
+    final t = (tRaw is List)
+        ? [for (final e in tRaw) (e is num) ? e.toInt() : -1]
+        : const <int>[];
     final out = <StrokePoint>[];
     for (int i = 0; i + 2 < p.length; i += 3) {
       final idx = i ~/ 3;
+      final tv = idx < t.length ? t[idx] : -1;
       out.add(StrokePoint(
         x: p[i],
         y: p[i + 1],
         pressure: p[i + 2],
         simulatePressure: idx < s.length ? s[idx] : false,
+        t: tv < 0 ? null : tv,
       ));
     }
     return out;

@@ -42,6 +42,46 @@ void main() {
       expect(f.points[1].simulatePressure, false);
     });
 
+    test('freehand preserves per-point capture timestamps (t), mixed with null',
+        () {
+      const e = FreehandElement(
+        id: 'f2',
+        zOrder: 0,
+        color: 0xFF000000,
+        size: 2,
+        points: [
+          StrokePoint(x: 0, y: 0, t: 1000),
+          StrokePoint(x: 1, y: 1, t: 1016),
+          StrokePoint(x: 2, y: 2), // no timestamp (legacy / synthesized later)
+        ],
+      );
+
+      final record =
+          SceneElementRecordMapper.toRecord(e, notebookId: 1, pageId: 1);
+      // -1 encodes "unknown" in the flat record.
+      expect(record.pointT, [1000, 1016, -1]);
+
+      final back = SceneElementRecordMapper.fromRecord(record) as FreehandElement;
+      expect(back.points[0].t, 1000);
+      expect(back.points[1].t, 1016);
+      expect(back.points[2].t, isNull);
+    });
+
+    test('freehand rows written before pointT existed decode with t = null', () {
+      const e = FreehandElement(
+        id: 'f3',
+        zOrder: 0,
+        color: 0xFF000000,
+        size: 2,
+        points: [StrokePoint(x: 0, y: 0, t: 999)],
+      );
+      final record =
+          SceneElementRecordMapper.toRecord(e, notebookId: 1, pageId: 1)
+            ..pointT = const []; // simulate a pre-migration row
+      final back = SceneElementRecordMapper.fromRecord(record) as FreehandElement;
+      expect(back.points.single.t, isNull);
+    });
+
     test('shape preserves geometry, seed, roughness and bindings', () {
       const e = SceneShapeElement(
         id: 's1',

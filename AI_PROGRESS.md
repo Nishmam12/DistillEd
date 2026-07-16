@@ -79,15 +79,32 @@ code changes needed, `flutter analyze` clean, **255/255 tests pass**:
   LocalGemmaProvider / ai_bootstrap) — superseded by Afnan's equivalent,
   more complete runtime.
 
+### Phase R3 — SceneElement input path ✅
+The 2.0 pipeline now feeds recognition-quality ink to the ported feature:
+- **`StrokePoint.t` persists through 2.0 storage.** Both persistence paths
+  packed points positionally as [x,y,pressure] and silently dropped `t`;
+  fixed with a parallel `pointT` list (−1 = unknown; empty/absent = legacy),
+  mirroring the existing `pointSim` pattern: `SceneElementRecord.pointT`
+  (Isar, additive auto-migrating field, .g.dart regenerated) +
+  `SceneElementRecordMapper` + `SceneElementCodec` (library/clipboard JSON).
+- **`t` captured at input**: `scene_pointer_listener._extractPoint` now sets
+  `t: event.timeStamp.inMilliseconds` (Afnan's exact approach — monotonic
+  engine clock, deltas-only semantics).
+- **`SceneNotebookInkLoader`** (`features/summarize/data/`): pages via
+  `PageRepository.getPagesForNotebook` (pageIndex order), elements via
+  `SceneElementStore.loadForPage`, `FreehandElement` → `Stroke` field-for-field
+  (same `StrokePoint`s, `t` flows untouched). Deliberate seam: keeps ALL of
+  Afnan's service signatures and tests unchanged; Phase U's
+  PageContentExtractor replaces it SceneElement-native.
+  Provider: `sceneNotebookInkLoaderProvider`.
+- Legacy `raw_pointer_listener`/`canvas_widget` confirmed dead code on this
+  branch (no importers) — not touched.
+- Tests: mapper/codec t round-trips + legacy-row null decode, loader
+  (adaptation, ordering, empty pages), listener t monotonicity.
+  `flutter analyze` clean, **263/263 tests pass**.
+
 ## Deferred / Open Questions
-- **R3 (next):** the summarize feature still *reads legacy `Stroke` lists* —
-  nothing on Inkdot-2.0 calls it yet. Need: `FreehandElement` → ML Kit Ink
-  conversion, a notebook page collector via `SceneElementStore.loadForPage`,
-  and `t` capture in the 2.0 input pipeline
-  (`lib/editor/input/scene_pointer_listener.dart`). Also verify the 2.0
-  persistence codec (`scene_element_codec.dart` / record mapper) round-trips
-  `StrokePoint.t` — if it packs points positionally, `t` is silently dropped.
-- **R4:** Summarize entry point in `lib/editor/ui/notebook_editor_screen.dart`
+- **R4 (next):** Summarize entry point in `lib/editor/ui/notebook_editor_screen.dart`
   + settings rows (cloud toggle default OFF, recognition language, model
   management) — Afnan's settings_screen/settings_provider changes were NOT
   ported yet (his settings file differs from 2.0's).

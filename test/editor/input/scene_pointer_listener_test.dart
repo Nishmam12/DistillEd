@@ -92,4 +92,34 @@ void main() {
       expect(cancels, 0);
     });
   });
+
+  group('ScenePointerListener point extraction', () {
+    testWidgets('emitted points carry the capture timestamp t', (tester) async {
+      final points = <StrokePoint>[];
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: ScenePointerListener(
+            onPointerDown: (e, p) => points.add(p),
+            onPointerMove: (e, p) => points.add(p),
+            onPointerUp: (e, p) {},
+            child: const SizedBox.expand(),
+          ),
+        ),
+      );
+
+      final finger = await tester.startGesture(const Offset(10, 10),
+          kind: PointerDeviceKind.touch);
+      await finger.moveBy(const Offset(5, 5));
+      await finger.up();
+
+      expect(points, isNotEmpty);
+      // Handwriting recognition needs per-point timing; the exact clock origin
+      // is irrelevant (deltas only), but t must be present and non-decreasing.
+      expect(points.map((p) => p.t), everyElement(isNotNull));
+      for (int i = 1; i < points.length; i++) {
+        expect(points[i].t!, greaterThanOrEqualTo(points[i - 1].t!));
+      }
+    });
+  });
 }

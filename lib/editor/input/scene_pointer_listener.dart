@@ -103,6 +103,9 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
       y: event.localPosition.dy,
       pressure: pressure,
       simulatePressure: simulate,
+      // Monotonic engine timestamp (same clock as palm rejection above) — used
+      // by handwriting recognition, which only needs deltas between points.
+      t: event.timeStamp.inMilliseconds,
     );
   }
 
