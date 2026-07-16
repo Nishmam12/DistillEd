@@ -17,6 +17,7 @@ import '../../../ai/domain/ai_router.dart';
 import '../../../ai/domain/meaningfulness_gate.dart';
 import '../../../ai/domain/page_content.dart';
 import '../../../ai/domain/page_content_extractor.dart';
+import '../../../ai/domain/text_budget.dart' as text_budget;
 import '../../data/cache/summary_cache.dart';
 import '../../data/cache/summary_store.dart';
 
@@ -230,15 +231,11 @@ class SummarizationService {
     }
   }
 
-  static final RegExp _whitespace = RegExp(r'\s+');
-
-  static int countWords(String text) =>
-      text.trim().isEmpty ? 0 : text.trim().split(_whitespace).length;
+  // Word budgeting shared with the rest of the platform (text_budget.dart);
+  // kept as statics here because they are part of this service's tested API.
+  static int countWords(String text) => text_budget.countWords(text);
 
   /// Keeps the first [maxWords] words (page order preserved by construction).
-  static String truncateToWords(String text, int maxWords) {
-    final words = text.trim().split(_whitespace);
-    if (words.length <= maxWords) return text;
-    return words.take(maxWords).join(' ');
-  }
+  static String truncateToWords(String text, int maxWords) =>
+      text_budget.truncateToWords(text, maxWords);
 }

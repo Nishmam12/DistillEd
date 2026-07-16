@@ -92,13 +92,20 @@ class AiRouter {
   })  : _isLocalModelInstalled = isLocalModelInstalled,
         _reachability = reachability;
 
+  /// Input budget in WORDS for a provider with [capabilities]: its context
+  /// window minus the response and scaffolding reserves. Static so features
+  /// that prompt a provider directly (e.g. the Context Engine) budget with
+  /// the same math as the routing decision.
+  static int inputWordBudgetFor(AiCapabilities capabilities) =>
+      ((capabilities.contextWindowTokens -
+                  responseReserveTokens -
+                  scaffoldingReserveTokens) /
+              tokensPerWord)
+          .floor();
+
   /// Local input budget in WORDS, derived from the local context window minus
   /// the response and scaffolding reserves.
-  int get localInputWordBudget => ((localCapabilities.contextWindowTokens -
-              responseReserveTokens -
-              scaffoldingReserveTokens) /
-          tokensPerWord)
-      .floor();
+  int get localInputWordBudget => inputWordBudgetFor(localCapabilities);
 
   Future<RoutingDecision> decide({
     required int inputWordCount,

@@ -6,11 +6,12 @@ updates it last. The plan of record is `ai_prompts/INTEGRATION_ROADMAP.md`
 product vision remains `ai_prompts/AI_Notebook_Master_Plan.md`.
 
 ## Current Phase
-**Phases R (reconciliation) and U (platform unification) are COMPLETE.**
+**Phases R + U COMPLETE; Phase 1 IN PROGRESS.**
 One AI platform (`features/ai/`) with one runtime, one router, one page-read
-path; Summarize is its first consumer. Next: device validation (see R5),
-then **Phase 1 — Live Context Engine** (decision #7) in a fresh session per
-`ai_prompts/02_phase1_context_engine_core_features.md` + INTEGRATION_ROADMAP §5.
+path. Phase 1 builds the master-plan features on it, **Live Context Engine
+first** (decision #7) per `ai_prompts/02_phase1_context_engine_core_features.md`
++ INTEGRATION_ROADMAP §5. Loop 1.1 (Context Engine core) done; next is Loop 1.2
+(AI Sidebar shell). Device validation (R5) is still open, owned by the user.
 
 ## The situation (context for any fresh session)
 On 2026-07-16 we discovered Afnan had already shipped a complete AI
@@ -199,6 +200,54 @@ domain service stays out of the render layer.
   provider). The runtime is reached ONLY through `LocalGemmaProvider` now.
 - `flutter analyze` clean, **284/284 tests pass**.
 
+## Phase 1 — Live Context Engine + core features
+
+### Loop 1.1 — Live Context Engine core ✅
+The first feature on the unified platform: a debounced background read that
+turns `PageContent` into structured understanding, cached per page.
+- `ai/domain/context_engine/page_context.dart`: `PageContext` value object
+  (currentTopic, subtopics, keyConcepts, namedEntities, definitions,
+  knowledgeGaps, `estimatedLevel` enum, `confidence`). `fromJson` is
+  deliberately **tolerant** — missing/mistyped fields fall back to defaults,
+  confidence clamped 0..1, level case-insensitive — because a small on-device
+  model's JSON is never trusted to be well-shaped. `PageContext.empty` is the
+  never-null "nothing to say" value.
+- `ai/domain/context_engine/context_engine.dart`: `analyze(PageContent,
+  {previousContext})` → one structured-output call to the local `AiProvider`
+  (greedy temp 0.0, 512 max out) with a strict JSON schema system prompt.
+  Robustness ladder: balanced-brace extraction (`tryExtractJsonObject` — strips
+  markdown fences/prose, honours string literals + escapes) → one stricter
+  retry → `PageContext.empty` fallback. **Malformed output never throws;
+  provider failures (model-not-ready) DO propagate** for the caller to surface.
+  Gate-guarded (reuses `MeaningfulnessGate`) and budget-truncated via the new
+  shared `text_budget.dart`.
+- `ai/presentation/context_engine_notifier.dart`: `ContextEngineNotifier`
+  (`StateNotifier<AsyncValue<PageContext>>`). Debounced ~2.5s after the last
+  scene change (NOT per stroke); `sceneContentSignature` skips re-analysis
+  when the readable content is unchanged (pure geometry moves of ink don't
+  invalidate — recognition is translation-invariant — but text edits/moves and
+  stroke add/remove do). `PageContextCache` holds the last good context per
+  page (session-lifetime; durable persistence is Phase 2 Learning Memory).
+  Failed runs aren't retried until content changes or `refresh()` is called,
+  so a missing model isn't hammered. Empty pages short-circuit without
+  touching recognition or the model.
+- Wiring (`ai_providers.dart`): `pageContextProvider` is
+  `StateNotifierProvider.autoDispose.family<…, ScenePageKey>` — it observes
+  the editor's `sceneControllerProvider(key)` through a **read-only**
+  `ref.listen` (the editor never knows the engine exists) and only runs while
+  something watches it (the sidebar). `contextEngineProvider`,
+  `pageContextCacheProvider` alongside.
+- Refactor: extracted `ai/domain/text_budget.dart` (`countWords`,
+  `truncateToWords`) shared by the engine and `SummarizationService`;
+  `AiRouter.inputWordBudgetFor(capabilities)` is now static so any feature
+  budgets with the identical words↔tokens math.
+- Tests (+30 → **314/314**, analyze clean): `page_context_test` (tolerant
+  parse, clamping, dropped junk), `context_engine_test` (clean/fenced/retry/
+  double-malformed/gate/budget/continuity paths + brace-scanner edge cases),
+  `context_engine_notifier_test` (debounce coalescing, unchanged-skip, cache
+  seed/serve, empty short-circuit, failure-no-retry, `refresh` force,
+  signature semantics).
+
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
@@ -208,4 +257,8 @@ domain service stays out of the render layer.
   files that don't exist on 2.0), his legacy `note_editor_screen.dart` wiring.
 
 ## Next Loop
-**R3** — SceneElement input path. Then R4 (wiring), R5 (device proof + push).
+**Loop 1.2** — AI Sidebar shell: a collapsible in-editor panel (not a route)
+rendering `pageContextProvider` — detected topic, key-concept chips, gentle
+knowledge-gap flags, learning-level indicator. It becomes the launch surface
+for the rest of Phase 1 (Explain, Quiz, Flashcards). Then 1.3 Summarize levels,
+1.4 Explain, 1.5 Writing Assistant, 1.6 Quiz, 1.7 Flashcards.
