@@ -1,4 +1,20 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Model downloads: the on-device LLM (~2.4 GB via flutter_gemma /
+         background_downloader) and ML Kit handwriting language models. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Android 13+: without a runtime grant of this, the foreground download
+         service does not activate (flutter_gemma requests it at runtime). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Android 14+: required together with the SystemForegroundService
+         override below for >500 MB foreground downloads (see flutter_gemma
+         README, "Foreground Service" section). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
     <application
         android:label="inkflow"
         android:name="${applicationName}"
@@ -30,6 +46,22 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Android 14+ foreground downloads (>500 MB LLM model): WorkManager's
+             shared service must declare the dataSync type or startForeground()
+             throws. Merged with the library's entry via tools:node="merge". -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
+        <!-- GPU inference (LiteRT-LM): on Android 12+ the app linker namespace
+             can't dlopen the vendor OpenCL ICD without declaring its loader.
+             All optional — devices without them fall back gracefully. -->
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL-car.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL-pixel.so" android:required="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
