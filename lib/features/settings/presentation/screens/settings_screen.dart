@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/settings_provider.dart';
+import '../../../summarize/data/llm/llm_model_spec.dart';
+import '../../../summarize/presentation/summarize_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -49,6 +51,33 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const _SectionHeader('AI'),
+          _SettingsCard(
+            children: [
+              _SettingsRow(
+                icon: Icons.cloud_outlined,
+                title: 'Cloud AI',
+                subtitle:
+                    'Allow very long notes to be summarized in the cloud. '
+                    'When off, notes never leave this device.',
+                trailing: Switch(
+                  value: settings.cloudAiEnabled,
+                  onChanged: notifier.setCloudAiEnabled,
+                ),
+              ),
+              _SettingsRow(
+                icon: Icons.translate,
+                title: 'Handwriting Language',
+                subtitle: 'Language used to read your notes',
+                trailing: _LanguageToggle(
+                  value: settings.recognitionLanguage,
+                  onChanged: notifier.setRecognitionLanguage,
+                ),
+              ),
+            ],
+          ),
+          const _SectionHeader('AI Models'),
+          const _AiModelsCard(),
           const _SectionHeader('Developer'),
           _SettingsCard(
             children: [
@@ -211,6 +240,170 @@ class _SettingsRow extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _LanguageToggle extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  const _LanguageToggle({required this.value, required this.onChanged});
+
+  static const _options = [('en', 'English'), ('bn', 'বাংলা')];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: _options.map((option) {
+        final (code, label) = option;
+        final selected = value == code;
+        return Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: GestureDetector(
+            onTap: () => onChanged(code),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.accentWash : Colors.transparent,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: selected ? AppColors.accent : AppColors.border,
+                  width: 1.5,
+                ),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? AppColors.accent : AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+/// Shows the downloaded state of the on-device LLM and the handwriting
+/// language models, with delete actions to reclaim storage.
+class _AiModelsCard extends ConsumerStatefulWidget {
+  const _AiModelsCard();
+
+  @override
+  ConsumerState<_AiModelsCard> createState() => _AiModelsCardState();
+}
+
+class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
+  /// Bumped after a delete so the FutureBuilders re-query install status.
+  int _refresh = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final downloads = ref.read(modelDownloadManagerProvider);
+    final recognition = ref.read(handwritingRecognitionServiceProvider);
+    final sizeGb =
+        LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024);
+
+    return _SettingsCard(
+      children: [
+        _modelRow(
+          key: ValueKey('llm-$_refresh'),
+          icon: Icons.psychology_outlined,
+          title: '${LlmModelSpec.active.displayName} (summarization)',
+          sizeLabel: '${sizeGb.toStringAsFixed(1)} GB',
+          isInstalled: downloads.isInstalled,
+          confirmDelete: true,
+          onDelete: downloads.delete,
+        ),
+        _modelRow(
+          key: ValueKey('en-$_refresh'),
+          icon: Icons.draw_outlined,
+          title: 'English handwriting model',
+          sizeLabel: '~20 MB',
+          isInstalled: () => recognition.isModelDownloaded('en'),
+          onDelete: () => recognition.deleteModel('en'),
+        ),
+        _modelRow(
+          key: ValueKey('bn-$_refresh'),
+          icon: Icons.draw_outlined,
+          title: 'Bangla handwriting model',
+          sizeLabel: '~20 MB',
+          isInstalled: () => recognition.isModelDownloaded('bn'),
+          onDelete: () => recognition.deleteModel('bn'),
+        ),
+      ],
+    );
+  }
+
+  Widget _modelRow({
+    required Key key,
+    required IconData icon,
+    required String title,
+    required String sizeLabel,
+    required Future<bool> Function() isInstalled,
+    required Future<void> Function() onDelete,
+    bool confirmDelete = false,
+  }) {
+    return FutureBuilder<bool>(
+      key: key,
+      future: isInstalled(),
+      builder: (context, snapshot) {
+        final installed = snapshot.data ?? false;
+        final checking = !snapshot.hasData && !snapshot.hasError;
+        return _SettingsRow(
+          icon: icon,
+          title: title,
+          subtitle: checking
+              ? 'Checking…'
+              : installed
+                  ? '$sizeLabel · Downloaded'
+                  : 'Not downloaded — fetched on first use',
+          trailing: installed
+              ? IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      color: AppColors.textSecondary),
+                  tooltip: 'Delete model',
+                  onPressed: () => _delete(onDelete, confirmDelete, title),
+                )
+              : null,
+        );
+      },
+    );
+  }
+
+  Future<void> _delete(
+      Future<void> Function() onDelete, bool confirm, String title) async {
+    if (confirm) {
+      final sure = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Delete model?'),
+          content: Text(
+              '$title will be removed from this device. It will need to be '
+              'downloaded again to summarize notes offline.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete',
+                  style: TextStyle(color: AppColors.accentRed)),
+            ),
+          ],
+        ),
+      );
+      if (sure != true) return;
+    }
+    await onDelete();
+    if (mounted) setState(() => _refresh++);
   }
 }
 

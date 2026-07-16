@@ -103,13 +103,26 @@ The 2.0 pipeline now feeds recognition-quality ink to the ported feature:
   (adaptation, ordering, empty pages), listener t monotonicity.
   `flutter analyze` clean, **263/263 tests pass**.
 
+### Phase R4 — Editor entry point + settings ✅
+- `settings_provider.dart`: taken wholesale from main (base was identical) —
+  adds persisted `cloudAiEnabled` (default OFF) + `recognitionLanguage`
+  (en/bn) via shared_preferences.
+- `settings_screen.dart`: taken from main (AI + AI Models sections: cloud
+  toggle, language pills, model install-status rows with delete), then the
+  2.0-only "Canvas 2.0 (dev)" Developer row re-added — that row was the only
+  divergence between the branches' settings screens.
+- `notebook_editor_screen.dart` (editor 2.0): Summarize app-bar action →
+  `SummarizeRequest(loadPages: sceneNotebookInkLoader.loadPagesStrokes(...))`
+  → `showSummarySheet`. No current-page special-casing needed: the 2.0 scene
+  store is written through on every mutation, so the store is always fresh
+  (unlike main's legacy editor, which had to read the live canvas state for
+  the current page).
+- `flutter analyze` clean, **263/263 tests pass**.
+
 ## Deferred / Open Questions
-- **R4 (next):** Summarize entry point in `lib/editor/ui/notebook_editor_screen.dart`
-  + settings rows (cloud toggle default OFF, recognition language, model
-  management) — Afnan's settings_screen/settings_provider changes were NOT
-  ported yet (his settings file differs from 2.0's).
-- **R5:** device proof (model download, recognition quality on real 2.0 ink,
-  end-to-end latency) — log actual numbers here when run.
+- **R5 (next):** device proof (debug apk build, model download UX, recognition
+  quality on real 2.0 ink with real `t` timing, end-to-end latency vs ~10s
+  target) — log actual numbers here when run. Then push `Inkdot-2.0`.
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
   then repoint Summarize.

@@ -12,10 +12,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/providers/settings_provider.dart';
 import '../../features/editor/domain/models/template_type.dart';
 import '../../features/editor/presentation/page_notifier.dart';
 import '../../features/home/data/repositories/note_repository.dart';
 import '../../features/home/domain/models/notebook.dart';
+import '../../features/summarize/presentation/summarize_notifier.dart';
+import '../../features/summarize/presentation/summarize_providers.dart';
+import '../../features/summarize/presentation/widgets/summary_bottom_sheet.dart';
 import '../../shared/isar/isar_service.dart';
 import '../state/library_controller.dart';
 import '../state/scene_controller.dart';
@@ -94,6 +98,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             onPressed: _notebook == null ? null : _showBackgroundSheet,
           ),
           IconButton(
+            tooltip: 'Summarize',
+            icon: const Icon(Icons.auto_awesome_outlined),
+            onPressed: _startSummarize,
+          ),
+          IconButton(
             tooltip: 'Book view',
             icon: const Icon(Icons.menu_book_outlined),
             onPressed: () => context.push('/note2/${widget.notebookId}/book'),
@@ -148,6 +157,24 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   void _switchTo(int i) {
     ref.read(selectionProvider.notifier).clear();
     ref.read(pageProvider(widget.notebookId).notifier).switchPage(i);
+  }
+
+  /// Kicks off summarization for the whole notebook and shows the sheet.
+  ///
+  /// Ink comes from the unified scene store via [SceneNotebookInkLoader] —
+  /// the store is written through on every editor mutation, so no page,
+  /// including the one on screen, needs special-casing. `loadPages` is
+  /// called fresh on every attempt, so retries see the latest ink.
+  void _startSummarize() {
+    final settings = ref.read(settingsProvider);
+    final loader = ref.read(sceneNotebookInkLoaderProvider);
+    ref.read(summarizeNotifierProvider.notifier).run(SummarizeRequest(
+          notebookId: widget.notebookId,
+          loadPages: () => loader.loadPagesStrokes(widget.notebookId),
+          languageCode: settings.recognitionLanguage,
+          cloudEnabled: settings.cloudAiEnabled,
+        ));
+    showSummarySheet(context);
   }
 
   Future<void> _showBackgroundSheet() async {
