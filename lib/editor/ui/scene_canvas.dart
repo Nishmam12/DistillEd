@@ -18,10 +18,12 @@ import '../../domain/geometry/element_transformer.dart';
 import '../../domain/model/scene_element.dart';
 import '../../domain/services/eraser_service.dart';
 import '../../domain/services/frame_service.dart';
+import '../../domain/services/pixel_eraser_service.dart';
 import '../../domain/services/snap_engine.dart';
 import '../../features/editor/domain/models/template_type.dart';
 import '../../features/editor/presentation/canvas/layers/background_layer.dart';
 import '../input/scene_pointer_listener.dart';
+import '../render/freehand_path.dart';
 import '../render/scene_active_stroke_layer.dart';
 import '../render/scene_image_cache.dart';
 import '../render/scene_laser_layer.dart';
@@ -309,16 +311,20 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       final points = _active.value;
       _active.value = const [];
       if (points.isEmpty) return;
-      _history.push(AddElementsCommand([
-        FreehandElement(
-          id: _newId(),
-          zOrder: _scene.nextZOrder(),
-          points: points,
-          color: 0xFF000000,
-          size: tool.size,
-          isEraser: true,
-        )
-      ]));
+      // True pixel erase: cut the previewed hole out of real geometry
+      // (splitting strokes, converting cut shapes to strokes) as one undo
+      // step — no clear-blend overlay element is committed anymore. The
+      // outline is built exactly like the preview so the cut matches it.
+      final eraserPath =
+          FreehandPath.build(points, tool.size, isComplete: true);
+      if (eraserPath == null) return;
+      final result = ScenePixelEraserService.erase(
+        eraserPath: eraserPath,
+        elements: ref.read(sceneControllerProvider(_key)),
+      );
+      if (result.isEmpty) return;
+      _history.push(
+          PixelEraseCommand(removed: result.removed, added: result.added));
       return;
     }
     final ids = _eraserPending.value;

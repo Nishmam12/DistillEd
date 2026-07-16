@@ -57,6 +57,26 @@ class UpdateElementsCommand implements SceneCommand {
   void revert(SceneMutator m) => m.applyUpdate(before);
 }
 
+/// One true pixel-erase gesture: removes the originals the cut crossed and
+/// adds the surviving sub-strokes, as a single undo step.
+class PixelEraseCommand implements SceneCommand {
+  final List<SceneElement> removed;
+  final List<SceneElement> added;
+  const PixelEraseCommand({required this.removed, required this.added});
+
+  @override
+  void apply(SceneMutator m) {
+    m.applyRemove({for (final e in removed) e.id});
+    m.applyAdd(added);
+  }
+
+  @override
+  void revert(SceneMutator m) {
+    m.applyRemove({for (final e in added) e.id});
+    m.applyAdd(removed);
+  }
+}
+
 /// Replaces the whole element list (e.g. a z-order reindex). Stores full
 /// before/after snapshots.
 class ReplaceAllCommand implements SceneCommand {
