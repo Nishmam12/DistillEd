@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/settings_provider.dart';
+import '../../features/ai/presentation/sidebar/ai_sidebar.dart';
 import '../../features/editor/domain/models/template_type.dart';
 import '../../features/editor/presentation/page_notifier.dart';
 import '../../features/home/data/repositories/note_repository.dart';
@@ -39,6 +40,10 @@ class NotebookEditorScreen extends ConsumerStatefulWidget {
 class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   final Set<int> _loadedPages = {};
   Notebook? _notebook;
+
+  /// Whether the docked AI panel is showing (wide screens only; on phones the
+  /// AI action opens a bottom sheet instead and this stays false).
+  bool _aiPanelOpen = false;
 
   @override
   void initState() {
@@ -102,6 +107,13 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             onPressed: _startSummarize,
           ),
           IconButton(
+            tooltip: 'AI insights',
+            isSelected: _aiPanelOpen,
+            icon: const Icon(Icons.psychology_outlined),
+            selectedIcon: const Icon(Icons.psychology),
+            onPressed: () => _toggleAiPanel(key),
+          ),
+          IconButton(
             tooltip: 'Book view',
             icon: const Icon(Icons.menu_book_outlined),
             onPressed: () => context.push('/note2/${widget.notebookId}/book'),
@@ -118,26 +130,40 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           ),
         ],
       ),
-      body: Stack(
+      body: Row(
         children: [
-          Positioned.fill(
-            child: SceneCanvas(
-              key: ValueKey(page.id),
-              notebookId: widget.notebookId,
-              pageId: page.id,
-              backgroundColor: _paperColor,
-              templateType: _template,
-              pageMode: _pageMode,
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: SceneCanvas(
+                    key: ValueKey(page.id),
+                    notebookId: widget.notebookId,
+                    pageId: page.id,
+                    backgroundColor: _paperColor,
+                    templateType: _template,
+                    pageMode: _pageMode,
+                  ),
+                ),
+                // Quick-access tool bar overlaid at the top with a translucent
+                // background, freeing the bottom for page navigation.
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: EditorBottomBar(pageKey: key, floating: true),
+                ),
+              ],
             ),
           ),
-          // Quick-access tool bar overlaid at the top with a translucent
-          // background, freeing the bottom for page navigation.
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: EditorBottomBar(pageKey: key, floating: true),
-          ),
+          // Docked AI panel beside the canvas on wide screens; phones use the
+          // bottom sheet from _toggleAiPanel instead.
+          if (_aiPanelOpen &&
+              MediaQuery.of(context).size.width >= kAiSidebarBreakpoint)
+            AiSidebar(
+              pageKey: key,
+              onClose: () => setState(() => _aiPanelOpen = false),
+            ),
         ],
       ),
       bottomNavigationBar: _PageNavBar(
@@ -156,6 +182,18 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   void _switchTo(int i) {
     ref.read(selectionProvider.notifier).clear();
     ref.read(pageProvider(widget.notebookId).notifier).switchPage(i);
+  }
+
+  /// Toggles the live AI insights surface. Wide screens dock it beside the
+  /// canvas; phone-width screens open it as a bottom sheet so it never crowds
+  /// the drawing area.
+  void _toggleAiPanel(ScenePageKey key) {
+    final wide = MediaQuery.of(context).size.width >= kAiSidebarBreakpoint;
+    if (wide) {
+      setState(() => _aiPanelOpen = !_aiPanelOpen);
+    } else {
+      showAiSidebarSheet(context, key);
+    }
   }
 
   /// Kicks off summarization for the whole notebook and shows the sheet.

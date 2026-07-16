@@ -10,8 +10,9 @@ product vision remains `ai_prompts/AI_Notebook_Master_Plan.md`.
 One AI platform (`features/ai/`) with one runtime, one router, one page-read
 path. Phase 1 builds the master-plan features on it, **Live Context Engine
 first** (decision #7) per `ai_prompts/02_phase1_context_engine_core_features.md`
-+ INTEGRATION_ROADMAP §5. Loop 1.1 (Context Engine core) done; next is Loop 1.2
-(AI Sidebar shell). Device validation (R5) is still open, owned by the user.
++ INTEGRATION_ROADMAP §5. Loops 1.1 (Context Engine core) and 1.2 (AI Sidebar
+shell) done; next is Loop 1.3 (Summarize levels). Device validation (R5) is
+still open, owned by the user.
 
 ## The situation (context for any fresh session)
 On 2026-07-16 we discovered Afnan had already shipped a complete AI
@@ -248,6 +249,36 @@ turns `PageContent` into structured understanding, cached per page.
   seed/serve, empty short-circuit, failure-no-retry, `refresh` force,
   signature semantics).
 
+### Loop 1.2 — AI Sidebar shell ✅
+The in-editor home for the Context Engine and the launch surface for the rest
+of Phase 1. Coexists with the canvas (not a route, not a modal-over-canvas).
+- `ai/presentation/sidebar/ai_context_view.dart`: the reusable body that
+  watches `pageContextProvider(key)` and renders every state — *reading*
+  (spinner), *empty* ("start writing"), *ready* (topic + subtopics, a 3-segment
+  Beginner/Intermediate/Advanced level bar, key-concept chips, knowledge-gap
+  **honey-toned** flags — a study aid, deliberately NOT red linter errors —
+  and page definitions), *model-not-ready* (inline one-time model download with
+  progress → `refresh()` on completion), and *generic failure* (gentle "Try
+  again"). Keeps the last good context on screen while a re-analysis runs
+  underneath (`AsyncLoading` carrying a previous value → no spinner flicker).
+- `ai/presentation/sidebar/ai_sidebar.dart`: form-factor chrome — `AiSidebar`
+  is a 340px docked right-hand panel for tablet width; `showAiSidebarSheet` is
+  the phone-width bottom sheet. Both wrap the same `AiContextView`.
+  `kAiSidebarBreakpoint = 720`.
+- `notebook_editor_screen.dart`: an app-bar toggle (`Icons.psychology_outlined`,
+  selected-state filled) — wide screens dock the panel in a `Row` beside the
+  canvas (canvas `Expanded`, panel fixed-width); phone width opens the sheet.
+  The editor's `body` Stack moved inside the Row's `Expanded`; toolbar overlay
+  unchanged.
+- The panel observes the editor **read-only**: `pageContextProvider` is
+  `autoDispose.family`, so the engine runs only while the panel is open, and
+  it `ref.listen`s `sceneControllerProvider(key)` (the same provider the canvas
+  mutates through — confirmed in scene_canvas.dart; scene_controller's "not
+  wired" comment is stale) without the editor knowing the engine exists.
+- Tests (+5 → **319/319**, analyze clean): `ai_context_view_test` widget tests
+  for rich/empty/reading/model-not-ready/generic-error rendering, via a
+  fixed-state notifier override of the family provider.
+
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
@@ -257,8 +288,8 @@ turns `PageContent` into structured understanding, cached per page.
   files that don't exist on 2.0), his legacy `note_editor_screen.dart` wiring.
 
 ## Next Loop
-**Loop 1.2** — AI Sidebar shell: a collapsible in-editor panel (not a route)
-rendering `pageContextProvider` — detected topic, key-concept chips, gentle
-knowledge-gap flags, learning-level indicator. It becomes the launch surface
-for the rest of Phase 1 (Explain, Quiz, Flashcards). Then 1.3 Summarize levels,
-1.4 Explain, 1.5 Writing Assistant, 1.6 Quiz, 1.7 Flashcards.
+**Loop 1.3** — Summarization levels: extend Summarize from whole-notebook to
+selection / current-page / notebook scopes, launched from the AI sidebar and a
+selection context action; chunk-and-reduce when content exceeds the local
+context window (don't truncate silently). Then 1.4 Explain, 1.5 Writing
+Assistant, 1.6 Quiz, 1.7 Flashcards.
