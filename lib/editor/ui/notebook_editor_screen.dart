@@ -18,7 +18,6 @@ import '../../features/editor/presentation/page_notifier.dart';
 import '../../features/home/data/repositories/note_repository.dart';
 import '../../features/home/domain/models/notebook.dart';
 import '../../features/summarize/presentation/summarize_notifier.dart';
-import '../../features/summarize/presentation/summarize_providers.dart';
 import '../../features/summarize/presentation/widgets/summary_bottom_sheet.dart';
 import '../../shared/isar/isar_service.dart';
 import '../state/library_controller.dart';
@@ -161,16 +160,21 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
   /// Kicks off summarization for the whole notebook and shows the sheet.
   ///
-  /// Ink comes from the unified scene store via [SceneNotebookInkLoader] —
-  /// the store is written through on every editor mutation, so no page,
-  /// including the one on screen, needs special-casing. `loadPages` is
-  /// called fresh on every attempt, so retries see the latest ink.
+  /// Page content is read through the AI platform's PageContentExtractor
+  /// against the unified scene store — written through on every editor
+  /// mutation, so no page, including the one on screen, needs
+  /// special-casing. `loadPageIds` is called fresh on every attempt, so
+  /// retries see the latest pages.
   void _startSummarize() {
     final settings = ref.read(settingsProvider);
-    final loader = ref.read(sceneNotebookInkLoaderProvider);
+    final pages = ref.read(pageRepositoryProvider);
     ref.read(summarizeNotifierProvider.notifier).run(SummarizeRequest(
           notebookId: widget.notebookId,
-          loadPages: () => loader.loadPagesStrokes(widget.notebookId),
+          loadPageIds: () async => [
+            for (final page
+                in await pages.getPagesForNotebook(widget.notebookId))
+              page.id,
+          ],
           languageCode: settings.recognitionLanguage,
           cloudEnabled: settings.cloudAiEnabled,
         ));

@@ -6,8 +6,11 @@ updates it last. The plan of record is `ai_prompts/INTEGRATION_ROADMAP.md`
 product vision remains `ai_prompts/AI_Notebook_Master_Plan.md`.
 
 ## Current Phase
-**Phase R — Reconciliation** (port Afnan's AI from `origin/main` onto the
-`Inkdot-2.0` SceneElement editor). R1–R2 complete; next is R3.
+**Phases R (reconciliation) and U (platform unification) are COMPLETE.**
+One AI platform (`features/ai/`) with one runtime, one router, one page-read
+path; Summarize is its first consumer. Next: device validation (see R5),
+then **Phase 1 — Live Context Engine** (decision #7) in a fresh session per
+`ai_prompts/02_phase1_context_engine_core_features.md` + INTEGRATION_ROADMAP §5.
 
 ## The situation (context for any fresh session)
 On 2026-07-16 we discovered Afnan had already shipped a complete AI
@@ -169,6 +172,32 @@ Automated portion done (2026-07-16, no Android device/emulator attached):
   (recognition, downloads, `localAiProvider`, `pageContentExtractorProvider`);
   summarize_providers now consumes it.
 - 289/289 tests, analyze clean.
+
+### Editor fix — true pixel erase on 2.0 ✅ (`5d9e5a2`)
+Port of main's `916e730`: `ScenePixelEraserService` (lib/domain/services/)
+cuts real geometry instead of committing BlendMode.clear overlay elements —
+freehand splits into surviving sub-elements, cut shapes convert to freehand
+outlines, one undoable `PixelEraseCommand`. Matters for AI correctness too:
+visually erased ink no longer reaches recognition. The eraser hole Path is
+built by the caller with `FreehandPath` (same builder as the preview) so the
+domain service stays out of the render layer.
+
+### Phase U3–U4 — capability router + Summarize on the platform ✅
+- `ai/domain/ai_router.dart`: the general router — same decision table
+  (offline→local; cloud only when online + opt-in + over budget), but the
+  local word budget now derives from `AiCapabilities.contextWindowTokens`
+  (− 512 response reserve − 200 scaffolding, ÷1.35 tokens/word), so swapping
+  the local model re-budgets everything. `Reachability` moved along.
+- `SummarizationService` rewritten on the platform: pages read via
+  `PageContentExtractor` (**typed text now contributes to summaries**, new
+  test), gate owned by the service, local generation via `AiProvider`
+  (system prompt through the contract; temp 0.2 / topP 0.95 / 512 max
+  output), cloud seam unchanged. `SummarizeRequest.loadPages` →
+  `loadPageIds`; editor passes page ids from `PageRepository`.
+- **Deleted** (duplication gone): summarize's private `ai_router.dart`,
+  `SceneNotebookInkLoader` (+test), `LocalLlmService` (+its test group,
+  provider). The runtime is reached ONLY through `LocalGemmaProvider` now.
+- `flutter analyze` clean, **284/284 tests pass**.
 
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`

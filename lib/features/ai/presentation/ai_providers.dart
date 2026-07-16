@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../editor/state/scene_controller.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/cloud_llm_client.dart';
-import '../data/llm/local_llm_service.dart';
 import '../data/llm/model_download_manager.dart';
 import '../data/providers/local_gemma_provider.dart';
 import '../domain/ai_provider.dart';
@@ -25,10 +24,6 @@ final modelDownloadManagerProvider = Provider<ModelDownloadManager>((ref) {
   ref.onDispose(manager.dispose);
   return manager;
 });
-
-/// Non-streaming convenience over the local runtime (used by Summarize).
-final localLlmServiceProvider =
-    Provider<LocalLlmService>((ref) => LocalLlmService());
 
 /// The on-device model behind the platform-wide [AiProvider] contract —
 /// streaming, typed failures, load→generate→unload memory invariant.

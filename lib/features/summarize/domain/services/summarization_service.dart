@@ -1,18 +1,24 @@
-// Composes the summarization pipeline:
-//   recognize → meaningfulness gate → cache check → route → LLM → cache save.
+// Composes the summarization pipeline on the AI platform:
+//   extract pages → meaningfulness gate → cache check → route → generate →
+//   cache save.
 //
-// Privacy invariant: note text reaches CloudLlmClient only when the router
-// returned AiRoute.cloud, which requires the user's explicit cloud opt-in.
+// Summarize is the first consumer of the shared platform (features/ai): page
+// understanding comes from [PageContentExtractor] (recognized ink AND typed
+// text), local generation from the [AiProvider] contract, routing from the
+// capability-driven [AiRouter]. Nothing here talks to a model runtime
+// directly.
+//
+// Privacy invariant: note text reaches [CloudLlmClient] only when the router
+// returned [AiRoute.cloud], which requires the user's explicit cloud opt-in.
 
-import '../../../editor/domain/models/stroke.dart';
+import '../../../ai/data/llm/cloud_llm_client.dart';
+import '../../../ai/domain/ai_provider.dart';
+import '../../../ai/domain/ai_router.dart';
+import '../../../ai/domain/meaningfulness_gate.dart';
+import '../../../ai/domain/page_content.dart';
+import '../../../ai/domain/page_content_extractor.dart';
 import '../../data/cache/summary_cache.dart';
 import '../../data/cache/summary_store.dart';
-import '../../../ai/data/llm/cloud_llm_client.dart';
-import '../../../ai/data/llm/llm_exceptions.dart';
-import '../../../ai/data/llm/local_llm_service.dart';
-import 'ai_router.dart';
-import '../../../ai/data/handwriting/handwriting_recognition_service.dart';
-import '../../../ai/domain/meaningfulness_gate.dart';
 
 enum SummarizeStage { recognizing, summarizing }
 
@@ -48,7 +54,7 @@ class SummarizeException implements Exception {
   String toString() => '$runtimeType: $message';
 }
 
-/// The gate rejected the recognized text — never sent to any LLM.
+/// The gate rejected the extracted text — never sent to any LLM.
 class NotMeaningfulException extends SummarizeException {
   final GateFailure failure;
   NotMeaningfulException(this.failure)
@@ -75,45 +81,61 @@ class SummarizationService {
       'invent facts, names, dates, or numbers. If parts of the note are '
       'unclear, summarize only what is clear.';
 
-  final HandwritingRecognitionService _recognition;
+  final PageContentExtractor _extractor;
+  final MeaningfulnessGate _gate;
   final AiRouter _router;
-  final LocalLlmService _localLlm;
+  final AiProvider _local;
   final CloudLlmClient _cloud;
   final SummaryStore _store;
   final String _localModelLabel;
 
   SummarizationService({
-    required HandwritingRecognitionService recognition,
+    required PageContentExtractor extractor,
     required AiRouter router,
-    required LocalLlmService localLlm,
+    required AiProvider local,
     required CloudLlmClient cloud,
     required SummaryStore store,
+    MeaningfulnessGate gate = const MeaningfulnessGate(),
     String localModelLabel = 'gemma4-e2b-local',
-  })  : _recognition = recognition,
+  })  : _extractor = extractor,
+        _gate = gate,
         _router = router,
-        _localLlm = localLlm,
+        _local = local,
         _cloud = cloud,
         _store = store,
         _localModelLabel = localModelLabel;
 
-  /// Summarizes a notebook. [pagesStrokes] must be in page order.
+  /// Summarizes a notebook. [pageIds] must be in page order; each page is
+  /// read through the platform extractor, so both handwritten ink and typed
+  /// text contribute.
   ///
   /// Throws [NotMeaningfulException] (gate), [LocalModelRequiredException]
-  /// (model missing), or the [LlmException] subtypes from the local runtime.
+  /// (model missing), or [SummarizeException] for generation failures.
   Future<SummarizationResult> summarize({
     required int notebookId,
-    required List<List<Stroke>> pagesStrokes,
+    required List<int> pageIds,
     required String languageCode,
     required bool cloudEnabled,
     void Function(SummarizeStage stage)? onStage,
   }) async {
     onStage?.call(SummarizeStage.recognizing);
-    final outcome =
-        await _recognition.recognizeNotebook(pagesStrokes, languageCode);
-    if (!outcome.gate.passed) {
-      throw NotMeaningfulException(outcome.gate.failure!);
+
+    final pages = <PageContent>[];
+    for (final pageId in pageIds) {
+      pages.add(
+          await _extractor.extractPage(pageId, languageCode: languageCode));
     }
-    final text = outcome.text;
+    final text = pages
+        .map((p) => p.combinedText)
+        .where((t) => t.isNotEmpty)
+        .join('\n\n');
+    final scores = [
+      for (final p in pages)
+        if (p.inkTopScore != null) p.inkTopScore!,
+    ];
+
+    final gate = _gate.evaluate(text, topScores: scores);
+    if (!gate.passed) throw NotMeaningfulException(gate.failure!);
 
     // Unchanged note → instant cached summary.
     final hash = hashRecognizedText(text);
@@ -181,18 +203,30 @@ class SummarizationService {
     );
   }
 
+  /// Runs the local provider (defaults tuned for faithful summarization, not
+  /// creative chat), translating platform failures into summarize-level ones.
   Future<(String, bool)> _generateLocally(String text) async {
-    final truncatedText = truncateToWords(text, AiRouter.localInputWordBudget);
+    final truncatedText = truncateToWords(text, _router.localInputWordBudget);
     final wasTruncated = truncatedText.length != text.length;
     try {
-      final summary = await _localLlm.generateOnce(
-        prompt: '$_instruction\n\nNOTE:\n$truncatedText\n\nSUMMARY:',
-      );
-      return (summary, wasTruncated);
-    } on LlmNotReadyException {
+      final chunks = await _local
+          .generate(
+            prompt: 'NOTE:\n$truncatedText',
+            systemPrompt: _instruction,
+            options: const AiGenerationOptions(
+              temperature: 0.2,
+              topP: 0.95,
+              maxTokens: 512,
+            ),
+          )
+          .toList();
+      return (chunks.join().trim(), wasTruncated);
+    } on AiModelNotReadyException {
       // Model vanished between routing and generation (e.g. deleted in
       // settings) — surface the same actionable state as the router would.
       throw LocalModelRequiredException(offline: false);
+    } on AiException catch (e) {
+      throw SummarizeException(e.message);
     }
   }
 

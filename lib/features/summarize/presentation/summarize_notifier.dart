@@ -10,7 +10,6 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../editor/domain/models/stroke.dart';
 import '../../ai/data/llm/llm_exceptions.dart';
 import '../../ai/data/llm/model_download_manager.dart';
 import '../../ai/data/handwriting/handwriting_recognition_service.dart';
@@ -70,15 +69,16 @@ class SummarizeError extends SummarizeState {
 class SummarizeRequest {
   final int notebookId;
 
-  /// Loads all pages' strokes in page order — called fresh on every attempt so
-  /// retries see the latest ink.
-  final Future<List<List<Stroke>>> Function() loadPages;
+  /// Loads the notebook's page ids in page order — called fresh on every
+  /// attempt so retries see the latest pages. Page content itself is read
+  /// through the AI platform's PageContentExtractor.
+  final Future<List<int>> Function() loadPageIds;
   final String languageCode;
   final bool cloudEnabled;
 
   const SummarizeRequest({
     required this.notebookId,
-    required this.loadPages,
+    required this.loadPageIds,
     required this.languageCode,
     required this.cloudEnabled,
   });
@@ -112,10 +112,10 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
       // to live inside the "Reading handwriting…" state.
       await _recognition.ensureModelDownloaded(request.languageCode);
 
-      final pages = await request.loadPages();
+      final pageIds = await request.loadPageIds();
       final result = await _service.summarize(
         notebookId: request.notebookId,
-        pagesStrokes: pages,
+        pageIds: pageIds,
         languageCode: request.languageCode,
         cloudEnabled: request.cloudEnabled,
         onStage: (stage) {

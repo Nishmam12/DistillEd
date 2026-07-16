@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_gemma/flutter_gemma.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -7,7 +5,6 @@ import 'package:inkflow/features/ai/data/llm/device_storage.dart';
 import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
 import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
 import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/data/llm/local_llm_service.dart';
 import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
 
 // ---- Fakes ------------------------------------------------------------------
@@ -48,82 +45,6 @@ class FakeStorage implements DeviceStorage {
   FakeStorage(this.free);
   @override
   Future<int> freeBytes() async => free;
-}
-
-class FakeSession implements LlmSession {
-  final Future<String> Function() _respond;
-  bool closed = false;
-  final turns = <(String, bool)>[];
-  FakeSession(this._respond);
-
-  @override
-  Future<void> addTurn(String text, {required bool isUser}) async =>
-      turns.add((text, isUser));
-
-  @override
-  Future<String> respond(String prompt) => _respond();
-
-  @override
-  Stream<String> respondStream(String prompt) async* {
-    yield await _respond();
-  }
-
-  @override
-  Future<void> close() async => closed = true;
-}
-
-class FakeRuntime implements LlmRuntime {
-  final Future<String> Function() respond;
-  int openSessions = 0;
-  int maxConcurrentSessions = 0;
-  final sessions = <FakeSession>[];
-
-  FakeRuntime(this.respond);
-
-  @override
-  Future<LlmSession> open({
-    required LlmModelSpec spec,
-    required double temperature,
-    required int topK,
-    required double topP,
-    int? maxOutputTokens,
-    String? systemInstruction,
-    int? randomSeed,
-  }) async {
-    openSessions++;
-    if (openSessions > maxConcurrentSessions) {
-      maxConcurrentSessions = openSessions;
-    }
-    late FakeSession session;
-    session = FakeSession(() async {
-      final r = await respond();
-      return r;
-    });
-    sessions.add(session);
-    return _CountingSession(session, () => openSessions--);
-  }
-}
-
-class _CountingSession implements LlmSession {
-  final FakeSession _inner;
-  final void Function() _onClose;
-  _CountingSession(this._inner, this._onClose);
-
-  @override
-  Future<void> addTurn(String text, {required bool isUser}) =>
-      _inner.addTurn(text, isUser: isUser);
-
-  @override
-  Future<String> respond(String prompt) => _inner.respond(prompt);
-
-  @override
-  Stream<String> respondStream(String prompt) => _inner.respondStream(prompt);
-
-  @override
-  Future<void> close() async {
-    await _inner.close();
-    _onClose();
-  }
 }
 
 // ---- Tests ------------------------------------------------------------------
@@ -212,95 +133,4 @@ void main() {
     });
   });
 
-  group('LocalLlmService', () {
-    test('returns trimmed generation and closes the session', () async {
-      final runtime = FakeRuntime(() async => '  a fine summary \n');
-      final service = LocalLlmService(spec: spec, runtime: runtime);
-
-      final result = await service.generateOnce(prompt: 'summarize this');
-
-      expect(result, 'a fine summary');
-      expect(runtime.sessions.single.closed, isTrue,
-          reason: 'model must be unloaded after generation');
-      expect(runtime.openSessions, 0);
-    });
-
-    test('concurrent calls serialize — never two models in memory', () async {
-      final runtime = FakeRuntime(
-          () => Future.delayed(const Duration(milliseconds: 20), () => 'ok'));
-      final service = LocalLlmService(spec: spec, runtime: runtime);
-
-      final results = await Future.wait([
-        service.generateOnce(prompt: 'one'),
-        service.generateOnce(prompt: 'two'),
-        service.generateOnce(prompt: 'three'),
-      ]);
-
-      expect(results, ['ok', 'ok', 'ok']);
-      expect(runtime.maxConcurrentSessions, 1,
-          reason: 'the mutex must keep at most one model loaded');
-    });
-
-    test('timeout throws LlmTimeoutException and still unloads', () async {
-      final never = Completer<String>();
-      final runtime = FakeRuntime(() => never.future);
-      final service = LocalLlmService(spec: spec, runtime: runtime);
-
-      await expectLater(
-        service.generateOnce(
-          prompt: 'hang',
-          timeout: const Duration(milliseconds: 30),
-        ),
-        throwsA(isA<LlmTimeoutException>()),
-      );
-      expect(runtime.sessions.single.closed, isTrue);
-      expect(runtime.openSessions, 0);
-    });
-
-    test('a failed call does not deadlock later calls', () async {
-      var first = true;
-      final runtime = FakeRuntime(() async {
-        if (first) {
-          first = false;
-          throw StateError('engine crash');
-        }
-        return 'recovered';
-      });
-      final service = LocalLlmService(spec: spec, runtime: runtime);
-
-      await expectLater(
-        service.generateOnce(prompt: 'boom'),
-        throwsA(isA<LlmGenerationException>()),
-      );
-      // The mutex must have been released by the failure.
-      expect(await service.generateOnce(prompt: 'again'), 'recovered');
-      expect(runtime.sessions.every((s) => s.closed), isTrue);
-    });
-
-    test('LlmNotReadyException from the runtime passes through untouched',
-        () async {
-      final runtime = _NotReadyRuntime();
-      final service = LocalLlmService(spec: spec, runtime: runtime);
-
-      expect(
-        service.generateOnce(prompt: 'x'),
-        throwsA(isA<LlmNotReadyException>()),
-      );
-    });
-  });
-}
-
-class _NotReadyRuntime implements LlmRuntime {
-  @override
-  Future<LlmSession> open({
-    required LlmModelSpec spec,
-    required double temperature,
-    required int topK,
-    required double topP,
-    int? maxOutputTokens,
-    String? systemInstruction,
-    int? randomSeed,
-  }) async {
-    throw LlmNotReadyException();
-  }
 }

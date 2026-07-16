@@ -1,18 +1,18 @@
 import 'package:flutter_gemma/flutter_gemma.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/editor/domain/models/stroke.dart';
 import 'package:inkflow/features/summarize/data/cache/summary_cache.dart';
 import 'package:inkflow/features/summarize/data/cache/summary_store.dart';
 import 'package:inkflow/features/ai/data/llm/cloud_llm_client.dart';
 import 'package:inkflow/features/ai/data/llm/device_storage.dart';
 import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
 import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/data/llm/local_llm_service.dart';
 import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
-import 'package:inkflow/features/summarize/domain/services/ai_router.dart';
-import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:inkflow/features/ai/domain/ai_provider.dart';
+import 'package:inkflow/features/ai/domain/ai_router.dart';
 import 'package:inkflow/features/ai/domain/meaningfulness_gate.dart';
+import 'package:inkflow/features/ai/domain/page_content_extractor.dart';
+import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
 import 'package:inkflow/features/summarize/domain/services/summarization_service.dart';
 import 'package:inkflow/features/summarize/presentation/summarize_notifier.dart';
 
@@ -32,18 +32,26 @@ class InMemoryStore implements SummaryStore {
       entries[entry.notebookId] = entry;
 }
 
-class NoopRuntime implements LlmRuntime {
+class NoopAiProvider implements AiProvider {
   @override
-  Future<LlmSession> open({
-    required LlmModelSpec spec,
-    required double temperature,
-    required int topK,
-    required double topP,
-    int? maxOutputTokens,
-    String? systemInstruction,
-    int? randomSeed,
-  }) async =>
+  AiCapabilities get capabilities => const AiCapabilities(
+        modelId: 'noop',
+        displayName: 'noop',
+        contextWindowTokens: 4096,
+        isLocal: true,
+      );
+
+  @override
+  Stream<String> generate({
+    required String prompt,
+    String? systemPrompt,
+    List<AiMessage>? history,
+    AiGenerationOptions? options,
+  }) =>
       throw UnimplementedError();
+
+  @override
+  Future<List<double>> embed(String text) => throw UnimplementedError();
 }
 
 /// SummarizationService whose summarize() is fully scripted per call.
@@ -55,9 +63,15 @@ class ScriptedService extends SummarizationService {
 
   ScriptedService(this.script)
       : super(
-          recognition: SilentRecognition(),
-          router: AiRouter(isLocalModelInstalled: () async => true),
-          localLlm: LocalLlmService(runtime: NoopRuntime()),
+          extractor: PageContentExtractor(
+            loadElements: (_) async => const [],
+            recognition: SilentRecognition(),
+          ),
+          router: AiRouter(
+            localCapabilities: NoopAiProvider().capabilities,
+            isLocalModelInstalled: () async => true,
+          ),
+          local: NoopAiProvider(),
           cloud: StubCloudLlmClient(),
           store: InMemoryStore(),
         );
@@ -65,7 +79,7 @@ class ScriptedService extends SummarizationService {
   @override
   Future<SummarizationResult> summarize({
     required int notebookId,
-    required List<List<Stroke>> pagesStrokes,
+    required List<int> pageIds,
     required String languageCode,
     required bool cloudEnabled,
     void Function(SummarizeStage stage)? onStage,
@@ -109,7 +123,7 @@ class FakeStorage implements DeviceStorage {
 void main() {
   const request = SummarizeRequest(
     notebookId: 1,
-    loadPages: _noPages,
+    loadPageIds: _noPageIds,
     languageCode: 'en',
     cloudEnabled: false,
   );
@@ -216,4 +230,4 @@ void main() {
   });
 }
 
-Future<List<List<Stroke>>> _noPages() async => const [[]];
+Future<List<int>> _noPageIds() async => const [];

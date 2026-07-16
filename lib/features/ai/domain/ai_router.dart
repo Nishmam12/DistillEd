@@ -1,19 +1,27 @@
-// Automatic model routing — the user never picks a model (locked decision #1).
+// Automatic tier routing — the user never picks a model.
 //
-// Decision table (locked decision #6):
-//   offline                                → local Gemma
+// Generalization of the summarize feature's original router onto the AI
+// platform: the local input budget now derives from the local provider's
+// [AiCapabilities] instead of a hard-coded constant, so swapping the on-device
+// model (bigger context window, different tier) re-budgets every feature
+// automatically. The decision table is unchanged:
+//
+//   offline                                → local
 //   offline + local model not downloaded   → actionable error state
-//   online + cloud enabled + input longer
-//     than the local context budget        → cloud client
-//   online, anything else                  → local Gemma
+//   online + cloud opt-in + input longer
+//     than the local budget                → cloud tier
+//   online, anything else                  → local
 //     (model not downloaded yet            → download-then-local)
 //
 // Input that exceeds the local budget but still routes local (cloud off,
-// offline, or cloud fallback) is truncated by the summarization service; the
-// [truncateForLocal] flag signals that.
+// offline, or cloud fallback) is truncated by the caller; [truncateForLocal]
+// signals that. Privacy invariant: the cloud route requires BOTH the user's
+// explicit opt-in and the note not fitting locally.
 
 import 'dart:async';
 import 'dart:io';
+
+import 'ai_capabilities.dart';
 
 /// Small reachability probe: can we resolve a well-known host right now?
 /// (Airplane mode / no network fails in milliseconds; the timeout guards
@@ -37,10 +45,10 @@ class Reachability {
 }
 
 enum AiRoute {
-  /// Run on-device Gemma.
+  /// Run the on-device provider.
   local,
 
-  /// Send to the cloud client (only: online + opt-in + over local budget).
+  /// Send to the cloud tier (only: online + opt-in + over local budget).
   cloud,
 
   /// Local model missing but we're online — download it, then run locally.
@@ -61,19 +69,36 @@ class RoutingDecision {
 }
 
 class AiRouter {
-  /// Local input budget in WORDS. The local context window is 4096 tokens;
-  /// minus prompt scaffolding and a 512-token response reserve, ~3400 tokens
-  /// remain for input ≈ 2500 English words (~1.35 tokens/word).
-  static const int localInputWordBudget = 2500;
+  /// Tokens kept free for the model's response within the context window.
+  static const int responseReserveTokens = 512;
+
+  /// Tokens assumed consumed by prompt scaffolding (instruction, framing).
+  static const int scaffoldingReserveTokens = 200;
+
+  /// Rough English tokens-per-word ratio used to express the budget in words
+  /// (callers count words, not tokens).
+  static const double tokensPerWord = 1.35;
+
+  /// Capabilities of the local tier — the budget source.
+  final AiCapabilities localCapabilities;
 
   final Reachability _reachability;
   final Future<bool> Function() _isLocalModelInstalled;
 
   AiRouter({
+    required this.localCapabilities,
     required Future<bool> Function() isLocalModelInstalled,
     Reachability reachability = const Reachability(),
   })  : _isLocalModelInstalled = isLocalModelInstalled,
         _reachability = reachability;
+
+  /// Local input budget in WORDS, derived from the local context window minus
+  /// the response and scaffolding reserves.
+  int get localInputWordBudget => ((localCapabilities.contextWindowTokens -
+              responseReserveTokens -
+              scaffoldingReserveTokens) /
+          tokensPerWord)
+      .floor();
 
   Future<RoutingDecision> decide({
     required int inputWordCount,
