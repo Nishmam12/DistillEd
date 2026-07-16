@@ -144,6 +144,32 @@ Automated portion done (2026-07-16, no Android device/emulator attached):
    load time, tokens/sec feel, end-to-end latency vs the ~10 s/page target,
    and airplane-mode behavior (expect graceful offline error / local path).
 
+### Phase U1 — LocalGemmaProvider on the platform contract ✅ (`79578e0`)
+- `features/summarize/data/llm/` → `features/ai/data/llm/` (platform owns the
+  runtime; imports must never point ai→summarize).
+- Seams extended: `LlmSession.addTurn` + `respondStream`,
+  `LlmRuntime.open(systemInstruction:, randomSeed:)`.
+- `features/ai/data/providers/local_gemma_provider.dart`:
+  `LocalGemmaProvider implements AiProvider` — streaming generate() with
+  history/system mapping, typed `AiException`s, client-side stop sequences
+  (cross-chunk hold-back), inter-chunk timeout, load→generate→unload + mutex
+  preserved. 12 provider tests.
+
+### Phase U2 — PageContentExtractor + recognition into the platform ✅
+- Moves: `handwriting_recognition_service.dart` → `ai/data/handwriting/`;
+  `meaningfulness_gate.dart`, `recognition_result.dart` → `ai/domain/`.
+- Recognition gains SceneElement-native APIs: `elementsToInk` /
+  `recognizeElements` (records-based shared core with the legacy stroke path).
+- `ai/domain/page_content.dart` + `page_content_extractor.dart`: THE read
+  path for all AI features — ink → recognized text, typed text in reading
+  order, images (incl. rasterized PDFs) flagged `needsOcr`, source bounds for
+  later "AI is looking at this" UI. Loader-injected (wired to
+  `SceneElementStore.loadForPage`), so no persistence coupling.
+- `ai/presentation/ai_providers.dart`: platform Riverpod wiring
+  (recognition, downloads, `localAiProvider`, `pageContentExtractorProvider`);
+  summarize_providers now consumes it.
+- 289/289 tests, analyze clean.
+
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;

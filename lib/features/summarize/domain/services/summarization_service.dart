@@ -11,8 +11,8 @@ import '../../../ai/data/llm/cloud_llm_client.dart';
 import '../../../ai/data/llm/llm_exceptions.dart';
 import '../../../ai/data/llm/local_llm_service.dart';
 import 'ai_router.dart';
-import 'handwriting_recognition_service.dart';
-import 'meaningfulness_gate.dart';
+import '../../../ai/data/handwriting/handwriting_recognition_service.dart';
+import '../../../ai/domain/meaningfulness_gate.dart';
 
 enum SummarizeStage { recognizing, summarizing }
 

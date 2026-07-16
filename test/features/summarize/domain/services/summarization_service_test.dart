@@ -10,7 +10,7 @@ import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
 import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
 import 'package:inkflow/features/ai/data/llm/local_llm_service.dart';
 import 'package:inkflow/features/summarize/domain/services/ai_router.dart';
-import 'package:inkflow/features/summarize/domain/services/handwriting_recognition_service.dart';
+import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
 import 'package:inkflow/features/summarize/domain/services/summarization_service.dart';
 
 // ---- Fakes ------------------------------------------------------------------

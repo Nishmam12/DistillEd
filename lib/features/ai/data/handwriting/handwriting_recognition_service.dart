@@ -1,14 +1,23 @@
 // Wraps ML Kit Digital Ink Recognition (stroke-based, NOT image OCR) for the
-// summarize feature: language-model management, InkFlow-stroke → ML Kit Ink
-// conversion (with timestamp synthesis for legacy strokes), per-page
-// recognition, page-order concatenation, and the meaningfulness gate.
+// AI platform: language-model management, ink → ML Kit Ink conversion (with
+// timestamp synthesis for legacy strokes), per-page recognition, page-order
+// concatenation, and the meaningfulness gate.
+//
+// Two ink sources feed the same conversion core: legacy [Stroke] lists and
+// editor-2.0 [FreehandElement]s — both carry the same [StrokePoint]s
+// (including the capture timestamp `t`).
 
 import 'package:google_mlkit_digital_ink_recognition/google_mlkit_digital_ink_recognition.dart'
     as mlkit;
 
+import '../../../../domain/model/scene_element.dart';
 import '../../../editor/domain/models/stroke.dart';
-import '../models/recognition_result.dart';
-import 'meaningfulness_gate.dart';
+import '../../domain/recognition_result.dart';
+import '../../domain/meaningfulness_gate.dart';
+
+/// The per-stroke fields the ML Kit conversion needs, shared by legacy
+/// [Stroke] and editor-2.0 [FreehandElement].
+typedef _InkSource = ({List<StrokePoint> points, bool isEraser});
 
 /// Thrown when recognition fails at the platform layer (e.g. language model
 /// missing). Carries a user-actionable message.
@@ -75,7 +84,18 @@ class HandwritingRecognitionService {
   /// Rebasing matters because real timestamps are monotonic-since-boot while
   /// synthetic ones start at 0 — mixing them raw would produce wild gaps and
   /// out-of-order strokes, which degrades recognition.
-  static mlkit.Ink strokesToInk(List<Stroke> strokes) {
+  static mlkit.Ink strokesToInk(List<Stroke> strokes) => _toInk([
+        for (final s in strokes) (points: s.points, isEraser: s.isEraser),
+      ]);
+
+  /// Editor-2.0 variant: converts the freehand ink among [elements]. Non-ink
+  /// elements (shapes, text, images, frames) are ignored.
+  static mlkit.Ink elementsToInk(List<SceneElement> elements) => _toInk([
+        for (final e in elements)
+          if (e is FreehandElement) (points: e.points, isEraser: e.isEraser),
+      ]);
+
+  static mlkit.Ink _toInk(List<_InkSource> strokes) {
     final ink = mlkit.Ink();
     int clock = 0;
     bool first = true;
@@ -126,6 +146,25 @@ class HandwritingRecognitionService {
     mlkit.WritingArea? writingArea,
   }) async {
     final ink = strokesToInk(strokes);
+    return _recognizeInk(ink, languageCode, writingArea: writingArea);
+  }
+
+  /// Editor-2.0 variant of [recognizePage]: recognizes the freehand ink among
+  /// one page's [elements].
+  Future<PageRecognition> recognizeElements(
+    List<SceneElement> elements,
+    String languageCode, {
+    mlkit.WritingArea? writingArea,
+  }) {
+    final ink = elementsToInk(elements);
+    return _recognizeInk(ink, languageCode, writingArea: writingArea);
+  }
+
+  Future<PageRecognition> _recognizeInk(
+    mlkit.Ink ink,
+    String languageCode, {
+    mlkit.WritingArea? writingArea,
+  }) async {
     if (ink.strokes.isEmpty) return const PageRecognition.empty();
 
     final recognizer = _recognizers.putIfAbsent(

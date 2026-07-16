@@ -1,6 +1,6 @@
 // Result types for handwriting recognition (summarize feature).
 
-import '../services/meaningfulness_gate.dart';
+import 'meaningfulness_gate.dart';
 
 /// Recognition output for a single page.
 class PageRecognition {

@@ -1,37 +1,19 @@
-// Riverpod wiring for the summarize feature (this codebase uses Riverpod as
-// its DI mechanism throughout — get_it is unused).
+// Riverpod wiring for the summarize feature — a consumer of the AI platform
+// (features/ai): runtime, recognition and download management come from
+// ai_providers.dart; only summarize-specific composition lives here.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../editor/state/scene_controller.dart';
+import '../../ai/presentation/ai_providers.dart';
 import '../../editor/presentation/page_notifier.dart';
 import '../data/cache/summary_store.dart';
-import '../../ai/data/llm/cloud_llm_client.dart';
-import '../../ai/data/llm/local_llm_service.dart';
-import '../../ai/data/llm/model_download_manager.dart';
 import '../data/scene_notebook_ink_loader.dart';
 import '../domain/services/ai_router.dart';
-import '../domain/services/handwriting_recognition_service.dart';
 import '../domain/services/summarization_service.dart';
+import '../../../editor/state/scene_controller.dart';
 
-final handwritingRecognitionServiceProvider =
-    Provider<HandwritingRecognitionService>((ref) {
-  final service = HandwritingRecognitionService();
-  ref.onDispose(service.dispose);
-  return service;
-});
-
-final modelDownloadManagerProvider = Provider<ModelDownloadManager>((ref) {
-  final manager = ModelDownloadManager();
-  ref.onDispose(manager.dispose);
-  return manager;
-});
-
-final localLlmServiceProvider =
-    Provider<LocalLlmService>((ref) => LocalLlmService());
-
-final cloudLlmClientProvider =
-    Provider<CloudLlmClient>((ref) => StubCloudLlmClient());
+export '../../ai/presentation/ai_providers.dart'
+    show handwritingRecognitionServiceProvider, modelDownloadManagerProvider;
 
 final aiRouterProvider = Provider<AiRouter>((ref) {
   final downloads = ref.watch(modelDownloadManagerProvider);

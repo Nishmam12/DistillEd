@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/features/editor/domain/models/stroke.dart';
-import 'package:inkflow/features/editor/domain/models/stroke_point.dart';
-import 'package:inkflow/features/summarize/domain/services/handwriting_recognition_service.dart';
+import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
 
 void main() {
   Stroke stroke(String id, List<StrokePoint> pts, {bool isEraser = false}) =>
@@ -99,6 +99,42 @@ void main() {
       ]);
 
       expect(ink.strokes.single.points.map((p) => p.t), [0, 0, 20]);
+    });
+  });
+
+  group('HandwritingRecognitionService.elementsToInk (editor 2.0)', () {
+    test('converts freehand elements identically to the stroke path, '
+        'skipping erasers and non-ink elements', () {
+      const points = [
+        StrokePoint(x: 0, y: 0, t: 5000),
+        StrokePoint(x: 1, y: 0, t: 5016),
+      ];
+      final fromElements = HandwritingRecognitionService.elementsToInk(const [
+        FreehandElement(
+            id: 'ink', zOrder: 0, color: 0xFF000000, size: 4, points: points),
+        FreehandElement(
+            id: 'eraser',
+            zOrder: 1,
+            color: 0,
+            size: 20,
+            isEraser: true,
+            points: points),
+        TextElement(
+            id: 't',
+            zOrder: 2,
+            geometryData: [0, 0, 10, 10],
+            text: 'typed',
+            color: 0xFF000000),
+      ]);
+      final fromStrokes = HandwritingRecognitionService.strokesToInk([
+        stroke('ink', points),
+      ]);
+
+      expect(fromElements.strokes, hasLength(1));
+      expect(
+        fromElements.strokes.single.points.map((p) => (p.x, p.y, p.t)),
+        fromStrokes.strokes.single.points.map((p) => (p.x, p.y, p.t)),
+      );
     });
   });
 }

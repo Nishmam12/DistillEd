@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/summarize/domain/services/meaningfulness_gate.dart';
+import 'package:inkflow/features/ai/domain/meaningfulness_gate.dart';
 
 void main() {
   const gate = MeaningfulnessGate();

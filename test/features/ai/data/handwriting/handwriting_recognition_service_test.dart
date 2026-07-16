@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/features/editor/domain/models/stroke.dart';
 import 'package:inkflow/features/editor/domain/models/stroke_point.dart';
-import 'package:inkflow/features/summarize/domain/services/handwriting_recognition_service.dart';
+import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
 
 /// Tests the service against a mocked ML Kit platform channel — no device.
 void main() {
