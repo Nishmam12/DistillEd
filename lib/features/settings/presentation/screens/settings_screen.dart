@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/settings_provider.dart';
-import '../../../summarize/data/llm/llm_model_spec.dart';
+import '../../../ai/data/llm/llm_model_spec.dart';
 import '../../../summarize/presentation/summarize_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {

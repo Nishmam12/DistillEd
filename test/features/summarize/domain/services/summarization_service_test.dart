@@ -5,10 +5,10 @@ import 'package:inkflow/features/editor/domain/models/stroke.dart';
 import 'package:inkflow/features/editor/domain/models/stroke_point.dart';
 import 'package:inkflow/features/summarize/data/cache/summary_cache.dart';
 import 'package:inkflow/features/summarize/data/cache/summary_store.dart';
-import 'package:inkflow/features/summarize/data/llm/cloud_llm_client.dart';
-import 'package:inkflow/features/summarize/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/summarize/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/summarize/data/llm/local_llm_service.dart';
+import 'package:inkflow/features/ai/data/llm/cloud_llm_client.dart';
+import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
+import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
+import 'package:inkflow/features/ai/data/llm/local_llm_service.dart';
 import 'package:inkflow/features/summarize/domain/services/ai_router.dart';
 import 'package:inkflow/features/summarize/domain/services/handwriting_recognition_service.dart';
 import 'package:inkflow/features/summarize/domain/services/summarization_service.dart';
@@ -44,6 +44,8 @@ class FakeLocalRuntime implements LlmRuntime {
     required int topK,
     required double topP,
     int? maxOutputTokens,
+    String? systemInstruction,
+    int? randomSeed,
   }) async {
     calls++;
     return _EchoSession(this);
@@ -53,10 +55,19 @@ class FakeLocalRuntime implements LlmRuntime {
 class _EchoSession implements LlmSession {
   final FakeLocalRuntime runtime;
   _EchoSession(this.runtime);
+
+  @override
+  Future<void> addTurn(String text, {required bool isUser}) async {}
+
   @override
   Future<String> respond(String prompt) async {
     runtime.lastPrompt = prompt;
     return runtime.reply;
+  }
+
+  @override
+  Stream<String> respondStream(String prompt) async* {
+    yield await respond(prompt);
   }
 
   @override

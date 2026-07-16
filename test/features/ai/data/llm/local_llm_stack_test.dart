@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter_gemma/flutter_gemma.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/summarize/data/llm/device_storage.dart';
-import 'package:inkflow/features/summarize/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/summarize/data/llm/llm_exceptions.dart';
-import 'package:inkflow/features/summarize/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/summarize/data/llm/local_llm_service.dart';
-import 'package:inkflow/features/summarize/data/llm/model_download_manager.dart';
+import 'package:inkflow/features/ai/data/llm/device_storage.dart';
+import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
+import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
+import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
+import 'package:inkflow/features/ai/data/llm/local_llm_service.dart';
+import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
 
 // ---- Fakes ------------------------------------------------------------------
 
@@ -53,10 +53,20 @@ class FakeStorage implements DeviceStorage {
 class FakeSession implements LlmSession {
   final Future<String> Function() _respond;
   bool closed = false;
+  final turns = <(String, bool)>[];
   FakeSession(this._respond);
 
   @override
+  Future<void> addTurn(String text, {required bool isUser}) async =>
+      turns.add((text, isUser));
+
+  @override
   Future<String> respond(String prompt) => _respond();
+
+  @override
+  Stream<String> respondStream(String prompt) async* {
+    yield await _respond();
+  }
 
   @override
   Future<void> close() async => closed = true;
@@ -77,6 +87,8 @@ class FakeRuntime implements LlmRuntime {
     required int topK,
     required double topP,
     int? maxOutputTokens,
+    String? systemInstruction,
+    int? randomSeed,
   }) async {
     openSessions++;
     if (openSessions > maxConcurrentSessions) {
@@ -98,7 +110,14 @@ class _CountingSession implements LlmSession {
   _CountingSession(this._inner, this._onClose);
 
   @override
+  Future<void> addTurn(String text, {required bool isUser}) =>
+      _inner.addTurn(text, isUser: isUser);
+
+  @override
   Future<String> respond(String prompt) => _inner.respond(prompt);
+
+  @override
+  Stream<String> respondStream(String prompt) => _inner.respondStream(prompt);
 
   @override
   Future<void> close() async {
@@ -279,6 +298,8 @@ class _NotReadyRuntime implements LlmRuntime {
     required int topK,
     required double topP,
     int? maxOutputTokens,
+    String? systemInstruction,
+    int? randomSeed,
   }) async {
     throw LlmNotReadyException();
   }

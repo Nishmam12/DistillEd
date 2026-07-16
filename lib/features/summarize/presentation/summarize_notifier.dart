@@ -11,8 +11,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../editor/domain/models/stroke.dart';
-import '../data/llm/llm_exceptions.dart';
-import '../data/llm/model_download_manager.dart';
+import '../../ai/data/llm/llm_exceptions.dart';
+import '../../ai/data/llm/model_download_manager.dart';
 import '../domain/services/handwriting_recognition_service.dart';
 import '../domain/services/summarization_service.dart';
 import 'summarize_providers.dart';

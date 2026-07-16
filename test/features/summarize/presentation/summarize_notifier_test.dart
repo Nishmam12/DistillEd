@@ -4,12 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/features/editor/domain/models/stroke.dart';
 import 'package:inkflow/features/summarize/data/cache/summary_cache.dart';
 import 'package:inkflow/features/summarize/data/cache/summary_store.dart';
-import 'package:inkflow/features/summarize/data/llm/cloud_llm_client.dart';
-import 'package:inkflow/features/summarize/data/llm/device_storage.dart';
-import 'package:inkflow/features/summarize/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/summarize/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/summarize/data/llm/local_llm_service.dart';
-import 'package:inkflow/features/summarize/data/llm/model_download_manager.dart';
+import 'package:inkflow/features/ai/data/llm/cloud_llm_client.dart';
+import 'package:inkflow/features/ai/data/llm/device_storage.dart';
+import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
+import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
+import 'package:inkflow/features/ai/data/llm/local_llm_service.dart';
+import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
 import 'package:inkflow/features/summarize/domain/services/ai_router.dart';
 import 'package:inkflow/features/summarize/domain/services/handwriting_recognition_service.dart';
 import 'package:inkflow/features/summarize/domain/services/meaningfulness_gate.dart';
@@ -40,6 +40,8 @@ class NoopRuntime implements LlmRuntime {
     required int topK,
     required double topP,
     int? maxOutputTokens,
+    String? systemInstruction,
+    int? randomSeed,
   }) async =>
       throw UnimplementedError();
 }

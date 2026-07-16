@@ -69,7 +69,15 @@ class FlutterGemmaInstaller implements ModelInstaller {
 /// A loaded model with one open session. [close] releases BOTH the session
 /// and the model weights — after it completes nothing is left in memory.
 abstract class LlmSession {
+  /// Adds a prior conversation turn WITHOUT triggering generation — used to
+  /// replay multi-turn history before [respond]/[respondStream].
+  Future<void> addTurn(String text, {required bool isUser});
+
   Future<String> respond(String prompt);
+
+  /// Streaming variant of [respond]: yields incremental token chunks.
+  Stream<String> respondStream(String prompt);
+
   Future<void> close();
 }
 
@@ -81,6 +89,8 @@ abstract class LlmRuntime {
     required int topK,
     required double topP,
     int? maxOutputTokens,
+    String? systemInstruction,
+    int? randomSeed,
   });
 }
 
@@ -92,6 +102,8 @@ class FlutterGemmaRuntime implements LlmRuntime {
     required int topK,
     required double topP,
     int? maxOutputTokens,
+    String? systemInstruction,
+    int? randomSeed,
   }) async {
     await GemmaBootstrap.ensureInitialized();
 
@@ -116,6 +128,8 @@ class FlutterGemmaRuntime implements LlmRuntime {
         topK: topK,
         topP: topP,
         maxOutputTokens: maxOutputTokens,
+        systemInstruction: systemInstruction,
+        randomSeed: randomSeed ?? 1, // plugin default
       );
       return _GemmaSession(model, session);
     } catch (e) {
@@ -132,9 +146,19 @@ class _GemmaSession implements LlmSession {
   _GemmaSession(this._model, this._session);
 
   @override
+  Future<void> addTurn(String text, {required bool isUser}) =>
+      _session.addQueryChunk(Message.text(text: text, isUser: isUser));
+
+  @override
   Future<String> respond(String prompt) async {
     await _session.addQueryChunk(Message.text(text: prompt, isUser: true));
     return _session.getResponse();
+  }
+
+  @override
+  Stream<String> respondStream(String prompt) async* {
+    await _session.addQueryChunk(Message.text(text: prompt, isUser: true));
+    yield* _session.getResponseAsync();
   }
 
   @override

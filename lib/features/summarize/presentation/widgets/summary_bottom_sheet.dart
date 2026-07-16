@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../data/llm/llm_model_spec.dart';
+import '../../../ai/data/llm/llm_model_spec.dart';
 import '../summarize_notifier.dart';
 
 /// Opens the summary sheet. Call after kicking off [SummarizeNotifier.run].
