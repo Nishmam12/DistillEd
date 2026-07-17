@@ -16,6 +16,7 @@ import 'features/ai/data/memory/concept_mastery_record.dart';
 import 'features/ai/data/memory/learning_preferences_record.dart';
 import 'features/ai/data/memory/quiz_attempt_record.dart';
 import 'features/ai/data/memory/study_session_record.dart';
+import 'features/ai/data/rag/note_chunk_record.dart';
 import 'features/summarize/data/cache/summary_cache.dart';
 import 'editor/state/library_controller.dart';
 import 'editor/state/scene_controller.dart';
@@ -96,6 +97,7 @@ void main() async {
     QuizAttemptRecordSchema,
     LearningPreferencesRecordSchema,
     StudySessionRecordSchema,
+    NoteChunkRecordSchema,
   ]);
 
   // One-time, gated, non-destructive migration of legacy page content into the

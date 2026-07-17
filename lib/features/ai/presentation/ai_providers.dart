@@ -8,12 +8,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/settings_provider.dart';
 import '../../../editor/state/scene_controller.dart';
+import '../data/embeddings/embedder_download_manager.dart';
+import '../data/embeddings/local_text_embedder.dart';
 import '../data/flashcards/flashcard_store.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/cloud_llm_client.dart';
 import '../data/llm/model_download_manager.dart';
 import '../data/memory/learning_memory_repository.dart';
 import '../data/providers/local_gemma_provider.dart';
+import '../data/rag/note_chunk_store.dart';
 import '../domain/ai_provider.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
@@ -22,10 +25,14 @@ import '../domain/features/flashcard_generator.dart';
 import '../domain/features/quiz_generator.dart';
 import '../domain/features/writing_assistant.dart';
 import '../domain/page_content_extractor.dart';
+import '../domain/rag/rag_indexer.dart';
+import '../domain/rag/rag_retriever.dart';
+import '../domain/rag/text_embedder.dart';
 import 'context_engine_notifier.dart';
 import 'explain_notifier.dart';
 import 'flashcard_notifier.dart';
 import 'quiz_notifier.dart';
+import 'rag_index_scheduler.dart';
 import 'writing_assistant_notifier.dart';
 
 final handwritingRecognitionServiceProvider =
@@ -43,7 +50,59 @@ final modelDownloadManagerProvider = Provider<ModelDownloadManager>((ref) {
 
 /// The on-device model behind the platform-wide [AiProvider] contract —
 /// streaming, typed failures, load→generate→unload memory invariant.
-final localAiProvider = Provider<AiProvider>((ref) => LocalGemmaProvider());
+final localAiProvider = Provider<AiProvider>(
+    (ref) => LocalGemmaProvider(embedder: ref.watch(textEmbedderProvider)));
+
+/// The on-device EMBEDDING model (EmbeddingGemma) — a different model from the
+/// LLM above, with its own download and its own mutex.
+///
+/// Exposed separately rather than only through [AiProvider.embed] because
+/// embeddings are model-locked and must never be routed: see the header of
+/// `domain/rag/text_embedder.dart`.
+final textEmbedderProvider =
+    Provider<TextEmbedder>((ref) => LocalTextEmbedder());
+
+/// Manages the gated, user-triggered download of the embedding model, reading
+/// the HuggingFace token from Settings at download time (see the manager's
+/// [authToken] doc for why it's read late, not captured here).
+final embedderDownloadManagerProvider =
+    Provider<EmbedderDownloadManager>((ref) {
+  final manager = EmbedderDownloadManager(
+    authToken: () => ref.read(settingsProvider).huggingFaceToken,
+  );
+  ref.onDispose(manager.dispose);
+  return manager;
+});
+
+/// Durable store of embedded note chunks (Isar).
+final noteChunkStoreProvider =
+    Provider<NoteChunkStore>((ref) => IsarNoteChunkStore());
+
+/// Keeps a page's chunks in step with its text.
+final ragIndexerProvider = Provider<RagIndexer>((ref) {
+  final store = ref.watch(noteChunkStoreProvider);
+  return RagIndexer(
+    embedder: ref.watch(textEmbedderProvider),
+    saveChunks: store.replaceForPage,
+    deleteChunks: store.deleteForPage,
+    indexStateOf: store.indexStateForPage,
+  );
+});
+
+/// Debounces indexing off the Context Engine's extraction (see the file header
+/// for why it does not simply reuse the 2.5s analysis debounce).
+final ragIndexSchedulerProvider = Provider<RagIndexScheduler>((ref) {
+  final scheduler = RagIndexScheduler(indexer: ref.watch(ragIndexerProvider));
+  ref.onDispose(scheduler.dispose);
+  return scheduler;
+});
+
+/// Semantic search over a notebook. Loop 2.3 wires this into Summarize and
+/// "Ask your notes".
+final ragRetrieverProvider = Provider<RagRetriever>((ref) => RagRetriever(
+      embedder: ref.watch(textEmbedderProvider),
+      loadChunks: ref.watch(noteChunkStoreProvider).forNotebook,
+    ));
 
 /// Cloud tier seam — a no-op stub until Phase 3 stands up the gateway.
 final cloudLlmClientProvider =
@@ -153,9 +212,21 @@ final pageContextProvider = StateNotifierProvider.autoDispose
     cache: ref.watch(pageContextCacheProvider),
     pageId: key.pageId,
     languageCode: () => ref.read(settingsProvider).recognitionLanguage,
-    // Writing Assistant rides this same debounce + extraction (no second loop).
-    onContent: (content) =>
-        ref.read(writingSuggestionsProvider(key).notifier).review(content),
+    // Writing Assistant and RAG indexing both ride this same debounce +
+    // extraction (no second recognition pass, no second loop).
+    onContent: (content) {
+      // Indexing goes FIRST deliberately. ContextEngineNotifier._notifyContent
+      // guards the engine from this callback, but nothing guards these two
+      // listeners from each other: a throw in the first would silently starve
+      // the second. Scheduling only sets a timer and cannot realistically
+      // throw, whereas review() reaches into an autoDispose notifier.
+      ref.read(ragIndexSchedulerProvider).schedule(
+            notebookId: key.notebookId,
+            pageId: key.pageId,
+            text: content.combinedText,
+          );
+      ref.read(writingSuggestionsProvider(key).notifier).review(content);
+    },
     // Learning Memory rides it too: every analyzed page records which concepts
     // the learner was exposed to. Fire-and-forget — a storage hiccup must never
     // surface as an analysis failure.

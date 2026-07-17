@@ -594,7 +594,7 @@ wires both feeds so they fill automatically with no new UI and no new timers.
   per-concept attribution via a fake repository (no Isar in tests).
 - **Not device-run.** No UI surfaces this yet — Loops 2.2–2.5 consume it.
 
-### Loop 2.2 — On-device RAG — IN PROGRESS (2026-07-17)
+### Loop 2.2 — On-device RAG — CODE-COMPLETE (2026-07-17, device-verify deferred)
 
 **STOP CONDITION RESOLVED — embedding model + runtime chosen** (the phase spec
 requires the decision and its tradeoffs be recorded here):
@@ -652,7 +652,13 @@ requires the decision and its tradeoffs be recorded here):
   says don't add a storage engine without profiling proof. **Open STOP
   CONDITION:** report real numbers from the Pad before reaching for heavier.
 
-**Built so far (pure core, no model/DB needed — 474/474, analyze clean):**
+**Loop 2.2 is CODE-COMPLETE — 521/521, analyze clean.** The whole pipeline
+(chunk → embed → store → retrieve, plus incremental re-embed and a token-gated
+download) is built and unit-tested against fakes. Only on-device model
+verification remains, and that is deliberately deferred to after Phase 3 with
+the rest of the device pass.
+
+Pure core (no model/DB needed):
 - `ai/domain/rag/page_chunker.dart` — overlapping chunks tagged with a
   `ChunkSourceRef` (notebook/page/ordinal) for later "jump to source". Reuses
   `chunkByWords` for paragraph packing so there is ONE definition of how text is
@@ -664,12 +670,89 @@ requires the decision and its tradeoffs be recorded here):
   score 0.0 rather than NaN, which would poison a sort) + `topKSimilar` with a
   `minScore` floor, so a notebook that simply doesn't discuss the query returns
   **nothing** rather than its least-irrelevant passage.
+- `ai/domain/rag/text_embedder.dart` — the `TextEmbedder` seam + `EmbedTaskType`
+  {document, query}. **Deliberately NOT on `AiProvider`:** embeddings are
+  model-locked (a corpus is only comparable to itself), whereas `AiProvider` is
+  the *routable* contract the Phase 3 router dispatches across by cost — routing
+  an embed call would silently poison retrieval. EmbeddingGemma is also
+  **asymmetric** (different prefix for stored docs vs. queries; the plugin's
+  `TaskType.prefix` confirms it), so `taskType` is a *required* arg everywhere —
+  the failure is invisible (still returns a vector, just a worse one), so the
+  compiler is made to catch it. `AiProvider.embed` stays and delegates here with
+  query semantics.
+- `ai/domain/rag/note_chunk.dart` — `NoteChunk` (carries `embeddingModelId` +
+  `contentSignature`), `PageIndexState`, and `pageTextSignature` (over the TEXT,
+  not the scene shape — embedding is the expensive step, so the cheapest correct
+  question is "would the chunks come out the same?").
+- `ai/domain/rag/rag_retriever.dart` — notebook-scoped semantic search. Skips
+  chunks from a *different* model rather than ranking across incompatible
+  spaces; returns empty (no model load) for a blank query or an empty/fully-
+  stale notebook. `kMinRelevance = 0.45` is **provisional** — the one number
+  that can only be measured; tune against real vectors on the Pad before 2.3.
+- `ai/domain/rag/rag_indexer.dart` — incremental. Skips a page whose
+  (signature, modelId) already match; re-embeds when EITHER changed (a model
+  swap must not leave a never-edited page permanently invisible); clears chunks
+  for an emptied page (deleted text must stop being searchable/quotable); one
+  batch per page (the model load is the cost).
 
-**Remaining in 2.2:** `NoteChunk` Isar collection + store seam,
-`EmbeddingModelSpec` + token resolution, real `AiProvider.embed()` via
-flutter_gemma_embeddings, `rag_retriever.dart`, and incremental re-embed hooked
-to the Context Engine's existing content-signature (never re-embed a whole
-notebook on a keystroke).
+Data + runtime seams (fake-tested; plugin needs a device):
+- `ai/data/embeddings/embedder_spec.dart` — `EmbedderSpec.active`
+  (EmbeddingGemma seq512, verified against the HF API on 2026-07-17: repo is
+  `gated: auto`, 401 without a token, seq512 = same 170.8 MB weights as seq256
+  but avoids padding waste of longer variants; generic build chosen over the
+  per-SoC ones since the Pad's SM7675 matches none). Named `EmbedderSpec`, NOT
+  `EmbeddingModelSpec` — flutter_gemma already exports that name.
+- `ai/data/embeddings/embedder_adapter.dart` — install/inference seams mirroring
+  `gemma_adapter.dart`. **The token guard gates DOWNLOADS, not activations:**
+  `open()` re-activates an already-downloaded model with a null token after a
+  restart, so guarding there would kill embedding on a model already on disk —
+  the guard fires only when a real network fetch impends. `GemmaBootstrap` now
+  registers BOTH the LLM engine and the embedding backend in its one memoized
+  `initialize` (backends are opt-in; whoever inits first would otherwise decide
+  what the other can do).
+- `ai/data/embeddings/local_text_embedder.dart` — `LocalTextEmbedder`: its OWN
+  mutex (load→embed→unload), separate from the LLM's, so a background re-index
+  never parks a user-waiting Summarize (~170 MB next to ~2.4 GB ≈ 7% peak on the
+  8 GB target). Verifies batch count + vector dimensions before returning —
+  a wrong shape would otherwise persist and present as "search silently finds
+  nothing" (cosine treats a length mismatch as 0.0, not an error).
+- `ai/data/embeddings/embedder_download_manager.dart` — sibling of
+  `ModelDownloadManager`, separate because this model is gated + not
+  fetch-on-first-use. Reads the token via a **callback at download time** (the
+  user may paste it after this manager is built), space-checks, forwards
+  progress, wraps failures — but lets `EmbedderTokenRequiredException` through
+  unwrapped since it's already actionable.
+- `ai/data/rag/note_chunk_record.dart` + `note_chunk_store.dart` — Isar
+  persistence. Vectors stored as `float` (Isar's 32-bit `double` typedef) not
+  64-bit: LiteRT emits float32, so the wide column stores no extra information
+  and just doubles the table's dominant field (3 KB vs 6 KB/chunk). Natural key
+  NOT stored — a page's chunks are rewritten wholesale in one txn, so a unique
+  index would be a redundant column whose only other effect is the analyzer
+  flagging Isar's `@experimental` by-index helpers.
+
+Wiring:
+- `ai/presentation/rag_index_scheduler.dart` — rides the Context Engine's
+  existing `onContent` extraction (no second recognition pass) but NOT its 2.5s
+  analysis debounce: embedding costs a ~175 MB load with nobody watching, so a
+  page is indexed after its text sits unchanged for `kIndexIdleDelay` (20s).
+  Never throws (the common failure is "model not downloaded", a normal state);
+  stores nothing on failure so the next attempt retries.
+- `ai_providers.dart` — `textEmbedderProvider`, `noteChunkStoreProvider`,
+  `ragIndexerProvider`, `ragIndexSchedulerProvider`, `ragRetrieverProvider`,
+  `embedderDownloadManagerProvider` (token from Settings). `localAiProvider` now
+  built WITH the embedder, so `supportsEmbeddings` is honestly true. Indexing is
+  scheduled from `onContent` BEFORE the Writing Assistant call (a throw in one
+  sibling listener must not starve the other; scheduling only sets a timer).
+- `main.dart` — `NoteChunkRecordSchema` registered.
+- Settings → AI Models — an `_EmbeddingModelRow` with an explicit Download
+  button (guidance to add a token when none is set), live progress, and delete.
+
+**On-device validation still owed (with the Phase 3 device pass):** confirm the
+gated download works with a real token; confirm a restart re-activates without
+re-downloading (the guard fix above); measure brute-force sweep latency (open
+STOP CONDITION) and tune `kMinRelevance`.
+
+**Remaining in 2.2:** nothing code-wise — 2.3 consumes it.
 
 **Remaining in Phase 2:** 2.3 wire RAG into Summarize + "Ask your notes",
 2.4 Knowledge Graph, 2.5 Study Planner.

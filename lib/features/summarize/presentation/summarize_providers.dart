@@ -10,7 +10,10 @@ import '../data/cache/summary_store.dart';
 import '../domain/services/summarization_service.dart';
 
 export '../../ai/presentation/ai_providers.dart'
-    show handwritingRecognitionServiceProvider, modelDownloadManagerProvider;
+    show
+        handwritingRecognitionServiceProvider,
+        modelDownloadManagerProvider,
+        embedderDownloadManagerProvider;
 
 final aiRouterProvider = Provider<AiRouter>((ref) {
   final downloads = ref.watch(modelDownloadManagerProvider);

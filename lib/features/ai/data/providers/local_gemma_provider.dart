@@ -14,6 +14,7 @@
 import 'dart:async';
 
 import '../../domain/ai_provider.dart';
+import '../../domain/rag/text_embedder.dart';
 import '../llm/gemma_adapter.dart';
 import '../llm/llm_exceptions.dart';
 import '../llm/llm_model_spec.dart';
@@ -26,10 +27,17 @@ class LocalGemmaProvider implements AiProvider {
   final LlmModelSpec spec;
   final LlmRuntime _runtime;
 
+  /// Backs [embed]. Optional because embedding is a SEPARATE model (Phase 2's
+  /// EmbeddingGemma) that a caller may not have wired: without it this provider
+  /// honestly reports `supportsEmbeddings: false` rather than pretending.
+  final TextEmbedder? _embedder;
+
   LocalGemmaProvider({
     this.spec = LlmModelSpec.active,
     LlmRuntime? runtime,
-  }) : _runtime = runtime ?? FlutterGemmaRuntime();
+    TextEmbedder? embedder,
+  })  : _runtime = runtime ?? FlutterGemmaRuntime(),
+        _embedder = embedder;
 
   /// Mutex: chain of futures; each call awaits the previous one. Held for the
   /// whole stream so the load→generate→unload lifecycle never overlaps.
@@ -42,7 +50,7 @@ class LocalGemmaProvider implements AiProvider {
         contextWindowTokens: spec.maxTokens,
         supportsStreaming: true,
         supportsVision: false, // multimodal exists but is not enabled yet
-        supportsEmbeddings: false, // Phase 2: flutter_gemma_embeddings
+        supportsEmbeddings: _embedder != null,
         isLocal: true,
         approxCostPerCallUsd: 0.0,
       );
@@ -178,11 +186,24 @@ class LocalGemmaProvider implements AiProvider {
     return earliest;
   }
 
+  /// The platform contract's single-vector entry point, delegated to the
+  /// embedding model (a different model from [spec] — see `text_embedder.dart`).
+  ///
+  /// Embeds with QUERY semantics, because a one-off `embed(text)` on the
+  /// router-facing contract is a search. INDEXING MUST NOT COME THROUGH HERE:
+  /// EmbeddingGemma is asymmetric, and storing query-prefixed vectors would
+  /// degrade retrieval without failing. Indexing goes through
+  /// [TextEmbedder.embedAll] with [EmbedTaskType.document] — which is also the
+  /// only way to amortize the model load across a page's chunks.
   @override
   Future<List<double>> embed(String text) async {
-    throw const AiUnsupportedOperationException(
-      'LocalGemmaProvider has no embedding support yet — planned for Phase 2 '
-      'via flutter_gemma_embeddings (see AI_PROGRESS.md).',
-    );
+    final embedder = _embedder;
+    if (embedder == null) {
+      throw const AiUnsupportedOperationException(
+        'This provider was built without an embedder. Construct it with '
+        'LocalGemmaProvider(embedder: ...) to enable embeddings.',
+      );
+    }
+    return embedder.embedOne(text, taskType: EmbedTaskType.query);
   }
 }

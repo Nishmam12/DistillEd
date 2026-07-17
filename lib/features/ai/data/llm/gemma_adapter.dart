@@ -6,6 +6,7 @@
 // touches the Summarize feature, and app boot stays fast.
 
 import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_gemma_embeddings/flutter_gemma_embeddings.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
 
 import 'llm_exceptions.dart';
@@ -14,11 +15,27 @@ import 'llm_model_spec.dart';
 class GemmaBootstrap {
   static Future<void>? _init;
 
-  /// Registers the LiteRT-LM engine (runs .litertlm models — the runtime the
-  /// Gemma 4 family ships on). Safe to call repeatedly.
+  /// Registers the runtimes the app uses. Safe to call repeatedly.
+  ///
+  /// BOTH engines are registered in this ONE call by necessity, even though
+  /// summarization may be the only feature a session ever touches: the
+  /// registration lists are opt-in ("core registers NONE by default") and this
+  /// future is memoized, so whichever feature initializes first would otherwise
+  /// decide what the other can do for the rest of the process. Registration is
+  /// just a factory list — neither model is loaded or downloaded here, so the
+  /// lazy-init rationale above is preserved.
+  ///
+  /// • [LiteRtLmEngine] runs `.litertlm` models (the Gemma 4 LLM).
+  /// • [LiteRtEmbeddingBackend] runs `.tflite` embedding models (Loop 2.2 RAG).
+  ///
+  /// `initialize` also accepts a global `huggingFaceToken`, deliberately unused:
+  /// it would be captured here, on first use, whereas the token is a per-user
+  /// setting the user may paste at any time. Tokens are passed per-download
+  /// instead (see [FlutterGemmaEmbedderInstaller]).
   static Future<void> ensureInitialized() =>
       _init ??= FlutterGemma.initialize(
         inferenceEngines: const [LiteRtLmEngine()],
+        embeddingBackends: const [LiteRtEmbeddingBackend()],
       );
 }
 

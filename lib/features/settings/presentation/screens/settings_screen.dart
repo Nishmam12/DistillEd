@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/settings_provider.dart';
+import '../../../ai/data/embeddings/embedder_adapter.dart';
+import '../../../ai/data/embeddings/embedder_spec.dart';
+import '../../../ai/data/llm/llm_exceptions.dart';
 import '../../../ai/data/llm/llm_model_spec.dart';
 import '../../../summarize/presentation/summarize_providers.dart';
 
@@ -435,6 +438,10 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           confirmDelete: true,
           onDelete: downloads.delete,
         ),
+        _EmbeddingModelRow(
+          key: ValueKey('embed-$_refresh'),
+          onChanged: () => setState(() => _refresh++),
+        ),
         _modelRow(
           key: ValueKey('en-$_refresh'),
           icon: Icons.draw_outlined,
@@ -518,6 +525,124 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
     }
     await onDelete();
     if (mounted) setState(() => _refresh++);
+  }
+}
+
+/// The embedding model row. Unlike the fetch-on-first-use rows above, this
+/// model is gated and large, so its download is explicit: a button when a token
+/// is set, guidance to add one when it isn't, live progress while running, and
+/// a delete once installed.
+class _EmbeddingModelRow extends ConsumerStatefulWidget {
+  /// Called after a state change (download finished, deleted) so the parent can
+  /// re-query every model row's install status.
+  final VoidCallback onChanged;
+
+  const _EmbeddingModelRow({super.key, required this.onChanged});
+
+  @override
+  ConsumerState<_EmbeddingModelRow> createState() => _EmbeddingModelRowState();
+}
+
+class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow> {
+  int? _progress; // non-null while downloading
+  String? _error;
+
+  static const _spec = EmbedderSpec.active;
+
+  Future<void> _download() async {
+    final manager = ref.read(embedderDownloadManagerProvider);
+    setState(() {
+      _progress = 0;
+      _error = null;
+    });
+    final sub = manager.progress.listen((p) {
+      if (mounted) setState(() => _progress = p);
+    });
+    try {
+      await manager.download();
+      if (mounted) widget.onChanged(); // flips the row to "Downloaded"
+    } on EmbedderTokenRequiredException catch (e) {
+      _fail(e.message);
+    } on InsufficientStorageException catch (e) {
+      _fail(e.message);
+    } on ModelDownloadCancelledException {
+      _fail('Download cancelled.');
+    } on LlmException catch (e) {
+      _fail(e.message);
+    } finally {
+      await sub.cancel();
+      if (mounted) setState(() => _progress = null);
+    }
+  }
+
+  void _fail(String message) {
+    if (mounted) setState(() => _error = message);
+  }
+
+  Future<void> _delete() async {
+    await ref.read(embedderDownloadManagerProvider).delete();
+    widget.onChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sizeMb = _spec.approxSizeBytes / (1024 * 1024);
+    final sizeLabel = '${sizeMb.round()} MB';
+    final hasToken = ref.watch(settingsProvider).hasHuggingFaceToken;
+
+    if (_progress != null) {
+      return _SettingsRow(
+        icon: Icons.travel_explore_outlined,
+        title: '${_spec.displayName} (search)',
+        subtitle: 'Downloading… $_progress%',
+        trailing: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            value: (_progress! > 0) ? _progress! / 100 : null,
+          ),
+        ),
+      );
+    }
+
+    return FutureBuilder<bool>(
+      future: ref.read(embedderDownloadManagerProvider).isInstalled(),
+      builder: (context, snapshot) {
+        final installed = snapshot.data ?? false;
+        final checking = !snapshot.hasData && !snapshot.hasError;
+
+        final String subtitle;
+        if (_error != null) {
+          subtitle = _error!;
+        } else if (checking) {
+          subtitle = 'Checking…';
+        } else if (installed) {
+          subtitle = '$sizeLabel · Downloaded';
+        } else if (!hasToken) {
+          subtitle = 'Add a HuggingFace token above to download';
+        } else {
+          subtitle = '$sizeLabel · Powers semantic search across your notes';
+        }
+
+        return _SettingsRow(
+          icon: Icons.travel_explore_outlined,
+          title: '${_spec.displayName} (search)',
+          subtitle: subtitle,
+          trailing: installed
+              ? IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      color: AppColors.textSecondary),
+                  tooltip: 'Delete model',
+                  onPressed: _delete,
+                )
+              : TextButton(
+                  onPressed: hasToken ? _download : null,
+                  child: const Text('Download'),
+                ),
+        );
+      },
+    );
   }
 }
 
