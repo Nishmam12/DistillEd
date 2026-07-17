@@ -594,10 +594,74 @@ wires both feeds so they fill automatically with no new UI and no new timers.
   per-concept attribution via a fake repository (no Isar in tests).
 - **Not device-run.** No UI surfaces this yet — Loops 2.2–2.5 consume it.
 
-**Remaining in Phase 2:** 2.2 on-device RAG (STOP CONDITION: the embedding
-model/runtime must be chosen with Nabil first — `AiProvider.embed()` is still a
-stub), 2.3 wire RAG into Summarize + "Ask your notes", 2.4 Knowledge Graph,
-2.5 Study Planner.
+### Loop 2.2 — On-device RAG — IN PROGRESS (2026-07-17)
+
+**STOP CONDITION RESOLVED — embedding model + runtime chosen** (the phase spec
+requires the decision and its tradeoffs be recorded here):
+
+- **Runtime: `flutter_gemma_embeddings` 1.0.2.** Requires `flutter_gemma
+  ^1.0.1`, so it works against our exact `flutter_gemma: 1.3.0` pin with no LLM
+  churn, and it runs on the **same LiteRT + FFI path** as the existing Gemma 4
+  E2B — no second native inference stack. API:
+  `FlutterGemma.installEmbedder().modelFromNetwork(..).tokenizerFromNetwork(..)
+  .install()` → `generateEmbeddings(texts, taskType)`.
+  - `flutter_gemma_embedder` (singular) is **DISCONTINUED** — do not use it
+    (it's the top search hit; it was replaced by the plural package).
+  - Rejected: ONNX Runtime Mobile + MiniLM — a whole second runtime for no
+    quality gain.
+- **Model: EmbeddingGemma 300M** (Nabil's call over Gecko, for quality).
+
+  | | Gecko 110M | **EmbeddingGemma 300M** |
+  |---|---|---|
+  | download | ~110 MB | **179–196 MB** (.tflite, seq 256/512/1024/2048) |
+  | latency | ~109 ms/doc, 130 ms search | slower (~3× params) |
+  | auth | ungated | **gated** |
+  | dims | 768 | 768 (Matryoshka → 128/256/512) |
+  | quality | good | best-in-class multilingual <500M (MTEB), 100+ langs |
+
+  Both are 768-dim, so switching later is a **re-embed, not a rewrite**; the
+  choice lives behind one constant (`EmbeddingModelSpec.active`, mirroring
+  `LlmModelSpec.active`).
+- **GATING GOTCHA — `litert-community` is NOT uniformly ungated.**
+  `llm_model_spec.dart`'s comment ("the litert-community repos are ungated")
+  holds for `gemma-4-E2B-it-litert-lm` but **NOT** for
+  `litert-community/embeddinggemma-300m`, which is gated ("you have to accept
+  the conditions to access its files"). An ungated community re-upload exists
+  (`kontextdev/embeddinggemma-300m-litertlm`, ~171 MB) but ships **no
+  tokenizer** and is unverified third-party — rejected.
+- **Token delivery (never hardcoded — the GitHub repo is public):** resolved at
+  runtime, in priority order: (1) a **user-supplied token** from Settings — the
+  per-user licence path, and the seam Nabil's planned **user accounts** will
+  plug into; (2) a `--dart-define=HF_TOKEN=...` build-time fallback so Nabil's
+  own Xiaomi Pad validation builds work without typing one.
+  `LlmModelSpec.authToken` already exists for exactly this.
+- **Vector storage: Isar + brute-force cosine** (spec's option (a)). 768 dims ×
+  8 bytes ≈ 6 KB/chunk → ~2,000 chunks ≈ 12 MB, one sweep ≈ 1.5M multiply-adds.
+  `flutter_gemma_rag_qdrant` / `flutter_gemma_rag_sqlite` exist but the spec
+  says don't add a storage engine without profiling proof. **Open STOP
+  CONDITION:** report real numbers from the Pad before reaching for heavier.
+
+**Built so far (pure core, no model/DB needed — 474/474, analyze clean):**
+- `ai/domain/rag/page_chunker.dart` — overlapping chunks tagged with a
+  `ChunkSourceRef` (notebook/page/ordinal) for later "jump to source". Reuses
+  `chunkByWords` for paragraph packing so there is ONE definition of how text is
+  divided (and over-long paragraphs hard-split for free); overlap is prepended
+  from the previous *body* so it can't compound. Budgets in WORDS like every
+  other budget here: 250 words ≈ 330 tokens — inside the spec's 200–400 band
+  AND inside EmbeddingGemma's seq-512 variant with headroom.
+- `ai/domain/rag/vector_math.dart` — `cosineSimilarity` (undefined comparisons
+  score 0.0 rather than NaN, which would poison a sort) + `topKSimilar` with a
+  `minScore` floor, so a notebook that simply doesn't discuss the query returns
+  **nothing** rather than its least-irrelevant passage.
+
+**Remaining in 2.2:** `NoteChunk` Isar collection + store seam,
+`EmbeddingModelSpec` + token resolution, real `AiProvider.embed()` via
+flutter_gemma_embeddings, `rag_retriever.dart`, and incremental re-embed hooked
+to the Context Engine's existing content-signature (never re-embed a whole
+notebook on a keystroke).
+
+**Remaining in Phase 2:** 2.3 wire RAG into Summarize + "Ask your notes",
+2.4 Knowledge Graph, 2.5 Study Planner.
 
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`

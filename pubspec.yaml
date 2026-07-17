@@ -8,7 +8,7 @@ publish_to: 'none'
 # Bump the semantic <major>.<minor>.<patch> by hand (and add a CHANGELOG.md
 # entry) when a change warrants it. The running app reads this via
 # package_info_plus, so the "About" screen always shows what's installed.
-version: 2.0.0+8
+version: 2.0.0+9
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
