@@ -629,12 +629,23 @@ requires the decision and its tradeoffs be recorded here):
   the conditions to access its files"). An ungated community re-upload exists
   (`kontextdev/embeddinggemma-300m-litertlm`, ~171 MB) but ships **no
   tokenizer** and is unverified third-party — rejected.
-- **Token delivery (never hardcoded — the GitHub repo is public):** resolved at
-  runtime, in priority order: (1) a **user-supplied token** from Settings — the
-  per-user licence path, and the seam Nabil's planned **user accounts** will
-  plug into; (2) a `--dart-define=HF_TOKEN=...` build-time fallback so Nabil's
-  own Xiaomi Pad validation builds work without typing one.
-  `LlmModelSpec.authToken` already exists for exactly this.
+- **Token delivery: a per-user Settings field, and nothing else** (Nabil's
+  call). A `--dart-define` fallback was considered and **dropped**: one
+  mechanism, no token ever baked into a build (the GitHub repo is public), and
+  each user accepts Google's licence under their own account. This is the seam
+  Nabil's planned **user accounts** will later fill in.
+  - Shipped: `SettingsState.huggingFaceToken` / `hasHuggingFaceToken` /
+    `setHuggingFaceToken()` (trims — pasted tokens carry whitespace, and a stray
+    space 401s confusingly; blank removes the key), persisted under
+    `ai.huggingFaceToken`, with an obscured paste dialog in Settings → AI.
+    Named generally rather than embedding-specific: it unlocks ANY gated model.
+    `LlmModelSpec.authToken` already exists to receive it.
+  - Storage is app-private SharedPreferences (sandboxed per-app) —
+    proportionate for a read-only model-download token; revisit with secure
+    storage if account credentials ever live there.
+  - **One-time user step before embeddings work:** accept the licence at
+    `huggingface.co/litert-community/embeddinggemma-300m`, create a read token,
+    paste it into Settings.
 - **Vector storage: Isar + brute-force cosine** (spec's option (a)). 768 dims ×
   8 bytes ≈ 6 KB/chunk → ~2,000 chunks ≈ 12 MB, one sweep ≈ 1.5M multiply-adds.
   `flutter_gemma_rag_qdrant` / `flutter_gemma_rag_sqlite` exist but the spec

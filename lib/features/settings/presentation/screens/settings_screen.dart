@@ -74,6 +74,21 @@ class SettingsScreen extends ConsumerWidget {
                   onChanged: notifier.setRecognitionLanguage,
                 ),
               ),
+              _SettingsRow(
+                icon: Icons.key_outlined,
+                title: 'HuggingFace Token',
+                subtitle: settings.hasHuggingFaceToken
+                    ? 'Added — gated models can be downloaded'
+                    : 'Needed for gated models like EmbeddingGemma. Your own '
+                        'token, kept on this device.',
+                trailing: TextButton(
+                  onPressed: () => _editHuggingFaceToken(context, ref),
+                  child: Text(
+                    settings.hasHuggingFaceToken ? 'Change' : 'Add',
+                    style: const TextStyle(color: AppColors.accentStrong),
+                  ),
+                ),
+              ),
             ],
           ),
           const _SectionHeader('AI Models'),
@@ -119,6 +134,105 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Prompts for the user's own HuggingFace token and stores it. A blank result
+/// clears it; cancelling changes nothing.
+Future<void> _editHuggingFaceToken(BuildContext context, WidgetRef ref) async {
+  final current = ref.read(settingsProvider).huggingFaceToken;
+  final token = await showDialog<String>(
+    context: context,
+    builder: (_) => _HuggingFaceTokenDialog(initial: current),
+  );
+  if (token == null) return;
+  await ref.read(settingsProvider.notifier).setHuggingFaceToken(token);
+}
+
+class _HuggingFaceTokenDialog extends StatefulWidget {
+  final String initial;
+  const _HuggingFaceTokenDialog({required this.initial});
+
+  @override
+  State<_HuggingFaceTokenDialog> createState() =>
+      _HuggingFaceTokenDialogState();
+}
+
+class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initial);
+
+  /// Hidden by default — it's a credential, and settings get shown to other
+  /// people over a shoulder more often than you'd think.
+  bool _obscured = true;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: const Text('HuggingFace Token'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Some models — like EmbeddingGemma, which powers searching your '
+            'notes — are gated: HuggingFace asks you to accept the licence '
+            'first.\n\n'
+            'Accept it on the model page, create a read token, and paste it '
+            'here. It stays on this device and is only ever sent to '
+            'HuggingFace to download the model.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            obscureText: _obscured,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: InputDecoration(
+              hintText: 'hf_…',
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                tooltip: _obscured ? 'Show' : 'Hide',
+                icon: Icon(
+                  _obscured
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  size: 20,
+                ),
+                onPressed: () => setState(() => _obscured = !_obscured),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        if (widget.initial.isNotEmpty)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(''),
+            child: const Text('Remove',
+                style: TextStyle(color: AppColors.accentRed)),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel',
+              style: TextStyle(color: AppColors.textSecondary)),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Save',
+              style: TextStyle(color: AppColors.textOnAccent)),
+        ),
+      ],
     );
   }
 }
