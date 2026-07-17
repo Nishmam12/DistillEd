@@ -603,6 +603,16 @@ This master plan is the product vision. The actual execution was split into phas
 - **Platform scope is Android-only for now**, matching the current repo (no `ios/` directory exists).
 - **Handwriting-to-text is a required, load-bearing addition not covered by the original plan.** InkFlow stores notes as ink strokes and typed text boxes, not plain text — the Context Engine cannot function without an on-device handwriting recognition step feeding it. This is Phase 0 of the execution prompts.
 
+## Findings logged during execution (plan kept in check)
+
+Refinements discovered while building, recorded here so the vision doc stays honest about what was actually done (details in `AI_PROGRESS.md`):
+
+- **Relationships are extracted in the Context Engine's existing pass, not a separate step.** The "Relationships" and "Knowledge Graph" sections above read as distinct capabilities; in practice the analysis call already running every ~2.5s was extended to also emit `relatedConcepts`, so the graph is a free by-product — no extra model call, no extra latency.
+- **Graph visualization is a dependency-free custom layout.** A single learner's notebook graph is dozens of nodes, so a self-contained, deterministic force-directed layout + `CustomPainter` was chosen over a graph package — smaller, fully unit-testable, and consistent with the repo's habit of not adding dependencies for small, controllable problems.
+- **"Concepts referenced but never studied" fall out of the graph for free.** Edge endpoints with no mastery record become distinct "gap" nodes — this is the same signal the Study Planner (2.5) needs, so the graph and planner share one source of truth rather than each re-deriving gaps.
+- **RAG for notebook-summarize was intentionally NOT wired.** Comprehensive summarization already uses map-reduce (chunk-and-reduce); retrieval would drop content and regress it. Query-driven RAG serves "Ask your notes" instead. See the 2.3 note in `AI_PROGRESS.md`.
+- **Embedding model is gated + per-user-token.** EmbeddingGemma needs a HuggingFace token; delivered as a per-user Settings field (no token ever baked into the public repo), with a debug-only local fallback for development. See the 2.2 notes.
+
 ---
 
 # Claude Prompt

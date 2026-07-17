@@ -28,6 +28,7 @@ You analyze one page of a student's notes. Reply with ONLY a single JSON object 
  "namedEntities": ["person, place, work, or thing the note names"],
  "definitions": {"term": "definition exactly as the note states it"},
  "knowledgeGaps": ["gap"],
+ "relatedConcepts": [{"from": "concept", "to": "concept", "relation": "is-a"}],
  "estimatedLevel": "beginner",
  "confidence": 0.5}
 
@@ -35,6 +36,7 @@ Rules:
 - Use only what the note actually says. Never invent facts, names, or definitions.
 - Put a term in "definitions" only when the note itself defines it.
 - "knowledgeGaps" are study gaps a tutor would flag: terms used but never defined, sections that end mid-thought, claims with no supporting detail.
+- "relatedConcepts" captures how the concepts connect, as directed pairs. "relation" is a short label such as "is-a", "part-of", "leads-to", "causes", or "related-to". Only include a pair when the note itself implies the link; both ends should be concepts you listed.
 - "estimatedLevel" is the writer's apparent understanding: "beginner", "intermediate", or "advanced".
 - "confidence" is 0.0 to 1.0 — how sure you are of the topic read; very little text deserves a low value.
 - Keep each list to at most 8 short items. Use [] or {} when there is nothing to report.''';

@@ -4,6 +4,8 @@
 
 import 'package:flutter/foundation.dart' show immutable;
 
+import '../knowledge_graph/concept_relation.dart';
+
 /// The writer's apparent grasp of the page's topic.
 enum KnowledgeLevel { beginner, intermediate, advanced }
 
@@ -27,6 +29,10 @@ class PageContext {
   /// "section ends mid-thought".
   final List<String> knowledgeGaps;
 
+  /// How the page's concepts relate (`from —relation→ to`), for the Knowledge
+  /// Graph. Emitted by the SAME analysis call — no second model pass.
+  final List<ConceptRelation> relatedConcepts;
+
   final KnowledgeLevel estimatedLevel;
 
   /// 0.0–1.0 — the engine's confidence in this read.
@@ -39,6 +45,7 @@ class PageContext {
     this.namedEntities = const [],
     this.definitions = const {},
     this.knowledgeGaps = const [],
+    this.relatedConcepts = const [],
     this.estimatedLevel = KnowledgeLevel.beginner,
     this.confidence = 0.0,
   });
@@ -53,7 +60,8 @@ class PageContext {
       keyConcepts.isEmpty &&
       namedEntities.isEmpty &&
       definitions.isEmpty &&
-      knowledgeGaps.isEmpty;
+      knowledgeGaps.isEmpty &&
+      relatedConcepts.isEmpty;
 
   /// Tolerant parse of model-produced JSON: missing or mistyped fields fall
   /// back to their defaults rather than throwing — a small local model's
@@ -66,6 +74,7 @@ class PageContext {
       namedEntities: _strings(json['namedEntities']),
       definitions: _stringMap(json['definitions']),
       knowledgeGaps: _strings(json['knowledgeGaps']),
+      relatedConcepts: ConceptRelation.parseList(json['relatedConcepts']),
       estimatedLevel: _level(json['estimatedLevel']),
       confidence: _confidence(json['confidence']),
     );

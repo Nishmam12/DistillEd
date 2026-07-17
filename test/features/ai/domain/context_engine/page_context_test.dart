@@ -27,6 +27,31 @@ void main() {
       expect(context.isEmpty, isFalse);
     });
 
+    test('parses relatedConcepts into graph edges, dropping malformed ones', () {
+      final context = PageContext.fromJson(const {
+        'currentTopic': 'Machine Learning',
+        'relatedConcepts': [
+          {'from': 'Machine Learning', 'to': 'Regression', 'relation': 'includes'},
+          {'from': 'X'}, // malformed → dropped
+          {'from': 'A', 'to': 'A'}, // self-loop → dropped
+        ],
+      });
+
+      expect(context.relatedConcepts, hasLength(1));
+      expect(context.relatedConcepts.single.fromKey, 'machine learning');
+      expect(context.relatedConcepts.single.toKey, 'regression');
+      expect(context.isEmpty, isFalse);
+    });
+
+    test('a page with only relatedConcepts is not considered empty', () {
+      final context = PageContext.fromJson(const {
+        'relatedConcepts': [
+          {'from': 'A', 'to': 'B', 'relation': 'leads-to'},
+        ],
+      });
+      expect(context.isEmpty, isFalse);
+    });
+
     test('missing fields fall back to defaults instead of throwing', () {
       final context = PageContext.fromJson(const {'currentTopic': 'Algebra'});
 

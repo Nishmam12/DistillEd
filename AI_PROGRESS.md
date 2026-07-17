@@ -814,7 +814,52 @@ summarize.
 **Remaining:** the full end-to-end device check with a real indexed multi-page
 notebook (with the Phase 3 pass) — source-jump navigation is now wired.
 
-**Remaining in Phase 2:** 2.4 Knowledge Graph, 2.5 Study Planner.
+### Loop 2.4 — Knowledge Graph — CODE-COMPLETE (2026-07-17)
+
+A notebook's concepts drawn as a map, coloured + sized by mastery, with the
+relationships the Context Engine inferred as edges. **557/557, analyze clean.**
+
+- **Relationships ride the EXISTING analysis pass — no second LLM call** (the
+  spec's key ask). The Context Engine schema now also requests
+  `relatedConcepts: [{from, to, relation}]`; `PageContext` parses them
+  tolerantly (`ConceptRelation.parseList` — drops self-loops, blank endpoints,
+  duplicate (from,to) pairs, caps the relation label). So the graph is a free
+  by-product of the analysis already happening every ~2.5s.
+- `domain/knowledge_graph/concept_relation.dart` — the edge value type; folds
+  endpoints with the SAME `normalizeConceptKey` concepts use, so an edge joins
+  to a mastery node with no translation table.
+- `domain/knowledge_graph/knowledge_graph.dart` — pure builder. Nodes come from
+  BOTH studied concepts (real mastery) AND edge endpoints; an endpoint with no
+  mastery record becomes a `referencedOnly` node — the "mentioned but never
+  studied" gap the graph exists to reveal, and exactly the signal Loop 2.5's
+  planner will consume. Nodes carry `degree` (drives size + a stable sort).
+- `domain/knowledge_graph/graph_layout.dart` — **dependency-free** Fruchterman–
+  Reingold layout. Chose a ~80-line pure, deterministic (no RNG; circle-seeded,
+  key-hash symmetry break) pass over the `graphview` package: a notebook graph
+  is dozens of nodes, and this is smaller, fully unit-testable (asserts
+  determinism + that connected nodes settle closer), and never breaks on a
+  package bump — matching how this repo already avoids deps (uuid, EOL sqlite
+  libs). Returns positions in the unit square; the painter scales them.
+- `data/memory/concept_relation_record.dart` + repository — edges persisted
+  idempotently by natural key (notebookId, fromKey, toKey); `observePageContext`
+  gained an optional `relations` param (fed from `context.relatedConcepts` in
+  the `onContext` hook); `relationsForNotebook` reads them back. Registered as
+  `ConceptRelationRecordSchema` in `main.dart`.
+- `presentation/knowledge_graph/knowledge_graph_screen.dart` — a dedicated
+  screen (route `/note2/:id/graph`, app-bar `hub` icon), reached from the
+  editor. `knowledgeGraphProvider` (FutureProvider.family) builds the graph from
+  Learning Memory; a `CustomPainter` draws directed edges (with arrowheads) and
+  mastery-coloured nodes (hollow ring for referenced-only gaps), inside an
+  `InteractiveViewer` for pan/zoom, with a legend. Loading/empty/error surfaces.
+
+**Bug caught (same class as the earlier U+001F):** a stray **NUL byte** landed
+in `concept_relation.dart` where a space belonged — `flutter analyze` tolerated
+it but the Isar generator's parser did not. Found via `od -c`, stripped from all
+new files with `perl -pe 's/\x00/ /g'`. Worth a standing check when a generator
+errors on a syntactically-fine file.
+
+**Remaining in Phase 2:** 2.5 Study Planner (which consumes weakConcepts /
+dueForReview / the graph's referenced-only gaps).
 
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`

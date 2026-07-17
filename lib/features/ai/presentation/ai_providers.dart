@@ -27,6 +27,7 @@ import '../domain/features/flashcard_generator.dart';
 import '../domain/features/quiz_generator.dart';
 import '../domain/features/notes_qa.dart';
 import '../domain/features/writing_assistant.dart';
+import '../domain/knowledge_graph/knowledge_graph.dart';
 import '../domain/page_content_extractor.dart';
 import '../domain/rag/rag_indexer.dart';
 import '../domain/rag/rag_retriever.dart';
@@ -208,6 +209,18 @@ final flashcardNotifierProvider =
 final learningMemoryProvider =
     Provider<LearningMemoryRepository>((ref) => IsarLearningMemoryRepository());
 
+/// The notebook's concept map: mastery-tagged nodes + Context-Engine edges,
+/// assembled from Learning Memory. A FutureProvider.family so the graph screen
+/// can show loading/empty/error states per notebook. Not cached across the app
+/// beyond Riverpod's own lifecycle — cheap to rebuild from Isar.
+final knowledgeGraphProvider =
+    FutureProvider.family<KnowledgeGraph, int>((ref, notebookId) async {
+  final memory = ref.watch(learningMemoryProvider);
+  final concepts = await memory.allConcepts(notebookId);
+  final relations = await memory.relationsForNotebook(notebookId);
+  return KnowledgeGraph.build(concepts: concepts, relations: relations);
+});
+
 /// Session cache of the last suggestions per page (see [pageContextCacheProvider]).
 final pageWritingCacheProvider =
     Provider<PageWritingCache>((ref) => PageWritingCache());
@@ -274,6 +287,8 @@ final pageContextProvider = StateNotifierProvider.autoDispose
             pageId: key.pageId,
             keyConcepts: context.keyConcepts,
             knowledgeGaps: context.knowledgeGaps,
+            // Knowledge Graph edges, captured from the same analysis pass.
+            relations: context.relatedConcepts,
           )
           .catchError((Object _) {}),
     ),

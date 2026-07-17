@@ -10,6 +10,7 @@ import '../features/settings/presentation/screens/about_screen.dart';
 import '../editor/ui/scene_editor_screen.dart';
 import '../editor/ui/notebook_editor_screen.dart';
 import '../editor/ui/notebook_book_view_screen.dart';
+import '../features/ai/presentation/knowledge_graph/knowledge_graph_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -48,6 +49,13 @@ final GoRouter appRouter = GoRouter(
           builder: (context, state) {
             final id = int.parse(state.pathParameters['id']!);
             return NotebookBookViewScreen(notebookId: id);
+          },
+        ),
+        GoRoute(
+          path: 'graph',
+          builder: (context, state) {
+            final id = int.parse(state.pathParameters['id']!);
+            return KnowledgeGraphScreen(notebookId: id);
           },
         ),
       ],

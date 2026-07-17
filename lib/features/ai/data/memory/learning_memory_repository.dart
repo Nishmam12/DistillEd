@@ -10,11 +10,13 @@
 import 'package:isar/isar.dart';
 
 import '../../../../shared/isar/isar_service.dart';
+import '../../domain/knowledge_graph/concept_relation.dart';
 import '../../domain/memory/concept_mastery.dart';
 import '../../domain/memory/learning_preferences.dart';
 import '../../domain/memory/quiz_attempt.dart';
 import '../../domain/memory/study_session.dart';
 import 'concept_mastery_record.dart';
+import 'concept_relation_record.dart';
 import 'learning_preferences_record.dart';
 import 'quiz_attempt_record.dart';
 import 'study_session_record.dart';
@@ -31,6 +33,7 @@ abstract class LearningMemoryRepository {
     required int notebookId,
     required Iterable<String> keyConcepts,
     Iterable<String> knowledgeGaps = const [],
+    Iterable<ConceptRelation> relations = const [],
     int? pageId,
     DateTime? at,
   });
@@ -40,6 +43,10 @@ abstract class LearningMemoryRepository {
 
   /// Every tracked concept in a notebook.
   Future<List<ConceptMastery>> allConcepts(int notebookId);
+
+  /// Every stored concept relationship in a notebook — the Knowledge Graph's
+  /// edges.
+  Future<List<ConceptRelation>> relationsForNotebook(int notebookId);
 
   /// Concepts the learner is measurably struggling with, weakest first.
   Future<List<ConceptMastery>> weakConcepts(int notebookId);
@@ -76,11 +83,15 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
   IsarCollection<QuizAttemptRecord> get _attempts =>
       IsarService.instance.quizAttemptRecords;
 
+  IsarCollection<ConceptRelationRecord> get _relations =>
+      IsarService.instance.conceptRelationRecords;
+
   @override
   Future<void> observePageContext({
     required int notebookId,
     required Iterable<String> keyConcepts,
     Iterable<String> knowledgeGaps = const [],
+    Iterable<ConceptRelation> relations = const [],
     int? pageId,
     DateTime? at,
   }) {
@@ -103,6 +114,23 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
         await _putConcept(updated, existingId: existing?.id);
       }
 
+      // Relationships: upsert by the natural key so re-analysis refreshes an
+      // edge rather than duplicating it. Concept NODES are not minted here — a
+      // referenced-but-unstudied concept becomes a node at graph-build time
+      // (KnowledgeGraph.referencedOnly); Learning Memory only tracks concepts
+      // the page actually taught (keyConcepts above).
+      for (final r in relations) {
+        if (!r.isValid) continue;
+        final existing = await _findRelation(notebookId, r.fromKey, r.toKey);
+        final record = ConceptRelationRecord.fromDomain(
+          r,
+          notebookId: notebookId,
+          at: seenAt,
+        );
+        if (existing != null) record.id = existing.id;
+        await _relations.put(record);
+      }
+
       final gaps = knowledgeGaps.where((g) => g.trim().isNotEmpty).toList();
       if (gaps.isEmpty) return;
 
@@ -122,6 +150,13 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
         }
       }
     });
+  }
+
+  @override
+  Future<List<ConceptRelation>> relationsForNotebook(int notebookId) async {
+    final rows =
+        await _relations.filter().notebookIdEqualTo(notebookId).findAll();
+    return [for (final r in rows) r.toDomain()];
   }
 
   @override
@@ -231,6 +266,15 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
           .filter()
           .notebookIdEqualTo(notebookId)
           .conceptKeyEqualTo(key)
+          .findFirst();
+
+  Future<ConceptRelationRecord?> _findRelation(
+          int notebookId, String fromKey, String toKey) =>
+      _relations
+          .filter()
+          .notebookIdEqualTo(notebookId)
+          .fromKeyEqualTo(fromKey)
+          .toKeyEqualTo(toKey)
           .findFirst();
 
   /// Writes [mastery], reusing [existingId] so a known concept is updated in

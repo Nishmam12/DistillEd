@@ -10,6 +10,7 @@ import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
 import 'package:inkflow/features/ai/data/memory/learning_memory_repository.dart';
 import 'package:inkflow/features/ai/domain/ai_provider.dart';
 import 'package:inkflow/features/ai/domain/features/quiz_generator.dart';
+import 'package:inkflow/features/ai/domain/knowledge_graph/concept_relation.dart';
 import 'package:inkflow/features/ai/domain/memory/concept_mastery.dart';
 import 'package:inkflow/features/ai/domain/memory/learning_preferences.dart';
 import 'package:inkflow/features/ai/domain/memory/quiz_attempt.dart';
@@ -32,9 +33,14 @@ class _FakeMemory implements LearningMemoryRepository {
     required int notebookId,
     required Iterable<String> keyConcepts,
     Iterable<String> knowledgeGaps = const [],
+    Iterable<ConceptRelation> relations = const [],
     int? pageId,
     DateTime? at,
   }) async {}
+
+  @override
+  Future<List<ConceptRelation>> relationsForNotebook(int notebookId) async =>
+      const [];
 
   @override
   Future<List<ConceptMastery>> allConcepts(int notebookId) async => const [];

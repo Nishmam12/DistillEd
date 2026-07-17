@@ -16,6 +16,13 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 ### Added
+- **Knowledge graph.** A new graph icon in the notebook toolbar opens a concept
+  map built automatically from your notes: each concept is a node coloured by
+  how well you know it (learning → practiced → mastered), linked by the
+  relationships the AI spotted while reading. Concepts your notes *mention but
+  never actually explain* show as hollow "gap" nodes, so you can see what's
+  missing at a glance. Pan and zoom to explore. Built entirely from analysis
+  that was already happening — no extra waiting.
 - **Ask your notes (on-device).** A new **Ask notes** button in the AI sidebar
   opens a question box: ask something in plain language and get an answer drawn
   *only* from your own notes across the whole notebook, with **source cards**

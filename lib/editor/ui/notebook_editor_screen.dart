@@ -121,6 +121,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             onPressed: () => _toggleAiPanel(key),
           ),
           IconButton(
+            tooltip: 'Knowledge graph',
+            icon: const Icon(Icons.hub_outlined),
+            onPressed: () => context.push('/note2/${widget.notebookId}/graph'),
+          ),
+          IconButton(
             tooltip: 'Book view',
             icon: const Icon(Icons.menu_book_outlined),
             onPressed: () => context.push('/note2/${widget.notebookId}/book'),
