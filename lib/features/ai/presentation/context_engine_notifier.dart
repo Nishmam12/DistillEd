@@ -75,6 +75,11 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
   /// own polling loop. Never allowed to break analysis (see [_notifyContent]).
   final void Function(PageContent content)? _onContent;
 
+  /// Fired with each freshly analyzed [PageContext]. Lets Phase 2's Learning
+  /// Memory record concept exposure off this same debounce — again, no second
+  /// analysis loop. Never allowed to break analysis (see [_notifyContext]).
+  final void Function(PageContext context)? _onContext;
+
   /// How long after the last scene change analysis fires. Injectable for
   /// tests; ~2.5s per the phase spec ("after the user pauses, not per stroke").
   final Duration debounce;
@@ -99,6 +104,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
     required int pageId,
     required String Function() languageCode,
     void Function(PageContent content)? onContent,
+    void Function(PageContext context)? onContext,
     this.debounce = const Duration(milliseconds: 2500),
   })  : _engine = engine,
         _extractor = extractor,
@@ -107,6 +113,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
         _pageId = pageId,
         _languageCode = languageCode,
         _onContent = onContent,
+        _onContext = onContext,
         super(const AsyncValue.loading()) {
     final cached = _cache.find(pageId);
     if (cached != null) state = AsyncValue.data(cached.context);
@@ -165,6 +172,9 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
           await _engine.analyze(content, previousContext: cached?.context);
       _cache.save(_pageId, signature, context);
       if (mounted) state = AsyncValue.data(context);
+      // Durable concept exposure (Phase 2 Learning Memory) — only for a real
+      // analysis; the empty short-circuit above has nothing to remember.
+      _notifyContext(context);
       // Fan out the already-extracted content to the Writing Assistant, off the
       // same debounce. After analysis, so the two model calls run in sequence
       // (the local runtime serialises them anyway) rather than contending.
@@ -194,6 +204,18 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       onContent(content);
     } catch (_) {
       // Deliberately ignored — a misbehaving sibling can't break analysis.
+    }
+  }
+
+  /// Invokes [_onContext], swallowing any failure: remembering concepts is a
+  /// background nicety and must never take down the page's analysis.
+  void _notifyContext(PageContext context) {
+    final onContext = _onContext;
+    if (onContext == null) return;
+    try {
+      onContext(context);
+    } catch (_) {
+      // Deliberately ignored — see [_notifyContent].
     }
   }
 

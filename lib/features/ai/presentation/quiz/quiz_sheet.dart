@@ -1,7 +1,13 @@
 // The quiz-taking surface: a near-full-height sheet that renders generation
 // progress, then the interactive quiz, grades the attempt locally, and reveals
-// answers + explanations. Nothing is persisted — durable score history is
-// Phase 2's Learning Memory.
+// answers + explanations.
+//
+// Grading stays UI-local, but checking answers now also files a durable
+// [QuizAttempt] into Phase 2's Learning Memory, attributing each question to the
+// concepts it tested so a miss decrements those concepts specifically. That
+// write is strictly fire-and-forget: remembering must never break grading.
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/features/quiz_generator.dart';
+import '../../domain/memory/concept_mastery.dart';
+import '../../domain/memory/quiz_attempt.dart';
 import '../ai_providers.dart';
 import '../quiz_notifier.dart';
 
@@ -45,7 +53,18 @@ class _QuizSheet extends ConsumerWidget {
             const _Status(label: 'Building your quiz…'),
           QuizDownloadingModel(:final progress) =>
             _Downloading(progress: progress),
-          QuizReady(:final questions) => _QuizRunner(questions: questions),
+          QuizReady(
+            :final questions,
+            :final notebookId,
+            :final pageId,
+            :final concepts
+          ) =>
+            _QuizRunner(
+              questions: questions,
+              notebookId: notebookId,
+              pageId: pageId,
+              concepts: concepts,
+            ),
           QuizError() => _ErrorView(state: state),
         },
       ),
@@ -157,15 +176,24 @@ class _ErrorView extends ConsumerWidget {
   }
 }
 
-class _QuizRunner extends StatefulWidget {
+class _QuizRunner extends ConsumerStatefulWidget {
   final List<QuizQuestion> questions;
-  const _QuizRunner({required this.questions});
+  final int notebookId;
+  final int pageId;
+  final List<String> concepts;
+
+  const _QuizRunner({
+    required this.questions,
+    required this.notebookId,
+    required this.pageId,
+    required this.concepts,
+  });
 
   @override
-  State<_QuizRunner> createState() => _QuizRunnerState();
+  ConsumerState<_QuizRunner> createState() => _QuizRunnerState();
 }
 
-class _QuizRunnerState extends State<_QuizRunner> {
+class _QuizRunnerState extends ConsumerState<_QuizRunner> {
   final Map<int, int> _choice = {}; // question index → selected option
   final Map<int, TextEditingController> _text = {};
   final Set<int> _selfCorrect = {}; // coding questions self-marked correct
@@ -197,6 +225,48 @@ class _QuizRunnerState extends State<_QuizRunner> {
       if (_isCorrect(i)) n++;
     }
     return n;
+  }
+
+  /// Reveals the answers and files the attempt. A retake (via [_reset]) files a
+  /// second, separate attempt — which is exactly what it is.
+  void _check() {
+    setState(() => _checked = true);
+    _recordAttempt();
+  }
+
+  /// Files the graded attempt into Learning Memory. Each question is attributed
+  /// to the concepts named in its prompt or answer; questions that match no
+  /// known concept still count toward the score but move no mastery.
+  ///
+  /// Wrapped end-to-end: the repository can throw synchronously (no database in
+  /// a widget test) and asynchronously (a write failure). Neither is worth
+  /// interrupting the learner's results for.
+  void _recordAttempt() {
+    try {
+      final attempt = QuizAttempt.record(
+        notebookId: widget.notebookId,
+        pageId: widget.pageId,
+        takenAt: DateTime.now(),
+        outcomes: [
+          for (var i = 0; i < widget.questions.length; i++)
+            QuizQuestionOutcome(
+              prompt: widget.questions[i].prompt,
+              correct: _isCorrect(i),
+              conceptKeys: conceptKeysMentionedIn(
+                '${widget.questions[i].prompt} '
+                '${widget.questions[i].correctAnswer}',
+                widget.concepts,
+              ),
+            ),
+        ],
+      );
+      unawaited(ref
+          .read(learningMemoryProvider)
+          .recordQuizAttempt(attempt)
+          .catchError((Object _) {}));
+    } catch (_) {
+      // Remembering the attempt is a background nicety, never a blocker.
+    }
   }
 
   void _reset() => setState(() {
@@ -268,7 +338,7 @@ class _QuizRunnerState extends State<_QuizRunner> {
         if (!_checked)
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
-            onPressed: () => setState(() => _checked = true),
+            onPressed: _check,
             child: const Text('Check answers',
                 style: TextStyle(color: AppColors.textOnAccent)),
           )

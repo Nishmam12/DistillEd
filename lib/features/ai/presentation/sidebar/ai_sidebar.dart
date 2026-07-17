@@ -308,6 +308,11 @@ class _QuizBar extends ConsumerWidget {
     ref.read(quizNotifierProvider.notifier).generate(QuizRequest(
           level: level,
           allowCoding: allowCoding,
+          notebookId: pageKey.notebookId,
+          pageId: pageId,
+          // The page's concepts, so each graded question can be attributed back
+          // to what it actually tested (Phase 2 Learning Memory).
+          concepts: context0?.keyConcepts ?? const [],
           resolveText: () async {
             await recognition.ensureModelDownloaded(languageCode);
             final content =

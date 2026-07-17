@@ -536,6 +536,69 @@ button now offers **`.apkg`** (primary) and **CSV** (secondary).
   `flutter build apk` ever balks at native assets, the fallback is to re-add
   `sqlite3_flutter_libs`.
 
+## Phase 2 — Learning Memory, RAG, Knowledge Graph, Study Planner
+
+### Loop 2.1 — Learning Memory schema — 2026-07-17
+The tutor now remembers across sessions. Everything Phase 1 produced was
+session-only; this loop makes concept mastery and quiz history durable, and
+wires both feeds so they fill automatically with no new UI and no new timers.
+
+- **Pure domain** `ai/domain/memory/` (all rules here, Isar-free, fully tested):
+  - `concept_mastery.dart` — `MasteryLevel` (unseen→learning→practiced→
+    mastered), `normalizeConceptKey`, SM-2-lite `reviewIntervalFor`
+    (1d/3d/7d), and `ConceptMastery` with `observed()` / `afterQuiz()` /
+    `flaggedAsGap()` / `dueAt()` / `isWeak`. Selectors `selectWeak` /
+    `selectMastered` / `selectDueForReview` live here too, so "weak" has ONE
+    definition shared by the repository and its tests.
+  - `quiz_attempt.dart` — `QuizAttempt` + `QuizQuestionOutcome`. A concept
+    counts correct only when **every** question testing it was right.
+  - `learning_preferences.dart` — stored prefs (explain mode, difficulty) +
+    `averageReviewsToMastery`, the *derived* pace signal (recomputed on load,
+    never stored, null when there's no evidence rather than invented).
+  - `study_session.dart`, `stable_id.dart`.
+- **Storage** `ai/data/memory/`: `ConceptMasteryRecord`, `QuizAttemptRecord`
+  (+ `@embedded` outcomes), `LearningPreferencesRecord` (singleton row id 0),
+  `StudySessionRecord`; `LearningMemoryRepository` seam + Isar impl —
+  deliberately rule-free. Schemas registered in `main.dart`.
+- **Design decisions:**
+  - *Reading is not testing.* `observed()` refreshes exposure and lifts
+    `unseen`→`learning`, but never promotes further — only a quiz moves mastery
+    up. Mastery is tracked **per notebook**.
+  - *Gaps are prose, not concepts.* `knowledgeGaps` ("X is used but never
+    defined") would mint junk concepts if stored as names, so they're matched
+    back onto real concepts (`conceptsMentionedIn`) and counted as a weakness
+    signal (`timesFlaggedAsGap`) without moving level.
+  - *Quiz attribution.* Each question is attributed to the concepts named in its
+    prompt/answer (`conceptKeysMentionedIn`), so a miss decrements those
+    concepts, not the whole topic. A question matching nothing scores but moves
+    no mastery.
+- **Wiring (no new loops):** Context Engine gained an `onContext` hook beside
+  the existing `onContent`, so Learning Memory rides the same debounce; the quiz
+  sheet files a `QuizAttempt` when answers are checked. Both writes are
+  fire-and-forget and swallow sync *and* async failure — remembering must never
+  break analysis or grading. `QuizRequest`/`QuizReady` now carry
+  notebook/page/concepts provenance.
+- **SYNC-READY + its known boundary (STOP CONDITION resolved by Nabil):** Isar's
+  autoincrement `id` is never identity. `ConceptMastery` uses the deterministic
+  natural key (notebookId, conceptKey) — two devices derive the same key and
+  merge cleanly; events (`QuizAttempt`, `StudySession`) get a generated 128-bit
+  `stable_id`. **Boundary:** `notebookId` is itself `Isar.autoIncrement` on
+  `Notebook` (no stable uid), so the pair is not yet cross-device stable.
+  Nabil's call: leave it — Phase 2 is local-only, the spec says not to build
+  sync or guess at Supabase, and a sync layer remaps that FK once. Nothing in
+  the rules depends on notebookId being more than an opaque scope handle.
+- Tests (+32 → **453/453**, analyze clean): `concept_mastery_test` (level
+  ladder, storage-key tolerance, observed/afterQuiz/flaggedAsGap, scheduler,
+  selectors, attribution), `quiz_attempt_test`, `learning_preferences_test`,
+  plus `quiz_sheet_test` now asserting the sheet files an attempt with correct
+  per-concept attribution via a fake repository (no Isar in tests).
+- **Not device-run.** No UI surfaces this yet — Loops 2.2–2.5 consume it.
+
+**Remaining in Phase 2:** 2.2 on-device RAG (STOP CONDITION: the embedding
+model/runtime must be chosen with Nabil first — `AiProvider.embed()` is still a
+stub), 2.3 wire RAG into Summarize + "Ask your notes", 2.4 Knowledge Graph,
+2.5 Study Planner.
+
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;

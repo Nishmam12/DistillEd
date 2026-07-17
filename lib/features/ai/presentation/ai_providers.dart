@@ -2,6 +2,8 @@
 // mechanism throughout — get_it is unused). Features consume these providers;
 // nothing in features/ai depends on a consumer feature.
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/settings_provider.dart';
@@ -10,6 +12,7 @@ import '../data/flashcards/flashcard_store.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/cloud_llm_client.dart';
 import '../data/llm/model_download_manager.dart';
+import '../data/memory/learning_memory_repository.dart';
 import '../data/providers/local_gemma_provider.dart';
 import '../domain/ai_provider.dart';
 import '../domain/context_engine/context_engine.dart';
@@ -105,6 +108,11 @@ final flashcardNotifierProvider =
   );
 });
 
+/// Durable Learning Memory (Isar) — concept mastery, quiz history, preferences.
+/// Phase 2's counterpart to the session-only [pageContextCacheProvider].
+final learningMemoryProvider =
+    Provider<LearningMemoryRepository>((ref) => IsarLearningMemoryRepository());
+
 /// Session cache of the last suggestions per page (see [pageContextCacheProvider]).
 final pageWritingCacheProvider =
     Provider<PageWritingCache>((ref) => PageWritingCache());
@@ -148,6 +156,20 @@ final pageContextProvider = StateNotifierProvider.autoDispose
     // Writing Assistant rides this same debounce + extraction (no second loop).
     onContent: (content) =>
         ref.read(writingSuggestionsProvider(key).notifier).review(content),
+    // Learning Memory rides it too: every analyzed page records which concepts
+    // the learner was exposed to. Fire-and-forget — a storage hiccup must never
+    // surface as an analysis failure.
+    onContext: (context) => unawaited(
+      ref
+          .read(learningMemoryProvider)
+          .observePageContext(
+            notebookId: key.notebookId,
+            pageId: key.pageId,
+            keyConcepts: context.keyConcepts,
+            knowledgeGaps: context.knowledgeGaps,
+          )
+          .catchError((Object _) {}),
+    ),
   );
   ref.listen(
     sceneControllerProvider(key),

@@ -5,8 +5,10 @@
 //
 // Content is resolved lazily (the current page's text) so a retry re-reads it.
 // A missing model surfaces as an error offering the (explicit) download, like
-// Summarize/Explain. Taking + scoring the quiz is UI-local state; nothing is
-// persisted (durable score history is Phase 2's Learning Memory).
+// Summarize/Explain. Taking + scoring the quiz remains UI-local state, but the
+// notifier now carries the quiz's provenance (notebook/page/concepts) through to
+// [QuizReady] so the sheet can file the graded result into Phase 2's Learning
+// Memory. This notifier still persists nothing itself.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,7 +39,20 @@ class QuizDownloadingModel extends QuizState {
 
 class QuizReady extends QuizState {
   final List<QuizQuestion> questions;
-  const QuizReady(this.questions);
+
+  /// Where the quiz came from, and what it's about — carried through so the
+  /// sheet can file a durable [QuizAttempt] against the right notebook/page
+  /// and attribute each question to the concepts it tests.
+  final int notebookId;
+  final int pageId;
+  final List<String> concepts;
+
+  const QuizReady(
+    this.questions, {
+    this.notebookId = 0,
+    this.pageId = 0,
+    this.concepts = const [],
+  });
 }
 
 class QuizError extends QuizState {
@@ -58,11 +73,21 @@ class QuizRequest {
   final KnowledgeLevel level;
   final bool allowCoding;
   final int count;
+
+  /// Provenance + subject matter, passed straight through to [QuizReady] so the
+  /// graded attempt can be recorded in Learning Memory.
+  final int notebookId;
+  final int pageId;
+  final List<String> concepts;
+
   const QuizRequest({
     required this.resolveText,
     required this.level,
     this.allowCoding = false,
     this.count = 5,
+    this.notebookId = 0,
+    this.pageId = 0,
+    this.concepts = const [],
   });
 }
 
@@ -108,7 +133,12 @@ class QuizNotifier extends StateNotifier<QuizState> {
       state = questions.isEmpty
           ? const QuizError(
               "Couldn't put a quiz together from this page. Try again.")
-          : QuizReady(questions);
+          : QuizReady(
+              questions,
+              notebookId: request.notebookId,
+              pageId: request.pageId,
+              concepts: request.concepts,
+            );
     } catch (e) {
       if (!mounted) return;
       state = _mapError(e);
