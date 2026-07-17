@@ -19,6 +19,8 @@ import '../../domain/features/explainer.dart';
 import '../../domain/features/quiz_generator.dart';
 import '../ai_providers.dart';
 import '../explain_notifier.dart';
+import '../flashcard_notifier.dart';
+import '../flashcards/flashcard_sheet.dart';
 import '../quiz_notifier.dart';
 import '../quiz/quiz_sheet.dart';
 import 'ai_context_view.dart';
@@ -165,6 +167,7 @@ class _SidebarFooter extends ConsumerWidget {
               _SummarizeBar(onSummarize: onSummarize),
               _ExplainBar(pageKey: pageKey),
               _QuizBar(pageKey: pageKey),
+              _FlashcardBar(pageKey: pageKey),
             ],
           ),
         ),
@@ -313,6 +316,48 @@ class _QuizBar extends ConsumerWidget {
           },
         ));
     showQuizSheet(context);
+  }
+}
+
+/// The sidebar's Flashcards launcher: builds (and persists) a deck from the
+/// current page's concepts + definitions, then opens the deck sheet.
+class _FlashcardBar extends ConsumerWidget {
+  final ScenePageKey pageKey;
+  const _FlashcardBar({required this.pageKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _startCards(context, ref),
+      child: const _ActionChip(
+        icon: Icons.style_outlined,
+        label: 'Cards',
+        enabled: true,
+      ),
+    );
+  }
+
+  void _startCards(BuildContext context, WidgetRef ref) {
+    final extractor = ref.read(pageContentExtractorProvider);
+    final recognition = ref.read(handwritingRecognitionServiceProvider);
+    final languageCode = ref.read(settingsProvider).recognitionLanguage;
+    final pageContext =
+        ref.read(pageContextProvider(pageKey)).valueOrNull ?? PageContext.empty;
+    final pageId = pageKey.pageId;
+
+    ref.read(flashcardNotifierProvider.notifier).generate(FlashcardRequest(
+          notebookId: pageKey.notebookId,
+          pageId: pageId,
+          context: pageContext,
+          resolveText: () async {
+            await recognition.ensureModelDownloaded(languageCode);
+            final content =
+                await extractor.extractPage(pageId, languageCode: languageCode);
+            return content.combinedText;
+          },
+        ));
+    showFlashcardSheet(context);
   }
 }
 

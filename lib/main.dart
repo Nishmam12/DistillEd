@@ -11,6 +11,7 @@ import 'app/app.dart';
 import 'data/migration/launch_migration.dart';
 import 'data/persistence/library_repository.dart';
 import 'data/persistence/scene_element_record.dart';
+import 'features/ai/data/flashcards/flashcard_record.dart';
 import 'features/summarize/data/cache/summary_cache.dart';
 import 'editor/state/library_controller.dart';
 import 'editor/state/scene_controller.dart';
@@ -86,6 +87,7 @@ void main() async {
     SceneElementRecordSchema,
     AppMetaSchema,
     SummaryCacheSchema,
+    FlashcardRecordSchema,
   ]);
 
   // One-time, gated, non-destructive migration of legacy page content into the

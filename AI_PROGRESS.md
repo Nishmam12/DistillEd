@@ -6,15 +6,16 @@ updates it last. The plan of record is `ai_prompts/INTEGRATION_ROADMAP.md`
 product vision remains `ai_prompts/AI_Notebook_Master_Plan.md`.
 
 ## Current Phase
-**Phases R + U COMPLETE; Phase 1 IN PROGRESS.**
+**Phases R + U COMPLETE; Phase 1 FEATURE SET COMPLETE (Loops 1.1–1.7).**
 One AI platform (`features/ai/`) with one runtime, one router, one page-read
-path. Phase 1 builds the master-plan features on it, **Live Context Engine
+path. Phase 1 built the master-plan features on it, **Live Context Engine
 first** (decision #7) per `ai_prompts/02_phase1_context_engine_core_features.md`
-+ INTEGRATION_ROADMAP §5. Loops 1.1 (Context Engine core), 1.2 (AI Sidebar
-shell), 1.3 (Summarize levels), 1.4 (Explain), 1.5 (Writing Assistant) and 1.6
-(Quiz Generator) done; next is **Loop 1.7 (Flashcards) — ⚠️ STOP CONDITION**
-(CSV vs `.apkg` export decision before adding a dependency). Device validation
-(R5) is still open, owned by the user.
++ INTEGRATION_ROADMAP §5. Done: 1.1 Context Engine, 1.2 AI Sidebar, 1.3
+Summarize, 1.4 Explain, 1.5 Writing Assistant, 1.6 Quiz, 1.7 Flashcards. **400
+tests green, analyze clean.** Remaining before Phase 1 is truly closed:
+**on-device validation of the Phase-1 DoD** (§4 of the phase spec) — Nabil-owned
+(same ML Kit + Gemma path as R5), never run this session (no Android device).
+`.apkg` flashcard export is a logged fast-follow.
 
 ## The situation (context for any fresh session)
 On 2026-07-16 we discovered Afnan had already shipped a complete AI
@@ -462,6 +463,43 @@ Gradeable quizzes built from the current page, taken and scored in a sheet.
   MCQ + True/False from real page content" is met; on-device pass should sanity-
   check question quality on a real note.
 
+### Loop 1.7 — Flashcards ✅ (Phase 1 feature set COMPLETE)
+Auto-generated, **persistent** flashcard decks with one-tap Anki export.
+- **STOP CONDITION resolved:** export format was Nabil's call — he chose
+  **CSV-first** (no new dependency, fully offline). `.apkg` (a SQLite deck) is
+  logged as a fast-follow.
+- `ai/domain/models/flashcard.dart`: pure `Flashcard` (front/back/notebookId/
+  pageId/createdAt). `ai/data/flashcards/flashcard_record.dart`: Isar
+  `@collection FlashcardRecord` (+ generated `.g.dart` via build_runner) with
+  toDomain/fromDomain; **registered in `main.dart`'s Isar open list**
+  (`FlashcardRecordSchema`) — this is the first durable AI artifact.
+- `ai/data/flashcards/flashcard_store.dart`: `FlashcardStore` seam +
+  `IsarFlashcardStore` (`replaceForPage` regenerates a page's deck rather than
+  duplicating; `forNotebook`/`forPage`). Uses `.filter()` (not index `.where()`)
+  since two `@Index`es leave the where-builder without findAll/deleteAll.
+- `ai/data/flashcards/flashcard_csv.dart`: pure `flashcardsToCsv` — RFC-4180
+  `front,back` rows, CRLF-joined, quote-escaped (Anki imports CSV directly). I/O
+  + share reuse the existing `ExportShareService.shareFile`.
+- `ai/domain/features/flashcard_generator.dart`: merges **faithful definition
+  cards** (from `PageContext.definitions`, verbatim — these win ties) with **LLM
+  concept cards** (robustness ladder, `{"cards":[{front,back}]}`, prioritising
+  `keyConcepts`); dedup by front, cap 20. Malformed LLM → definition cards still
+  stand; `AiException` propagates.
+- `ai/presentation/flashcard_notifier.dart`: generate → **save to Isar** →
+  ready; download-offer on a missing model; 15-word floor; session-scoped.
+- `ai/presentation/flashcards/flashcard_sheet.dart`: flip-through `PageView`
+  deck (tap to reveal), `n / total`, and **Export to Anki (CSV)** via the share
+  sheet.
+- `ai/presentation/sidebar/ai_sidebar.dart`: footer `Wrap` now has four
+  launchers — Summarize / Explain / Quiz / **Cards**.
+- Tests (+13 → **400/400**, analyze clean): `flashcard_csv_test` (escaping),
+  `flashcard_generator_test` (definition+LLM merge, definitions-win, malformed→
+  definitions, missing-model propagates, blank-drop + cap), `flashcard_notifier_
+  test` (generate→persist→ready, too-thin, empty, missing-model), `flashcard_
+  sheet_test` (render + flip). Store is behind a seam so no Isar needed in tests.
+- NOTE: not device-run (no device; R5 is Nabil-owned). The `.apkg` export and an
+  on-device check of card quality + the CSV import into Anki are fast-follows.
+
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
@@ -471,17 +509,23 @@ Gradeable quizzes built from the current page, taken and scored in a sheet.
   files that don't exist on 2.0), his legacy `note_editor_screen.dart` wiring.
 
 ## Next Loop
-**Loop 1.7 — Flashcards. ⚠️ STOP CONDITION** — confirm the export approach
-(plain-SQLite `.apkg` vs CSV-first) with Nabil *before* adding a dependency
-(phase spec §Loop 1.7 + handoff §0). Scope when it proceeds: auto-generate cards
-from `PageContext.keyConcepts` + `definitions`;
-`ai/domain/models/flashcard.dart` + an Isar `@collection` under
-`features/ai/data/` (**this one IS persistent** — flashcards are durable, unlike
-the in-memory quiz attempt). Export to Anki: `.apkg` is a SQLite DB with a
-specific schema — verify a maintained plain-SQLite package exists before
-committing; if too heavy for the loop, ship **CSV first** (Anki imports CSV) and
-flag `.apkg` as a fast-follow here. Isar schema change → register the new
-collection in `main.dart`'s open call (like `SummaryCacheSchema`).
+**No feature loop remains in Phase 1** — all of 1.1–1.7 are built, tested
+(400/400), analyze-clean, committed and pushed on `Inkdot-2.0`.
 
-After 1.7: Phase 1 Definition of Done (§4 of the phase spec) — verify all six
-features work fully offline; then device validation (R5, Nabil-owned).
+What's actually left before Phase 1 is *closed* (all Nabil-owned, none codeable
+without hardware):
+1. **On-device Phase-1 DoD pass** (phase spec §4): drive each feature on a real
+   Android device with a real note — Context Engine ~2–3s after a pause;
+   sidebar shows topic/concepts/gaps/level; Summarize at all three scopes with
+   chunking; Explain in ≥4 modes streamed + insert-as-note; Writing Assistant
+   grammar/clarity/repetition non-intrusively; Quiz valid gradeable MCQ+T/F;
+   Flashcards generated, stored in Isar, CSV exported and imported into Anki.
+   Everything must work **fully offline**. This shares the R5 ML Kit + Gemma
+   path, so validating Summarize validates most of the stack.
+2. **`.apkg` flashcard export** (fast-follow to Loop 1.7's CSV): a SQLite deck —
+   vet a maintained plain-SQLite package first.
+3. **Afnan handoff** (decision #5): `main` is frozen; all AI work targets
+   `Inkdot-2.0`.
+
+Then Phase 2 (Learning Memory: durable contexts, quiz-score history, RAG
+embeddings) per INTEGRATION_ROADMAP.

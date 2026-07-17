@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/settings_provider.dart';
 import '../../../editor/state/scene_controller.dart';
+import '../data/flashcards/flashcard_store.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/cloud_llm_client.dart';
 import '../data/llm/model_download_manager.dart';
@@ -14,11 +15,13 @@ import '../domain/ai_provider.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
 import '../domain/features/explainer.dart';
+import '../domain/features/flashcard_generator.dart';
 import '../domain/features/quiz_generator.dart';
 import '../domain/features/writing_assistant.dart';
 import '../domain/page_content_extractor.dart';
 import 'context_engine_notifier.dart';
 import 'explain_notifier.dart';
+import 'flashcard_notifier.dart';
 import 'quiz_notifier.dart';
 import 'writing_assistant_notifier.dart';
 
@@ -80,6 +83,24 @@ final quizNotifierProvider =
     StateNotifierProvider<QuizNotifier, QuizState>((ref) {
   return QuizNotifier(
     generator: ref.watch(quizGeneratorProvider),
+    downloads: ref.watch(modelDownloadManagerProvider),
+  );
+});
+
+/// Flashcard Generator feature — builds a deck from a page's concepts/definitions.
+final flashcardGeneratorProvider = Provider<FlashcardGenerator>(
+    (ref) => FlashcardGenerator(provider: ref.watch(localAiProvider)));
+
+/// Durable flashcard store (Isar). Flashcards persist across sessions.
+final flashcardStoreProvider =
+    Provider<FlashcardStore>((ref) => IsarFlashcardStore());
+
+/// Drives the flashcard sheet. Session-scoped for the same reasons as the quiz.
+final flashcardNotifierProvider =
+    StateNotifierProvider<FlashcardNotifier, FlashcardState>((ref) {
+  return FlashcardNotifier(
+    generator: ref.watch(flashcardGeneratorProvider),
+    store: ref.watch(flashcardStoreProvider),
     downloads: ref.watch(modelDownloadManagerProvider),
   );
 });
