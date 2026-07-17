@@ -765,8 +765,55 @@ session; it must be rotated/blanked when development wraps.
 
 **Remaining in 2.2:** nothing code-wise — 2.3 consumes it.
 
-**Remaining in Phase 2:** 2.3 wire RAG into Summarize + "Ask your notes",
-2.4 Knowledge Graph, 2.5 Study Planner.
+### Loop 2.3 — Wire RAG into features / "Ask your notes" — CODE-COMPLETE (2026-07-17, device-verify deferred)
+
+**"Ask your notes" — the DoD centerpiece — is built + tested (535/535, analyze
+clean, pushed 2.0.0+13).** A sidebar query box → RAG retrieval → an answer
+grounded ONLY in the retrieved passages → source cards that cite the pages.
+
+- `ai/domain/features/notes_qa.dart` — the grounded-QA core. Retrieval and
+  generation are SPLIT (`findSources` then `answer`) so the UI can show both
+  phases and render sources, and so a no-retrieval question never reaches the
+  model. The whole value is faithfulness, so it refuses in two places rather
+  than guessing: (1) no relevant passages → the model is never called; (2)
+  passages present but thin → the system prompt orders the exact
+  `notFoundReply` instead of world knowledge. Passages are numbered `[n]` (so
+  citations line up with source cards) and budgeted to the provider window,
+  dropping whole trailing passages rather than cutting one mid-sentence.
+  Temperature 0.2 — grounded extraction, not creative writing.
+- `ai/presentation/ask_notes_notifier.dart` — state machine: idle → composing →
+  searching → answering(partial, sources) → answered / notFound, plus
+  downloadingModel(isEmbedder) and error. TWO models can each need a download
+  (EmbeddingGemma to retrieve, the LLM to answer); the error carries
+  `downloadIsEmbedder` so the offered download targets the right one. A model
+  that emits the refusal anyway is mapped to notFound (no source chips beside a
+  bare refusal). notebookId is passed per-call so this stays a plain
+  session-scoped provider like Explain/Quiz, not a per-notebook family.
+- `ai/presentation/sidebar/ai_ask_view.dart` — the query box + streamed answer +
+  numbered source cards (tap-to-jump via an optional callback) + insert-as-note
+  + copy; download/error/not-found surfaces mirror the Explain view.
+- `ai_sidebar.dart` — an "Ask notes" footer chip opens the surface; the body
+  shows the Ask view whenever ask-state ≠ idle (precedence over Explain; the
+  footer hides while either is active, so they can't both run). `onJumpToSource`
+  is threaded as OPTIONAL through the sidebar — source cards render either way;
+  the editor can wire real page navigation later.
+
+**Summarize half: nothing to wire — already correct.** The spec asks
+notebook-summarize to stop naively concatenating/truncating over-budget content
+and use RAG. But notebook summarize ALREADY does chunk-and-reduce (map-reduce —
+`SummarizationResult.chunked`, "the whole note was read"), which is the *right*
+technique for a COMPREHENSIVE summary. RAG retrieval would be a regression there:
+it drops content, so a summary built from top-K chunks would silently omit
+topics. Query-driven RAG is the correct tool only for the "ask about my notes"
+half — which is exactly "Ask your notes". So 2.3 is satisfied without touching
+summarize.
+
+**Remaining polish (not blocking):** wire `onJumpToSource` in
+`notebook_editor_screen.dart` so source cards actually navigate (plumbing is in
+place; needs the editor's page-navigation). Then the full end-to-end
+device check with a real indexed multi-page notebook (with the Phase 3 pass).
+
+**Remaining in Phase 2:** 2.4 Knowledge Graph, 2.5 Study Planner.
 
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`

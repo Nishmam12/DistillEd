@@ -18,11 +18,13 @@ import '../../domain/context_engine/page_context.dart';
 import '../../domain/features/explainer.dart';
 import '../../domain/features/quiz_generator.dart';
 import '../ai_providers.dart';
+import '../ask_notes_notifier.dart';
 import '../explain_notifier.dart';
 import '../flashcard_notifier.dart';
 import '../flashcards/flashcard_sheet.dart';
 import '../quiz_notifier.dart';
 import '../quiz/quiz_sheet.dart';
+import 'ai_ask_view.dart';
 import 'ai_context_view.dart';
 import 'ai_explain_view.dart';
 
@@ -52,12 +54,17 @@ class AiSidebar extends StatelessWidget {
   /// Hands an explanation to the editor's text-insertion path ("insert as note").
   final ValueChanged<String> onInsertNote;
 
+  /// Jumps to a source page from an "Ask your notes" answer. Optional — until
+  /// the editor wires page navigation, source cards render but aren't tappable.
+  final void Function(int pageId)? onJumpToSource;
+
   const AiSidebar({
     super.key,
     required this.pageKey,
     required this.onClose,
     required this.onSummarize,
     required this.onInsertNote,
+    this.onJumpToSource,
   });
 
   @override
@@ -78,7 +85,10 @@ class AiSidebar extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                 child: _SidebarBody(
-                    pageKey: pageKey, onInsertNote: onInsertNote),
+                  pageKey: pageKey,
+                  onInsertNote: onInsertNote,
+                  onJumpToSource: onJumpToSource,
+                ),
               ),
             ),
             _SidebarFooter(pageKey: pageKey, onSummarize: onSummarize),
@@ -95,6 +105,7 @@ Future<void> showAiSidebarSheet(
   ScenePageKey pageKey, {
   required ValueChanged<SummarizeScopeChoice> onSummarize,
   required ValueChanged<String> onInsertNote,
+  void Function(int pageId)? onJumpToSource,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -115,8 +126,11 @@ Future<void> showAiSidebarSheet(
             _SidebarHeader(onClose: () => Navigator.of(context).pop()),
             const SizedBox(height: 8),
             Flexible(
-                child:
-                    _SidebarBody(pageKey: pageKey, onInsertNote: onInsertNote)),
+                child: _SidebarBody(
+              pageKey: pageKey,
+              onInsertNote: onInsertNote,
+              onJumpToSource: onJumpToSource,
+            )),
             _SidebarFooter(pageKey: pageKey, onSummarize: onSummarize),
           ],
         ),
@@ -125,20 +139,34 @@ Future<void> showAiSidebarSheet(
   );
 }
 
-/// The scrolling body: the streamed [AiExplainView] while an explanation is
-/// active, otherwise the live [AiContextView] (whose knowledge-gap flags are
-/// themselves an Explain trigger).
+/// The scrolling body. Precedence: the [AiAskView] while a "Ask your notes"
+/// query is active, then the streamed [AiExplainView] while an explanation is,
+/// otherwise the live [AiContextView] (whose knowledge-gap flags are themselves
+/// an Explain trigger). Ask and Explain can't both be active — the footer that
+/// launches each is hidden whenever either surface is up.
 class _SidebarBody extends ConsumerWidget {
   final ScenePageKey pageKey;
   final ValueChanged<String> onInsertNote;
-  const _SidebarBody({required this.pageKey, required this.onInsertNote});
+  final void Function(int pageId)? onJumpToSource;
+  const _SidebarBody({
+    required this.pageKey,
+    required this.onInsertNote,
+    this.onJumpToSource,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final explaining = ref.watch(explainNotifierProvider) is! ExplainIdle;
-    return explaining
-        ? AiExplainView(onInsertNote: onInsertNote)
-        : AiContextView(pageKey: pageKey);
+    if (ref.watch(askNotesNotifierProvider) is! AskNotesIdle) {
+      return AiAskView(
+        onInsertNote: onInsertNote,
+        notebookId: pageKey.notebookId,
+        onJumpToSource: onJumpToSource,
+      );
+    }
+    if (ref.watch(explainNotifierProvider) is! ExplainIdle) {
+      return AiExplainView(onInsertNote: onInsertNote);
+    }
+    return AiContextView(pageKey: pageKey);
   }
 }
 
@@ -151,9 +179,9 @@ class _SidebarFooter extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (ref.watch(explainNotifierProvider) is! ExplainIdle) {
-      return const SizedBox.shrink();
-    }
+    final asking = ref.watch(askNotesNotifierProvider) is! AskNotesIdle;
+    final explaining = ref.watch(explainNotifierProvider) is! ExplainIdle;
+    if (asking || explaining) return const SizedBox.shrink();
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -164,6 +192,7 @@ class _SidebarFooter extends ConsumerWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
+              _AskBar(),
               _SummarizeBar(onSummarize: onSummarize),
               _ExplainBar(pageKey: pageKey),
               _QuizBar(pageKey: pageKey),
@@ -172,6 +201,23 @@ class _SidebarFooter extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The sidebar's "Ask your notes" launcher: opens the query box (the actual
+/// retrieval + answer live entirely in `features/ai`).
+class _AskBar extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => ref.read(askNotesNotifierProvider.notifier).startComposing(),
+      child: const _ActionChip(
+        icon: Icons.travel_explore_outlined,
+        label: 'Ask notes',
+        enabled: true,
+      ),
     );
   }
 }

@@ -16,17 +16,21 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 ### Added
+- **Ask your notes (on-device).** A new **Ask notes** button in the AI sidebar
+  opens a question box: ask something in plain language and get an answer drawn
+  *only* from your own notes across the whole notebook, with **source cards**
+  showing the passages it used. If your notes don't cover it, it says so instead
+  of making something up. Fully offline — one model retrieves the relevant
+  passages, another answers from them.
 - **Semantic search foundation (on-device RAG).** As you write, each page's text
   is quietly split into passages and embedded on-device with **EmbeddingGemma**,
-  so a later "ask your notes" can find the *relevant* passages across a whole
-  notebook rather than keyword-matching. Everything is local: indexing runs in
-  the background after your text settles (not on every keystroke), only re-embeds
+  so *Ask your notes* can find the *relevant* passages across a whole notebook
+  rather than keyword-matching. Everything is local: indexing runs in the
+  background after your text settles (not on every keystroke), only re-embeds
   what actually changed, and never leaves the device.
   - Download the search model from **Settings → AI Models → EmbeddingGemma**.
     It's a gated Google model, so it needs the HuggingFace token you add just
     above it (accept the licence once, paste a read token). ~185 MB.
-  - The search experience itself ("ask your notes", smarter notebook summaries)
-    arrives in the next update — this release lays and tests the groundwork.
 
 ## [2.0.0] - 2026-07-17
 ### Added

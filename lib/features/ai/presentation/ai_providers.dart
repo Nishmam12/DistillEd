@@ -25,11 +25,13 @@ import '../domain/context_engine/page_context.dart';
 import '../domain/features/explainer.dart';
 import '../domain/features/flashcard_generator.dart';
 import '../domain/features/quiz_generator.dart';
+import '../domain/features/notes_qa.dart';
 import '../domain/features/writing_assistant.dart';
 import '../domain/page_content_extractor.dart';
 import '../domain/rag/rag_indexer.dart';
 import '../domain/rag/rag_retriever.dart';
 import '../domain/rag/text_embedder.dart';
+import 'ask_notes_notifier.dart';
 import 'context_engine_notifier.dart';
 import 'explain_notifier.dart';
 import 'flashcard_notifier.dart';
@@ -113,12 +115,30 @@ final ragIndexSchedulerProvider = Provider<RagIndexScheduler>((ref) {
   return scheduler;
 });
 
-/// Semantic search over a notebook. Loop 2.3 wires this into Summarize and
-/// "Ask your notes".
+/// Semantic search over a notebook, feeding "Ask your notes".
 final ragRetrieverProvider = Provider<RagRetriever>((ref) => RagRetriever(
       embedder: ref.watch(textEmbedderProvider),
       loadChunks: ref.watch(noteChunkStoreProvider).forNotebook,
     ));
+
+/// "Ask your notes": grounded QA over a notebook (retrieve → answer from those
+/// passages only).
+final notesQaProvider = Provider<NotesQa>((ref) => NotesQa(
+      provider: ref.watch(localAiProvider),
+      retriever: ref.watch(ragRetrieverProvider),
+    ));
+
+/// Drives the sidebar's Ask surface. Session-scoped (not autoDispose) for the
+/// same reason as Explain/Quiz: closing the sidebar must not abort an in-flight
+/// model download, and the answer stays put until dismissed.
+final askNotesNotifierProvider =
+    StateNotifierProvider<AskNotesNotifier, AskNotesState>((ref) {
+  return AskNotesNotifier(
+    qa: ref.watch(notesQaProvider),
+    llmDownloads: ref.watch(modelDownloadManagerProvider),
+    embedderDownloads: ref.watch(embedderDownloadManagerProvider),
+  );
+});
 
 /// Cloud tier seam — a no-op stub until Phase 3 stands up the gateway.
 final cloudLlmClientProvider =
