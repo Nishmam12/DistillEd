@@ -13,7 +13,8 @@ export '../../ai/presentation/ai_providers.dart'
     show
         handwritingRecognitionServiceProvider,
         modelDownloadManagerProvider,
-        embedderDownloadManagerProvider;
+        embedderDownloadManagerProvider,
+        huggingFaceTokenProvider;
 
 final aiRouterProvider = Provider<AiRouter>((ref) {
   final downloads = ref.watch(modelDownloadManagerProvider);

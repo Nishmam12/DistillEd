@@ -752,6 +752,17 @@ gated download works with a real token; confirm a restart re-activates without
 re-downloading (the guard fix above); measure brute-force sweep latency (open
 STOP CONDITION) and tune `kMinRelevance`.
 
+**Dev-only token convenience (2.0.0+12).** So a developer needn't re-paste the
+HF token into Settings after every reinstall, `huggingFaceTokenProvider`
+resolves: Settings token first, else — **in debug builds only** (`kDebugMode`) —
+a local `kDevHuggingFaceToken` from `lib/dev/dev_secrets.dart`. That file is
+**gitignored** (this repo is PUBLIC; `git check-ignore` + a `git add` refusal
+were both verified) and only `dev_secrets.example.dart` is committed. Release
+builds never read it. **Fresh clone must `cp lib/dev/dev_secrets.example.dart
+lib/dev/dev_secrets.dart`** or the app won't compile (the standard cost of a
+gitignored secret an import depends on). Nabil supplied a dev token this
+session; it must be rotated/blanked when development wraps.
+
 **Remaining in 2.2:** nothing code-wise — 2.3 consumes it.
 
 **Remaining in Phase 2:** 2.3 wire RAG into Summarize + "Ask your notes",

@@ -588,7 +588,9 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow> {
   Widget build(BuildContext context) {
     final sizeMb = _spec.approxSizeBytes / (1024 * 1024);
     final sizeLabel = '${sizeMb.round()} MB';
-    final hasToken = ref.watch(settingsProvider).hasHuggingFaceToken;
+    // The effective token, so a local dev token (debug only) also enables the
+    // download — not just a token typed into Settings.
+    final hasToken = ref.watch(huggingFaceTokenProvider).isNotEmpty;
 
     if (_progress != null) {
       return _SettingsRow(

@@ -4,9 +4,11 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/settings_provider.dart';
+import '../../../dev/dev_secrets.dart';
 import '../../../editor/state/scene_controller.dart';
 import '../data/embeddings/embedder_download_manager.dart';
 import '../data/embeddings/local_text_embedder.dart';
@@ -62,13 +64,27 @@ final localAiProvider = Provider<AiProvider>(
 final textEmbedderProvider =
     Provider<TextEmbedder>((ref) => LocalTextEmbedder());
 
+/// The effective HuggingFace token for gated downloads.
+///
+/// The user's Settings token is authoritative. In DEBUG builds only, a local
+/// gitignored dev token ([kDevHuggingFaceToken]) fills in when Settings is
+/// empty, so a developer needn't re-paste after every reinstall. Release builds
+/// never consult it — the [kDebugMode] guard means it can't leak into a shipped
+/// app even if a token-bearing `dev_secrets.dart` were somehow bundled.
+final huggingFaceTokenProvider = Provider<String>((ref) {
+  final fromSettings = ref.watch(settingsProvider).huggingFaceToken.trim();
+  if (fromSettings.isNotEmpty) return fromSettings;
+  if (kDebugMode) return kDevHuggingFaceToken.trim();
+  return '';
+});
+
 /// Manages the gated, user-triggered download of the embedding model, reading
-/// the HuggingFace token from Settings at download time (see the manager's
-/// [authToken] doc for why it's read late, not captured here).
+/// the effective token at download time (see the manager's [authToken] doc for
+/// why it's read late, not captured here).
 final embedderDownloadManagerProvider =
     Provider<EmbedderDownloadManager>((ref) {
   final manager = EmbedderDownloadManager(
-    authToken: () => ref.read(settingsProvider).huggingFaceToken,
+    authToken: () => ref.read(huggingFaceTokenProvider),
   );
   ref.onDispose(manager.dispose);
   return manager;

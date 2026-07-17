@@ -44,3 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/build/
+
+# Local dev secrets — a per-developer HuggingFace token for downloading gated
+# models without re-pasting it into Settings after every reinstall. THIS REPO
+# IS PUBLIC: the real file must never be committed. Only `dev_secrets.dart` is
+# ignored; the committed `dev_secrets.example.dart` is the template to copy.
+# Read only in debug builds (see huggingFaceTokenProvider).
+/lib/dev/dev_secrets.dart
