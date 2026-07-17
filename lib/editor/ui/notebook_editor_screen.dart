@@ -172,6 +172,9 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
               onClose: () => setState(() => _aiPanelOpen = false),
               onSummarize: (choice) => _summarizeScope(key, choice),
               onInsertNote: (text) => _insertNote(key, text),
+              // Docked beside the canvas: jumping just switches the page behind
+              // the panel, which stays open.
+              onJumpToSource: _jumpToSource,
             ),
         ],
       ),
@@ -203,8 +206,23 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     } else {
       showAiSidebarSheet(context, key,
           onSummarize: (choice) => _summarizeScope(key, choice),
-          onInsertNote: (text) => _insertNote(key, text));
+          onInsertNote: (text) => _insertNote(key, text),
+          // The sheet covers the canvas, so close it before jumping — otherwise
+          // the page switches out of sight behind it.
+          onJumpToSource: (pageId) {
+            Navigator.of(context).pop();
+            _jumpToSource(pageId);
+          });
     }
+  }
+
+  /// Jumps to the page a "Ask your notes" source passage came from, by finding
+  /// it in the current notebook. A no-op if the page is gone (e.g. deleted since
+  /// it was indexed) rather than throwing.
+  void _jumpToSource(int pageId) {
+    final pages = ref.read(pageProvider(widget.notebookId)).pages;
+    final index = pages.indexWhere((p) => p.id == pageId);
+    if (index >= 0) _switchTo(index);
   }
 
   /// "Insert as note" from the AI sidebar: drops the text onto the current page

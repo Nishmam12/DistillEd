@@ -795,8 +795,11 @@ grounded ONLY in the retrieved passages → source cards that cite the pages.
 - `ai_sidebar.dart` — an "Ask notes" footer chip opens the surface; the body
   shows the Ask view whenever ask-state ≠ idle (precedence over Explain; the
   footer hides while either is active, so they can't both run). `onJumpToSource`
-  is threaded as OPTIONAL through the sidebar — source cards render either way;
-  the editor can wire real page navigation later.
+  is threaded as OPTIONAL through the sidebar — source cards render either way.
+- `notebook_editor_screen.dart` (2.0.0+14) — `onJumpToSource` WIRED: a source
+  card finds its page by id in the notebook and switches to it (`_switchTo`),
+  a no-op if the page was deleted since indexing. Docked panel stays open; the
+  phone bottom sheet pops first so the page isn't switched out of sight.
 
 **Summarize half: nothing to wire — already correct.** The spec asks
 notebook-summarize to stop naively concatenating/truncating over-budget content
@@ -808,10 +811,8 @@ topics. Query-driven RAG is the correct tool only for the "ask about my notes"
 half — which is exactly "Ask your notes". So 2.3 is satisfied without touching
 summarize.
 
-**Remaining polish (not blocking):** wire `onJumpToSource` in
-`notebook_editor_screen.dart` so source cards actually navigate (plumbing is in
-place; needs the editor's page-navigation). Then the full end-to-end
-device check with a real indexed multi-page notebook (with the Phase 3 pass).
+**Remaining:** the full end-to-end device check with a real indexed multi-page
+notebook (with the Phase 3 pass) — source-jump navigation is now wired.
 
 **Remaining in Phase 2:** 2.4 Knowledge Graph, 2.5 Study Planner.
 
