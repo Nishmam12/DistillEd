@@ -116,10 +116,14 @@ void main() {
     );
   }
 
-  FlashcardRequest request({String text = enough}) => FlashcardRequest(
+  FlashcardRequest request({
+    String text = enough,
+    PageContext context = PageContext.empty,
+  }) =>
+      FlashcardRequest(
         notebookId: 3,
         pageId: 9,
-        context: PageContext.empty,
+        context: context,
         resolveText: () async => text,
       );
 
@@ -130,9 +134,20 @@ void main() {
 
     final ready = env.notifier.state as FlashcardReady;
     expect(ready.cards, hasLength(2));
+    expect(ready.deckName, isEmpty,
+        reason: 'no topic → blank; the default name is applied at export');
     expect(env.store.savedPage, 9);
     expect(env.store.savedCards, hasLength(2),
         reason: 'the deck is saved to Isar on success');
+  });
+
+  test('names the ready deck after the page topic', () async {
+    final env = build(_FakeGenerator(result: [card('A')]));
+
+    await env.notifier.generate(
+        request(context: const PageContext(currentTopic: 'Photosynthesis')));
+
+    expect((env.notifier.state as FlashcardReady).deckName, 'Photosynthesis');
   });
 
   test('too little content is a non-retryable error, nothing generated/saved',

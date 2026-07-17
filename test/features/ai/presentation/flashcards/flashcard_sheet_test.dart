@@ -114,7 +114,8 @@ void main() {
 
     expect(find.text('What is ATP?'), findsOneWidget);
     expect(find.text('1 / 2'), findsOneWidget);
-    expect(find.text('Export to Anki (CSV)'), findsOneWidget);
+    expect(find.text('Export to Anki (.apkg)'), findsOneWidget);
+    expect(find.text('Export as CSV'), findsOneWidget);
   });
 
   testWidgets('tapping a card flips it to the answer', (tester) async {

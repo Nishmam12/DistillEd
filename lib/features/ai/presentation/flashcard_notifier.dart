@@ -37,7 +37,11 @@ class FlashcardDownloadingModel extends FlashcardState {
 
 class FlashcardReady extends FlashcardState {
   final List<Flashcard> cards;
-  const FlashcardReady(this.cards);
+
+  /// The page's topic, used to name an Anki export deck (blank → a default
+  /// name is substituted at export time).
+  final String deckName;
+  const FlashcardReady(this.cards, {this.deckName = ''});
 }
 
 class FlashcardError extends FlashcardState {
@@ -114,7 +118,7 @@ class FlashcardNotifier extends StateNotifier<FlashcardState> {
 
       await _store.replaceForPage(request.notebookId, request.pageId, cards);
       if (!mounted) return;
-      state = FlashcardReady(cards);
+      state = FlashcardReady(cards, deckName: request.context.currentTopic);
     } catch (e) {
       if (!mounted) return;
       state = _mapError(e);

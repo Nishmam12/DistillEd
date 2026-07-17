@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../export/export_share_service.dart';
+import '../../data/flashcards/flashcard_apkg.dart';
 import '../../data/flashcards/flashcard_csv.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/models/flashcard.dart';
@@ -46,7 +47,8 @@ class _FlashcardSheet extends ConsumerWidget {
             const _Status(label: 'Making flashcards…'),
           FlashcardDownloadingModel(:final progress) =>
             _Downloading(progress: progress),
-          FlashcardReady(:final cards) => _Deck(cards: cards),
+          FlashcardReady(:final cards, :final deckName) =>
+            _Deck(cards: cards, deckName: deckName),
           FlashcardError() => _ErrorView(state: state),
         },
       ),
@@ -161,7 +163,8 @@ class _ErrorView extends ConsumerWidget {
 
 class _Deck extends StatefulWidget {
   final List<Flashcard> cards;
-  const _Deck({required this.cards});
+  final String deckName;
+  const _Deck({required this.cards, required this.deckName});
 
   @override
   State<_Deck> createState() => _DeckState();
@@ -179,22 +182,49 @@ class _DeckState extends State<_Deck> {
     super.dispose();
   }
 
-  Future<void> _export() async {
+  Future<void> _export({required bool apkg}) async {
+    if (_exporting) return;
     setState(() => _exporting = true);
     try {
-      final csv = flashcardsToCsv(widget.cards);
-      await ExportShareService.shareFile(
-        bytes: Uint8List.fromList(utf8.encode(csv)),
-        filename: 'flashcards_${DateTime.now().millisecondsSinceEpoch}.csv',
-        mimeType: 'text/csv',
-      );
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Couldn't export the flashcards.")));
+      if (apkg) {
+        try {
+          final bytes =
+              flashcardsToApkg(widget.cards, deckName: widget.deckName);
+          await _share(bytes, 'apkg', 'application/octet-stream');
+          return;
+        } catch (_) {
+          // The native SQLite engine is unavailable (or the build failed) — fall
+          // back to the directive CSV so the user still gets an importable file.
+          await _shareCsv();
+          _notify('Exported as CSV — the .apkg deck format is unavailable here.');
+          return;
+        }
       }
+      await _shareCsv();
+    } catch (_) {
+      _notify("Couldn't export the flashcards.");
     } finally {
       if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _shareCsv() async {
+    final csv = flashcardsToAnkiCsv(widget.cards, deckName: widget.deckName);
+    await _share(Uint8List.fromList(utf8.encode(csv)), 'csv', 'text/csv');
+  }
+
+  Future<void> _share(Uint8List bytes, String ext, String mimeType) {
+    return ExportShareService.shareFile(
+      bytes: bytes,
+      filename: 'flashcards_${DateTime.now().millisecondsSinceEpoch}.$ext',
+      mimeType: mimeType,
+    );
+  }
+
+  void _notify(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -238,17 +268,22 @@ class _DeckState extends State<_Deck> {
         const SizedBox(height: 12),
         FilledButton.icon(
           style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
-          onPressed: _exporting ? null : _export,
+          onPressed: _exporting ? null : () => _export(apkg: true),
           icon: _exporting
               ? const SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: AppColors.textOnAccent))
-              : const Icon(Icons.ios_share,
+              : const Icon(Icons.style_outlined,
                   size: 18, color: AppColors.textOnAccent),
-          label: const Text('Export to Anki (CSV)',
+          label: const Text('Export to Anki (.apkg)',
               style: TextStyle(color: AppColors.textOnAccent)),
+        ),
+        TextButton(
+          onPressed: _exporting ? null : () => _export(apkg: false),
+          child: const Text('Export as CSV',
+              style: TextStyle(color: AppColors.textSecondary)),
         ),
       ],
     );

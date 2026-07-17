@@ -14,6 +14,26 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   Entries below are keyed by the semantic version; the exact `+BUILD` you see
   in-app is whatever commit you're on.
 
+## [2.0.0] - 2026-07-17
+### Added
+- **On-device AI study tools (private, offline).** A new AI sidebar in the
+  editor, powered by an on-device model — no account, no network. After a
+  one-time model download, everything runs locally:
+  - **Live context** — reads the current page and surfaces its topic, key
+    concepts, likely knowledge gaps, and difficulty as you write.
+  - **Summarize** a selection, a page, or a whole notebook.
+  - **Explain** any passage across a range of depths/styles, inserted back as a
+    note.
+  - **Writing assistant** — gentle grammar / clarity / repetition suggestions.
+  - **Quiz generator** — gradeable multiple-choice, true/false and
+    fill-in-the-blank questions (plus coding questions on programming pages).
+  - **Flashcards** — a persistent deck built from a page, with a flip-through
+    study view.
+- **Flashcard export to Anki.** Export a deck as a ready-made **`.apkg`** (a
+  named Anki deck that imports in one tap) or as **CSV** with import directives
+  (named deck + automatic field mapping). Fully offline; `.apkg` degrades to CSV
+  if the deck format is ever unavailable on a device.
+
 ## [1.1.0] - 2026-06-21
 ### Added
 - **Canvas 2.0 — a ground-up rebuilt drawing engine (beta, opt-in).** Turn it

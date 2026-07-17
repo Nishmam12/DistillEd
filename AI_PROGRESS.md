@@ -500,6 +500,42 @@ Auto-generated, **persistent** flashcard decks with one-tap Anki export.
 - NOTE: not device-run (no device; R5 is Nabil-owned). The `.apkg` export and an
   on-device check of card quality + the CSV import into Anki are fast-follows.
 
+### Loop 1.8 — Anki export (.apkg deck + directive CSV) — 2026-07-17
+Shipped both Anki export formats for a flashcard deck; the deck sheet's export
+button now offers **`.apkg`** (primary) and **CSV** (secondary).
+- `ai/data/flashcards/anki_collection.dart` (**pure, no native dep**): the whole
+  format-critical model of an Anki `collection.anki2` (ver 11) — table DDL, exact
+  column-ordered row values for `col`/`notes`/`cards`, the SHA1 field checksum
+  (`crypto`), stable base64url note GUIDs, and the `models`/`decks`/`dconf`/`conf`
+  JSON blobs. One Basic notetype (Front/Back), one template, fresh "new" cards.
+  Schema follows Anki/genanki conventions.
+- `ai/data/flashcards/flashcard_apkg.dart` (thin native layer): replays the
+  collection into a real SQLite file via **`package:sqlite3`** and zips it
+  (`collection.anki2` + `media` = `{}`) with **`package:archive`** into `.apkg`
+  bytes.
+- `ai/data/flashcards/flashcard_csv.dart`: added `flashcardsToAnkiCsv` — the CSV
+  behind Anki 2.1.54+ header directives (`#separator/#html/#notetype/#deck`) so a
+  plain file imports into a **named deck** with auto field-mapping. Deck named
+  after `PageContext.currentTopic` (blank → default), threaded via
+  `FlashcardReady.deckName`.
+- `ai/presentation/flashcards/flashcard_sheet.dart`: `.apkg` primary, CSV
+  secondary; **`.apkg` degrades to CSV on any failure** (e.g. native lib absent),
+  never throwing to the user.
+- **Deps:** `sqlite3` (native assets — builds SQLite from source; the EOL
+  `sqlite3_flutter_libs` is intentionally NOT used) + `archive`. Native sqlite3
+  verified loading on the host (SQLite 3.53.3), so the writer is fully testable.
+- Tests (+21 → **421/421**, analyze clean): `anki_collection_test` (checksum
+  formula + HTML-strip + determinism, GUID stability/URL-safety, row values,
+  ver-11 col + JSON config shape, blank/empty decks), `flashcard_apkg_test`
+  (**real round-trip**: build → unzip → open the inner SQLite → assert
+  notes/cards/named-deck/no-orphans + the SQLite magic header), plus directive
+  cases in `flashcard_csv_test` and a `flashcard_notifier` topic-name case.
+- **Still not device-run:** host tests can't prove that real Anki/AnkiDroid
+  *accepts* the file — that's the on-device DoD import step. The native-assets
+  **Android app build** is likewise unverified here (no attached device); if
+  `flutter build apk` ever balks at native assets, the fallback is to re-add
+  `sqlite3_flutter_libs`.
+
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
@@ -509,23 +545,24 @@ Auto-generated, **persistent** flashcard decks with one-tap Anki export.
   files that don't exist on 2.0), his legacy `note_editor_screen.dart` wiring.
 
 ## Next Loop
-**No feature loop remains in Phase 1** — all of 1.1–1.7 are built, tested
-(400/400), analyze-clean, committed and pushed on `Inkdot-2.0`.
+**No feature loop remains in Phase 1** — 1.1–1.8 are built, tested (421/421),
+analyze-clean. Shipped as **version 2.0.0** on a new branch off `Inkdot-2.0`
+(per Nabil). **Every push now bumps the pubspec version** (manual, since the
+auto-bump workflow only runs on the frozen `main`).
 
-What's actually left before Phase 1 is *closed* (all Nabil-owned, none codeable
-without hardware):
-1. **On-device Phase-1 DoD pass** (phase spec §4): drive each feature on a real
-   Android device with a real note — Context Engine ~2–3s after a pause;
-   sidebar shows topic/concepts/gaps/level; Summarize at all three scopes with
-   chunking; Explain in ≥4 modes streamed + insert-as-note; Writing Assistant
-   grammar/clarity/repetition non-intrusively; Quiz valid gradeable MCQ+T/F;
-   Flashcards generated, stored in Isar, CSV exported and imported into Anki.
-   Everything must work **fully offline**. This shares the R5 ML Kit + Gemma
-   path, so validating Summarize validates most of the stack.
-2. **`.apkg` flashcard export** (fast-follow to Loop 1.7's CSV): a SQLite deck —
-   vet a maintained plain-SQLite package first.
-3. **Afnan handoff** (decision #5): `main` is frozen; all AI work targets
-   `Inkdot-2.0`.
+What's left before Phase 1 is *closed*:
+1. **On-device Phase-1 DoD pass** (phase spec §4) — device blocker **LIFTED**:
+   Nabil now runs an Android Studio emulator + a physical Xiaomi Pad. Drive each
+   feature on a real note, fully offline — Context Engine ~2–3s after a pause;
+   sidebar topic/concepts/gaps/level; Summarize at all three scopes with
+   chunking; Explain ≥4 modes streamed + insert-as-note; Writing Assistant;
+   Quiz gradeable MCQ+T/F; Flashcards generated + Isar-persisted, then **export
+   `.apkg` and CSV and import BOTH into Anki** to confirm the formats round-trip.
+   Also confirm the Android app build bundles native sqlite3 (native assets).
+2. ~~`.apkg` flashcard export~~ — **DONE (Loop 1.8):** real SQLite-backed Anki
+   deck + directive CSV, both host-tested.
+3. ~~Afnan handoff~~ — **DONE:** Nabil confirmed Afnan is informed, his code is
+   merged into Nabil's, and Nabil's pushes are canonical.
 
 Then Phase 2 (Learning Memory: durable contexts, quiz-score history, RAG
 embeddings) per INTEGRATION_ROADMAP.
