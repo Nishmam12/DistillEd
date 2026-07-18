@@ -16,6 +16,14 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 ### Added
+- **Study planner.** A new planner icon in the notebook toolbar turns what the AI
+  has learned about your notes into a day-by-day study plan. Pick a horizon
+  (7 / 14 / 30 days, or an exam countdown) and it schedules the concepts you're
+  struggling with, the ones due for review, and the ones your notes mention but
+  never explain — spread sensibly across the days, with checkboxes to tick off
+  each day and a progress bar. Built entirely on-device and instantly: no model
+  download needed, because the schedule comes from your real progress data, not
+  a language model guessing.
 - **Knowledge graph.** A new graph icon in the notebook toolbar opens a concept
   map built automatically from your notes: each concept is a node coloured by
   how well you know it (learning → practiced → mastered), linked by the

@@ -612,6 +612,7 @@ Refinements discovered while building, recorded here so the vision doc stays hon
 - **"Concepts referenced but never studied" fall out of the graph for free.** Edge endpoints with no mastery record become distinct "gap" nodes — this is the same signal the Study Planner (2.5) needs, so the graph and planner share one source of truth rather than each re-deriving gaps.
 - **RAG for notebook-summarize was intentionally NOT wired.** Comprehensive summarization already uses map-reduce (chunk-and-reduce); retrieval would drop content and regress it. Query-driven RAG serves "Ask your notes" instead. See the 2.3 note in `AI_PROGRESS.md`.
 - **Embedding model is gated + per-user-token.** EmbeddingGemma needs a HuggingFace token; delivered as a per-user Settings field (no token ever baked into the public repo), with a debug-only local fallback for development. See the 2.2 notes.
+- **The Study Planner's schedule is deterministic, not model-generated.** The spec frames it as a structured-output generation task; in practice the schedule (which concept, which day, why) is computed by a pure scheduler from real mastery/due/gap data, so a plan is instant and works with no model downloaded. A model-written "strategy note" is left as optional, non-breaking framing — the plan never depends on it. This is the strongest form of the plan's own "don't let the LLM invent the schedule" instruction.
 
 ---
 

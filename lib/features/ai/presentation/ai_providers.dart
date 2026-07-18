@@ -19,6 +19,7 @@ import '../data/llm/model_download_manager.dart';
 import '../data/memory/learning_memory_repository.dart';
 import '../data/providers/local_gemma_provider.dart';
 import '../data/rag/note_chunk_store.dart';
+import '../data/study_planner/study_plan_store.dart';
 import '../domain/ai_provider.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
@@ -32,7 +33,9 @@ import '../domain/page_content_extractor.dart';
 import '../domain/rag/rag_indexer.dart';
 import '../domain/rag/rag_retriever.dart';
 import '../domain/rag/text_embedder.dart';
+import '../domain/study_planner/study_plan.dart';
 import 'ask_notes_notifier.dart';
+import 'study_planner_notifier.dart';
 import 'context_engine_notifier.dart';
 import 'explain_notifier.dart';
 import 'flashcard_notifier.dart';
@@ -219,6 +222,22 @@ final knowledgeGraphProvider =
   final concepts = await memory.allConcepts(notebookId);
   final relations = await memory.relationsForNotebook(notebookId);
   return KnowledgeGraph.build(concepts: concepts, relations: relations);
+});
+
+/// Durable store of generated study plans (Isar), one per notebook.
+final studyPlanStoreProvider =
+    Provider<StudyPlanStore>((ref) => IsarStudyPlanStore());
+
+/// Drives the Study Planner for one notebook: loads any saved plan, generates a
+/// new one from Learning-Memory signals (deterministic — no model), toggles
+/// day completion. Family-scoped so each notebook keeps its own plan state.
+final studyPlannerProvider = StateNotifierProvider.family<StudyPlannerNotifier,
+    AsyncValue<StudyPlan?>, int>((ref, notebookId) {
+  return StudyPlannerNotifier(
+    memory: ref.watch(learningMemoryProvider),
+    store: ref.watch(studyPlanStoreProvider),
+    notebookId: notebookId,
+  );
 });
 
 /// Session cache of the last suggestions per page (see [pageContextCacheProvider]).

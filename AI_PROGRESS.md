@@ -858,8 +858,51 @@ it but the Isar generator's parser did not. Found via `od -c`, stripped from all
 new files with `perl -pe 's/\x00/ /g'`. Worth a standing check when a generator
 errors on a syntactically-fine file.
 
-**Remaining in Phase 2:** 2.5 Study Planner (which consumes weakConcepts /
-dueForReview / the graph's referenced-only gaps).
+### Loop 2.5 — Study Planner — CODE-COMPLETE (2026-07-18)
+
+A day-by-day plan built from the notebook's real Learning-Memory signals.
+**579/579, analyze clean.**
+
+- **The schedule is deterministic — the model NEVER runs** (the phase spec's
+  "don't let the LLM invent the schedule" line, taken to its logical end). A pure
+  scheduler (`domain/study_planner/study_scheduler.dart`) decides which concept
+  goes on which day and why; the result is instant, offline, and works with
+  nothing downloaded. `StudyPlan.strategyNote` exists (defaulted '') for an
+  optional model-written framing later — a non-breaking add — but was
+  deliberately NOT built now: a plan that needs a 2.4 GB download just to show a
+  schedule would be the wrong UX, and the deterministic plan already satisfies
+  the DoD ("which concepts to review, quiz, and learn new").
+- **Priority is weak → due → gap**, deduped by normalized key (a concept that's
+  both weak and due is scheduled once, as review). Tasks are capped to
+  `dayCount × maxTasksPerDay` (highest-priority kept, no cramming) and spread
+  evenly across the horizon (`⌊i·days/total⌋`), so a long horizon with few
+  concepts yields light days, not everything on day one. Horizons: 7 / 14 / 30
+  day + an exam countdown (inclusive day count, clamped to `examDayCap = 60`).
+- **Gaps reuse the Knowledge Graph** (2.4): the planner builds the graph and
+  takes its `referencedOnly` nodes as "learn new" tasks — one definition of
+  "gap" shared between the two features, exactly as 2.4 anticipated.
+- `data/study_planner/`: `StudyPlanRecord` (+ `@embedded` day/task records) and
+  a `StudyPlanStore` seam — one plan per notebook, replaced on regenerate.
+  Registered as `StudyPlanRecordSchema`.
+- `presentation/study_planner_notifier.dart` orchestrates read-signals →
+  `buildStudyPlan` → save; optimistic day-completion toggle that rolls back on a
+  failed write. `presentation/study_planner/study_planner_screen.dart`: a horizon
+  picker (with exam date), the dated day list with per-day completion checkboxes
+  and a progress bar, empty/rest-day handling. Route `/note2/:id/plan`, editor
+  `event_note` app-bar icon.
+
+## Phase 2 COMPLETE (2026-07-18)
+
+All five loops built, tested, analyze-clean, pushed on `v2.0.0`:
+2.1 Learning Memory · 2.2 On-device RAG · 2.3 Ask your notes · 2.4 Knowledge
+Graph · 2.5 Study Planner. **Only on-device validation remains** (deferred to
+the Phase 3 device pass on the Xiaomi Pad): the gated embedding download + real
+RAG/graph/plan against a genuinely indexed multi-page notebook, plus the open
+STOP CONDITION (brute-force vector-sweep latency; tune `kMinRelevance`). Then
+Phase 3 (Cloud Gateway / Router).
+
+**Optional Phase-2 polish, non-blocking:** the LLM `strategyNote` for study
+plans; `onJumpToSource` is already wired.
 
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
