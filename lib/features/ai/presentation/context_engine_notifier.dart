@@ -15,6 +15,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/model/scene_element.dart';
@@ -180,6 +181,12 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       // (the local runtime serialises them anyway) rather than contending.
       _notifyContent(content);
     } catch (e, st) {
+      // Debug-only: diagnosing the on-device validation pass (2026-07-18) —
+      // remove once the STOP CONDITION investigation wraps up.
+      if (kDebugMode) {
+        debugPrint('[ContextEngine] analyze FAILED (page=$_pageId): '
+            '${e.runtimeType}: $e\n$st');
+      }
       // Surfaced, not swallowed: the sidebar renders the failure kind
       // (model missing → download hint; anything else → gentle retry).
       if (mounted) {

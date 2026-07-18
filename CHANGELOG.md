@@ -47,6 +47,16 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
     It's a gated Google model, so it needs the HuggingFace token you add just
     above it (accept the licence once, paste a read token). ~185 MB.
 
+### Fixed
+- **Handwriting recognition failing on Android.** A recent upstream update to
+  the ML Kit digital-ink plugin broke recognition entirely on Android
+  (affecting live context, RAG indexing, and anything else that reads page
+  text). Pinned back to the last working release.
+- **Explain sometimes described the question instead of answering it.**
+  Asking to explain a short flagged term (rather than a full passage) could
+  make the on-device model talk about the prompt itself instead of teaching
+  the concept. Reworded the instructions so it stays focused on the subject.
+
 ## [2.0.0] - 2026-07-17
 ### Added
 - **On-device AI study tools (private, offline).** A new AI sidebar in the

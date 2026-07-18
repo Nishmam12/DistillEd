@@ -8,7 +8,7 @@ publish_to: 'none'
 # Bump the semantic <major>.<minor>.<patch> by hand (and add a CHANGELOG.md
 # entry) when a change warrants it. The running app reads this via
 # package_info_plus, so the "About" screen always shows what's installed.
-version: 2.0.0+17
+version: 2.0.0+18
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -56,7 +56,14 @@ dependencies:
   # ── AI (ported from main's summarize feature — see AI_PROGRESS.md
   #    and ai_prompts/INTEGRATION_ROADMAP.md for justifications).
   #    flutter_gemma pinned exact: the 1.x API is still moving.
-  google_mlkit_digital_ink_recognition: 0.15.0
+  # PINNED below latest: 0.15.0 migrated the Android side from Java to Kotlin
+  # and broke it — the Dart MethodChannel name ('..._recognizer') no longer
+  # matches what the native Kotlin plugin registers ('..._recognition'), so
+  # EVERY call (isModelDownloaded, recognize, etc.) throws
+  # MissingPluginException on Android. Confirmed via source inspection
+  # 2026-07-18; not yet fixed upstream. Re-check for a fixed release before
+  # bumping past 0.14.2.
+  google_mlkit_digital_ink_recognition: 0.14.2
   flutter_gemma: 1.3.0
   flutter_gemma_litertlm: 1.1.0
   crypto: ^3.0.7

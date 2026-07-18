@@ -5,6 +5,8 @@
 // Storage-agnostic: chunks arrive through a loader callback, so this is unit
 // tested with a list and no Isar.
 
+import 'package:flutter/foundation.dart';
+
 import 'note_chunk.dart';
 import 'text_embedder.dart';
 import 'vector_math.dart';
@@ -54,7 +56,12 @@ class RagRetriever {
   }) async {
     if (query.trim().isEmpty) return const [];
 
+    // Debug-only: real device numbers for the open STOP CONDITION (tune
+    // kMinRelevance / decide on a heavier vector store) don't exist yet.
+    // Remove once that's settled — see rag_retriever.dart's kMinRelevance doc.
+    final loadWatch = kDebugMode ? (Stopwatch()..start()) : null;
     final chunks = await _loadChunks(notebookId);
+    loadWatch?.stop();
 
     // Only chunks from the CURRENT model are comparable: vectors from a
     // different embedder live in a different space, and cosine over them
@@ -67,13 +74,25 @@ class RagRetriever {
     ];
     // Before embedding: an empty or fully-stale notebook must not pay a model
     // load just to compare the query against nothing.
-    if (searchable.isEmpty) return const [];
+    if (searchable.isEmpty) {
+      if (kDebugMode) {
+        debugPrint(
+          '[RAG] search: 0/${chunks.length} chunks searchable for notebook '
+          '$notebookId (embedder modelId=${_embedder.modelId}, stored '
+          'modelIds=${chunks.map((c) => c.embeddingModelId).toSet()})',
+        );
+      }
+      return const [];
+    }
 
+    final embedWatch = kDebugMode ? (Stopwatch()..start()) : null;
     final queryVector = await _embedder.embedOne(
       query,
       taskType: EmbedTaskType.query,
     );
+    embedWatch?.stop();
 
+    final sweepWatch = kDebugMode ? (Stopwatch()..start()) : null;
     final hits = topKSimilar<NoteChunk>(
       query: queryVector,
       candidates: searchable,
@@ -81,6 +100,18 @@ class RagRetriever {
       topK: topK,
       minScore: minScore,
     );
+    sweepWatch?.stop();
+
+    if (kDebugMode) {
+      debugPrint(
+        '[RAG] search: ${searchable.length}/${chunks.length} chunks '
+        '(load ${loadWatch?.elapsedMilliseconds}ms, '
+        'embed ${embedWatch?.elapsedMilliseconds}ms, '
+        'sweep ${sweepWatch?.elapsedMilliseconds}ms), '
+        'top score ${hits.isEmpty ? "n/a" : hits.first.score.toStringAsFixed(3)}',
+      );
+    }
+
     return [
       for (final hit in hits) RetrievedChunk(chunk: hit.item, score: hit.score)
     ];

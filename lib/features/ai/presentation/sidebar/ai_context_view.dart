@@ -61,12 +61,18 @@ class AiContextView extends ConsumerWidget {
   }
 }
 
-/// Prompt sent when a knowledge-gap flag is tapped: explain the flagged term,
+/// Content sent when a knowledge-gap flag is tapped: explain the flagged term,
 /// grounded in the page's detected topic when there is one.
+///
+/// [Explainer] always wraps this as "PASSAGE:\n<content>" with a system
+/// prompt that says "explain the passage below" — so this must read as the
+/// term itself (like a normal Explain selection), NOT as an instruction
+/// sentence. An earlier version read "Explain this concept, which the notes
+/// use but never define: ..." and small on-device models took that literally,
+/// explaining the meta-instruction instead of the term.
 String _gapExplainContent(String gap, String topic) {
-  final where = topic.isEmpty ? '' : ' It appears in notes about "$topic".';
-  return 'Explain this concept, which the notes use but never define: '
-      '"$gap".$where';
+  final where = topic.isEmpty ? '' : ' as used in notes about "$topic"';
+  return '$gap$where';
 }
 
 class _ReadingState extends StatelessWidget {

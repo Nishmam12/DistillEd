@@ -12,6 +12,8 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../domain/rag/rag_indexer.dart';
 
 /// How long a page's text must sit unchanged before it is embedded.
@@ -45,6 +47,12 @@ class RagIndexScheduler {
     required int pageId,
     required String text,
   }) {
+    if (kDebugMode) {
+      debugPrint(
+        '[RAG] schedule(page=$pageId, notebook=$notebookId, '
+        'chars=${text.length}) in ${idleDelay.inSeconds}s',
+      );
+    }
     _pending[pageId]?.cancel();
     _pending[pageId] = Timer(idleDelay, () {
       _pending.remove(pageId);
@@ -58,12 +66,21 @@ class RagIndexScheduler {
     required String text,
   }) async {
     try {
-      await _indexer.indexPage(
+      final outcome = await _indexer.indexPage(
         notebookId: notebookId,
         pageId: pageId,
         text: text,
       );
-    } catch (_) {
+      if (kDebugMode) {
+        debugPrint(
+          '[RAG] indexPage(page=$pageId, notebook=$notebookId, '
+          'chars=${text.length}): $outcome',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[RAG] indexPage(page=$pageId) FAILED: $e');
+      }
       // Swallowed on purpose, and safe to swallow: the overwhelmingly common
       // cause is the embedding model simply not being downloaded, which is a
       // normal state — not something to interrupt someone's writing over. The

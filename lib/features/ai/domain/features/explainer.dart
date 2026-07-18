@@ -46,12 +46,23 @@ class ExplainInput {
 
 class Explainer {
   /// Shared preamble — the faithfulness contract is identical across modes.
+  ///
+  /// The explicit "never talk about the passage itself" line exists because
+  /// small on-device models, given a short passage (a bare term or a single
+  /// clause), default to describing/critiquing the passage as text ("this
+  /// passage points out a gap...") instead of teaching its subject. Confirmed
+  /// on-device with Gemma 4 E2B, 2026-07-18 — a full paragraph passage didn't
+  /// trigger it, but the knowledge-gap explain flow's short input reliably did.
   static const String _base =
-      'You are a patient tutor helping a student understand their own notes. '
-      'Explain the passage below. Base the explanation on the passage; you may '
-      'add widely-known background that helps understanding, but never invent '
-      'specifics (names, dates, numbers, quotes) that contradict it. Be '
-      'concise and do not restate the whole passage first.';
+      'You are a patient tutor helping a student understand a topic from '
+      'their own notes. Explain the SUBJECT of the passage below, the way a '
+      'tutor teaches a topic out loud — never describe, summarize, or comment '
+      'on the passage itself as a piece of text (do not say things like "this '
+      'passage states" or "the notes don\'t cover"). Base the explanation on '
+      'the passage; you may add widely-known background that helps '
+      'understanding, but never invent specifics (names, dates, numbers, '
+      'quotes) that contradict it. Be concise and do not restate the whole '
+      'passage first.';
 
   static const Map<ExplainMode, String> _modeInstruction = {
     ExplainMode.beginner:
