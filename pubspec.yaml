@@ -8,7 +8,7 @@ publish_to: 'none'
 # Bump the semantic <major>.<minor>.<patch> by hand (and add a CHANGELOG.md
 # entry) when a change warrants it. The running app reads this via
 # package_info_plus, so the "About" screen always shows what's installed.
-version: 2.0.0+18
+version: 2.0.0+19
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -68,6 +68,10 @@ dependencies:
   flutter_gemma_litertlm: 1.1.0
   crypto: ^3.0.7
   shared_preferences: ^2.5.5
+
+  # ── Cloud Gateway client (Phase 3) — chosen over package:http for native
+  #    streamed-response + CancelToken support (mid-stream interruption).
+  dio: ^5.7.0
 
   # ── RAG embeddings (Phase 2, Loop 2.2) ───────────────────
   #    EmbeddingGemma 300M on the same LiteRT+FFI stack as the LLM above, so

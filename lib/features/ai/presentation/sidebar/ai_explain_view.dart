@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/features/explainer.dart';
+import '../../domain/routing/intelligent_router.dart' show CloudTier;
 import '../ai_providers.dart';
 import '../explain_notifier.dart';
 
@@ -32,22 +33,26 @@ class AiExplainView extends ConsumerWidget {
         ),
       ExplainDownloadingModel(:final progress) =>
         _Header(child: _Downloading(progress: progress)),
-      ExplainStreaming(:final text, :final mode) => _Header(
+      ExplainStreaming(:final text, :final mode, :final fromCloud) => _Header(
           mode: mode,
+          fromCloud: fromCloud,
           child: _Body(
             text: text,
             streaming: true,
             onInsertNote: onInsertNote,
           ),
         ),
-      ExplainReady(:final text, :final mode) => _Header(
+      ExplainReady(:final text, :final mode, :final fromCloud) => _Header(
           mode: mode,
+          fromCloud: fromCloud,
           child: _Body(
             text: text,
             streaming: false,
             onInsertNote: onInsertNote,
           ),
         ),
+      ExplainConfirmCloud() =>
+        _Header(child: _ConfirmCloudBody(state: state)),
       ExplainError() => _Header(child: _ErrorBody(state: state)),
       ExplainIdle() => const SizedBox.shrink(),
     };
@@ -59,7 +64,11 @@ class AiExplainView extends ConsumerWidget {
 class _Header extends ConsumerWidget {
   final Widget child;
   final ExplainMode? mode;
-  const _Header({required this.child, this.mode});
+
+  /// Persistent, hard-to-miss indicator per the phase spec's "clearly
+  /// indicate when cloud AI is being used" privacy rule.
+  final bool fromCloud;
+  const _Header({required this.child, this.mode, this.fromCloud = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,6 +90,7 @@ class _Header extends ConsumerWidget {
                     color: AppColors.textPrimary,
                   )),
             ),
+            if (fromCloud) const _CloudBadge(),
             if (mode != null) _ModeSelector(mode: mode!),
             IconButton(
               tooltip: 'Close',
@@ -235,6 +245,90 @@ class _Body extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: AppColors.textOnAccent)),
               ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Small, hard-to-miss "this used the cloud" pill — deliberately not hidden
+/// behind a tooltip or icon-only affordance (the spec requires it be
+/// "genuinely noticeable, not buried").
+class _CloudBadge extends StatelessWidget {
+  const _CloudBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.accentWash,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.accentSoft),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cloud_outlined, size: 13, color: AppColors.accentStrong),
+          SizedBox(width: 4),
+          Text('Cloud',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.accentStrong,
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pauses before a cloud call for the user's explicit yes/no — "never
+/// silently send to cloud". The first-ever call gets a longer, more
+/// educational explanation; later ones are terser.
+class _ConfirmCloudBody extends ConsumerWidget {
+  final ExplainConfirmCloud state;
+  const _ConfirmCloudBody({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(explainNotifierProvider.notifier);
+    final tierLabel =
+        state.tier == CloudTier.frontier ? 'a frontier cloud model' : 'a cloud model';
+    final subtitle = state.isFirstEver
+        ? 'This passage is long enough that explaining it well needs more '
+            'than the on-device model can do — so this one request (and only '
+            'this one) would be sent to $tierLabel to answer. Nothing else '
+            'about your notebook leaves the device, and you\'ll see this '
+            'prompt every time unless you change it in Settings.'
+        : 'This would be sent to $tierLabel to answer.';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _Centered(
+          icon: Icons.cloud_outlined,
+          title: 'Use the cloud for this one?',
+          subtitle: subtitle,
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: notifier.cancelCloud,
+              child: const Text('Cancel',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+              onPressed: notifier.confirmCloudAndRun,
+              child: const Text('Send',
+                  style: TextStyle(color: AppColors.textOnAccent)),
             ),
           ],
         ),

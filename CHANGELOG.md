@@ -47,6 +47,15 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
     It's a gated Google model, so it needs the HuggingFace token you add just
     above it (accept the licence once, paste a read token). ~185 MB.
 
+- **Cloud AI foundation (dev-only, not yet enabled).** A new, optional cloud
+  tier for tasks the on-device model genuinely can't handle alone — nothing
+  changes by default, and nothing is ever sent without an explicit prompt
+  showing exactly what's about to leave the device. Explain is the first
+  feature wired to it: a "Cloud" badge shows whenever an answer used it.
+  Everything else (Summarize, Ask your notes, Quiz, Flashcards, live context)
+  is unaffected and stays fully on-device. The gateway itself isn't deployed
+  anywhere yet, so this has no visible effect until that happens.
+
 ### Fixed
 - **Handwriting recognition failing on Android.** A recent upstream update to
   the ML Kit digital-ink plugin broke recognition entirely on Android

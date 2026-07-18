@@ -73,7 +73,8 @@ class _RecordingExplain extends ExplainNotifier {
   }
 
   @override
-  Future<void> run(ExplainRequest request) async => lastRun = request;
+  Future<void> run(ExplainRequest request, {bool cloudConfirmed = false}) async =>
+      lastRun = request;
 }
 
 class _FixedContext extends ContextEngineNotifier {

@@ -1,5 +1,5 @@
 // Drives one Explain request into the sidebar:
-//   idle → preparing → streaming(partial) → ready(full)
+//   idle → preparing → [confirmCloud → (confirm)] → streaming(partial) → ready(full)
 //            ↘ downloadingModel(progress) → (re-run) …
 //            ↘ error(message, retryable, offerModelDownload)
 //
@@ -7,6 +7,12 @@
 // so a retry re-reads it; the streamed reply accumulates into the state so the
 // view can render live token output. The LLM download is never silent — a
 // missing model surfaces as an error offering the (explicit) download.
+//
+// Phase 3: when Explain is wired to a [RoutedAiProvider] (see
+// `ai_providers.dart`), [evaluateCloudRoute] lets this notifier pause on
+// [ExplainConfirmCloud] before the network call, rather than the routing
+// decision being invisible inside the provider — "never silently send to
+// cloud" has to be enforced here, at the one place that can show UI.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,6 +21,7 @@ import '../data/llm/llm_exceptions.dart';
 import '../data/llm/model_download_manager.dart';
 import '../domain/ai_provider.dart';
 import '../domain/features/explainer.dart';
+import '../domain/routing/intelligent_router.dart' show CloudRouteDecision, CloudTier;
 
 sealed class ExplainState {
   const ExplainState();
@@ -32,18 +39,32 @@ class ExplainPreparing extends ExplainState {
 class ExplainStreaming extends ExplainState {
   final String text;
   final ExplainMode mode;
-  const ExplainStreaming(this.text, this.mode);
+
+  /// Whether this answer is (or will be) coming from the cloud tier —
+  /// drives the persistent cloud-in-flight badge in the view.
+  final bool fromCloud;
+  const ExplainStreaming(this.text, this.mode, {this.fromCloud = false});
 }
 
 class ExplainReady extends ExplainState {
   final String text;
   final ExplainMode mode;
-  const ExplainReady(this.text, this.mode);
+  final bool fromCloud;
+  const ExplainReady(this.text, this.mode, {this.fromCloud = false});
 }
 
 class ExplainDownloadingModel extends ExplainState {
   final int progress; // 0–100
   const ExplainDownloadingModel(this.progress);
+}
+
+/// Paused before a cloud call, waiting on the user to confirm or cancel.
+/// [isFirstEver] flags the app's very first cloud call for a longer,
+/// more educational message (subsequent confirmations are terser).
+class ExplainConfirmCloud extends ExplainState {
+  final CloudTier tier;
+  final bool isFirstEver;
+  const ExplainConfirmCloud({required this.tier, required this.isFirstEver});
 }
 
 class ExplainError extends ExplainState {
@@ -72,17 +93,33 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
   final Explainer _explainer;
   final ModelDownloadManager _downloads;
 
+  /// Null when Explain isn't routed (e.g. any test/caller not wired to the
+  /// Phase 3 router) — the cloud-confirm gate is then simply skipped,
+  /// preserving pre-Phase-3 behavior exactly.
+  final Future<CloudRouteDecision?> Function(String content)? _evaluateCloudRoute;
+  final bool Function() _hasSeenFirstCloudCall;
+  final Future<void> Function() _markFirstCloudCallSeen;
+
   ExplainNotifier({
     required Explainer explainer,
     required ModelDownloadManager downloads,
+    Future<CloudRouteDecision?> Function(String content)? evaluateCloudRoute,
+    bool Function()? hasSeenFirstCloudCall,
+    Future<void> Function()? markFirstCloudCallSeen,
   })  : _explainer = explainer,
         _downloads = downloads,
+        _evaluateCloudRoute = evaluateCloudRoute,
+        _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
+        _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
         super(const ExplainIdle());
 
   ExplainRequest? _last;
   bool _running = false;
 
-  Future<void> run(ExplainRequest request) async {
+  /// [cloudConfirmed] skips a re-check of [_evaluateCloudRoute] — set only by
+  /// [confirmCloudAndRun], after the user has already said yes once for this
+  /// specific request.
+  Future<void> run(ExplainRequest request, {bool cloudConfirmed = false}) async {
     if (_running) return;
     _last = request;
     _running = true;
@@ -97,13 +134,27 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
         return;
       }
 
+      var fromCloud = false;
+      final evaluate = _evaluateCloudRoute;
+      if (evaluate != null) {
+        final decision = await evaluate(content);
+        fromCloud = decision != null;
+        if (decision != null && !cloudConfirmed) {
+          state = ExplainConfirmCloud(
+            tier: decision.tier,
+            isFirstEver: !_hasSeenFirstCloudCall(),
+          );
+          return;
+        }
+      }
+
       final buffer = StringBuffer();
-      state = ExplainStreaming('', request.mode);
+      state = ExplainStreaming('', request.mode, fromCloud: fromCloud);
       await for (final chunk
           in _explainer.explain(ExplainInput(content: content, mode: request.mode))) {
         if (!mounted) return;
         buffer.write(chunk);
-        state = ExplainStreaming(buffer.toString(), request.mode);
+        state = ExplainStreaming(buffer.toString(), request.mode, fromCloud: fromCloud);
       }
 
       if (!mounted) return;
@@ -111,7 +162,7 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
       state = text.isEmpty
           ? const ExplainError("The model didn't return an explanation. "
               'Try again.')
-          : ExplainReady(text, request.mode);
+          : ExplainReady(text, request.mode, fromCloud: fromCloud);
     } catch (e) {
       if (!mounted) return;
       state = _mapError(e);
@@ -156,6 +207,20 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
   }
 
   void cancelModelDownload() => _downloads.cancelDownload();
+
+  /// The user said yes on [ExplainConfirmCloud] — proceeds with the same
+  /// request, skipping the confirm gate this one time.
+  Future<void> confirmCloudAndRun() async {
+    final last = _last;
+    if (last == null || _running) return;
+    await _markFirstCloudCallSeen();
+    await run(last, cloudConfirmed: true);
+  }
+
+  /// The user said no on [ExplainConfirmCloud] — back to idle, nothing sent.
+  void cancelCloud() {
+    if (!_running) state = const ExplainIdle();
+  }
 
   /// Dismisses the explanation and returns the sidebar to the live context.
   void reset() {

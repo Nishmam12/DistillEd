@@ -17,6 +17,7 @@ import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/cloud_llm_client.dart';
 import '../data/llm/model_download_manager.dart';
 import '../data/memory/learning_memory_repository.dart';
+import '../data/providers/cloud_gateway_provider.dart';
 import '../data/providers/local_gemma_provider.dart';
 import '../data/rag/note_chunk_store.dart';
 import '../data/study_planner/study_plan_store.dart';
@@ -33,6 +34,7 @@ import '../domain/page_content_extractor.dart';
 import '../domain/rag/rag_indexer.dart';
 import '../domain/rag/rag_retriever.dart';
 import '../domain/rag/text_embedder.dart';
+import '../domain/routing/intelligent_router.dart';
 import '../domain/study_planner/study_plan.dart';
 import 'ask_notes_notifier.dart';
 import 'study_planner_notifier.dart';
@@ -166,9 +168,44 @@ final pageContextCacheProvider =
 final contextEngineProvider = Provider<ContextEngine>(
     (ref) => ContextEngine(provider: ref.watch(localAiProvider)));
 
-/// Explain feature — streams an explanation of a passage from the local model.
+/// The Phase 3 cloud gateway's base URL. Not deployed yet (per the phase
+/// spec's own scope) — defaults to a local dev instance
+/// (`cd server/ai-gateway && uvicorn app.main:app`). Not user-configurable
+/// yet; revisit once a real deployment exists.
+const String cloudGatewayBaseUrl = 'http://localhost:8000';
+
+/// The two cloud tiers the Phase 3 gateway serves, each a thin [AiProvider]
+/// over the same gateway with a different `model_tier`.
+final cloudGatewayMidProvider = Provider<AiProvider>(
+    (ref) => CloudGatewayProvider(baseUrl: cloudGatewayBaseUrl, modelTier: 'cloud-mid'));
+final cloudGatewayFrontierProvider = Provider<AiProvider>((ref) =>
+    CloudGatewayProvider(baseUrl: cloudGatewayBaseUrl, modelTier: 'cloud-frontier'));
+
+/// Decides local vs. cloud-mid vs. cloud-frontier per request. Additive
+/// alongside the existing, simpler [AiRouter] (still serves Summarize).
+final intelligentRouterProvider = Provider<IntelligentRouter>((ref) =>
+    IntelligentRouter(localCapabilities: ref.watch(localAiProvider).capabilities));
+
+/// Explain, routed through the Phase 3 Intelligent Router — the one feature
+/// wired to it in this pass (see `intelligent_router.dart`'s header for why
+/// the others aren't, yet). [ExplainNotifier] reads [RoutedAiProvider.peekRoute]
+/// directly (not through [Explainer]) so it can gate on user confirmation
+/// before the network call — see `explain_notifier.dart`.
+final explainAiProviderProvider = Provider<RoutedAiProvider>((ref) {
+  return RoutedAiProvider(
+    task: TaskType.explain,
+    router: ref.watch(intelligentRouterProvider),
+    local: ref.watch(localAiProvider),
+    cloudMid: ref.watch(cloudGatewayMidProvider),
+    cloudFrontier: ref.watch(cloudGatewayFrontierProvider),
+    privacy: () => ref.read(settingsProvider).cloudPrivacy,
+  );
+});
+
+/// Explain feature — streams an explanation of a passage, routed per
+/// [explainAiProviderProvider].
 final explainerProvider = Provider<Explainer>(
-    (ref) => Explainer(provider: ref.watch(localAiProvider)));
+    (ref) => Explainer(provider: ref.watch(explainAiProviderProvider)));
 
 /// Writing Assistant feature — reviews typed text for grammar/clarity/etc.
 final writingAssistantProvider = Provider<WritingAssistant>(
@@ -264,6 +301,11 @@ final explainNotifierProvider =
   return ExplainNotifier(
     explainer: ref.watch(explainerProvider),
     downloads: ref.watch(modelDownloadManagerProvider),
+    evaluateCloudRoute: (content) =>
+        ref.read(explainAiProviderProvider).peekRoute(content),
+    hasSeenFirstCloudCall: () => ref.read(settingsProvider).hasSeenFirstCloudCall,
+    markFirstCloudCallSeen: () =>
+        ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
   );
 });
 

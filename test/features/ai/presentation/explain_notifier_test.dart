@@ -7,6 +7,8 @@ import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
 import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
 import 'package:inkflow/features/ai/domain/ai_provider.dart';
 import 'package:inkflow/features/ai/domain/features/explainer.dart';
+import 'package:inkflow/features/ai/domain/routing/intelligent_router.dart'
+    show CloudRouteDecision, CloudTier;
 import 'package:inkflow/features/ai/presentation/explain_notifier.dart';
 
 // ---- Fakes ------------------------------------------------------------------
@@ -130,5 +132,95 @@ void main() {
 
     n.reset();
     expect(n.state, isA<ExplainIdle>());
+  });
+
+  group('Phase 3 cloud-confirm gate', () {
+    ExplainNotifier routedNotifier(
+      AiProvider provider, {
+      required CloudRouteDecision? Function(String) evaluate,
+      bool hasSeenFirstCloudCall = false,
+    }) {
+      var seen = hasSeenFirstCloudCall;
+      return ExplainNotifier(
+        explainer: Explainer(provider: provider),
+        downloads: ModelDownloadManager(
+            installer: _FakeInstaller(), storage: _FakeStorage()),
+        evaluateCloudRoute: (content) async => evaluate(content),
+        hasSeenFirstCloudCall: () => seen,
+        markFirstCloudCallSeen: () async => seen = true,
+      );
+    }
+
+    test('a cloud decision pauses on ExplainConfirmCloud without calling the model',
+        () async {
+      final provider = _ScriptedProvider(['unused']);
+      final n = routedNotifier(provider,
+          evaluate: (_) => const CloudRouteDecision(CloudTier.mid));
+
+      await n.run(request(ExplainMode.beginner));
+
+      final confirm = n.state as ExplainConfirmCloud;
+      expect(confirm.tier, CloudTier.mid);
+      expect(provider.lastSystemPrompt, isNull, reason: 'model was never called');
+    });
+
+    test('a local decision (null) skips confirmation entirely', () async {
+      final provider = _ScriptedProvider(['local answer']);
+      final n = routedNotifier(provider, evaluate: (_) => null);
+
+      await n.run(request(ExplainMode.beginner));
+
+      final ready = n.state as ExplainReady;
+      expect(ready.text, 'local answer');
+      expect(ready.fromCloud, isFalse);
+    });
+
+    test('confirmCloudAndRun proceeds and marks fromCloud on the result',
+        () async {
+      final provider = _ScriptedProvider(['cloud answer']);
+      final n = routedNotifier(provider,
+          evaluate: (_) => const CloudRouteDecision(CloudTier.frontier));
+
+      await n.run(request(ExplainMode.beginner));
+      expect(n.state, isA<ExplainConfirmCloud>());
+
+      await n.confirmCloudAndRun();
+
+      final ready = n.state as ExplainReady;
+      expect(ready.text, 'cloud answer');
+      expect(ready.fromCloud, isTrue);
+    });
+
+    test('cancelCloud returns to idle without calling the model', () async {
+      final provider = _ScriptedProvider(['unused']);
+      final n = routedNotifier(provider,
+          evaluate: (_) => const CloudRouteDecision(CloudTier.mid));
+
+      await n.run(request(ExplainMode.beginner));
+      n.cancelCloud();
+
+      expect(n.state, isA<ExplainIdle>());
+      expect(provider.lastSystemPrompt, isNull);
+    });
+
+    test('isFirstEver reflects hasSeenFirstCloudCall, then flips after confirming',
+        () async {
+      final provider = _ScriptedProvider(['cloud answer']);
+      final n = routedNotifier(
+        provider,
+        evaluate: (_) => const CloudRouteDecision(CloudTier.mid),
+        hasSeenFirstCloudCall: false,
+      );
+
+      await n.run(request(ExplainMode.beginner));
+      expect((n.state as ExplainConfirmCloud).isFirstEver, isTrue);
+
+      await n.confirmCloudAndRun();
+      expect(n.state, isA<ExplainReady>());
+
+      // A second request should no longer be flagged as the first-ever call.
+      await n.run(request(ExplainMode.beginner, content: 'another passage'));
+      expect((n.state as ExplainConfirmCloud).isFirstEver, isFalse);
+    });
   });
 }

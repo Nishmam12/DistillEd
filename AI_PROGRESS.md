@@ -6,6 +6,11 @@ updates it last. The plan of record is `ai_prompts/INTEGRATION_ROADMAP.md`
 product vision remains `ai_prompts/AI_Notebook_Master_Plan.md`.
 
 ## Current Phase
+**Phases R, U, 1, 2 COMPLETE. Phase 3 Loops 3.1–3.3 + 3.5 COMPLETE
+(2026-07-18); Loop 3.4 (Tool Calling) deliberately deferred** — see the
+"Phase 3" section near the end of this file for the full loop.
+
+## Current Phase (historical — Phase 1, kept for context)
 **Phases R + U COMPLETE; Phase 1 FEATURE SET COMPLETE (Loops 1.1–1.7).**
 One AI platform (`features/ai/`) with one runtime, one router, one page-read
 path. Phase 1 built the master-plan features on it, **Live Context Engine
@@ -903,6 +908,123 @@ Phase 3 (Cloud Gateway / Router).
 
 **Optional Phase-2 polish, non-blocking:** the LLM `strategyNote` for study
 plans; `onJumpToSource` is already wired.
+
+### On-device validation pass (2026-07-18, Xiaomi Pad 7)
+
+Ran the deferred Phase-2 device pass. **Confirmed working end-to-end:**
+handwriting recognition → Context Engine analysis → RAG indexing → Ask-your-
+notes retrieval → grounded LLM answer with source citations. Found and fixed
+two real bugs (committed `125e9a8`, pushed, `v2.0.0+18`):
+1. `google_mlkit_digital_ink_recognition` 0.15.0 (published days earlier)
+   migrated its Android side Java→Kotlin and left the Dart `MethodChannel`
+   name out of sync with the native plugin — broke *all* handwriting
+   recognition (and therefore RAG indexing, which rides the same Context
+   Engine pass) with `MissingPluginException`. Pinned to `0.14.2` (confirmed
+   both sides agree there).
+2. Explain's system prompt let the small on-device Gemma 4 E2B describe the
+   prompt itself ("this passage points out a gap...") instead of teaching the
+   flagged term, when explaining a short knowledge-gap term rather than a full
+   passage. Reworded with an explicit anti-meta-commentary instruction.
+
+**Confirmed by design, not a bug:** Explain's "Visual" mode is text-only —
+no current LLM (any size, any vendor) generates actual images/diagrams;
+that needs a separate diffusion-model architecture, out of scope. The real
+rendered-diagram feature is the Knowledge Graph screen.
+
+**Still NOT validated:** Knowledge Graph / Study Planner screens (never
+opened this pass); the `kMinRelevance` STOP CONDITION — only tested at N=2
+indexed chunks (one real hit scored 0.488, just above the 0.45 floor); a real
+stress test at "thousands of chunks" is still owed before tuning that
+threshold or reaching for a heavier vector store. **Deferred until after
+Phase 3** per Nabil's direction — do not resume unprompted.
+
+## Phase 3 — Cloud Gateway + Intelligent Router
+
+### Loops 3.1–3.3, 3.5 — gateway, provider adapters, client router — COMPLETE (2026-07-18)
+
+Scope for this pass (Nabil-confirmed): loops 3.1/3.2/3.3/3.5 only. **Loop 3.4
+(Tool Calling) deliberately deferred** — its own stop condition (paid search
+API pricing) hadn't been discussed. **605/605 Flutter tests, 15/15 gateway
+pytest, both analyze/lint clean.**
+
+- **`server/ai-gateway/`** — new top-level Python 3.11+/FastAPI service (first
+  Python in this repo). `POST /v1/generate` streams via SSE
+  (`data: {"text": "..."}` chunks, `data: {"error": "..."}` on a mid-stream
+  provider failure — partial output already sent stays sent, never discarded).
+  `GET /health`. `/v1/embed` deliberately not built (Phase 2's on-device
+  EmbeddingGemma already covers embeddings).
+- **Gemma 26B/31B hosting — resolved stop condition:** Google hasn't put
+  Gemma 4 on managed Vertex AI yet (checked live); **OpenRouter** is used
+  instead (`google/gemma-4-26b-a4b-it` / `-31b-it`, OpenAI-compatible API, one
+  key, ~$0.13–0.14/M input tokens) — `gemma_cloud_provider.py` via the
+  `openai` SDK pointed at OpenRouter's `base_url`.
+  `gemini_provider.py`/`claude_provider.py`/`gpt_provider.py` are built and
+  wired but **left unconfigured** (feature-flagged by key presence) —
+  confirmed the gateway runs fine with zero frontier keys.
+  `app/rate_limit.py`: per-anonymous-device-key daily token/request cap in
+  SQLite (client-generated key, never a user identity); rejects with a clear
+  429 rather than degrading. `app/logging_config.py`: structured,
+  content-free request logs (id/tier/tokens/latency/cost — never
+  prompt/response bodies). Dockerfile + README document deployment options
+  (Fly.io/Railway/Cloud Run/VPS) — **not deployed**, per spec scope.
+- **`lib/features/ai/domain/routing/intelligent_router.dart`** (new) —
+  `TaskType` (grammar/rewrite/explain/summarizePage/summarizeNotebook/
+  research/thesisWriting/complexReasoning/largeCodebase) +
+  `IntelligentRouter.decide()`: grammar/rewrite/explain/summarize/research
+  stay local unless over the local word budget (mirrors the existing
+  `AiRouter`'s budget math exactly, so the two routers never disagree);
+  thesisWriting/complexReasoning/largeCodebase always go cloud-frontier when
+  privacy allows, regardless of length. `RoutedAiProvider implements
+  AiProvider` wraps the decision as one provider so a feature's DI line is the
+  only thing that changes to make it "routed" — `peekRoute()` lets a caller
+  ask what `generate()` would decide *before* calling it, since [AiProvider]'s
+  sealed `AiException` hierarchy can't be extended from another file to signal
+  "pause for confirmation," and that isn't really a provider failure anyway.
+- **`CloudPrivacy` enum** (`localOnly`/`askEachTime`/`allowCloudForNonSensitive`,
+  default `askEachTime`) lives in `core/providers/settings_provider.dart`, not
+  `features/ai` — `core/` never imports `features/`, so the router imports
+  (and re-exports) it from there. Additive alongside the existing
+  `cloudAiEnabled` bool, which keeps driving Summarize's older, simpler cloud
+  path unchanged.
+- **`lib/features/ai/data/providers/cloud_gateway_provider.dart`** (new) —
+  `CloudGatewayProvider implements AiProvider`, `dio`-based (new dependency;
+  chosen over `package:http` for native streamed-response + `CancelToken`
+  support — needed so navigating away mid-stream cancels the request instead
+  of leaking it). Maps gateway-unreachable/429 → `AiUnavailableException`,
+  mid-stream failure → `AiGenerationException`. Device key is session-lifetime
+  (regenerated per launch, not persisted) — acceptable since the gateway isn't
+  deployed yet; revisit (persist via SharedPreferences) once it is.
+- **Explain is the one feature wired to the router this pass** (single clean
+  `AiProvider` injection point at `ai_providers.dart`'s `explainerProvider`) —
+  Summarize/Ask-notes/Context-Engine/Quiz/Flashcards are untouched,
+  intentionally: each deserves its own task-type classification decision, not
+  a blanket retrofit. New `ExplainConfirmCloud` state in
+  `explain_notifier.dart` pauses before the network call whenever the router
+  would pick cloud and privacy is `askEachTime` — "never silently send to
+  cloud." The first-ever cloud call (a new persisted
+  `hasSeenFirstCloudCall` setting) gets a longer, educational message; later
+  ones are terser. A small persistent "Cloud" badge in the Explain header
+  shows whenever an answer came from (or is coming from) the cloud tier — the
+  spec's "genuinely noticeable, not buried" requirement.
+- Two real bugs the tests themselves caught before commit: `CloudGatewayProvider.embed`
+  was declared `Future<...> Function() => throw ...` **without** `async`,
+  which throws synchronously at call time instead of as a rejected Future
+  (inconsistent with every other provider's `async =>` convention in this
+  codebase) — fixed. A router test asserted local-budget truncation with
+  parameters that the routing table actually sends to cloud (over budget +
+  privacy allows + online) — the test's premise was wrong, not the router;
+  fixed by forcing `localOnly` so the local-truncation path is the one
+  actually exercised.
+
+**Verification:** `pytest` (gateway) + `flutter test`/`flutter analyze`
+(client) both clean; a live `uvicorn` smoke test confirmed `/health`. Full
+UI/manual verification of a real cloud round-trip through Explain (badge,
+confirmation dialog, streaming, mid-stream cancellation) is a `localhost`-only
+check — doesn't need the Xiaomi Pad — and is still owed as a manual pass.
+
+**Explicitly NOT done, by design or by deferral:** Loop 3.4 (Tool Calling —
+needs a search-API pricing conversation first); wiring the router into any
+feature besides Explain; actual gateway deployment; Supabase integration.
 
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`

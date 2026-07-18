@@ -50,3 +50,11 @@ app.*.map.json
 # need their own. Read only in debug builds (see huggingFaceTokenProvider).
 # If this repo is ever made public again, revert this and rotate the token
 # immediately (see lib/dev/dev_secrets.dart for details).
+
+# Python (server/ai-gateway/ — the Phase 3 FastAPI gateway)
+__pycache__/
+*.pyc
+.venv/
+server/ai-gateway/.env
+server/ai-gateway/*.sqlite3
+server/ai-gateway/.pytest_cache/
