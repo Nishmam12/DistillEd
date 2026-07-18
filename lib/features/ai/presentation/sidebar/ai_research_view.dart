@@ -135,6 +135,7 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
           toolsUsed: toolsUsed,
           streaming: true,
           onInsertNote: widget.onInsertNote,
+          onStop: () => ref.read(researchNotifierProvider.notifier).stop(),
         ),
       ResearchReady(:final text, :final toolsUsed) => _Answer(
           text: text,
@@ -175,11 +176,16 @@ class _Answer extends StatelessWidget {
   final bool streaming;
   final ValueChanged<String> onInsertNote;
 
+  /// Abandons an in-flight run. Only supplied (and only shown) while
+  /// [streaming]; null on the settled answer.
+  final VoidCallback? onStop;
+
   const _Answer({
     required this.text,
     required this.toolsUsed,
     required this.streaming,
     required this.onInsertNote,
+    this.onStop,
   });
 
   @override
@@ -223,51 +229,61 @@ class _Answer extends StatelessWidget {
   }
 
   Widget _actions(BuildContext context, String trimmed) {
+    // While streaming, the only actions that make sense are "wait" or "stop"
+    // — Insert/Copy operate on a finished answer, so they're held back until
+    // the run settles rather than shown disabled.
+    if (streaming) {
+      return Row(
+        children: [
+          const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: AppColors.accentSoft),
+          ),
+          const SizedBox(width: 8),
+          const Text('Researching…',
+              style:
+                  TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          const Spacer(),
+          TextButton.icon(
+            onPressed: onStop,
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+            ),
+            icon: const Icon(Icons.stop_circle_outlined,
+                size: 18, color: AppColors.accent),
+            label: const Text('Stop',
+                style: TextStyle(color: AppColors.accent)),
+          ),
+        ],
+      );
+    }
     return Row(
       children: [
-        if (streaming)
-          const Padding(
-            padding: EdgeInsets.only(left: 4),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.accentSoft),
-                ),
-                SizedBox(width: 8),
-                Text('Researching…',
-                    style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
-              ],
-            ),
-          )
-        else
-          IconButton(
-            tooltip: 'Copy',
-            visualDensity: VisualDensity.compact,
-            onPressed: trimmed.isEmpty
-                ? null
-                : () {
-                    Clipboard.setData(ClipboardData(text: trimmed));
-                    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                      const SnackBar(
-                          content: Text('Answer copied'),
-                          duration: Duration(seconds: 1)),
-                    );
-                  },
-            icon: const Icon(Icons.copy_outlined,
-                size: 18, color: AppColors.textSecondary),
-          ),
+        IconButton(
+          tooltip: 'Copy',
+          visualDensity: VisualDensity.compact,
+          onPressed: trimmed.isEmpty
+              ? null
+              : () {
+                  Clipboard.setData(ClipboardData(text: trimmed));
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                    const SnackBar(
+                        content: Text('Answer copied'),
+                        duration: Duration(seconds: 1)),
+                  );
+                },
+          icon: const Icon(Icons.copy_outlined,
+              size: 18, color: AppColors.textSecondary),
+        ),
         const Spacer(),
         Flexible(
           child: FilledButton.icon(
             style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
-            onPressed: (streaming || trimmed.isEmpty)
-                ? null
-                : () => onInsertNote(trimmed),
+            onPressed:
+                trimmed.isEmpty ? null : () => onInsertNote(trimmed),
             icon: const Icon(Icons.note_add_outlined,
                 size: 18, color: AppColors.textOnAccent),
             label: const Text('Insert as note',

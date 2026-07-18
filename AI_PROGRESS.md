@@ -1141,10 +1141,25 @@ through not yet done — see below). All four cases from the plan:
   fallback for tool-heavy questions is a plausible future mitigation, not
   attempted here.
 
-**Still owed:** the actual Flutter-UI manual pass (confirm-cloud dialog,
-streaming into `AiResearchView`, the "used: X" chips, mid-stream
-cancellation) — the `curl` run above verifies the gateway/tool-loop
-mechanics but not the client UI wiring end-to-end.
+**Flutter-UI manual pass — done on-device (2026-07-18, Xiaomi Pad, gateway
+live on Render).** Calculator / Wikipedia / Web-search / plain questions all
+answered correctly through the real UI (confirm-cloud dialog, streaming,
+"used: X" chips). **Found and fixed one real bug:** Research could not be
+exited *mid-stream* — `ResearchNotifier.reset()` (the Close button) and
+`stop()` were both guarded by `if (!_running)`, so during a long multi-hop
+run the Close button was dead and there was no Stop control; the user was
+trapped until the run finished (acute here because a run is up to 3 cloud
+round-trips, cold-startable). Fix: `reset()`/`stop()` now cancel the
+in-flight stream and a **Stop** button was added to the streaming state.
+Cancellation is deliberately *fire-and-forget* (`subscription.cancel()` not
+awaited): cancelling a subscription to an `async*` parked in an `await for`
+does not complete its cancel future until the inner stream next emits or
+closes (verified with a standalone probe), so awaiting it would re-freeze
+the UI during a cold start — `cancel()` still stops event delivery at once,
+and the underlying request unwinds/aborts via its `CancelToken` when the next
+byte arrives. Two regression tests added (`research_notifier_test.dart`).
+Both Close and Stop confirmed working mid-stream on-device. 655/655 Flutter
+tests, analyze clean.
 
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`

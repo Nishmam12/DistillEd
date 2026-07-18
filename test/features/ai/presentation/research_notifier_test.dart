@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/core/providers/settings_provider.dart' show CloudPrivacy;
@@ -26,6 +28,37 @@ class _ScriptedClient implements ToolCallingClient {
   }
 }
 
+/// Emits one chunk, signals [started], then stays open until its subscription
+/// is cancelled — models a long, still-running hop so cancellation can be
+/// exercised while the notifier is genuinely mid-stream. Backed by a
+/// [StreamController] (not `async* … await neverCompletes`) so cancellation
+/// grounds out the same way the real Dio-socket stream does — otherwise
+/// `subscription.cancel()` would hang on an uncancellable suspension point,
+/// which is a test artifact, not how production behaves.
+class _HangingClient implements ToolCallingClient {
+  final Completer<void> started;
+  _HangingClient(this.started);
+
+  @override
+  Stream<ToolGenerationEvent> generateWithTools({
+    required String prompt,
+    String? systemPrompt,
+    List<AiMessage>? history,
+    required List<Tool> tools,
+  }) {
+    late final StreamController<ToolGenerationEvent> controller;
+    controller = StreamController<ToolGenerationEvent>(
+      onListen: () {
+        controller.add(const ToolTextChunk('partial answer'));
+        if (!started.isCompleted) started.complete();
+        // Deliberately never closed — the run stays "in flight" until the
+        // subscriber cancels, at which point the controller tears down cleanly.
+      },
+    );
+    return controller.stream;
+  }
+}
+
 void main() {
   ResearchNotifier notifier(
     List<List<ToolGenerationEvent>> script, {
@@ -41,6 +74,28 @@ void main() {
       hasSeenFirstCloudCall: () => seen,
       markFirstCloudCallSeen: () async => seen = true,
     );
+  }
+
+  ResearchNotifier notifierWith(ToolCallingClient client) {
+    return ResearchNotifier(
+      researcher: Researcher(client: client, tools: const []),
+      privacy: () => CloudPrivacy.askEachTime,
+      hasSeenFirstCloudCall: () => true,
+      markFirstCloudCallSeen: () async {},
+    );
+  }
+
+  /// Drives the notifier to a genuinely-streaming state against a hanging
+  /// client, so a following `stop()`/`reset()` cancels a live stream.
+  Future<ResearchNotifier> streaming() async {
+    final started = Completer<void>();
+    final n = notifierWith(_HangingClient(started));
+    await n.ask('question');
+    unawaited(n.confirmCloudAndAsk()); // starts the hang; never returns until cancelled
+    await started.future;
+    await Future<void>.delayed(Duration.zero); // let the chunk reach the notifier
+    expect(n.state, isA<ResearchStreaming>());
+    return n;
   }
 
   test('startComposing opens the query box', () {
@@ -174,5 +229,26 @@ void main() {
 
     n.reset();
     expect(n.state, isA<ResearchIdle>());
+  });
+
+  test('reset cancels a still-streaming run and returns to idle', () async {
+    final n = await streaming();
+
+    n.reset();
+
+    expect(n.state, isA<ResearchIdle>(),
+        reason: 'the Close button must work mid-stream, not just once the '
+            'run settles');
+  });
+
+  test('stop cancels a still-streaming run and reopens the query box',
+      () async {
+    final n = await streaming();
+
+    n.stop();
+
+    expect(n.state, isA<ResearchComposing>(),
+        reason: 'Stop abandons the current run but keeps Research open so '
+            'the user can immediately ask again');
   });
 }

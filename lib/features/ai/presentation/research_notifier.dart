@@ -12,6 +12,8 @@
 // so there is no download/local-retry branch, and every request is
 // cloud-mid (never frontier, never local).
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/settings_provider.dart' show CloudPrivacy;
@@ -82,6 +84,8 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
 
   String? _lastQuestion;
   bool _running = false;
+  StreamSubscription<ResearchEvent>? _sub;
+  Completer<void>? _completer;
 
   /// Opens the query box (footer "Research" chip). No-op mid-run.
   void startComposing() {
@@ -108,35 +112,50 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
     }
 
     _running = true;
-    try {
-      final buffer = StringBuffer();
-      final toolsUsed = <String>[];
-      state = const ResearchStreaming('');
-      await for (final event in _researcher.research(trimmed)) {
+    final buffer = StringBuffer();
+    final toolsUsed = <String>[];
+    state = const ResearchStreaming('');
+
+    // A `.listen()` (rather than `await for`) so a long, multi-hop research
+    // run can be abandoned mid-stream: `stop()`/`reset()` cancel [_sub] and
+    // complete [_completer], which nothing outside an `await for` loop could
+    // do. A hop is a full cloud round-trip plus a tool call, up to three of
+    // them, so "wait for it to finish" is not an acceptable only-exit.
+    final completer = Completer<void>();
+    _completer = completer;
+    _sub = _researcher.research(trimmed).listen(
+      (event) {
         if (!mounted) return;
         switch (event) {
           case ResearchTextChunk(:final text):
             buffer.write(text);
-            state = ResearchStreaming(buffer.toString(),
-                toolsUsed: List.unmodifiable(toolsUsed));
           case ResearchToolUsed(:final toolName):
             if (!toolsUsed.contains(toolName)) toolsUsed.add(toolName);
-            state = ResearchStreaming(buffer.toString(),
-                toolsUsed: List.unmodifiable(toolsUsed));
         }
-      }
-      if (!mounted) return;
-      final text = buffer.toString().trim();
-      state = text.isEmpty
-          ? const ResearchError(
-              "The model didn't return an answer. Try again.")
-          : ResearchReady(text, toolsUsed: List.unmodifiable(toolsUsed));
-    } catch (e) {
-      if (!mounted) return;
-      state = _mapError(e);
-    } finally {
-      _running = false;
-    }
+        state = ResearchStreaming(buffer.toString(),
+            toolsUsed: List.unmodifiable(toolsUsed));
+      },
+      onError: (Object e) {
+        if (mounted) state = _mapError(e);
+        if (!completer.isCompleted) completer.complete();
+      },
+      onDone: () {
+        if (mounted) {
+          final text = buffer.toString().trim();
+          state = text.isEmpty
+              ? const ResearchError(
+                  "The model didn't return an answer. Try again.")
+              : ResearchReady(text, toolsUsed: List.unmodifiable(toolsUsed));
+        }
+        if (!completer.isCompleted) completer.complete();
+      },
+      cancelOnError: true,
+    );
+
+    await completer.future;
+    _sub = null;
+    _completer = null;
+    _running = false;
   }
 
   /// The user said yes on [ResearchConfirmCloud].
@@ -160,9 +179,47 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
     if (question != null && !_running) await ask(question);
   }
 
-  /// Dismisses the answer and returns the sidebar to its default surface.
+  /// Stops an in-flight request but keeps Research open at the query box, so
+  /// the user can immediately ask something else. Works *during* streaming —
+  /// the one exit a long, multi-hop research run needs.
+  void stop() {
+    if (!_running) return;
+    _cancelInFlight();
+    state = const ResearchComposing();
+  }
+
+  /// Dismisses the answer — or an in-flight stream — and returns the sidebar
+  /// to its default surface. Cancels a running request too, so the Close
+  /// button is never dead mid-stream.
   void reset() {
-    if (!_running) state = const ResearchIdle();
+    _cancelInFlight();
+    state = const ResearchIdle();
+  }
+
+  /// Abandons the in-flight research stream and clears the run flag.
+  ///
+  /// Deliberately does NOT await `subscription.cancel()`. Cancelling a
+  /// subscription to an `async*` parked in an `await for` (which both
+  /// [Researcher.research] and the gateway's `generateWithTools` are) doesn't
+  /// complete its cancel future until the inner stream next emits or closes —
+  /// so awaiting it would hang the UI during a cold start, the exact moment a
+  /// user most wants out. `cancel()` still stops event delivery immediately
+  /// (no `onData`/`onDone` fires afterward), so state can move on now; the
+  /// underlying request unwinds and aborts via its `CancelToken` when the next
+  /// byte arrives or the socket closes.
+  void _cancelInFlight() {
+    _sub?.cancel();
+    _sub = null;
+    final completer = _completer;
+    _completer = null;
+    if (completer != null && !completer.isCompleted) completer.complete();
+    _running = false;
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 
   ResearchState _mapError(Object e) {
