@@ -174,11 +174,12 @@ final pageContextCacheProvider =
 final contextEngineProvider = Provider<ContextEngine>(
     (ref) => ContextEngine(provider: ref.watch(localAiProvider)));
 
-/// The Phase 3 cloud gateway's base URL. Not deployed yet (per the phase
-/// spec's own scope) — defaults to a local dev instance
-/// (`cd server/ai-gateway && uvicorn app.main:app`). Not user-configurable
-/// yet; revisit once a real deployment exists.
-const String cloudGatewayBaseUrl = 'http://localhost:8000';
+/// The Phase 3 cloud gateway's base URL — the Render deployment
+/// (`server/ai-gateway`, built from the repo-root `render.yaml`). Free plan,
+/// so the first request after ~15 min idle pays a cold start. Not
+/// user-configurable yet; for local gateway work, point this at
+/// `http://localhost:8000` (`cd server/ai-gateway && uvicorn app.main:app`).
+const String cloudGatewayBaseUrl = 'https://inkflow-ai-gateway.onrender.com';
 
 /// The two cloud tiers the Phase 3 gateway serves, each a thin [AiProvider]
 /// over the same gateway with a different `model_tier`. [cloudGatewayMidProvider]
