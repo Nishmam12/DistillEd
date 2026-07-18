@@ -1,17 +1,12 @@
-// TEMPLATE — copy this to `dev_secrets.dart` (same folder) and put your own
-// token in the copy. On a fresh clone the app won't compile until you do:
+// TEMPLATE — kept for reference / for anyone re-forking this into a public
+// repo later. As of the repo going private, `lib/dev/dev_secrets.dart` itself
+// is committed with a real shared team token (see its header) so this
+// template is no longer required for a fresh clone to compile.
 //
-//   cp lib/dev/dev_secrets.example.dart lib/dev/dev_secrets.dart
-//
-// `dev_secrets.dart` is gitignored and MUST NEVER be committed — this repo is
-// PUBLIC, and a committed token would be scraped within minutes and is
-// impossible to fully remove from git history. This file (the *.example) is
-// the only one that is tracked, and it must always hold `null`.
-//
-// The token here is a convenience only: it's read as a fallback when Settings
-// has no token, and ONLY in debug builds (see `huggingFaceTokenProvider`).
-// Release builds ignore it entirely. The real, per-user mechanism is
-// Settings → AI → HuggingFace Token.
+// The token is a convenience only: it's read as a fallback when Settings has
+// no token, and ONLY in debug builds (see `huggingFaceTokenProvider`). Release
+// builds ignore it entirely. The real, per-user mechanism is Settings → AI →
+// HuggingFace Token.
 library;
 
 /// Debug-only HuggingFace token fallback. `''` = none — use Settings instead.
