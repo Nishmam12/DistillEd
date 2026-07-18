@@ -34,8 +34,15 @@ _TOKENS_PER_WORD = 1.35
 
 
 class HistoryTurn(BaseModel):
-    role: Literal["system", "user", "assistant"]
-    content: str
+    role: Literal["system", "user", "assistant", "tool"]
+    content: str = ""
+    # Loop 3.4 tool round-trip only: `tool_call_id` on a `role: "tool"` turn
+    # answers a specific prior call; `tool_calls` on a `role: "assistant"`
+    # turn carries that call forward (OpenAI-shape `[{"id","type","function":
+    # {"name","arguments"}}]`) so a follow-up request's history stays a valid
+    # conversation. Both null on every non-tool turn.
+    tool_call_id: str | None = None
+    tool_calls: list[dict] | None = None
 
 
 class GenerateRequest(BaseModel):
@@ -47,6 +54,10 @@ class GenerateRequest(BaseModel):
     stream: bool = True
     temperature: float = 0.7
     max_tokens: int | None = None
+    # Loop 3.4: OpenAI-shape function declarations
+    # (`[{"type":"function","function":{"name","description","parameters"}}]`).
+    # Empty means "no tools" — every existing caller is unaffected.
+    tools: list[dict] = []
 
 
 def _estimate_tokens(request: GenerateRequest) -> int:
@@ -102,8 +113,37 @@ async def generate(
             detail="No cloud provider is configured for this request.",
         )
 
-    history = [ChatTurn(role=t.role, content=t.content) for t in request.history]
+    history = [
+        ChatTurn(
+            role=t.role,
+            content=t.content,
+            tool_call_id=t.tool_call_id,
+            tool_calls=t.tool_calls,
+        )
+        for t in request.history
+    ]
     request_id = str(uuid.uuid4())
+
+    if request.tools:
+        # Tool calling (Loop 3.4) is a multi-turn, client-orchestrated flow —
+        # only the streaming shape carries a `tool_call` event distinctly
+        # from plain text; a non-streaming caller has no way to receive one.
+        if not request.stream:
+            raise HTTPException(
+                status_code=400,
+                detail="tools requires stream: true.",
+            )
+        if not hasattr(provider, "generate_with_tools"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"{type(provider).__name__} does not support tool calling yet.",
+            )
+        return StreamingResponse(
+            _sse_stream_with_tools(
+                request_id, request, provider, history, estimated_tokens
+            ),
+            media_type="text/event-stream",
+        )
 
     if request.stream:
         return StreamingResponse(
@@ -170,6 +210,45 @@ async def _sse_stream(request_id, request, provider, history, estimated_tokens):
         # Partial output already reached the client via prior `data:` events —
         # this final error event lets `CloudGatewayProvider` mark the reply
         # incomplete rather than silently truncating it.
+        yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+    finally:
+        log_request(
+            RequestLogEntry(
+                request_id=request_id,
+                model_tier=request.model_tier,
+                provider=type(provider).__name__,
+                token_count=estimated_tokens,
+                latency_ms=watch.elapsed_ms(),
+                approx_cost_usd=0.0,
+                status=status,
+            )
+        )
+
+
+async def _sse_stream_with_tools(
+    request_id, request, provider, history, estimated_tokens
+):
+    """Loop 3.4 variant of [_sse_stream]: also emits `tool_call` events.
+
+    One gateway call is still exactly one model round-trip (the gateway stays
+    stateless) — the app is the one that decides to run a tool and call this
+    endpoint again with the result appended to `history`; this generator just
+    needs to pass `tool_call` events through instead of only `text`.
+    """
+    watch = Stopwatch()
+    status = "ok"
+    try:
+        async for event in provider.generate_with_tools(
+            prompt=request.prompt,
+            system_prompt=request.system_prompt,
+            history=history,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            tools=request.tools,
+        ):
+            yield f"data: {json.dumps(event)}\n\n"
+    except ProviderError as exc:
+        status = "error"
         yield f"data: {json.dumps({'error': str(exc)})}\n\n"
     finally:
         log_request(

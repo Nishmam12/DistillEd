@@ -28,6 +28,7 @@ import '../domain/features/explainer.dart';
 import '../domain/features/flashcard_generator.dart';
 import '../domain/features/quiz_generator.dart';
 import '../domain/features/notes_qa.dart';
+import '../domain/features/researcher.dart';
 import '../domain/features/writing_assistant.dart';
 import '../domain/knowledge_graph/knowledge_graph.dart';
 import '../domain/page_content_extractor.dart';
@@ -36,6 +37,10 @@ import '../domain/rag/rag_retriever.dart';
 import '../domain/rag/text_embedder.dart';
 import '../domain/routing/intelligent_router.dart';
 import '../domain/study_planner/study_plan.dart';
+import '../domain/tools/calculator_tool.dart';
+import '../domain/tools/tool.dart';
+import '../domain/tools/web_search_tool.dart';
+import '../domain/tools/wikipedia_tool.dart';
 import 'ask_notes_notifier.dart';
 import 'study_planner_notifier.dart';
 import 'context_engine_notifier.dart';
@@ -43,6 +48,7 @@ import 'explain_notifier.dart';
 import 'flashcard_notifier.dart';
 import 'quiz_notifier.dart';
 import 'rag_index_scheduler.dart';
+import 'research_notifier.dart';
 import 'writing_assistant_notifier.dart';
 
 final handwritingRecognitionServiceProvider =
@@ -175,8 +181,12 @@ final contextEngineProvider = Provider<ContextEngine>(
 const String cloudGatewayBaseUrl = 'http://localhost:8000';
 
 /// The two cloud tiers the Phase 3 gateway serves, each a thin [AiProvider]
-/// over the same gateway with a different `model_tier`.
-final cloudGatewayMidProvider = Provider<AiProvider>(
+/// over the same gateway with a different `model_tier`. [cloudGatewayMidProvider]
+/// is typed as the concrete class (not just [AiProvider]) because Research
+/// (Loop 3.4) also needs its [ToolCallingClient]-only `generateWithTools` —
+/// every existing [AiProvider]-typed consumer still works unchanged since
+/// [CloudGatewayProvider] implements that interface too.
+final cloudGatewayMidProvider = Provider<CloudGatewayProvider>(
     (ref) => CloudGatewayProvider(baseUrl: cloudGatewayBaseUrl, modelTier: 'cloud-mid'));
 final cloudGatewayFrontierProvider = Provider<AiProvider>((ref) =>
     CloudGatewayProvider(baseUrl: cloudGatewayBaseUrl, modelTier: 'cloud-frontier'));
@@ -206,6 +216,38 @@ final explainAiProviderProvider = Provider<RoutedAiProvider>((ref) {
 /// [explainAiProviderProvider].
 final explainerProvider = Provider<Explainer>(
     (ref) => Explainer(provider: ref.watch(explainAiProviderProvider)));
+
+/// The Loop 3.4 tool set — Calculator (no network) plus Wikipedia and Web
+/// Search (both network, both cloud-only — see `researcher.dart`'s header).
+/// [WebSearchTool] talks to the gateway's own `/v1/tools/search`, never to
+/// Exa directly, using the same [sessionDeviceKey] identity as the LLM calls.
+final toolsProvider = Provider<List<Tool>>((ref) => [
+      const CalculatorTool(),
+      WikipediaTool(),
+      WebSearchTool(baseUrl: cloudGatewayBaseUrl, deviceKey: sessionDeviceKey),
+    ]);
+
+/// Research feature — free-form questions that may reach outside the notes
+/// via [toolsProvider]'s tools. Cloud-mid only, never local, never frontier
+/// (see `researcher.dart`'s header for why on-device is skipped this loop).
+final researcherProvider = Provider<Researcher>((ref) => Researcher(
+      client: ref.watch(cloudGatewayMidProvider),
+      tools: ref.watch(toolsProvider),
+    ));
+
+/// Drives the sidebar's Research surface. Session-scoped (not autoDispose),
+/// same reasoning as Ask/Explain/Quiz: closing the sidebar must not abort an
+/// in-flight request, and the answer stays put until dismissed.
+final researchNotifierProvider =
+    StateNotifierProvider<ResearchNotifier, ResearchState>((ref) {
+  return ResearchNotifier(
+    researcher: ref.watch(researcherProvider),
+    privacy: () => ref.read(settingsProvider).cloudPrivacy,
+    hasSeenFirstCloudCall: () => ref.read(settingsProvider).hasSeenFirstCloudCall,
+    markFirstCloudCallSeen: () =>
+        ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
+  );
+});
 
 /// Writing Assistant feature — reviews typed text for grammar/clarity/etc.
 final writingAssistantProvider = Provider<WritingAssistant>(

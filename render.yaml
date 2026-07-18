@@ -1,0 +1,33 @@
+# Render Blueprint for the InkFlow AI Gateway (server/ai-gateway).
+# Deploy: push this file + the Dockerfile, then in the Render dashboard create
+# a new Blueprint pointing at this repo. Render builds the Dockerfile and runs
+# the service. The two API keys are marked `sync: false` — Render prompts for
+# them in the dashboard on first deploy and never stores them in this file.
+#
+# Free plan note: the instance spins down after ~15 min idle, so the first
+# request after a quiet period pays a cold-start (a few seconds). Fine for a
+# dev/low-traffic gateway; move to a paid instance if always-warm matters.
+services:
+  - type: web
+    name: inkflow-ai-gateway
+    runtime: docker
+    dockerfilePath: server/ai-gateway/Dockerfile
+    dockerContext: server/ai-gateway
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      # Required — entered in the dashboard, not committed here.
+      - key: OPENROUTER_API_KEY
+        sync: false
+      # Optional (Web Search tool). Without it, /v1/tools/search 503s cleanly
+      # and Calculator/Wikipedia still work.
+      - key: EXA_API_KEY
+        sync: false
+      # Non-secret caps — safe to keep in the blueprint.
+      - key: DAILY_TOKEN_CAP
+        value: "200000"
+      - key: DAILY_REQUEST_CAP
+        value: "500"
+      - key: DAILY_SEARCH_CAP
+        value: "25"

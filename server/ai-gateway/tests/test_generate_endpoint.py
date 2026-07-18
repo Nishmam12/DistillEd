@@ -36,6 +36,32 @@ class _FakeProvider:
             yield chunk
 
 
+class _FakeToolProvider(_FakeProvider):
+    """Adds `generate_with_tools` (Loop 3.4) — deliberately NOT on plain
+    `_FakeProvider`, so tests can also cover the "provider doesn't support
+    tools" 400 path with the existing fake."""
+
+    def __init__(self, events: list[dict], fail_after: int | None = None):
+        super().__init__([])
+        self._events = events
+        self._fail_after = fail_after
+
+    async def generate_with_tools(
+        self,
+        *,
+        prompt: str,
+        system_prompt: str | None,
+        history: list[ChatTurn],
+        temperature: float,
+        max_tokens: int | None,
+        tools: list[dict],
+    ) -> AsyncIterator[dict]:
+        for i, event in enumerate(self._events):
+            if self._fail_after is not None and i == self._fail_after:
+                raise ProviderError("simulated tool provider failure")
+            yield event
+
+
 @pytest.fixture(autouse=True)
 def _fresh_rate_limiter(monkeypatch):
     """Isolates each test's rate-limit counter to its own temp SQLite file —
@@ -136,3 +162,175 @@ async def test_mid_stream_failure_preserves_partial_output(client, monkeypatch):
     assert '"text": "partial"' in body
     assert '"error"' in body
     assert "never-sent" not in body
+
+
+# --- Loop 3.4: tool calling -------------------------------------------------
+
+_A_TOOL = {
+    "type": "function",
+    "function": {"name": "calculator", "description": "Evaluates math.", "parameters": {}},
+}
+
+
+@pytest.mark.asyncio
+async def test_tools_requires_stream_true(client, monkeypatch):
+    monkeypatch.setattr(
+        generate_module,
+        "select_provider",
+        lambda **kwargs: _FakeToolProvider([{"text": "unused"}]),
+    )
+    async with client as c:
+        resp = await c.post(
+            "/v1/generate",
+            headers={"X-Device-Key": "test-device"},
+            json={
+                "model_tier": "cloud-mid",
+                "prompt": "what's 2+2",
+                "tools": [_A_TOOL],
+                "stream": False,
+            },
+        )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_tools_rejects_provider_without_tool_support(client, monkeypatch):
+    # Plain `_FakeProvider` has no `generate_with_tools` — same as the real
+    # Gemini/Claude/GPT adapters this loop.
+    monkeypatch.setattr(
+        generate_module,
+        "select_provider",
+        lambda **kwargs: _FakeProvider(["unused"]),
+    )
+    async with client as c:
+        resp = await c.post(
+            "/v1/generate",
+            headers={"X-Device-Key": "test-device"},
+            json={
+                "model_tier": "cloud-mid",
+                "prompt": "what's 2+2",
+                "tools": [_A_TOOL],
+                "stream": True,
+            },
+        )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_tools_streams_text_then_tool_call_event(client, monkeypatch):
+    monkeypatch.setattr(
+        generate_module,
+        "select_provider",
+        lambda **kwargs: _FakeToolProvider(
+            [
+                {"text": "Let me check that. "},
+                {
+                    "tool_call": {
+                        "call_id": "call_1",
+                        "name": "calculator",
+                        "arguments": {"expression": "2+2"},
+                    }
+                },
+            ]
+        ),
+    )
+    async with client as c:
+        async with c.stream(
+            "POST",
+            "/v1/generate",
+            headers={"X-Device-Key": "test-device"},
+            json={
+                "model_tier": "cloud-mid",
+                "prompt": "what's 2+2",
+                "tools": [_A_TOOL],
+                "stream": True,
+            },
+        ) as resp:
+            assert resp.status_code == 200
+            body = b"".join([chunk async for chunk in resp.aiter_bytes()]).decode()
+    assert '"text": "Let me check that. "' in body
+    assert '"call_id": "call_1"' in body
+    assert '"name": "calculator"' in body
+
+
+@pytest.mark.asyncio
+async def test_tools_mid_stream_failure_preserves_partial_output(client, monkeypatch):
+    monkeypatch.setattr(
+        generate_module,
+        "select_provider",
+        lambda **kwargs: _FakeToolProvider(
+            [{"text": "partial"}, {"text": "never-sent"}], fail_after=1
+        ),
+    )
+    async with client as c:
+        async with c.stream(
+            "POST",
+            "/v1/generate",
+            headers={"X-Device-Key": "test-device"},
+            json={
+                "model_tier": "cloud-mid",
+                "prompt": "hi",
+                "tools": [_A_TOOL],
+                "stream": True,
+            },
+        ) as resp:
+            body = b"".join([chunk async for chunk in resp.aiter_bytes()]).decode()
+    assert '"text": "partial"' in body
+    assert '"error"' in body
+    assert "never-sent" not in body
+
+
+@pytest.mark.asyncio
+async def test_tool_history_turn_round_trips(client, monkeypatch):
+    """A `role: "tool"` history turn (the recall step of the client-side
+    orchestration loop) must reach the provider intact — this is what makes
+    the second `/v1/generate` call in the loop a valid conversation."""
+    captured: dict = {}
+
+    class _CapturingProvider(_FakeToolProvider):
+        async def generate_with_tools(self, *, history, **kwargs):
+            captured["history"] = history
+            async for event in super().generate_with_tools(history=history, **kwargs):
+                yield event
+
+    monkeypatch.setattr(
+        generate_module,
+        "select_provider",
+        lambda **kwargs: _CapturingProvider([{"text": "It's 4."}]),
+    )
+    async with client as c:
+        async with c.stream(
+            "POST",
+            "/v1/generate",
+            headers={"X-Device-Key": "test-device"},
+            json={
+                "model_tier": "cloud-mid",
+                "prompt": "what's 2+2",
+                "tools": [_A_TOOL],
+                "stream": True,
+                "history": [
+                    {"role": "user", "content": "what's 2+2"},
+                    {
+                        "role": "assistant",
+                        "content": "",
+                        "tool_calls": [
+                            {
+                                "id": "call_1",
+                                "type": "function",
+                                "function": {
+                                    "name": "calculator",
+                                    "arguments": '{"expression":"2+2"}',
+                                },
+                            }
+                        ],
+                    },
+                    {"role": "tool", "content": "4", "tool_call_id": "call_1"},
+                ],
+            },
+        ) as resp:
+            assert resp.status_code == 200
+            _ = b"".join([chunk async for chunk in resp.aiter_bytes()])
+
+    history = captured["history"]
+    assert history[1].tool_calls[0]["id"] == "call_1"
+    assert history[2].tool_call_id == "call_1"

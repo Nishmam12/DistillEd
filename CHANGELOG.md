@@ -55,6 +55,15 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   Everything else (Summarize, Ask your notes, Quiz, Flashcards, live context)
   is unaffected and stays fully on-device. The gateway itself isn't deployed
   anywhere yet, so this has no visible effect until that happens.
+- **Research (dev-only, not yet enabled).** A new **Research** button in the
+  AI sidebar answers free-form questions that go beyond your notes — it can
+  do arithmetic, look things up on Wikipedia, and search the web, showing
+  which of those it used for each answer. Unlike *Ask your notes*, which
+  only ever answers from your own writing, Research is explicitly for
+  reaching outside it — so it always uses the cloud tier and always asks
+  first, with the same "here's exactly what's about to be sent" prompt as
+  Explain. Same as the cloud foundation above: has no visible effect until
+  the gateway is actually deployed somewhere.
 
 ### Fixed
 - **Handwriting recognition failing on Android.** A recent upstream update to

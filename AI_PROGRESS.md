@@ -6,9 +6,12 @@ updates it last. The plan of record is `ai_prompts/INTEGRATION_ROADMAP.md`
 product vision remains `ai_prompts/AI_Notebook_Master_Plan.md`.
 
 ## Current Phase
-**Phases R, U, 1, 2 COMPLETE. Phase 3 Loops 3.1–3.3 + 3.5 COMPLETE
-(2026-07-18); Loop 3.4 (Tool Calling) deliberately deferred** — see the
-"Phase 3" section near the end of this file for the full loop.
+**Phases R, U, 1, 2 COMPLETE. Phase 3 COMPLETE — Loops 3.1–3.5 all done**
+(3.1–3.3 + 3.5 on 2026-07-18; 3.4 Tool Calling on 2026-07-18, same day, once
+Nabil confirmed the Exa search-API pricing/cap that was its stop condition)
+— see the "Phase 3" section near the end of this file for the full loop.
+Remaining Phase 2 device validation (Knowledge Graph, Study Planner, RAG
+stress test) is next, per Nabil's explicit sequencing.
 
 ## Current Phase (historical — Phase 1, kept for context)
 **Phases R + U COMPLETE; Phase 1 FEATURE SET COMPLETE (Loops 1.1–1.7).**
@@ -1022,9 +1025,126 @@ UI/manual verification of a real cloud round-trip through Explain (badge,
 confirmation dialog, streaming, mid-stream cancellation) is a `localhost`-only
 check — doesn't need the Xiaomi Pad — and is still owed as a manual pass.
 
-**Explicitly NOT done, by design or by deferral:** Loop 3.4 (Tool Calling —
-needs a search-API pricing conversation first); wiring the router into any
-feature besides Explain; actual gateway deployment; Supabase integration.
+**Explicitly NOT done in this pass, by design or by deferral:** wiring the
+router into any feature besides Explain; actual gateway deployment; Supabase
+integration. (Loop 3.4, listed here as still-pending in the previous version
+of this log, is now done — see below.)
+
+### Loop 3.4 — Tool Calling — COMPLETE (2026-07-18)
+
+Its stop condition (confirm search-API pricing/usage before building
+anything that costs money per call) was resolved this session: Nabil chose
+**Exa** (`$7/1,000` standard-search queries, 1,000 free/month, no monthly
+minimum) with a **25 searches/device/day** cap. **653/653 Flutter tests
+(+48), 30/30 gateway pytest (+15), both analyze/lint clean.**
+
+- **Tool calling is cloud-only this loop — `LocalGemmaProvider` untouched.**
+  Investigated first rather than assumed: `flutter_gemma` 1.3.0 actually has
+  native structured tool-calling for Gemma 4
+  (`InferenceModel.createChat(tools:, supportsFunctionCalls: true)`,
+  SDK-parsed `<tool_call>` via `RawSdkResponseSession` +
+  `SdkResponseParser`) — this repo's on-device model
+  (`LlmModelSpec.gemma4E2B`, `ModelType.gemma4`) is exactly what it targets.
+  But `gemma_adapter.dart`'s `LocalGemmaProvider` is deliberately built on
+  the lower-level `InferenceModel.createSession()` path, not `createChat()`,
+  to preserve the load→generate→unload-per-call lifecycle invariant with
+  per-model mutexes; adopting `createChat()`'s own different lifecycle
+  (session recreation on context overflow, its own turn bookkeeping) would
+  be a real rewrite of code explicitly flagged as invariant-preserving, in
+  service of tool calls from a ~2B-effective-parameter model whose
+  function-calling *reliability* (as opposed to whether the SDK can parse a
+  call once emitted) is unproven. This matches the phase spec's own
+  anticipated fallback ("if not [reliable], restrict tool use to
+  cloud-routed requests and say so here").
+- **New "Research" surface** — neither existing feature fits a tool-using
+  question: `NotesQa` ("Ask your notes") is deliberately grounded-only
+  (refuses rather than reach outside the notes — the opposite of what a
+  tool does), and `Explainer` explains a passage, not a free-form question.
+  `_ResearchBar` in the AI sidebar footer (`ai_sidebar.dart`) opens
+  `AiResearchView` — a question box + streamed answer + "used: Calculator /
+  Wikipedia / Web search" chips, gated by the same confirm-cloud dialog
+  Explain uses (`ResearchNotifier`, modeled directly on `ExplainNotifier`).
+  Tool-bearing requests always attempt cloud-mid, never local regardless of
+  length (bypassing `IntelligentRouter`'s length-based branch entirely) —
+  a short question like "what's 15% of 340" would otherwise route local,
+  where no tool support exists, and silently guess. Privacy `localOnly`
+  reports `ResearchUnavailable` rather than degrading to a tool-less answer.
+- **`lib/features/ai/domain/tools/`** (new) — `Tool` interface
+  (name/description/JSON-schema `parameterSchema`/`execute()` →
+  `ToolExecutionResult`, which is always fed back to the model whether or
+  not the tool succeeded — "reject with a clear error, don't silently
+  degrade"). `CalculatorTool`: pure Dart, no network, a hand-written
+  recursive-descent parser (`+ - * / ^ ()`, no `eval` package, no injection
+  surface) — precedence ordered so unary binds *looser* than `^` on its
+  base (`-2^2 == -4`) but the exponent still recurses through unary so
+  `2^-2` and right-associative `2^3^2` both work. `WikipediaTool`: direct
+  REST summary lookup, falling back to the search API to resolve a title
+  first. `WebSearchTool`: calls the gateway's `/v1/tools/search`, never Exa
+  directly — the key never reaches the client.
+- **`Researcher`** (`domain/features/researcher.dart`) owns the call →
+  tool-call → execute → recall loop **client-side** — the gateway stays
+  stateless/one-shot per call (locked scope, §1) — capped at 3 tool-call
+  hops. Supports parallel tool calls in one turn. `AiMessage` gained
+  `AiRole.tool` and `toolCallId`/`toolCalls` fields, exactly as that file's
+  own header already anticipated ("Phase 3 tool-calling will add a `tool`
+  role... as an additive change").
+- **Gateway**: `GenerateRequest.tools` (OpenAI function-calling shape)
+  threaded through to a **new** `GemmaCloudProvider.generate_with_tools`
+  (deliberately not added to the `ModelProvider` Protocol or the other three
+  — still-unconfigured — adapters, to keep the blast radius to the one path
+  actually exercised); accumulates OpenAI's per-index streamed
+  `delta.tool_calls` fragments before parsing (a partial JSON string isn't
+  parseable mid-stream). SSE gains a `data: {"tool_call": {...}}` event
+  alongside `text`/`error`. A recall call sends `prompt: ""` with the tool
+  result already appended to `history` — the gateway skips appending an
+  empty trailing user turn in that case (`if prompt:`), since the correct
+  final turn for a tool-result conversation is the `role: "tool"` turn
+  itself, not an empty user message.
+- **`POST /v1/tools/search`** (new router) proxies Exa, enforced by a new,
+  independent `SearchRateLimiter` (separate SQLite table from the LLM
+  token/request cap — a chatty LLM day must not block search access, or
+  vice versa). 503s cleanly when `EXA_API_KEY` is unset, same
+  feature-flag-by-key-presence pattern as the frontier providers.
+- **Found while wiring the UI, not before:** adding a sixth footer chip
+  (`_ResearchBar`) pushed the sidebar footer's `Wrap` from 2 rows to 3 at
+  the sidebar's fixed 340px width, shrinking the body's available height
+  until `ai_context_view.dart`'s `_CenteredMessage` — a bare
+  `mainAxisSize.min` `Column`, never wrapped in a scroll view anywhere in
+  that file — overflowed by 4px and failed several `ai_sidebar_test.dart`
+  cases that don't even touch Research. Fixed at the shared widget
+  (`_CenteredMessage` now `SingleChildScrollView`-wrapped) rather than by
+  shrinking chips, since the file's own header already anticipated more
+  footer growth ("Quiz, Flashcards land here in later loops") — the next
+  addition would have hit the same wall otherwise.
+
+**Verification:** `pytest` (30/30) + `flutter test` (653/653) +
+`flutter analyze` all clean.
+
+**Live end-to-end run — done (2026-07-18), via `curl` against a local
+`uvicorn` with real `OPENROUTER_API_KEY` + `EXA_API_KEY`** (Flutter UI walk-
+through not yet done — see below). All four cases from the plan:
+- **Plain no-tool prompt** — correct, unremarkable.
+- **Calculator round-trip** (`340 * 0.15`) — model called `calculator`
+  correctly, then correctly used the returned `51` in its final answer.
+- **Wikipedia round-trip** ("Who was Ada Lovelace?") — model called
+  `wikipedia` correctly, then produced an accurate summary from the real
+  REST API response.
+- **Web search round-trip** ("latest stable Flutter version") — mechanically
+  correct (real Exa results returned, tool-call parsing and the multi-hop
+  recall both worked), **but the model used 2 hops before answering, and its
+  final synthesis was wrong** — it said "3.24" despite the tool result
+  literally containing "3.44.0" (likely pattern-matching on an unrelated
+  "3.24" substring elsewhere in the second search's snippets). This is a
+  **Gemma cloud-mid answer-quality issue, not a pipeline bug** — the gateway
+  and `Researcher` correctly relayed exactly what the tool returned. Worth
+  keeping in mind for Research's real-world reliability; a frontier-tier
+  fallback for tool-heavy questions is a plausible future mitigation, not
+  attempted here.
+
+**Still owed:** the actual Flutter-UI manual pass (confirm-cloud dialog,
+streaming into `AiResearchView`, the "used: X" chips, mid-stream
+cancellation) — the `curl` run above verifies the gateway/tool-loop
+mechanics but not the client UI wiring end-to-end.
 
 ## Deferred / Open Questions
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`

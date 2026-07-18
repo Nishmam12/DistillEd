@@ -5,6 +5,26 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/features/ai/data/providers/cloud_gateway_provider.dart';
 import 'package:inkflow/features/ai/domain/ai_provider.dart';
+import 'package:inkflow/features/ai/domain/tools/tool.dart';
+import 'package:inkflow/features/ai/domain/tools/tool_generation_event.dart';
+
+class _FakeTool implements Tool {
+  @override
+  String get name => 'calculator';
+  @override
+  String get description => 'Evaluates math.';
+  @override
+  Map<String, dynamic> get parameterSchema => const {
+        'type': 'object',
+        'properties': {
+          'expression': {'type': 'string'},
+        },
+        'required': ['expression'],
+      };
+  @override
+  Future<ToolExecutionResult> execute(Map<String, dynamic> arguments) async =>
+      throw UnimplementedError();
+}
 
 /// Swaps dio's real HTTP transport for a canned response/error — the same
 /// "hand-written fake at the boundary" pattern used elsewhere in this suite,
@@ -139,6 +159,96 @@ void main() {
         provider.embed('anything'),
         throwsA(isA<AiUnsupportedOperationException>()),
       );
+    });
+  });
+
+  group('CloudGatewayProvider.generateWithTools (Loop 3.4)', () {
+    test('yields text chunks then a tool_call event', () async {
+      final adapter = _FakeAdapter(
+        sseBody: 'data: {"text": "Let me check. "}\n\n'
+            'data: {"tool_call": {"call_id": "call_1", "name": "calculator", '
+            '"arguments": {"expression": "2+2"}}}\n\n',
+      );
+      final provider = _providerWith(adapter);
+
+      final events = await provider
+          .generateWithTools(prompt: 'what is 2+2', tools: [_FakeTool()])
+          .toList();
+
+      expect(events, hasLength(2));
+      expect((events[0] as ToolTextChunk).text, 'Let me check. ');
+      final call = events[1] as ToolCallRequested;
+      expect(call.callId, 'call_1');
+      expect(call.name, 'calculator');
+      expect(call.arguments, {'expression': '2+2'});
+    });
+
+    test('sends the tools field mapped to OpenAI function-schema shape',
+        () async {
+      final adapter = _FakeAdapter(sseBody: 'data: {"text": "ok"}\n\n');
+      final provider = _providerWith(adapter);
+
+      await provider
+          .generateWithTools(prompt: 'hi', tools: [_FakeTool()])
+          .toList();
+
+      final body = adapter.lastOptions!.data as Map;
+      final tools = body['tools'] as List;
+      expect(tools, hasLength(1));
+      final fn = (tools.first as Map)['function'] as Map;
+      expect(fn['name'], 'calculator');
+      expect((tools.first as Map)['type'], 'function');
+    });
+
+    test('sends tool_call_id / tool_calls history fields when present',
+        () async {
+      final adapter = _FakeAdapter(sseBody: 'data: {"text": "ok"}\n\n');
+      final provider = _providerWith(adapter);
+
+      await provider.generateWithTools(
+        prompt: '',
+        tools: [_FakeTool()],
+        history: [
+          const AiMessage.user('what is 2+2'),
+          const AiMessage(
+            role: AiRole.assistant,
+            content: '',
+            toolCalls: [
+              {
+                'id': 'call_1',
+                'type': 'function',
+                'function': {'name': 'calculator', 'arguments': '{"expression":"2+2"}'},
+              },
+            ],
+          ),
+          const AiMessage(role: AiRole.tool, content: '4', toolCallId: 'call_1'),
+        ],
+      ).toList();
+
+      final body = adapter.lastOptions!.data as Map;
+      final history = body['history'] as List;
+      expect(history, hasLength(3));
+      expect(history[1]['tool_calls'], isNotNull);
+      expect(history[2]['tool_call_id'], 'call_1');
+    });
+
+    test('a mid-stream error event still throws AiGenerationException',
+        () async {
+      final adapter = _FakeAdapter(
+        sseBody: 'data: {"text": "partial"}\n\ndata: {"error": "boom"}\n\n',
+      );
+      final provider = _providerWith(adapter);
+
+      final received = <ToolGenerationEvent>[];
+      await expectLater(
+        provider
+            .generateWithTools(prompt: 'hi', tools: [_FakeTool()])
+            .listen(received.add, onError: (e) => throw e)
+            .asFuture<void>(),
+        throwsA(isA<AiGenerationException>()),
+      );
+      expect(received, hasLength(1));
+      expect((received.first as ToolTextChunk).text, 'partial');
     });
   });
 }

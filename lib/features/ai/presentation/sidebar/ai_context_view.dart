@@ -609,7 +609,13 @@ class _CenteredMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Scrollable rather than a bare Column: the sidebar footer's chip count
+    // grows over time (this file's own header: "Quiz, Flashcards land here
+    // in later loops" — Research, Loop 3.4, is the latest), which shrinks
+    // this view's available height each time. A fixed-height Column would
+    // hard-overflow whenever a future addition tips it over; scrolling never
+    // does, and costs nothing when the content already fits.
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,

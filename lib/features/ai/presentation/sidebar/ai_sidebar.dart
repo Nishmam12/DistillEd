@@ -24,9 +24,11 @@ import '../flashcard_notifier.dart';
 import '../flashcards/flashcard_sheet.dart';
 import '../quiz_notifier.dart';
 import '../quiz/quiz_sheet.dart';
+import '../research_notifier.dart';
 import 'ai_ask_view.dart';
 import 'ai_context_view.dart';
 import 'ai_explain_view.dart';
+import 'ai_research_view.dart';
 
 /// Width of the docked panel on wide screens.
 const double kAiSidebarWidth = 340;
@@ -140,10 +142,11 @@ Future<void> showAiSidebarSheet(
 }
 
 /// The scrolling body. Precedence: the [AiAskView] while a "Ask your notes"
-/// query is active, then the streamed [AiExplainView] while an explanation is,
-/// otherwise the live [AiContextView] (whose knowledge-gap flags are themselves
-/// an Explain trigger). Ask and Explain can't both be active — the footer that
-/// launches each is hidden whenever either surface is up.
+/// query is active, then [AiResearchView] while a Research query is, then the
+/// streamed [AiExplainView] while an explanation is, otherwise the live
+/// [AiContextView] (whose knowledge-gap flags are themselves an Explain
+/// trigger). At most one of Ask/Research/Explain is ever active — the footer
+/// that launches each is hidden whenever any of the three is up.
 class _SidebarBody extends ConsumerWidget {
   final ScenePageKey pageKey;
   final ValueChanged<String> onInsertNote;
@@ -163,6 +166,9 @@ class _SidebarBody extends ConsumerWidget {
         onJumpToSource: onJumpToSource,
       );
     }
+    if (ref.watch(researchNotifierProvider) is! ResearchIdle) {
+      return AiResearchView(onInsertNote: onInsertNote);
+    }
     if (ref.watch(explainNotifierProvider) is! ExplainIdle) {
       return AiExplainView(onInsertNote: onInsertNote);
     }
@@ -170,8 +176,9 @@ class _SidebarBody extends ConsumerWidget {
   }
 }
 
-/// The Summarize / Explain action bar. Hidden while an explanation is on screen
-/// (the Explain view carries its own actions), so it never competes with it.
+/// The Summarize / Explain / Research action bar. Hidden while any of
+/// Ask/Research/Explain is on screen (each carries its own actions), so the
+/// footer never competes with them.
 class _SidebarFooter extends ConsumerWidget {
   final ScenePageKey pageKey;
   final ValueChanged<SummarizeScopeChoice> onSummarize;
@@ -180,8 +187,9 @@ class _SidebarFooter extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asking = ref.watch(askNotesNotifierProvider) is! AskNotesIdle;
+    final researching = ref.watch(researchNotifierProvider) is! ResearchIdle;
     final explaining = ref.watch(explainNotifierProvider) is! ExplainIdle;
-    if (asking || explaining) return const SizedBox.shrink();
+    if (asking || researching || explaining) return const SizedBox.shrink();
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -193,6 +201,7 @@ class _SidebarFooter extends ConsumerWidget {
             runSpacing: 8,
             children: [
               _AskBar(),
+              _ResearchBar(),
               _SummarizeBar(onSummarize: onSummarize),
               _ExplainBar(pageKey: pageKey),
               _QuizBar(pageKey: pageKey),
@@ -216,6 +225,25 @@ class _AskBar extends ConsumerWidget {
       child: const _ActionChip(
         icon: Icons.travel_explore_outlined,
         label: 'Ask notes',
+        enabled: true,
+      ),
+    );
+  }
+}
+
+/// The sidebar's Research launcher (Phase 3, Loop 3.4): opens a free-form
+/// question box whose answer may reach outside the notes via tools —
+/// distinct from "Ask notes", which only ever answers from the notes
+/// themselves.
+class _ResearchBar extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => ref.read(researchNotifierProvider.notifier).startComposing(),
+      child: const _ActionChip(
+        icon: Icons.manage_search,
+        label: 'Research',
         enabled: true,
       ),
     );

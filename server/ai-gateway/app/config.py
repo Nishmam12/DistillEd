@@ -36,6 +36,13 @@ class Settings:
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
 
+    # Web Search tool (Loop 3.4) — optional, feature-flagged by key presence,
+    # same pattern as the frontier providers. Pricing/cap confirmed with
+    # Nabil 2026-07-18: Exa standard search, $7/1,000 queries, 25/device/day.
+    exa_api_key: str = os.getenv("EXA_API_KEY", "")
+    exa_base_url: str = os.getenv("EXA_BASE_URL", "https://api.exa.ai")
+    daily_search_cap: int = int(os.getenv("DAILY_SEARCH_CAP", "25"))
+
     # Rate limiting (per anonymous device key).
     daily_token_cap: int = int(os.getenv("DAILY_TOKEN_CAP", "200000"))
     daily_request_cap: int = int(os.getenv("DAILY_REQUEST_CAP", "500"))
@@ -54,6 +61,10 @@ class Settings:
     @property
     def gpt_enabled(self) -> bool:
         return bool(self.openai_api_key)
+
+    @property
+    def exa_enabled(self) -> bool:
+        return bool(self.exa_api_key)
 
 
 @lru_cache

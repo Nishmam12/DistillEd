@@ -40,5 +40,44 @@ void main() {
       // Role is persisted by name, not index, so reordering the enum is safe.
       expect(message.toMap()['role'], 'assistant');
     });
+
+    group('tool role (Loop 3.4)', () {
+      test('a tool-role message carries its callId and round-trips', () {
+        const message = AiMessage(
+          role: AiRole.tool,
+          content: '4',
+          toolCallId: 'call_1',
+        );
+        expect(message.role, AiRole.tool);
+
+        final restored = AiMessage.fromMap(message.toMap());
+        expect(restored.toolCallId, 'call_1');
+        expect(restored, message);
+      });
+
+      test('an assistant message carries its toolCalls and round-trips', () {
+        const message = AiMessage(
+          role: AiRole.assistant,
+          content: '',
+          toolCalls: [
+            {
+              'id': 'call_1',
+              'type': 'function',
+              'function': {'name': 'calculator', 'arguments': '{}'},
+            },
+          ],
+        );
+
+        final restored = AiMessage.fromMap(message.toMap());
+        expect(restored.toolCalls, hasLength(1));
+        expect(restored.toolCalls!.first['id'], 'call_1');
+      });
+
+      test('toMap omits tool fields entirely when unset', () {
+        const message = AiMessage.user('plain question');
+        expect(message.toMap().containsKey('toolCallId'), isFalse);
+        expect(message.toMap().containsKey('toolCalls'), isFalse);
+      });
+    });
   });
 }

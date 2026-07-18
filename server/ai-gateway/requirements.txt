@@ -11,7 +11,11 @@ openai>=1.0
 google-genai>=2.0
 anthropic>=0.116
 
+# Web Search tool (Loop 3.4) — proxies Exa. Was previously a transitive-only
+# dependency (via openai/fastapi's test client); now called directly from
+# app code (routers/tools.py), so it's a direct runtime dependency too.
+httpx>=0.27
+
 # Dev/test only
 pytest>=8.0
 pytest-asyncio>=0.24
-httpx>=0.27
