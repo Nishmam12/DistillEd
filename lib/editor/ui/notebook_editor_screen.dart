@@ -10,6 +10,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/settings_provider.dart';
@@ -18,6 +19,9 @@ import '../../domain/geometry/element_bounds.dart';
 import '../../domain/model/scene_element.dart';
 import '../../features/ai/presentation/sidebar/ai_sidebar.dart';
 import '../../features/editor/domain/models/template_type.dart';
+import '../../features/import/pdf_service.dart' show ImportException;
+import '../import/fit_image_rect.dart';
+import '../import/scene_import_service.dart';
 import '../../features/editor/presentation/page_notifier.dart';
 import '../../features/home/data/repositories/note_repository.dart';
 import '../../features/home/domain/models/notebook.dart';
@@ -76,6 +80,9 @@ Rect? placeNoteSlot({
   return null;
 }
 
+/// What the user picked from the import sheet.
+enum _ImportSource { gallery, camera, pdf }
+
 class NotebookEditorScreen extends ConsumerStatefulWidget {
   final int notebookId;
   const NotebookEditorScreen({super.key, required this.notebookId});
@@ -98,8 +105,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// [build] for why it cannot live in the canvas.
   Size? _pageSheet;
 
-  /// Disambiguates ids of AI-inserted notes created in the same microsecond.
+  /// Disambiguates ids of AI-inserted notes and imported images created in the
+  /// same microsecond.
   int _noteSeq = 0;
+
+  final SceneImportService _import = SceneImportService();
 
   @override
   void initState() {
@@ -156,6 +166,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             tooltip: 'Background & paper',
             icon: const Icon(Icons.wallpaper_outlined),
             onPressed: _notebook == null ? null : _showBackgroundSheet,
+          ),
+          IconButton(
+            tooltip: 'Import',
+            icon: const Icon(Icons.file_upload_outlined),
+            onPressed: () => _showImportSheet(key),
           ),
           IconButton(
             tooltip: 'Summarize',
@@ -367,6 +382,218 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
       content: Text('Added to the page'),
       duration: Duration(seconds: 1),
+    ));
+  }
+
+  // ---- import ---------------------------------------------------------------
+
+  /// Offers the import sources. PDFs always become new pages (one per PDF
+  /// page); a photo asks, since either answer is reasonable — a diagram
+  /// alongside your notes, or a whiteboard shot to annotate on its own sheet.
+  Future<void> _showImportSheet(ScenePageKey key) async {
+    final choice = await showModalBottomSheet<_ImportSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Photo library'),
+              onTap: () => Navigator.of(context).pop(_ImportSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Camera'),
+              onTap: () => Navigator.of(context).pop(_ImportSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('PDF'),
+              subtitle: const Text('One page per PDF page'),
+              onTap: () => Navigator.of(context).pop(_ImportSource.pdf),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+
+    try {
+      switch (choice) {
+        case _ImportSource.gallery:
+          await _importPhoto(key, ImageSource.gallery);
+        case _ImportSource.camera:
+          await _importPhoto(key, ImageSource.camera);
+        case _ImportSource.pdf:
+          await _importPdf();
+      }
+    } on ImportException catch (e) {
+      _toast(e.message);
+    }
+  }
+
+  Future<void> _importPhoto(ScenePageKey key, ImageSource source) async {
+    final imported = await _import.importPhoto(source, '${widget.notebookId}');
+    if (imported == null || !mounted) return;
+
+    final asPage = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Where should it go?'),
+        content: const Text(
+            'Add it to the page you are on, or give it a page of its own?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('This page'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('New page'),
+          ),
+        ],
+      ),
+    );
+    if (asPage == null || !mounted) return;
+
+    if (asPage) {
+      await _addImageOnNewPage(imported);
+    } else {
+      _addImageInline(key, imported);
+    }
+  }
+
+  Future<void> _importPdf() async {
+    final path = await _import.pickPdfPath();
+    if (path == null || !mounted) return;
+    // Every page needs a sheet to be fitted to, so fail up front rather than
+    // rendering the whole document and silently dropping each page.
+    if (_pageSheet == null || _pageSheet!.isEmpty) {
+      _toast('The page is still loading — try again in a moment.');
+      return;
+    }
+
+    _toast('Importing…');
+    final pages = await _import.importPdf(path, '${widget.notebookId}');
+    if (!mounted) return;
+    if (pages.isEmpty) {
+      _toast('That PDF had no pages to import.');
+      return;
+    }
+
+    for (final page in pages) {
+      await _addImageOnNewPage(page);
+      if (!mounted) return;
+    }
+    _toast('Imported ${pages.length} page${pages.length == 1 ? '' : 's'}.');
+  }
+
+  /// Drops [imported] onto the current page, sized against what's on screen and
+  /// placed in the first clear slot — the same rules an inserted AI note uses.
+  void _addImageInline(ScenePageKey key, ImportedImage imported) {
+    final viewport = ref.read(viewportProvider);
+    final canvasSize = ref.read(viewportProvider.notifier).viewportSize;
+    if (canvasSize.isEmpty) return; // canvas hasn't laid out yet
+    final visible = viewport.visibleSceneRect(canvasSize);
+
+    // Sized in scene units against the visible area, so a photo occupies the
+    // same share of the screen whatever the zoom.
+    final size = inlineSize(imported.pixelSize, visible.size);
+    if (size.isEmpty) {
+      _toast("That image couldn't be measured.");
+      return;
+    }
+
+    final existing = <Rect>[];
+    for (final e in ref.read(sceneControllerProvider(key))) {
+      if (e is FreehandElement && e.isEraser) continue;
+      final r = ElementBounds.of(e);
+      if (!r.isEmpty) existing.add(r);
+    }
+
+    final box = placeNoteSlot(
+      bounds: visible,
+      width: size.width,
+      height: size.height,
+      existing: existing,
+    );
+    if (box == null) {
+      _toast('No empty space in view — scroll or zoom out to make room.');
+      return;
+    }
+
+    ref.read(historyProvider(key).notifier).push(AddElementsCommand([
+          _imageElement(
+            imported,
+            box,
+            ref.read(sceneControllerProvider(key).notifier).nextZOrder(),
+            // Inline images are content the user will want to move and resize.
+            locked: false,
+          ),
+        ]));
+    _toast('Added to the page');
+  }
+
+  /// Appends a page and fills it with [imported], aspect-fitted to the sheet.
+  ///
+  /// The new page is claimed and loaded before anything is added to it: a
+  /// freshly built page triggers [_ensureLoaded], and [SceneController.load]
+  /// *replaces* the scene with whatever the store holds — so adding first and
+  /// loading second would discard the image.
+  Future<void> _addImageOnNewPage(ImportedImage imported) async {
+    final sheet = _pageSheet;
+    if (sheet == null || sheet.isEmpty) return;
+
+    await ref.read(pageProvider(widget.notebookId).notifier).insertPage();
+    if (!mounted) return;
+
+    final pages = ref.read(pageProvider(widget.notebookId)).pages;
+    if (pages.isEmpty) return;
+    final key = (notebookId: widget.notebookId, pageId: pages.last.id);
+
+    _loadedPages.add(key.pageId);
+    await ref.read(sceneControllerProvider(key).notifier).load();
+    if (!mounted) return;
+
+    // A size we couldn't measure fills the sheet rather than failing the import.
+    final source =
+        imported.pixelSize.isEmpty ? sheet : imported.pixelSize;
+    final box = fitCentred(source, Offset.zero & sheet);
+    if (box.isEmpty) return;
+
+    ref.read(historyProvider(key).notifier).push(AddElementsCommand([
+          _imageElement(
+            imported,
+            box,
+            ref.read(sceneControllerProvider(key).notifier).nextZOrder(),
+            // A page-sized import is a backdrop to annotate, not something to
+            // drag around by accident. Unlockable from the selection bar.
+            locked: true,
+          ),
+        ]));
+  }
+
+  ImageElement _imageElement(
+    ImportedImage imported,
+    Rect box,
+    int zOrder, {
+    required bool locked,
+  }) =>
+      ImageElement(
+        id: '${DateTime.now().microsecondsSinceEpoch}_im${_noteSeq++}',
+        zOrder: zOrder,
+        geometryData: [box.left, box.top, box.right, box.bottom],
+        relativeImagePath: imported.relativePath,
+        sourceDescription: imported.description,
+        isLocked: locked,
+      );
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 2),
     ));
   }
 

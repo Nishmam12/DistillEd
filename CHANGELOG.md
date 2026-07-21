@@ -65,6 +65,24 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   Explain. Same as the cloud foundation above: has no visible effect until
   the gateway is actually deployed somewhere.
 
+### Added
+- **Import PDFs and photos into a notebook.** A new import button in the
+  notebook toolbar takes a **PDF** — every page comes in as its own page, sized
+  to fit and locked so you can write straight over it — or a **photo**, from
+  your library or the camera, which asks whether you want it on the page you're
+  on or on a page of its own. Re-importing the same PDF is instant and doesn't
+  duplicate anything on disk.
+- **Turn an imported page into editable text.** Select an imported PDF page or
+  photo and tap **Extract text**: the words in it become real text boxes sitting
+  where they were on the page, which you can select, edit and search like
+  anything else you've typed. The picture stays behind them — so you can always
+  check a misread against the original, and diagrams don't vanish — with a
+  one-tap **Remove picture** if you only wanted the text. Runs entirely
+  on-device, no network. One undo takes the whole extraction back.
+- **Edit text you've already placed.** Select a text box and tap **Edit text**
+  to change its words. Previously text could only be created, never corrected —
+  you had to delete it and start again.
+
 ### Fixed
 - **"Insert as note" dropped notes out of sight, on top of your work.** An
   inserted answer only avoided *other* inserted answers, so it could land over

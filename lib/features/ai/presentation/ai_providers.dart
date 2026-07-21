@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/settings_provider.dart';
 import '../../../dev/dev_secrets.dart';
+import '../../../editor/render/scene_image_cache.dart';
 import '../../../editor/state/scene_controller.dart';
 import '../data/embeddings/embedder_download_manager.dart';
 import '../data/embeddings/local_text_embedder.dart';
@@ -17,6 +18,7 @@ import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/cloud_llm_client.dart';
 import '../data/llm/model_download_manager.dart';
 import '../data/memory/learning_memory_repository.dart';
+import '../data/ocr/image_text_recognition_service.dart';
 import '../data/providers/cloud_gateway_provider.dart';
 import '../data/providers/local_gemma_provider.dart';
 import '../data/rag/note_chunk_store.dart';
@@ -156,12 +158,30 @@ final askNotesNotifierProvider =
 final cloudLlmClientProvider =
     Provider<CloudLlmClient>((ref) => StubCloudLlmClient());
 
+/// On-device OCR for imported pictures — PDF pages, whiteboard photos.
+///
+/// App-wide, because it caches what it has already read: an imported file never
+/// changes, so re-OCRing it on every debounced page analysis would be pure
+/// waste. Distinct from the handwriting recogniser above, which reads strokes.
+final imageTextRecognitionServiceProvider =
+    Provider<ImageTextRecognitionService>((ref) {
+  final service = ImageTextRecognitionService();
+  ref.onDispose(service.dispose);
+  return service;
+});
+
 /// The one way AI features read a page (editor-2.0 scene store underneath).
 final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
   final store = ref.watch(sceneElementStoreProvider);
+  final ocr = ref.watch(imageTextRecognitionServiceProvider);
+  final docsDir = ref.watch(appDocsPathProvider);
   return PageContentExtractor(
     loadElements: store.loadForPage,
     recognition: ref.watch(handwritingRecognitionServiceProvider),
+    // Elements store paths relative to the documents dir; resolve them the same
+    // way the renderer does, so the AI reads exactly the file on screen.
+    readImageText: (relative) =>
+        ocr.readText(SceneImageCache.resolvePath(docsDir, relative)),
   );
 });
 
