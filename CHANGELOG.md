@@ -28,7 +28,7 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   map built automatically from your notes: each concept is a node coloured by
   how well you know it (learning → practiced → mastered), linked by the
   relationships the AI spotted while reading. Concepts your notes *mention but
-  never actually explain* show as hollow "gap" nodes, so you can see what's
+  never actually explain* are ringed as "gap" nodes, so you can see what's
   missing at a glance. Pan and zoom to explore. Built entirely from analysis
   that was already happening — no extra waiting.
 - **Ask your notes (on-device).** A new **Ask notes** button in the AI sidebar
@@ -66,6 +66,32 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   the gateway is actually deployed somewhere.
 
 ### Fixed
+- **"Insert as note" dropped notes out of sight, on top of your work.** An
+  inserted answer only avoided *other* inserted answers, so it could land over
+  your own writing, and on a busy page it was placed below the visible area
+  entirely — you had to zoom out to find it. It now lands in the first clear
+  space inside the part of the page you're actually looking at, clear of
+  everything already there, sized to read the same whether you insert at 14% or
+  300%. When there's genuinely no room in view it says so instead of hiding the
+  note somewhere off-screen.
+- **The AI couldn't read your handwriting.** Every feature that works from page
+  text — live insights, Ask notes, summaries, the knowledge graph — was getting
+  nonsense back from handwritten pages. The whole page was being handed to the
+  recogniser at once, in raw canvas coordinates, so it saw one enormous smear of
+  marks rather than writing. It now reads your notes the way you wrote them: a
+  line at a time, at a consistent size no matter what zoom you were at, with
+  each line's underlines set aside, table columns read separately, and each
+  piece given the words before it as context so it can tell what it's reading
+  into.
+- **AI insights suggesting gibberish to revisit.** "Worth revisiting" could fill
+  up with fragments like "ge sin" or "ug ns" — misread handwriting quoted back
+  at you as though it were a topic. The AI is now told the text comes from
+  handwriting and to leave anything it can't read out of its answer entirely.
+- **The page shrank when you opened AI insights.** On a single page, docking the
+  panel beside the canvas cut the page down to the space left over, hiding the
+  right-hand side of anything already written there. The page now keeps its
+  size and simply scales to fit the narrower view — and back again when you
+  close the panel. If you'd deliberately zoomed in, your zoom is left alone.
 - **Handwriting recognition failing on Android.** A recent upstream update to
   the ML Kit digital-ink plugin broke recognition entirely on Android
   (affecting live context, RAG indexing, and anything else that reads page

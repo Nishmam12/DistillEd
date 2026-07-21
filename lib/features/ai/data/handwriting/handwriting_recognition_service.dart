@@ -12,6 +12,7 @@ import 'package:google_mlkit_digital_ink_recognition/google_mlkit_digital_ink_re
 
 import '../../../../domain/model/scene_element.dart';
 import '../../../editor/domain/models/stroke.dart';
+import '../../domain/handwriting/ink_lines.dart';
 import '../../domain/recognition_result.dart';
 import '../../domain/meaningfulness_gate.dart';
 
@@ -95,24 +96,31 @@ class HandwritingRecognitionService {
           if (e is FreehandElement) (points: e.points, isEraser: e.isEraser),
       ]);
 
-  static mlkit.Ink _toInk(List<_InkSource> strokes) {
+  static mlkit.Ink _toInk(List<_InkSource> strokes) => _pointsToInk([
+        for (final s in strokes)
+          if (!s.isEraser && s.points.isNotEmpty) s.points,
+      ]);
+
+  /// Builds the ML Kit ink from already-filtered stroke point lists, rebasing
+  /// them onto one monotonic timeline (see [strokesToInk] for the rules).
+  static mlkit.Ink _pointsToInk(List<List<StrokePoint>> strokes) {
     final ink = mlkit.Ink();
     int clock = 0;
     bool first = true;
 
-    for (final stroke in strokes) {
-      if (stroke.isEraser || stroke.points.isEmpty) continue;
+    for (final points in strokes) {
+      if (points.isEmpty) continue;
 
       final startAt = first ? 0 : clock + synthStrokeGapMs;
       first = false;
 
-      final hasFullTiming = stroke.points.every((p) => p.t != null);
+      final hasFullTiming = points.every((p) => p.t != null);
       final mlStroke = mlkit.Stroke();
 
       if (hasFullTiming) {
-        final base = stroke.points.first.t!;
+        final base = points.first.t!;
         int prev = startAt;
-        for (final p in stroke.points) {
+        for (final p in points) {
           // Clamp to be monotonically non-decreasing (defensive: real event
           // timestamps should already be ordered).
           final t = startAt + (p.t! - base);
@@ -122,12 +130,12 @@ class HandwritingRecognitionService {
         }
         clock = prev;
       } else {
-        for (int i = 0; i < stroke.points.length; i++) {
-          final p = stroke.points[i];
+        for (int i = 0; i < points.length; i++) {
+          final p = points[i];
           mlStroke.points.add(mlkit.StrokePoint(
               x: p.x, y: p.y, t: startAt + i * synthPointGapMs));
         }
-        clock = startAt + (stroke.points.length - 1) * synthPointGapMs;
+        clock = startAt + (points.length - 1) * synthPointGapMs;
       }
 
       ink.strokes.add(mlStroke);
@@ -144,9 +152,10 @@ class HandwritingRecognitionService {
     List<Stroke> strokes,
     String languageCode, {
     mlkit.WritingArea? writingArea,
-  }) async {
-    final ink = strokesToInk(strokes);
-    return _recognizeInk(ink, languageCode, writingArea: writingArea);
+  }) {
+    return _recognizeSources([
+      for (final s in strokes) (points: s.points, isEraser: s.isEraser),
+    ], languageCode, writingArea: writingArea);
   }
 
   /// Editor-2.0 variant of [recognizePage]: recognizes the freehand ink among
@@ -156,14 +165,107 @@ class HandwritingRecognitionService {
     String languageCode, {
     mlkit.WritingArea? writingArea,
   }) {
-    final ink = elementsToInk(elements);
-    return _recognizeInk(ink, languageCode, writingArea: writingArea);
+    return _recognizeSources([
+      for (final e in elements)
+        if (e is FreehandElement) (points: e.points, isEraser: e.isEraser),
+    ], languageCode, writingArea: writingArea);
+  }
+
+  /// How much already-recognized text to offer ML Kit as [preContext]. It only
+  /// wants the characters immediately before the insertion point, and a long
+  /// tail would bias the language model toward earlier, unrelated writing.
+  static const int preContextChars = 40;
+
+  /// Recognizes a page of ink one handwritten *segment* at a time.
+  ///
+  /// ML Kit's recogniser expects the contents of a single writing area, so
+  /// feeding it a whole page at once returns junk (observed on device as
+  /// `:::::::::` with a hopeless score). Strokes are grouped into lines, each
+  /// line is split at table-column gaps, and each segment is normalised to a
+  /// consistent scale — raw scene coordinates depend on the zoom the user wrote
+  /// at, which the recogniser cannot know — then recognised on its own with a
+  /// [mlkit.WritingArea] matching the normalised extent.
+  ///
+  /// Each segment is also given the text recognised before it as `preContext`,
+  /// which is how ML Kit is told what word it is reading into: with it the
+  /// recogniser's language model resolves ambiguous letters using the sentence
+  /// so far instead of guessing each segment in isolation.
+  ///
+  /// Segments on a line are joined with a double space (preserving the columns
+  /// of a table), lines with a newline.
+  ///
+  /// An explicit [writingArea] (callers that already know their surface) wins
+  /// over the per-segment one.
+  Future<PageRecognition> _recognizeSources(
+    List<_InkSource> sources,
+    String languageCode, {
+    mlkit.WritingArea? writingArea,
+  }) async {
+    final lines = groupStrokesIntoLines([
+      for (final s in sources)
+        if (!s.isEraser && s.points.isNotEmpty) s.points,
+    ]);
+    if (lines.isEmpty) return const PageRecognition.empty();
+
+    final texts = <String>[];
+    final scores = <double>[];
+
+    for (final line in lines) {
+      final segments = <String>[];
+      for (final segment in splitLineAtColumnGaps(line)) {
+        final normalized = normalizeInkLine(segment);
+        final ink = _pointsToInk(normalized.strokes);
+        if (ink.strokes.isEmpty) continue;
+
+        // A degenerate segment (a perfectly flat dash) has no area to describe;
+        // sending a zero-sized writing area would be worse than sending none.
+        final area = writingArea ??
+            (normalized.width > 0 && normalized.height > 0
+                ? mlkit.WritingArea(
+                    width: normalized.width, height: normalized.height)
+                : null);
+
+        final result = await _recognizeInk(
+          ink,
+          languageCode,
+          writingArea: area,
+          preContext: _preContextFrom(texts, segments),
+        );
+        final text = result.text.trim();
+        if (text.isNotEmpty) segments.add(text);
+        if (result.topScore != null) scores.add(result.topScore!);
+      }
+      if (segments.isNotEmpty) texts.add(segments.join('  '));
+    }
+
+    return PageRecognition(
+      text: texts.join('\n'),
+      // Mean across segments: the whole-page analogue of what a single-ink call
+      // used to report, rather than letting one good line flatter the page.
+      topScore: scores.isEmpty
+          ? null
+          : scores.reduce((a, b) => a + b) / scores.length,
+      hasInk: true,
+    );
+  }
+
+  /// The tail of everything recognized so far — earlier [lines] plus the
+  /// [segments] already read on the current line. Null when there is nothing
+  /// yet, so the first segment on a page is recognised without a hint rather
+  /// than with an empty one.
+  static String? _preContextFrom(List<String> lines, List<String> segments) {
+    final joined = [...lines, ...segments].join(' ').trim();
+    if (joined.isEmpty) return null;
+    return joined.length <= preContextChars
+        ? joined
+        : joined.substring(joined.length - preContextChars);
   }
 
   Future<PageRecognition> _recognizeInk(
     mlkit.Ink ink,
     String languageCode, {
     mlkit.WritingArea? writingArea,
+    String? preContext,
   }) async {
     if (ink.strokes.isEmpty) return const PageRecognition.empty();
 
@@ -176,9 +278,10 @@ class HandwritingRecognitionService {
     try {
       candidates = await recognizer.recognize(
         ink,
-        context: writingArea == null
+        context: writingArea == null && preContext == null
             ? null
-            : mlkit.DigitalInkRecognitionContext(writingArea: writingArea),
+            : mlkit.DigitalInkRecognitionContext(
+                writingArea: writingArea, preContext: preContext),
       );
     } catch (e) {
       throw RecognitionException(
@@ -208,10 +311,8 @@ class HandwritingRecognitionService {
           await recognizePage(strokes, languageCode, writingArea: writingArea));
     }
 
-    final text = pages
-        .map((p) => p.text.trim())
-        .where((t) => t.isNotEmpty)
-        .join('\n\n');
+    final text =
+        pages.map((p) => p.text.trim()).where((t) => t.isNotEmpty).join('\n\n');
     final scores = [
       for (final p in pages)
         if (p.topScore != null) p.topScore!,

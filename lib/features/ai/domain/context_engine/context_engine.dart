@@ -34,6 +34,7 @@ You analyze one page of a student's notes. Reply with ONLY a single JSON object 
 
 Rules:
 - Use only what the note actually says. Never invent facts, names, or definitions.
+- The note was transcribed from handwriting, so parts of it are misread: expect wrong letters, run-together words, and fragments that are not English at all. Read past them. Never quote a garbled fragment as a topic, concept, entity, definition, or gap — if you cannot tell what a fragment was meant to say, leave it out entirely. A short list of things you actually understood beats a long one padded with noise.
 - Put a term in "definitions" only when the note itself defines it.
 - "knowledgeGaps" are study gaps a tutor would flag: terms used but never defined, sections that end mid-thought, claims with no supporting detail.
 - "relatedConcepts" captures how the concepts connect, as directed pairs. "relation" is a short label such as "is-a", "part-of", "leads-to", "causes", or "related-to". Only include a pair when the note itself implies the link; both ends should be concepts you listed.

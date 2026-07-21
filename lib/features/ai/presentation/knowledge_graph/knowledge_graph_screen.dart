@@ -167,19 +167,21 @@ class _GraphPainter extends CustomPainter {
       final r = _radius(node.degree);
       final color = masteryColor(node.level);
 
+      canvas.drawCircle(center, r, Paint()..color = color);
       if (node.referencedOnly) {
-        // A gap: hollow ring, so "mentioned but never studied" reads distinctly
-        // from a studied-but-unseen concept.
+        // "Mentioned, not explained": filled like any other node — it IS part
+        // of the notes' concept web — but ringed so a concept the notebook
+        // gestures at without ever covering still reads at a glance. This used
+        // to draw a grey *hollow* ring, which read as an uncoloured/broken node
+        // rather than a deliberate signal.
         canvas.drawCircle(
           center,
           r,
           Paint()
-            ..color = color
+            ..color = AppColors.textSecondary
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2,
         );
-      } else {
-        canvas.drawCircle(center, r, Paint()..color = color);
       }
 
       _drawLabel(canvas, node.name, center, r);
@@ -249,10 +251,10 @@ class _Legend extends StatelessWidget {
         children: [
           for (final level in MasteryLevel.values)
             _Swatch(color: masteryColor(level), label: _levelLabel(level)),
-          const _Swatch(
-            color: AppColors.textMuted,
-            label: 'Mentioned, not studied',
-            hollow: true,
+          _Swatch(
+            color: masteryColor(MasteryLevel.learning),
+            label: 'Mentioned, not explained',
+            ringed: true,
           ),
         ],
       ),
@@ -270,8 +272,11 @@ class _Legend extends StatelessWidget {
 class _Swatch extends StatelessWidget {
   final Color color;
   final String label;
-  final bool hollow;
-  const _Swatch({required this.color, required this.label, this.hollow = false});
+
+  /// Filled *and* outlined — mirrors how the painter marks a
+  /// "mentioned, not explained" node.
+  final bool ringed;
+  const _Swatch({required this.color, required this.label, this.ringed = false});
 
   @override
   Widget build(BuildContext context) {
@@ -282,9 +287,11 @@ class _Swatch extends StatelessWidget {
           width: 12,
           height: 12,
           decoration: BoxDecoration(
-            color: hollow ? null : color,
+            color: color,
             shape: BoxShape.circle,
-            border: hollow ? Border.all(color: color, width: 2) : null,
+            border: ringed
+                ? Border.all(color: AppColors.textSecondary, width: 2)
+                : null,
           ),
         ),
         const SizedBox(width: 6),

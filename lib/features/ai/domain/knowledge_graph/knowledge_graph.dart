@@ -20,10 +20,11 @@ class GraphNode {
 
   final MasteryLevel level;
 
-  /// True when this concept appears ONLY as the endpoint of a relationship and
-  /// was never studied directly — a gap the notebook gestures at but never
-  /// covers. Rendered distinctly, and exactly the "referenced but never studied"
-  /// signal Loop 2.5's planner wants.
+  /// True when this concept has no direct mastery record — it appears only as
+  /// the endpoint of a relationship the notes drew. It is still *in* the notes
+  /// (something is related to it), so it is coloured at [MasteryLevel.learning]
+  /// rather than shown as an untouched gap; this flag is kept as metadata for
+  /// callers that care about the distinction.
   final bool referencedOnly;
 
   /// Number of edges touching this node — drives node size (a hub concept reads
@@ -73,10 +74,10 @@ class KnowledgeGraph {
   ///
   /// Nodes come from BOTH sources: every studied concept, plus every concept an
   /// edge references. An edge endpoint with no mastery record becomes a
-  /// [GraphNode.referencedOnly] node (a gap) rather than being dropped — losing
-  /// it would hide exactly the "mentioned but never studied" concepts the graph
-  /// exists to reveal. Edges whose endpoints collapse to the same node, or
-  /// duplicate (from,to) pairs, are dropped so the drawing stays clean.
+  /// [GraphNode.referencedOnly] node coloured at `learning` (it is part of the
+  /// notes' web of concepts) rather than being dropped. Edges whose endpoints
+  /// collapse to the same node, or duplicate (from,to) pairs, are dropped so the
+  /// drawing stays clean.
   factory KnowledgeGraph.build({
     required List<ConceptMastery> concepts,
     required List<ConceptRelation> relations,
@@ -112,7 +113,10 @@ class KnowledgeGraph {
         GraphNode(
           key: entry.key,
           name: entry.value,
-          level: levels[entry.key] ?? MasteryLevel.unseen,
+          // A concept the notes relate to others is part of the notes, so an
+          // edge endpoint with no mastery record is `learning` (seen), not an
+          // untouched `unseen` gap. Recorded concepts keep their real level.
+          level: levels[entry.key] ?? MasteryLevel.learning,
           referencedOnly: !levels.containsKey(entry.key),
           degree: degree[entry.key] ?? 0,
         ),

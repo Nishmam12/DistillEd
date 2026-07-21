@@ -1161,7 +1161,93 @@ byte arrives. Two regression tests added (`research_notifier_test.dart`).
 Both Close and Stop confirmed working mid-stream on-device. 655/655 Flutter
 tests, analyze clean.
 
+## Phase 2 device-validation fixes (2026-07-21, Xiaomi Pad 7)
+
+Found by driving the real app on real handwriting, not by inspection. Four
+user-visible defects, each diagnosed from device evidence.
+
+### 1. "Insert as note" landed off-screen and on top of existing work
+`placeNoteSlot` slid its box downward with no lower bound, so on a busy page
+the note was placed below the viewport entirely; the collision set was a
+hand-rolled duplicate of `ElementBounds.of()` that only saw previously-inserted
+notes; and the note's size was fixed in *scene* units, so inserting at 14% zoom
+produced an unreadable sliver. Now bounded by `ViewportState.visibleSceneRect`,
+collides against every element via the canonical helper, sizes to the live zoom
+(`360px / zoom`), and reports **"No empty space in view"** rather than hiding
+the note. `viewport_controller.dart` gained `viewportSize` + `visibleSceneRect`.
+
+### 2. Handwriting recognised as garbage
+Not a plugin or model failure — the device log showed ML Kit loading and running
+fine, then returning `Recognition result: ::::::::::::::::: with score: 18043.2`
+(scores are "lower = more likely"). Root causes, all in how ink was *presented*:
+the whole page went in as one `Ink`, in raw scene coordinates whose scale
+depends on the zoom the user wrote at, with no `WritingArea` ever supplied
+(the parameter was plumbed through but no production caller passed it).
+
+Fixed over two passes in `domain/handwriting/ink_lines.dart` (pure, unit-tested)
+plus `_recognizeSources`:
+- strokes grouped into **lines**, each normalised to a fixed height and
+  recognised on its own with a matching `WritingArea` → `:::::` @ 18043 became
+  real English (`In regression,` @ 1163, `target value of baining sample in
+  that leaf.` @ 3335);
+- **stray-mark fold** — punctuation clear of the band was becoming its own
+  "line" and coming back as a lone `.` or `-`; 11 of 23 results were these.
+  After the fold: 13 lines, **zero** lone punctuation;
+- **rule/underline strokes dropped before grouping** (wider than 2.5x the
+  median stroke height and flatter than 0.15x). The underlined heading
+  "Regression Tree vs Classification Tree" was returning `Repso tree is
+  classification Tree`;
+- **lines split at column gaps** (> 2x line height) — a hand-drawn table row
+  reached the recogniser as one smear and returned `ape assiiions`;
+- strokes sorted by vertical **centre**, not top edge (ascender height is a poor
+  proxy for which line a stroke is on), with "centre inside the band" as an
+  additional join rule;
+- **`preContext`** — each segment is given the tail (40 chars) of everything
+  recognised before it, so ML Kit's language model reads ambiguous letters
+  against the sentence so far instead of guessing each fragment in isolation.
+
+> **Note on the scores quoted above.** They come from ML Kit's *internal* native
+> log (`helper.cc:160] Recognition result: … with score: …`) and are on a
+> different scale from `RecognitionCandidate.score`, which is what the plugin
+> surfaces and what `MeaningfulnessGate.maxAvgScore` (8.0) thresholds against.
+> They are used here only comparatively, run against run. Do **not** recalibrate
+> the gate against these numbers.
+
+### 3. "Worth revisiting" quoting misread handwriting back at the user
+Garbage-in: the context engine dutifully flagged garbled fragments (`ge sin`,
+`ug ns`, `pass a e`) as study gaps. Score-based filtering doesn't separate these
+(score scales with length; per-character it's flat across good and bad lines), so
+the fix is at the prompt: the model is now told the note was transcribed from
+handwriting, to read past misreads, and never to quote a fragment it can't
+resolve as a topic, concept, entity, definition or gap.
+
+### 4. The page shrank when the AI panel docked
+`scene_canvas.dart` set `pageSize: size, viewportSize: size` from the same
+`LayoutBuilder` constraints, and `pageRect = Offset.zero & canvasSize` — so the
+page **was** the canvas. Docking the panel narrowed the canvas, which narrowed
+the page, which clipped existing writing off the right-hand side (the page rect
+is also the scene clip). The page size is now latched and the true (smaller)
+canvas reported as the viewport; `configure` re-fits the zoom when a page that
+*was* fully visible would stop being so, and leaves a deliberately zoomed-in
+user alone. The latch lives in `_NotebookEditorScreenState`, not the canvas:
+`SceneCanvas` is keyed by page id and rebuilt on every page turn, so a latch
+inside it would re-take its size from the narrowed canvas and make every page
+after the first a sliver.
+
+**Verification:** 691/691 Flutter tests (from 677 — 14 new across
+`ink_lines_test.dart` and `viewport_controller_test.dart`), `flutter analyze`
+clean. Recognition improvements confirmed against real device logs.
+
 ## Deferred / Open Questions
+- **Ink recognition re-runs when only typed text changed.** `sceneContentSignature`
+  is one signature covering freehand + text + image elements, and a miss re-runs
+  the whole extraction. Observed on device 2026-07-21: inserting AI notes on a
+  handwritten page re-recognised all the ink (~15 native round-trips returning
+  byte-identical results) because a `TextElement` had been added. The cache
+  itself is correct — the signature is checked before extraction — but its
+  granularity is coarser than the work it guards. A separate ink-only
+  sub-signature caching `PageRecognition` would skip this. Perf, not
+  correctness; not attempted.
 - Phase U: wrap runtime as `LocalGemmaProvider implements AiProvider`
   (streaming via `getResponseAsync`), `PageContentExtractor`, general router;
   then repoint Summarize.

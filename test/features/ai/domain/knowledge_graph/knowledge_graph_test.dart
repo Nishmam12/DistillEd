@@ -46,7 +46,12 @@ void main() {
     final regression = g.nodeFor('regression');
     expect(regression, isNotNull);
     expect(regression!.referencedOnly, isTrue);
-    expect(regression.level, MasteryLevel.unseen);
+    // Coloured as `learning`, not `unseen`: the notes relate something to it,
+    // so it IS part of their concept web. `referencedOnly` (which the painter
+    // marks with a ring, and the planner reads) carries the "never actually
+    // explained" distinction instead — rendering it as an uncoloured node read
+    // as broken on device.
+    expect(regression.level, MasteryLevel.learning);
     // The studied one is not flagged.
     expect(g.nodeFor('machine learning')!.referencedOnly, isFalse);
   });

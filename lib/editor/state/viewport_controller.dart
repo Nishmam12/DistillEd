@@ -6,6 +6,8 @@
 // pan clamped so the page stays in view / centred when it is smaller than the
 // viewport).
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -52,6 +54,15 @@ class ViewportState {
 
   Rect toViewportRect(Rect scene) =>
       Rect.fromPoints(toViewport(scene.topLeft), toViewport(scene.bottomRight));
+
+  /// The slice of the scene currently on screen, given the canvas's [viewport]
+  /// size. Used to keep work the user asked for (e.g. an inserted AI note)
+  /// inside what they can actually see, rather than somewhere they'd have to
+  /// zoom out to find.
+  Rect visibleSceneRect(Size viewport) => Rect.fromPoints(
+        toScene(Offset.zero),
+        toScene(Offset(viewport.width, viewport.height)),
+      );
 }
 
 class ViewportController extends StateNotifier<ViewportState> {
@@ -73,6 +84,11 @@ class ViewportController extends StateNotifier<ViewportState> {
   double get minZoom => _minZoom;
   double get maxZoom => _maxZoom;
 
+  /// The canvas size last reported by [configure] — `Size.zero` until the
+  /// canvas has laid out once. Pair with [ViewportState.visibleSceneRect] to
+  /// find what's currently on screen in scene coordinates.
+  Size get viewportSize => _viewportSize;
+
   /// Sets the active layout mode and the page / viewport geometry used for
   /// clamping, then re-applies constraints to the current state. Called by the
   /// canvas whenever the mode or its size changes.
@@ -86,14 +102,33 @@ class ViewportController extends StateNotifier<ViewportState> {
         _viewportSize != viewportSize;
     if (!changed) return;
 
+    // Whether the whole page fitted on screen *before* this change, judged
+    // against the old geometry — see the re-fit below.
+    final wasWhole = state.zoom <= fitZoom + 1e-6;
+
     _pageMode = pageMode;
     _pageSize = pageSize;
     _viewportSize = viewportSize;
     _minZoom = pageMode ? pageMinZoom : infiniteMinZoom;
     _maxZoom = pageMode ? pageMaxZoom : infiniteMaxZoom;
 
-    final z = state.zoom.clamp(_minZoom, _maxZoom);
+    // Re-fit when the viewport changes shape under a page that was fully
+    // visible — docking the AI panel beside the canvas halves the width, and
+    // without this the page keeps its size while the window around it shrinks,
+    // so content slides off screen. A user who had deliberately zoomed past the
+    // fit is left alone: they are inspecting detail, not reading the page.
+    final target = wasWhole ? fitZoom : state.zoom;
+    final z = target.clamp(_minZoom, _maxZoom);
     state = _constrain(state.copyWith(zoom: z));
+  }
+
+  /// The largest zoom at which the whole page still fits the viewport. 1.0 in
+  /// infinite mode, or before the canvas has reported its geometry — nothing is
+  /// bounded there, so there is nothing to fit.
+  double get fitZoom {
+    if (!_pageMode || _pageSize.isEmpty || _viewportSize.isEmpty) return 1.0;
+    return math.min(_viewportSize.width / _pageSize.width,
+        _viewportSize.height / _pageSize.height);
   }
 
   void pan(Offset delta) {

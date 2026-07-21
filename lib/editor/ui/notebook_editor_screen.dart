@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../domain/commands/scene_command.dart';
+import '../../domain/geometry/element_bounds.dart';
 import '../../domain/model/scene_element.dart';
 import '../../features/ai/presentation/sidebar/ai_sidebar.dart';
 import '../../features/editor/domain/models/template_type.dart';
@@ -31,6 +32,50 @@ import '../state/viewport_controller.dart';
 import 'editor_controls.dart';
 import 'scene_canvas.dart';
 
+/// On-screen size an inserted AI note aims for, in logical pixels. Converted
+/// to scene units against the live zoom so a note looks the same whether it
+/// was inserted at 14% or 300%.
+const double _noteScreenWidth = 360.0;
+const double _noteScreenFontSize = 16.0;
+
+/// Finds a clear scene-space slot for an "insert as note" box, **within
+/// [bounds]** (the slice of the scene currently on screen).
+///
+/// Starts at [bounds]' top-left and slides the [width]×[height] box straight
+/// down past every rect in [existing] it would overlap, so a note never lands
+/// on top of existing content — the user's own text and handwriting included —
+/// or on a note inserted moments earlier. A box only clears rects it actually
+/// overlaps, so a note can sit beside content off to one side.
+///
+/// Returns null when no clear slot fits inside [bounds]: the caller reports
+/// "no space" rather than dropping the note somewhere off-screen that the user
+/// would have to zoom out to find. The scan is bounded so a pathological
+/// layout can't loop forever.
+@visibleForTesting
+Rect? placeNoteSlot({
+  required Rect bounds,
+  required double width,
+  required double height,
+  required List<Rect> existing,
+}) {
+  const gap = 16.0;
+  final left = bounds.left + gap;
+  var box = Rect.fromLTWH(left, bounds.top + gap, width, height);
+
+  for (var i = 0; i < 200; i++) {
+    if (box.bottom > bounds.bottom) return null;
+
+    var lowestOverlap = double.negativeInfinity;
+    for (final r in existing) {
+      if (r.overlaps(box) && r.bottom > lowestOverlap) lowestOverlap = r.bottom;
+    }
+    if (lowestOverlap == double.negativeInfinity) return box;
+
+    box = Rect.fromLTWH(left, lowestOverlap + gap, width, height);
+  }
+  return null;
+}
+
 class NotebookEditorScreen extends ConsumerStatefulWidget {
   final int notebookId;
   const NotebookEditorScreen({super.key, required this.notebookId});
@@ -47,6 +92,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// Whether the docked AI panel is showing (wide screens only; on phones the
   /// AI action opens a bottom sheet instead and this stays false).
   bool _aiPanelOpen = false;
+
+  /// The page's size in page mode, taken from the first layout of the canvas
+  /// area and held for the rest of the session. See the [LayoutBuilder] in
+  /// [build] for why it cannot live in the canvas.
+  Size? _pageSheet;
 
   /// Disambiguates ids of AI-inserted notes created in the same microsecond.
   int _noteSeq = 0;
@@ -150,28 +200,40 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       body: Row(
         children: [
           Expanded(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: SceneCanvas(
-                    key: ValueKey(page.id),
-                    notebookId: widget.notebookId,
-                    pageId: page.id,
-                    backgroundColor: _paperColor,
-                    templateType: _template,
-                    pageMode: _pageMode,
+            child: LayoutBuilder(builder: (context, constraints) {
+              // The page's size is latched here rather than inside the canvas,
+              // because the canvas is keyed by page id and so is rebuilt from
+              // scratch on every page turn — a latch living there would re-take
+              // its size from whatever the canvas had shrunk to, and switching
+              // pages with the AI panel open would leave the new page a narrow
+              // sliver. This state outlives both.
+              if (!constraints.biggest.isEmpty) {
+                _pageSheet ??= constraints.biggest;
+              }
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: SceneCanvas(
+                      key: ValueKey(page.id),
+                      notebookId: widget.notebookId,
+                      pageId: page.id,
+                      backgroundColor: _paperColor,
+                      templateType: _template,
+                      pageMode: _pageMode,
+                      pageSize: _pageSheet,
+                    ),
                   ),
-                ),
-                // Quick-access tool bar overlaid at the top with a translucent
-                // background, freeing the bottom for page navigation.
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: EditorBottomBar(pageKey: key, floating: true),
-                ),
-              ],
-            ),
+                  // Quick-access tool bar overlaid at the top with a translucent
+                  // background, freeing the bottom for page navigation.
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: EditorBottomBar(pageKey: key, floating: true),
+                  ),
+                ],
+              );
+            }),
           ),
           // Docked AI panel beside the canvas on wide screens; phones use the
           // bottom sheet from _toggleAiPanel instead.
@@ -238,35 +300,64 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// "Insert as note" from the AI sidebar: drops the text onto the current page
   /// as a [TextElement] through the same undoable history path a manual text
   /// box uses (never bypassing it), sized to the wrapped text and placed in the
-  /// visible viewport.
+  /// first clear spot inside the part of the page currently on screen.
   void _insertNote(ScenePageKey key, String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
-    const width = 360.0;
-    const fontSize = 16.0;
-    final painter = TextPainter(
-      text: const TextSpan(text: 'x', style: TextStyle(fontSize: fontSize)),
-      textDirection: TextDirection.ltr,
-    );
-    painter.text =
-        TextSpan(text: trimmed, style: const TextStyle(fontSize: fontSize));
-    painter.layout(maxWidth: width);
-    final height = painter.height + 16;
+    final viewport = ref.read(viewportProvider);
+    final canvasSize = ref.read(viewportProvider.notifier).viewportSize;
+    if (canvasSize.isEmpty) return; // canvas hasn't laid out yet
 
-    final scene = ref.read(viewportProvider).toScene(const Offset(48, 120));
+    final visible = viewport.visibleSceneRect(canvasSize);
+
+    // Size the note in SCENE units so it occupies a constant share of the
+    // screen whatever the zoom: at 14% zoom a fixed 360-unit box is a ~50px
+    // unreadable sliver. Clamped so a very zoomed-in view can't ask for a box
+    // wider than the visible area itself.
+    final zoom = viewport.zoom;
+    final width = (_noteScreenWidth / zoom).clamp(1.0, visible.width);
+    final fontSize = _noteScreenFontSize / zoom;
+    final painter = TextPainter(
+      text: TextSpan(text: trimmed, style: TextStyle(fontSize: fontSize)),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: width);
+    final height = painter.height + 16 / zoom;
+
+    // Slide the box down past anything already on the page, staying inside the
+    // visible area. Bounds come from the canonical [ElementBounds]; degenerate
+    // (empty) boxes are dropped so they can't act as a phantom obstacle at the
+    // origin, and eraser strokes are skipped since they aren't visible content
+    // (same rule PageContentExtractor._inkBounds uses).
+    final existing = <Rect>[];
+    for (final e in ref.read(sceneControllerProvider(key))) {
+      if (e is FreehandElement && e.isEraser) continue;
+      final r = ElementBounds.of(e);
+      if (!r.isEmpty) existing.add(r);
+    }
+
+    final box = placeNoteSlot(
+      bounds: visible,
+      width: width,
+      height: height,
+      existing: existing,
+    );
+    if (box == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:
+            Text('No empty space in view — scroll or zoom out to make room.'),
+        duration: Duration(seconds: 3),
+      ));
+      return;
+    }
+
     final zOrder = ref.read(sceneControllerProvider(key).notifier).nextZOrder();
 
     ref.read(historyProvider(key).notifier).push(AddElementsCommand([
           TextElement(
             id: '${DateTime.now().microsecondsSinceEpoch}_ai${_noteSeq++}',
             zOrder: zOrder,
-            geometryData: [
-              scene.dx,
-              scene.dy,
-              scene.dx + width,
-              scene.dy + height,
-            ],
+            geometryData: [box.left, box.top, box.right, box.bottom],
             text: trimmed,
             color: 0xFF1A1A1A,
             fontSize: fontSize,

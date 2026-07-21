@@ -53,6 +53,11 @@ class SceneCanvas extends ConsumerStatefulWidget {
   /// with zoom limited to 50–300%; otherwise it is an infinite whiteboard.
   final bool pageMode;
 
+  /// The page's size in page mode, when the owner keeps one that outlives this
+  /// canvas. Null falls back to latching the first layout locally — fine for a
+  /// canvas that is never rebuilt, but not for one keyed by page id.
+  final Size? pageSize;
+
   const SceneCanvas({
     super.key,
     required this.notebookId,
@@ -60,6 +65,7 @@ class SceneCanvas extends ConsumerStatefulWidget {
     this.backgroundColor = const Color(0xFFFFFDF7),
     this.templateType = TemplateType.blank,
     this.pageMode = false,
+    this.pageSize,
   });
 
   @override
@@ -95,6 +101,11 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   // post-frame updates.
   Size? _configuredSize;
   bool? _configuredPageMode;
+
+  // The page's own size in page mode, latched from the first layout and held
+  // for as long as the mode lasts. See [_syncViewportConfig] for why it cannot
+  // simply track the canvas.
+  Size? _pageSize;
 
   ScenePageKey get _key =>
       (notebookId: widget.notebookId, pageId: widget.pageId);
@@ -247,20 +258,32 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   }
 
   /// Pushes the current page geometry / mode to the viewport controller once
-  /// per change (after layout, so the canvas size is known). In page mode the
-  /// page matches the canvas size so it fills the view at 100%.
+  /// per change (after layout, so the canvas size is known).
+  ///
+  /// In page mode the page takes its size from [SceneCanvas.pageSize], or from
+  /// the *first* layout here — so it fills the view at 100% — and then keeps
+  /// it. The canvas is only a window onto that sheet: it shrinks whenever the
+  /// AI panel docks beside it, and a page that tracked the canvas would shrink
+  /// with it, cutting the right-hand side off existing writing, since the page
+  /// rect is also what the scene is clipped to. Holding the sheet and reporting
+  /// the smaller canvas as the viewport instead lets the controller re-fit the
+  /// zoom and keep the whole page visible.
   void _syncViewportConfig(Size size) {
     if (size.isEmpty) return;
     if (_configuredSize == size && _configuredPageMode == widget.pageMode) {
       return;
     }
+    if (_configuredPageMode != widget.pageMode) _pageSize = null;
     _configuredSize = size;
     _configuredPageMode = widget.pageMode;
+
+    final page =
+        widget.pageMode ? (widget.pageSize ?? (_pageSize ??= size)) : size;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(viewportProvider.notifier).configure(
             pageMode: widget.pageMode,
-            pageSize: size,
+            pageSize: page,
             viewportSize: size,
           );
     });
@@ -691,10 +714,11 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     return LayoutBuilder(builder: (context, constraints) {
       final canvasSize = constraints.biggest;
       _syncViewportConfig(canvasSize);
-      // In page mode the page matches the canvas size (so it fills the view at
-      // 100%); null means the infinite whiteboard.
-      final Rect? pageRect =
-          widget.pageMode ? (Offset.zero & canvasSize) : null;
+      // The page keeps the size it was laid out at, not whatever the canvas has
+      // shrunk to (see [_syncViewportConfig]); null means infinite whiteboard.
+      final Rect? pageRect = widget.pageMode
+          ? (Offset.zero & (widget.pageSize ?? _pageSize ?? canvasSize))
+          : null;
 
       return ScenePointerListener(
         isHandTool: tool.isHand,
