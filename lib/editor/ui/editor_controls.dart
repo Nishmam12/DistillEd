@@ -10,13 +10,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/commands/scene_command.dart';
+import '../../domain/geometry/element_bounds.dart';
 import '../../domain/model/library_item.dart';
 import '../../domain/model/scene_element.dart';
 import '../../domain/services/alignment_service.dart';
 import '../../domain/services/library_service.dart';
 import '../../domain/services/selection_editing.dart';
 import '../../domain/services/z_order_service.dart';
+import '../../features/ai/data/ocr/image_text_recognition_service.dart';
+import '../../features/ai/presentation/ai_providers.dart';
 import '../../features/export/scene_export_service.dart';
+import '../import/ocr_layout.dart';
+import '../render/scene_element_painter.dart';
+import '../render/scene_image_cache.dart';
 import '../state/clipboard_service.dart';
 import '../state/editor_tool_controller.dart';
 import '../state/history_controller.dart';
@@ -25,6 +31,7 @@ import '../state/scene_controller.dart';
 import '../state/scene_image_cache_provider.dart';
 import '../state/selection_controller.dart';
 import '../state/viewport_controller.dart';
+import 'text_input_dialog.dart';
 
 const List<int> kEditorPalette = [
   0xFF1F2933,
@@ -417,6 +424,21 @@ class _SelectionBar extends ConsumerWidget {
             icon: const Icon(Icons.content_copy),
             onPressed: () => ClipboardService.copy(_sel(ref)),
           ),
+          // Only offered for a single text element: editing is inherently about
+          // one element's words, and a locked one is not up for changing.
+          if (_editableText(ids, all) case final TextElement t)
+            IconButton(
+              tooltip: 'Edit text',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => _editText(context, ref, t),
+            ),
+          // Turns an imported page or photo into editable text sitting over it.
+          if (_singleImage(ids, all) case final ImageElement im)
+            IconButton(
+              tooltip: 'Extract text',
+              icon: const Icon(Icons.document_scanner_outlined),
+              onPressed: () => _extractText(context, ref, im),
+            ),
           IconButton(
             tooltip: 'Save to library',
             icon: const Icon(Icons.bookmark_add_outlined),
@@ -515,6 +537,162 @@ class _SelectionBar extends ConsumerWidget {
       before: before,
       after: AlignmentService.align(before, edge),
     ));
+  }
+
+  /// The single unlocked [TextElement] in the selection, or null when the
+  /// selection is anything else.
+  static TextElement? _editableText(
+      Set<String> ids, List<SceneElement> all) {
+    if (ids.length != 1) return null;
+    final e = all.where((e) => e.id == ids.first).firstOrNull;
+    return e is TextElement && !e.isLocked ? e : null;
+  }
+
+  /// Width of one extracted line drawn at [fontSize], in the same font a
+  /// [TextElement] defaults to — so the size chosen for a line is the size it
+  /// actually renders at, not an average-character guess.
+  static double _measureExtractedLine(String text, double fontSize) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontSize: fontSize, fontFamily: 'Roboto'),
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    return painter.width;
+  }
+
+  /// The single [ImageElement] in the selection that has a file behind it, or
+  /// null when the selection is anything else. Locked is fine — a page-sized
+  /// import is locked by default, and reading it changes nothing about it.
+  static ImageElement? _singleImage(Set<String> ids, List<SceneElement> all) {
+    if (ids.length != 1) return null;
+    final e = all.where((e) => e.id == ids.first).firstOrNull;
+    return e is ImageElement && e.relativeImagePath.isNotEmpty ? e : null;
+  }
+
+  /// Reads the text out of [im] and lays it over the picture as ordinary,
+  /// editable text elements.
+  ///
+  /// Everything lands in one [AddElementsCommand], so a single undo takes the
+  /// whole extraction back. The picture is deliberately left in place — OCR
+  /// misreads are only checkable against the original, and a page's diagrams
+  /// aren't text — with removing it offered as a follow-up for anyone who wants
+  /// text alone.
+  Future<void> _extractText(
+      BuildContext context, WidgetRef ref, ImageElement im) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final absolute = SceneImageCache.resolvePath(
+        ref.read(sceneImageCacheProvider).baseDir, im.relativeImagePath);
+
+    // The same app-wide recogniser the AI pipeline reads pages with, so an
+    // image OCR'd for one is already cached for the other.
+    final List<RecognizedLine> boxes;
+    try {
+      boxes =
+          await ref.read(imageTextRecognitionServiceProvider).lines(absolute);
+    } on TextExtractionException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    }
+    // OCR is slow enough that the user can leave the page mid-run; `ref` must
+    // not be touched once this widget is gone.
+    if (!context.mounted) return;
+
+    // The recogniser reports boxes in the source image's pixel space, so the
+    // picture's own pixel size is what they map from — read from the decoded
+    // bitmap, which the cache already holds to draw it.
+    final bitmap = ref.read(sceneImageCacheProvider).get(im.relativeImagePath);
+    if (bitmap == null) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('That picture is still loading — try again.')));
+      return;
+    }
+
+    final placed = layOutOcrBoxes(
+      boxes: boxes,
+      sourcePixels:
+          Size(bitmap.width.toDouble(), bitmap.height.toDouble()),
+      target: ElementBounds.of(im),
+      measureWidth: _measureExtractedLine,
+    );
+    if (placed.isEmpty) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text('No text found in that picture.')));
+      return;
+    }
+
+    final scene = ref.read(sceneControllerProvider(pageKey).notifier);
+    var z = scene.nextZOrder();
+    final added = [
+      for (final p in placed)
+        TextElement(
+          id: editorNewId(),
+          zOrder: z++,
+          geometryData: [
+            p.bounds.left,
+            p.bounds.top,
+            p.bounds.right,
+            p.bounds.bottom
+          ],
+          text: p.text,
+          color: 0xFF1A1A1A,
+          fontSize: p.fontSize,
+        ),
+    ];
+    ref.read(historyProvider(pageKey).notifier).push(AddElementsCommand(added));
+
+    messenger.showSnackBar(SnackBar(
+      content: Text('Extracted ${added.length} line'
+          '${added.length == 1 ? '' : 's'} of text'),
+      duration: const Duration(seconds: 6),
+      action: SnackBarAction(
+        label: 'Remove picture',
+        onPressed: () => ref
+            .read(historyProvider(pageKey).notifier)
+            .push(RemoveElementsCommand([im])),
+      ),
+    ));
+  }
+
+  /// Rewrites [t]'s words in place, keeping everything else about it — position,
+  /// width, colour, font — exactly as the user left it.
+  ///
+  /// Only the height is recomputed, from the paragraph the painter will actually
+  /// draw: text is wrapped to the element's width but never clipped vertically,
+  /// so replacing a line with a paragraph would otherwise leave the bounds
+  /// reporting a box far smaller than the visible text — which is what
+  /// selection, hit-testing and AI note placement all read.
+  Future<void> _editText(
+      BuildContext context, WidgetRef ref, TextElement t) async {
+    final text = await showSceneTextDialog(
+      context,
+      initial: t.text,
+      title: 'Edit text',
+      confirmLabel: 'Save',
+    );
+    // Null is cancel. Empty is a deliberate clear, but an empty text element is
+    // invisible and unselectable — a trap — so treat it as "delete the text"
+    // being unavailable here and leave the element alone.
+    if (text == null || text.trim().isEmpty || text == t.text) return;
+
+    final rect = ElementBounds.of(t);
+    final updated = t.copyWith(text: text.trim());
+    final height = SceneElementPainter.layOutText(updated, rect.width).height;
+    if (!context.mounted) return;
+
+    ref.read(historyProvider(pageKey).notifier).push(UpdateElementsCommand(
+          before: [t],
+          after: [
+            updated.copyWith(geometryData: [
+              rect.left,
+              rect.top,
+              rect.right,
+              rect.top + math.max(height, t.fontSize),
+            ]),
+          ],
+        ));
   }
 
   Future<void> _saveToLibrary(BuildContext context, WidgetRef ref) async {

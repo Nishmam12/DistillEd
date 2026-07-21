@@ -6,8 +6,9 @@
 // see" has exactly one definition:
 //   * handwritten ink   → on-device recognition ([recognizedInkText])
 //   * typed text        → concatenated in reading order ([typedText])
-//   * images (incl. rasterized PDF pages) → flagged needsOcr, not read (OCR
-//     is a later phase)
+//   * images (incl. rasterized PDF pages) → on-device OCR
+//     ([recognizedImageText]) when an [ImageTextReader] is wired in; still
+//     flagged needsOcr when it isn't, or when the image holds no text
 //   * shapes/frames     → carry no standalone text (labels are bound
 //     TextElements, covered above); ignored
 //
@@ -21,15 +22,26 @@ import 'page_content.dart';
 
 import 'dart:ui';
 
+/// Reads the text out of the image at [relativeImagePath] (relative to the app
+/// documents dir), or '' when there is none. Must not throw: an unreadable
+/// picture should cost its own text, not the whole page's.
+typedef ImageTextReader = Future<String> Function(String relativeImagePath);
+
 class PageContentExtractor {
   final Future<List<SceneElement>> Function(int pageId) _loadElements;
   final HandwritingRecognitionService _recognition;
 
+  /// Optional, so tests and any caller that doesn't want OCR get the previous
+  /// behaviour — images flagged, not read.
+  final ImageTextReader? _readImageText;
+
   PageContentExtractor({
     required Future<List<SceneElement>> Function(int pageId) loadElements,
     required HandwritingRecognitionService recognition,
+    ImageTextReader? readImageText,
   })  : _loadElements = loadElements,
-        _recognition = recognition;
+        _recognition = recognition,
+        _readImageText = readImageText;
 
   /// Extracts everything AI-readable from the page. The recognition language
   /// model for [languageCode] must be present (see
@@ -92,22 +104,34 @@ class PageContentExtractor {
       ));
     }
 
-    // Images (including imported PDF pages, which are rasterized on import):
-    // visible content the pipeline cannot read — flag, don't guess.
+    // Images (including imported PDF pages, which are rasterized on import).
+    // Read by OCR when a reader is wired in; still flagged needsOcr when it
+    // isn't, or when the image turned out to hold no text — the flag means
+    // "there is visible content here the pipeline did not read", which is
+    // exactly as true of an unreadable image as of an unwired one.
+    final imageTexts = <String>[];
     for (final e in elements) {
-      if (e is ImageElement) {
-        sources.add(PageContentSource(
-          kind: PageSourceKind.image,
-          bounds: _rectOf(e.geometryData),
-          needsOcr: true,
-        ));
+      if (e is! ImageElement) continue;
+
+      final reader = _readImageText;
+      var text = '';
+      if (reader != null && e.relativeImagePath.isNotEmpty) {
+        text = (await reader(e.relativeImagePath)).trim();
       }
+      if (text.isNotEmpty) imageTexts.add(text);
+
+      sources.add(PageContentSource(
+        kind: PageSourceKind.image,
+        bounds: _rectOf(e.geometryData),
+        needsOcr: text.isEmpty,
+      ));
     }
 
     return PageContent(
       recognizedInkText: ink.text,
       inkTopScore: ink.topScore,
       typedText: textElements.map((e) => e.text.trim()).join('\n'),
+      recognizedImageText: imageTexts.join('\n\n'),
       sources: sources,
     );
   }

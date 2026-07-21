@@ -42,10 +42,14 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
-  PageContentExtractor extractor(List<SceneElement> elements) =>
+  PageContentExtractor extractor(
+    List<SceneElement> elements, {
+    ImageTextReader? readImageText,
+  }) =>
       PageContentExtractor(
         loadElements: (_) async => elements,
         recognition: HandwritingRecognitionService(),
+        readImageText: readImageText,
       );
 
   test('empty page extracts to PageContent.empty', () async {
@@ -127,6 +131,96 @@ void main() {
     expect(source.kind, PageSourceKind.image);
     expect(source.needsOcr, isTrue);
     expect(content.hasText, isFalse);
+  });
+
+  group('images with OCR wired in', () {
+    const image = ImageElement(
+        id: 'img',
+        zOrder: 0,
+        geometryData: [0, 0, 100, 100],
+        relativeImagePath: 'imports/page1.png',
+        sourceDescription: 'doc.pdf — Page 1');
+
+    test('an imported page becomes readable text the AI can use', () async {
+      // Without this the AI saw nothing at all on a page holding an imported
+      // PDF or a photo of a whiteboard.
+      final content = await extractor(
+        [image],
+        readImageText: (path) async {
+          expect(path, 'imports/page1.png');
+          return 'Corpus means a large collection of text.';
+        },
+      ).extractPage(1, languageCode: 'en');
+
+      expect(content.recognizedImageText,
+          'Corpus means a large collection of text.');
+      expect(content.hasText, isTrue);
+      expect(content.combinedText, contains('Corpus'));
+      expect(content.hasUnrecognizedImages, isFalse,
+          reason: 'it was read, so nothing is left needing OCR');
+    });
+
+    test('an image holding no text is still flagged as unread', () async {
+      final content = await extractor([image], readImageText: (_) async => '')
+          .extractPage(1, languageCode: 'en');
+
+      expect(content.recognizedImageText, isEmpty);
+      expect(content.hasUnrecognizedImages, isTrue,
+          reason: 'a diagram is visible content the pipeline did not read');
+    });
+
+    test('image text is kept apart from text the user typed', () async {
+      const typed = TextElement(
+          id: 't',
+          zOrder: 1,
+          geometryData: [0, 0, 50, 20],
+          text: 'my own note',
+          color: 0xFF000000);
+
+      final content = await extractor(
+        [image, typed],
+        readImageText: (_) async => 'from the picture',
+      ).extractPage(1, languageCode: 'en');
+
+      expect(content.typedText, 'my own note');
+      expect(content.recognizedImageText, 'from the picture');
+      // Both reach the model, ink first, then typed, then read-from-image.
+      expect(content.combinedText, 'my own note\n\nfrom the picture');
+    });
+
+    test('several images are joined in element order', () async {
+      const second = ImageElement(
+          id: 'img2',
+          zOrder: 1,
+          geometryData: [0, 200, 100, 300],
+          relativeImagePath: 'imports/page2.png');
+
+      final content = await extractor(
+        [image, second],
+        readImageText: (path) async =>
+            path.contains('page1') ? 'first' : 'second',
+      ).extractPage(1, languageCode: 'en');
+
+      expect(content.recognizedImageText, 'first\n\nsecond');
+    });
+
+    test('an image with no file behind it is not handed to the reader',
+        () async {
+      const pathless = ImageElement(
+          id: 'img3',
+          zOrder: 0,
+          geometryData: [0, 0, 10, 10],
+          relativeImagePath: '');
+
+      var called = false;
+      final content = await extractor([pathless], readImageText: (_) async {
+        called = true;
+        return 'should not happen';
+      }).extractPage(1, languageCode: 'en');
+
+      expect(called, isFalse);
+      expect(content.hasUnrecognizedImages, isTrue);
+    });
   });
 
   test('combinedText joins ink then typed text; eraser ink is invisible',

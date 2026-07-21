@@ -316,7 +316,6 @@ class SceneElementPainter {
     final bound = container is SceneShapeElement;
     if (bound) rect = ElementBounds.of(container);
 
-    final width = rect.width <= 1 ? 200.0 : rect.width;
     final centre = rect.center;
 
     canvas.save();
@@ -325,6 +324,21 @@ class SceneElementPainter {
       ..rotate(t.rotation)
       ..translate(-centre.dx, -centre.dy);
 
+    final paragraph = layOutText(t, rect.width);
+
+    final dy = bound ? rect.top + (rect.height - paragraph.height) / 2 : rect.top;
+    canvas.drawParagraph(paragraph, Offset(rect.left, dy));
+    canvas.restore();
+  }
+
+  /// Lays [t] out exactly as [_text] draws it, wrapped to [width].
+  ///
+  /// Public so callers that need to know how tall the text will actually be —
+  /// editing it, or extracting it from OCR — measure the same paragraph the
+  /// painter draws, rather than estimating and drifting out of step. A width at
+  /// or below 1 means the element has no meaningful box yet, so it falls back to
+  /// the same 200 the painter has always used.
+  static ui.Paragraph layOutText(TextElement t, double width) {
     final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
       fontSize: t.fontSize,
       fontFamily: t.fontFamily,
@@ -335,12 +349,8 @@ class SceneElementPainter {
       ..pushStyle(
           ui.TextStyle(color: Color(t.color).withValues(alpha: t.opacity)))
       ..addText(t.text);
-    final paragraph = builder.build()
-      ..layout(ui.ParagraphConstraints(width: width));
-
-    final dy = bound ? rect.top + (rect.height - paragraph.height) / 2 : rect.top;
-    canvas.drawParagraph(paragraph, Offset(rect.left, dy));
-    canvas.restore();
+    return builder.build()
+      ..layout(ui.ParagraphConstraints(width: width <= 1 ? 200.0 : width));
   }
 
   static TextAlign _align(TextAlignKind a) {

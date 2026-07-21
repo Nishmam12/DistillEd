@@ -1238,7 +1238,74 @@ after the first a sliver.
 `ink_lines_test.dart` and `viewport_controller_test.dart`), `flutter analyze`
 clean. Recognition improvements confirmed against real device logs.
 
+## Import into Canvas 2.0 + on-demand OCR (2026-07-21)
+
+Nabil asked to bring PDFs, documents and photos into a notebook, with the text
+inside them selectable and editable. Two things had to be established first:
+
+- **Canvas 2.0 had no import path at all.** `lib/features/import/`
+  (`PDFService`, `ImageService`, `ImportBottomSheet`) and the `ImportedContent`
+  model belong to the **legacy 1.0 editor**. 2.0 could render an `ImageElement`
+  and export it, but nothing could create one — they only ever arrived via
+  `legacy_adapters.imageFromImportedContent`.
+- **Canvas 2.0 could not edit text.** `EditorTool.text` created a `TextElement`
+  through a dialog; nothing could change its words. Only the legacy editor had
+  double-tap-to-edit. So editable text was a prerequisite, not a detail.
+
+Decisions (Nabil): **image first, extract on demand**; **ML Kit OCR on the
+rendered page** rather than a PDF text-layer extractor; **DOCX deferred**.
+
+### What shipped
+- `lib/editor/ui/text_input_dialog.dart` — one text dialog shared by "add text"
+  and the new **Edit text** selection action, so the two can't drift.
+  `SceneElementPainter.layOutText` was made public so the edit path measures the
+  *same* paragraph the painter draws: text wraps to the element width but is
+  never clipped vertically, so without it a one-line box holding a paragraph
+  would report bounds far smaller than the visible text — which selection,
+  hit-testing and AI note placement all read.
+- `lib/editor/import/` — 2.0's own import, producing ordinary `SceneElement`s so
+  selection, undo, export, autosave, RAG and page-context all work unchanged:
+  - `fit_image_rect.dart` — pure. Page imports aspect-fit and *scale up* to fill
+    the sheet; inline images cap to a fraction of the visible area and
+    deliberately *don't* scale up (an upscaled screenshot is just blurry).
+  - `png_size.dart` — pure. Reads dimensions from the PNG IHDR header, because
+    the reused PDF renderer returns cached file paths but no sizes, and decoding
+    every page just to measure it would cost a bitmap per page.
+  - `scene_import_service.dart` — reuses `PDFService.renderAll` (isolate render +
+    content-hash disk cache) unchanged; photos get their own isolate that
+    returns the saved size, which the legacy path never did.
+  - `ocr_layout.dart` — pure. Maps OCR boxes from source pixels into the
+    element's *current* scene rect, per axis, so it stays correct after the user
+    moves or resizes the picture. One element per recognised **line**, not per
+    block: re-wrapping a block's text would drift from where the words sit.
+  - `image_text_extractor.dart` — the only ML Kit-facing file, kept thin.
+
+### Notes
+- `google_mlkit_text_recognition` is held at **0.15.1**: 0.16.0 needs
+  `google_mlkit_commons ^0.12.0`, which cannot co-resolve with the pinned
+  digital-ink 0.14.2 (`commons ^0.11.0`). 0.15.1 is also still the *Java*
+  generation, so it does not carry the Kotlin-migration MethodChannel mismatch
+  that broke digital-ink 0.15.0 — verified both sides use
+  `google_mlkit_text_recognizer`. It pulls the **bundled** Android artifact
+  (`text-recognition:16.0.1`), so OCR works offline with no model download.
+- Adding to a *newly created* page must claim and `load()` it before pushing:
+  `SceneController.load` **replaces** the scene with the store's contents, and a
+  fresh page triggers `_ensureLoaded`, so adding first would be discarded.
+- `insertPage()` appends and jumps to the end, so a 12-page PDF is 12 appends
+  and the editor lands on the last page.
+
+**Verification:** 725/725 Flutter tests (from 691 — 34 new across
+`fit_image_rect_test.dart`, `ocr_layout_test.dart`, `png_size_test.dart`),
+`flutter analyze` clean.
+
 ## Deferred / Open Questions
+- **DOCX import.** Deferred by decision. When picked up: a `.docx` is a ZIP
+  holding `word/document.xml`; `archive` is already a direct dependency and
+  `xml` is currently transitive, so paragraph text needs no heavy new package.
+  Embedded images live in `word/media/`, but Word's anchoring model makes
+  faithful placement awkward — text-only is the sane first cut.
+- **Extracting text from a rotated image** places it axis-aligned;
+  `layOutOcrBoxes` does not apply the element's rotation.
 - **Ink recognition re-runs when only typed text changed.** `sceneContentSignature`
   is one signature covering freehand + text + image elements, and a miss re-runs
   the whole extraction. Observed on device 2026-07-21: inserting AI notes on a

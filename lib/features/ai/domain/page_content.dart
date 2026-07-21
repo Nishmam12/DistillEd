@@ -40,12 +40,21 @@ class PageContent {
   /// (top-to-bottom, then left-to-right).
   final String typedText;
 
+  /// Text read by OCR out of the page's images — imported PDF pages, photos of
+  /// a whiteboard or a textbook. Empty when the page has no images, when they
+  /// hold no text, or when no OCR reader was wired in.
+  ///
+  /// Kept apart from [typedText] because it is read, not written: the user did
+  /// not type it, and it carries OCR's error rate.
+  final String recognizedImageText;
+
   /// Which parts of the page contributed (or couldn't), with bounds.
   final List<PageContentSource> sources;
 
   const PageContent({
     required this.recognizedInkText,
     required this.typedText,
+    this.recognizedImageText = '',
     this.inkTopScore,
     this.sources = const [],
   });
@@ -56,6 +65,7 @@ class PageContent {
   String get combinedText => [
         recognizedInkText.trim(),
         typedText.trim(),
+        recognizedImageText.trim(),
       ].where((t) => t.isNotEmpty).join('\n\n');
 
   bool get hasText => combinedText.isNotEmpty;

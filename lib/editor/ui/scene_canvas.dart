@@ -37,6 +37,7 @@ import '../state/scene_image_cache_provider.dart';
 import '../state/selection_controller.dart';
 import '../state/viewport_controller.dart';
 import '../tools/shape_factory.dart';
+import 'text_input_dialog.dart';
 
 const double _kSnapScreen = 8.0;
 const int _kLaserFadeMs = 700;
@@ -630,28 +631,10 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
 
   Future<void> _createText(Offset scene) async {
     final tool = ref.read(editorToolProvider);
-    final text = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        final controller = TextEditingController();
-        return AlertDialog(
-          title: const Text('Add text'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(hintText: 'Type text…'),
-            onSubmitted: (v) => Navigator.of(context).pop(v),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel')),
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(controller.text),
-                child: const Text('Add')),
-          ],
-        );
-      },
+    final text = await showSceneTextDialog(
+      context,
+      title: 'Add text',
+      confirmLabel: 'Add',
     );
     if (text == null || text.trim().isEmpty) return;
     if (!mounted) return;
