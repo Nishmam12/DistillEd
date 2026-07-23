@@ -12,17 +12,25 @@
 // kind (offer the model download, route elsewhere) without string-matching.
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import '../../domain/ai_provider.dart';
+import '../../domain/image_transcriber.dart';
 import '../../domain/rag/text_embedder.dart';
 import '../llm/gemma_adapter.dart';
 import '../llm/llm_exceptions.dart';
 import '../llm/llm_model_spec.dart';
 
-class LocalGemmaProvider implements AiProvider {
+class LocalGemmaProvider implements AiProvider, ImageTranscriber {
   /// Generation must produce a first/next chunk within this long, or the call
   /// fails — guards against a wedged native decode holding the mutex forever.
   static const Duration interChunkTimeout = Duration(minutes: 2);
+
+  /// A single image transcription (model load + vision inference) must finish
+  /// within this long. Generous — a tablet loading the 2.4 GB model then reading
+  /// a page can take a while — but bounded, so a wedged read can't hold the mutex
+  /// forever and silently block every later re-read.
+  static const Duration transcribeTimeout = Duration(minutes: 3);
 
   final LlmModelSpec spec;
   final LlmRuntime _runtime;
@@ -49,7 +57,9 @@ class LocalGemmaProvider implements AiProvider {
         displayName: spec.displayName,
         contextWindowTokens: spec.maxTokens,
         supportsStreaming: true,
-        supportsVision: false, // multimodal exists but is not enabled yet
+        // Gemma 4 E2B ships a vision encoder; [transcribeImage] loads it on
+        // demand. Text generation ([generate]) still runs the model text-only.
+        supportsVision: true,
         supportsEmbeddings: _embedder != null,
         isLocal: true,
         approxCostPerCallUsd: 0.0,
@@ -77,6 +87,81 @@ class LocalGemmaProvider implements AiProvider {
       );
     } finally {
       gate.complete();
+    }
+  }
+
+  @override
+  Future<String> transcribeImage(
+    Uint8List imageBytes, {
+    required String prompt,
+    double temperature = 0.0,
+    int maxOutputTokens = 1024,
+    int? randomSeed,
+  }) async {
+    // Same mutex as [generate]: transcription and generation both load THIS
+    // model, so they must never overlap (two 2.4 GB loads would OOM). A
+    // transcription in flight makes a concurrent Summarize wait, and vice
+    // versa — serialized, never parallel.
+    final previous = _lock;
+    final gate = Completer<void>();
+    _lock = gate.future;
+    await previous;
+    try {
+      return await _transcribe(
+          imageBytes, prompt, temperature, maxOutputTokens, randomSeed);
+    } finally {
+      gate.complete();
+    }
+  }
+
+  Future<String> _transcribe(
+    Uint8List imageBytes,
+    String prompt,
+    double temperature,
+    int maxOutputTokens,
+    int? randomSeed,
+  ) async {
+    final LlmSession session;
+    try {
+      session = await _runtime.open(
+        spec: spec,
+        temperature: temperature,
+        // Greedy at temperature 0 (deterministic transcription); otherwise
+        // Gemma's conventional top-k so a retry can escape a bad greedy path.
+        topK: temperature == 0.0 ? 1 : 40,
+        topP: 0.95,
+        maxOutputTokens: maxOutputTokens,
+        // Carries the caller's seed so a re-read samples differently; null lets
+        // the runtime use its fixed default (fine for the deterministic pass).
+        randomSeed: randomSeed,
+        supportImage: true,
+      );
+    } on LlmNotReadyException catch (e) {
+      throw AiModelNotReadyException(
+        'The on-device model is not downloaded yet.',
+        cause: e,
+      );
+    } on LlmException catch (e) {
+      throw AiGenerationException('Local vision model failed to start.',
+          cause: e);
+    }
+
+    try {
+      final text = await session
+          .respondWithImage(prompt, imageBytes)
+          .timeout(transcribeTimeout);
+      return text.trim();
+    } on AiException {
+      rethrow;
+    } catch (e) {
+      // getResponse() surfaces plugin errors that aren't LlmException, and a
+      // TimeoutException lands here too; either way a failed/hung read is a
+      // generation failure, not a missing model.
+      throw AiGenerationException('Local vision model failed to read the image.',
+          cause: e);
+    } finally {
+      // Unload no matter what — nothing stays resident after a call.
+      await session.close();
     }
   }
 

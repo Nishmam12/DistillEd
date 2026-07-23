@@ -30,6 +30,16 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // R8 shrinking is disabled deliberately. It was failing on optional
+            // ML Kit language recognisers we don't bundle (Chinese/Japanese/
+            // Korean/Devanagari — this app is Latin-only), and enabling full R8
+            // over on-device ML libraries (flutter_gemma / LiteRT-LM, ML Kit)
+            // risks stripping JNI/reflection-accessed classes at runtime — a
+            // demo-crash hazard not worth taking. Revisit with proper keep rules
+            // post-deadline if APK size ever matters.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

@@ -44,6 +44,15 @@ class NoopAiProvider implements AiProvider {
 
 class FakeExtractor extends PageContentExtractor {
   int calls = 0;
+
+  /// The `useVision` argument of each [extractPage] call, in order — lets a test
+  /// assert the deep-read (Gemma) vs light (ML Kit) trigger policy.
+  final visionFlags = <bool>[];
+
+  /// The `varyVision` argument of each call — asserts the Re-read (sampled)
+  /// vs first-read (deterministic) policy.
+  final varyFlags = <bool>[];
+
   FakeExtractor()
       : super(
           loadElements: (_) async => const [],
@@ -52,8 +61,12 @@ class FakeExtractor extends PageContentExtractor {
 
   @override
   Future<PageContent> extractPage(int pageId,
-      {required String languageCode}) async {
+      {required String languageCode,
+      bool useVision = false,
+      bool varyVision = false}) async {
     calls++;
+    visionFlags.add(useVision);
+    varyFlags.add(varyVision);
     return const PageContent(
         recognizedInkText: 'recognized note text', typedText: '');
   }
@@ -190,6 +203,45 @@ void main() {
     n.dispose();
   });
 
+  test('an image-only page IS analyzed (its text is OCR-read downstream)',
+      () async {
+    // Regression: imported PDF pages and photos held only ImageElements, which
+    // this gate did not count as readable — so the insights panel stayed blank
+    // on imported pages even though the extractor OCRs them. The gate must let
+    // the extractor run so that OCR can happen.
+    const imageOnly = [
+      ImageElement(
+        id: 'img',
+        zOrder: 0,
+        geometryData: [0, 0, 100, 100],
+        relativeImagePath: 'imports/page1.png',
+      ),
+    ];
+
+    final n = notifier();
+    n.onSceneChanged(imageOnly);
+    await settle();
+
+    expect(engine.calls, 1, reason: 'the image page must reach analysis');
+    expect(n.state.value?.currentTopic, 'Topic A');
+    n.dispose();
+  });
+
+  test('an image with no file behind it is not treated as readable', () async {
+    const pathless = [
+      ImageElement(id: 'x', zOrder: 0, geometryData: [0, 0, 1, 1],
+          relativeImagePath: ''),
+    ];
+
+    final n = notifier();
+    n.onSceneChanged(pathless);
+    await settle();
+
+    expect(engine.calls, 0);
+    expect(n.state.value, PageContext.empty);
+    n.dispose();
+  });
+
   test('failure surfaces as error and is not retried for the same content',
       () async {
     engine.throwOnAnalyze = const AiModelNotReadyException('not downloaded');
@@ -220,6 +272,32 @@ void main() {
 
     expect(engine.calls, 2);
     expect(n.state.value?.currentTopic, 'Topic B');
+    n.dispose();
+  });
+
+  test('Gemma vision reads on first open and on Re-read; edits stay light',
+      () async {
+    final n = notifier();
+
+    n.onSceneChanged(ink);
+    await settle();
+    expect(extractor.visionFlags, [true],
+        reason: 'the first read when the sidebar opens is the deep Gemma pass');
+
+    n.onSceneChanged(moreInk); // an edit
+    await settle();
+    expect(extractor.visionFlags, [true, false],
+        reason: 'intermediate edits use the light ML Kit path — no 2.4 GB '
+            'model load on every writing pause');
+
+    await n.refresh(); // Re-read
+    await settle();
+    expect(extractor.visionFlags, [true, false, true],
+        reason: 'Re-read forces another deep Gemma pass');
+    // The first deep read is deterministic; the Re-read samples a fresh reading
+    // so it can actually change (the "re-read does nothing" fix).
+    expect(extractor.varyFlags, [false, false, true],
+        reason: 'only the Re-read of an already-read page varies its sampling');
     n.dispose();
   });
 

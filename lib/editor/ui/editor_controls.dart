@@ -471,20 +471,28 @@ class _SelectionBar extends ConsumerWidget {
               ));
             },
           ),
-          IconButton(
-            tooltip: 'Lock',
-            icon: const Icon(Icons.lock_outline),
-            onPressed: () {
-              final before = _sel(ref);
-              history.push(UpdateElementsCommand(
-                before: before,
-                after: [
-                  for (final e in before) SelectionEditing.withLocked(e, true)
-                ],
-              ));
-              sel.clear();
-            },
-          ),
+          Builder(builder: (context) {
+            final before = _sel(ref);
+            // If everything selected is already locked, this un-locks; any
+            // unlocked element in the mix locks the whole selection. Selection
+            // is kept (not cleared) either way — clearing it after locking is
+            // what made a locked import unreachable in the first place, since
+            // nothing else can re-select a locked element except tapping it.
+            final allLocked = before.isNotEmpty && before.every((e) => e.isLocked);
+            return IconButton(
+              tooltip: allLocked ? 'Unlock' : 'Lock',
+              icon: Icon(allLocked ? Icons.lock_open_outlined : Icons.lock_outline),
+              onPressed: () {
+                history.push(UpdateElementsCommand(
+                  before: before,
+                  after: [
+                    for (final e in before)
+                      SelectionEditing.withLocked(e, !allLocked)
+                  ],
+                ));
+              },
+            );
+          }),
           const VerticalDivider(width: 12),
           IconButton(
             tooltip: 'Bring to front',

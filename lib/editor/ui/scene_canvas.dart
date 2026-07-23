@@ -387,7 +387,12 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     final vp = ref.read(viewportProvider);
     final selected = _selectedElements();
 
-    if (selected.isNotEmpty) {
+    // A locked selection (a page-locked import) shows no resize/rotate/move
+    // gesture at all — only re-selecting it and the selection-bar actions
+    // (Extract text, Unlock, ...) are reachable. The overlay still draws
+    // handles for it; this just makes them inert rather than hiding them, which
+    // is a cosmetic gap, not a correctness one.
+    if (selected.isNotEmpty && selected.every((e) => !e.isLocked)) {
       final box = SelectionBounds.union(selected)!;
       final rotateScreen =
           vp.toViewport(box.topCenter) - const Offset(0, kRotateGap);
@@ -407,7 +412,11 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
 
     final shift = HardwareKeyboard.instance.isShiftPressed;
     final all = ref.read(sceneControllerProvider(_key));
-    final hitId = SceneHitTest.topmostAt(scene, all);
+    // Locked elements ARE selectable (a page-locked import must still be
+    // reachable for "Extract text" / "Unlock" in the selection bar — otherwise
+    // locking it makes it permanently inert) but must not be draggable, or
+    // locking would do nothing to protect it from a stray move gesture.
+    final hitId = SceneHitTest.topmostAt(scene, all, includeLocked: true);
     final selCtl = ref.read(selectionProvider.notifier);
 
     if (hitId != null) {
@@ -418,12 +427,15 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       } else if (!current.contains(hitId)) {
         selCtl.selectMany(group);
       }
-      _beginGesture(_SelMode.move, SelectionBounds.union(_selectedElements())!,
-          scene, _selectedElements());
+      final nowSelected = _selectedElements();
+      if (nowSelected.every((e) => !e.isLocked)) {
+        _beginGesture(
+            _SelMode.move, SelectionBounds.union(nowSelected)!, scene, nowSelected);
+      }
       return;
     }
 
-    if (selected.isNotEmpty) {
+    if (selected.isNotEmpty && selected.every((e) => !e.isLocked)) {
       final box = SelectionBounds.union(selected)!;
       if (box.contains(scene)) {
         _beginGesture(_SelMode.move, box, scene, selected);

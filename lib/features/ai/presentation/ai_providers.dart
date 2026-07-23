@@ -3,12 +3,15 @@
 // nothing in features/ai depends on a consumer feature.
 
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/settings_provider.dart';
 import '../../../dev/dev_secrets.dart';
+import '../../../editor/render/scene_exporter.dart';
 import '../../../editor/render/scene_image_cache.dart';
 import '../../../editor/state/scene_controller.dart';
 import '../data/embeddings/embedder_download_manager.dart';
@@ -18,6 +21,7 @@ import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/cloud_llm_client.dart';
 import '../data/llm/model_download_manager.dart';
 import '../data/memory/learning_memory_repository.dart';
+import '../data/ocr/gemma_vision_ocr_service.dart';
 import '../data/ocr/image_text_recognition_service.dart';
 import '../data/providers/cloud_gateway_provider.dart';
 import '../data/providers/local_gemma_provider.dart';
@@ -32,6 +36,7 @@ import '../domain/features/quiz_generator.dart';
 import '../domain/features/notes_qa.dart';
 import '../domain/features/researcher.dart';
 import '../domain/features/writing_assistant.dart';
+import '../domain/image_transcriber.dart';
 import '../domain/knowledge_graph/knowledge_graph.dart';
 import '../domain/page_content_extractor.dart';
 import '../domain/rag/rag_indexer.dart';
@@ -170,6 +175,19 @@ final imageTextRecognitionServiceProvider =
   return service;
 });
 
+/// The on-device Gemma model as an [ImageTranscriber] — the SAME instance as
+/// [localAiProvider]. It must be the same instance, not a fresh one: vision
+/// transcription and text generation share one mutex there so the 2.4 GB model
+/// is never loaded twice at once. The cast is safe — the local provider is the
+/// only implementation and it implements both contracts.
+final imageTranscriberProvider = Provider<ImageTranscriber>(
+    (ref) => ref.watch(localAiProvider) as ImageTranscriber);
+
+/// Gemma-vision OCR — the PRIMARY recogniser for deep page reads (handwriting
+/// and imported images). ML Kit (above) is its last-resort fallback.
+final gemmaVisionOcrServiceProvider = Provider<GemmaVisionOcrService>((ref) =>
+    GemmaVisionOcrService(transcriber: ref.watch(imageTranscriberProvider)));
+
 /// The one way AI features read a page (editor-2.0 scene store underneath).
 final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
   final store = ref.watch(sceneElementStoreProvider);
@@ -182,8 +200,25 @@ final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
     // way the renderer does, so the AI reads exactly the file on screen.
     readImageText: (relative) =>
         ocr.readText(SceneImageCache.resolvePath(docsDir, relative)),
+    // Gemma vision, primary on deep reads. Ink is rasterised to a tight PNG the
+    // same painter draws to screen; images are read from their file bytes.
+    visionOcr: ref.watch(gemmaVisionOcrServiceProvider),
+    renderInk: (inkElements) => SceneExporter.toPng(inkElements),
+    loadImageBytes: (relative) =>
+        _readFileBytes(SceneImageCache.resolvePath(docsDir, relative)),
   );
 });
+
+/// Reads a file's bytes for Gemma vision, or null when it can't be read — an
+/// unreadable picture costs its own text, never the whole page's analysis.
+Future<Uint8List?> _readFileBytes(String absolutePath) async {
+  try {
+    final file = File(absolutePath);
+    return await file.exists() ? await file.readAsBytes() : null;
+  } catch (_) {
+    return null;
+  }
+}
 
 /// Session-lifetime cache of the last PageContext per page; survives the
 /// sidebar closing and page switches (durable persistence is Phase 2's

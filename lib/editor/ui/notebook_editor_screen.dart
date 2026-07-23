@@ -567,9 +567,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             imported,
             box,
             ref.read(sceneControllerProvider(key).notifier).nextZOrder(),
-            // A page-sized import is a backdrop to annotate, not something to
-            // drag around by accident. Unlockable from the selection bar.
-            locked: true,
+            // Imported unlocked, so it can be moved and resized straight away —
+            // that turned out to matter more than protecting a backdrop from a
+            // stray drag. Users who want it pinned can Lock it from the
+            // selection bar; annotating with the pen never moves it regardless.
+            locked: false,
           ),
         ]));
   }

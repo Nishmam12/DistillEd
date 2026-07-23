@@ -97,6 +97,12 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
   bool _rerunWhenDone = false;
   bool _forceNext = false;
 
+  /// Whether the heavy Gemma-vision read has run for this page yet. The first
+  /// readable analysis (sidebar open) and every [refresh] (Re-read) use Gemma
+  /// as the primary recogniser; edits in between use the light ML Kit path so a
+  /// 2.4 GB model isn't loaded on every writing pause.
+  bool _visionReadDone = false;
+
   ContextEngineNotifier({
     required ContextEngine engine,
     required PageContentExtractor extractor,
@@ -127,12 +133,20 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
     _timer = Timer(debounce, () => unawaited(_analyzeIfChanged()));
   }
 
-  /// Forces a re-run even when the content signature is unchanged — e.g.
-  /// after the user downloads the model a failed run was missing.
-  Future<void> refresh() {
+  /// Forces a re-run even when the content signature is unchanged — the Re-read
+  /// button, and the post-download / post-error retries.
+  Future<void> refresh() async {
     _timer?.cancel();
     _forceNext = true;
-    return _analyzeIfChanged();
+    // Immediate, unmistakable feedback: flip to the re-reading state the moment
+    // Re-read is tapped. The loading indicator inside [_analyzeIfChanged] sits
+    // BEHIND guards (a read already in flight — and a full read does two long
+    // model passes — or unchanged content), so without this the tap could
+    // return with nothing on screen changing at all.
+    if (mounted) {
+      state = const AsyncValue<PageContext>.loading().copyWithPrevious(state);
+    }
+    await _analyzeIfChanged();
   }
 
   Future<void> _analyzeIfChanged() async {
@@ -167,8 +181,19 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       }
       final language = _languageCode();
       await _recognition.ensureModelDownloaded(language);
-      final content =
-          await _extractor.extractPage(_pageId, languageCode: language);
+      // Gemma vision is the primary read on first open and on every forced
+      // Re-read; intermediate edits fall to the light ML Kit path.
+      final useVision = force || !_visionReadDone;
+      // A forced re-read of a page Gemma has ALREADY read is the user asking to
+      // "read it again" — sample a fresh reading so the result can actually
+      // change, rather than repeating the identical deterministic pass. The
+      // first successful read (incl. after a model download) stays deterministic.
+      final varyVision = force && _visionReadDone;
+      final content = await _extractor.extractPage(_pageId,
+          languageCode: language,
+          useVision: useVision,
+          varyVision: varyVision);
+      _visionReadDone = true;
       final context =
           await _engine.analyze(content, previousContext: cached?.context);
       _cache.save(_pageId, signature, context);
@@ -229,7 +254,12 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
   static bool _hasReadableContent(List<SceneElement> elements) =>
       elements.any((e) =>
           (e is FreehandElement && !e.isEraser && e.points.isNotEmpty) ||
-          (e is TextElement && e.text.trim().isNotEmpty));
+          (e is TextElement && e.text.trim().isNotEmpty) ||
+          // An imported PDF page or photo is readable too: the extractor OCRs
+          // it. Without this an image-only page short-circuits to empty here,
+          // before the extractor runs — which is why the insights panel stayed
+          // blank on imported pages even though OCR worked when called directly.
+          (e is ImageElement && e.relativeImagePath.isNotEmpty));
 
   @override
   void dispose() {

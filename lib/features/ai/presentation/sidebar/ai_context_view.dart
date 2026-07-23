@@ -41,18 +41,25 @@ class AiContextView extends ConsumerWidget {
           ));
     }
 
+    // Re-read: force a fresh deep Gemma-vision pass over the page, even when
+    // the content signature is unchanged — the user's "read it again" escape
+    // hatch when a transcription missed something.
+    void reread() => ref.read(pageContextProvider(pageKey).notifier).refresh();
+
     return switch (async) {
       AsyncData(:final value) when value.isEmpty => const _EmptyState(),
       AsyncData(:final value) => _ContextBody(
           pageKey: pageKey,
           context: value,
           onExplainGap: (g) => explainGap(g, value.currentTopic),
+          onReread: reread,
         ),
       AsyncLoading() when previous != null && !previous.isEmpty => _ContextBody(
           pageKey: pageKey,
           context: previous,
           refreshing: true,
           onExplainGap: (g) => explainGap(g, previous.currentTopic),
+          onReread: reread,
         ),
       AsyncLoading() => const _ReadingState(),
       AsyncError(:final error) => _ErrorState(pageKey: pageKey, error: error),
@@ -248,11 +255,15 @@ class _ContextBody extends StatelessWidget {
 
   /// Called when a knowledge-gap flag is tapped (null → flags aren't tappable).
   final ValueChanged<String>? onExplainGap;
+
+  /// Called when the Re-read button is tapped (null → no button).
+  final VoidCallback? onReread;
   const _ContextBody({
     required this.pageKey,
     required this.context,
     this.refreshing = false,
     this.onExplainGap,
+    this.onReread,
   });
 
   @override
@@ -264,6 +275,13 @@ class _ContextBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // A full-width, unmissable banner while a re-read runs over the
+          // existing insights — the corner spinner alone read as "nothing
+          // happening" during a multi-second Gemma pass.
+          if (refreshing) ...[
+            const _RereadingBanner(),
+            const SizedBox(height: 14),
+          ],
           Row(
             children: [
               const Text('CURRENT TOPIC',
@@ -274,13 +292,8 @@ class _ContextBody extends StatelessWidget {
                     color: AppColors.textMuted,
                   )),
               const Spacer(),
-              if (refreshing)
-                const SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.accentSoft),
-                ),
+              if (!refreshing && onReread != null)
+                _RereadButton(onTap: onReread!),
             ],
           ),
           const SizedBox(height: 6),
@@ -327,6 +340,84 @@ class _ContextBody extends StatelessWidget {
           ],
           _WritingSection(pageKey: pageKey),
         ],
+      ),
+    );
+  }
+}
+
+/// Shown across the top of the insights while a Re-read is in flight. Deliberately
+/// loud — a colored card with a spinner AND an animating bar — because a Gemma
+/// re-read takes several seconds during which the old insights stay on screen,
+/// and anything subtler read as "the button did nothing".
+class _RereadingBanner extends StatelessWidget {
+  const _RereadingBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
+      decoration: BoxDecoration(
+        color: AppColors.accentWash,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Row(
+            children: [
+              SizedBox(
+                width: 15,
+                height: 15,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: AppColors.accentStrong),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text('Re-reading your page with Gemma…',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.accentStrong,
+                    )),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: const LinearProgressIndicator(
+              minHeight: 4,
+              color: AppColors.accentStrong,
+              backgroundColor: AppColors.surfaceHighlight,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Read this page again" — forces a fresh, differently-sampled Gemma-vision
+/// transcription. A real Material button (not a bare InkWell) so the tap target
+/// and ripple are guaranteed, with a comfortable hit area in the topic row.
+class _RereadButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _RereadButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: onTap,
+      icon: const Icon(Icons.refresh, size: 16),
+      label: const Text('Re-read'),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.accent,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        minimumSize: const Size(0, 32),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       ),
     );
   }

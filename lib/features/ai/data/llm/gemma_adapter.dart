@@ -5,6 +5,8 @@
 // instead of at app startup: nothing AI-related loads unless the user actually
 // touches the Summarize feature, and app boot stays fast.
 
+import 'dart:typed_data';
+
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma_embeddings/flutter_gemma_embeddings.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
@@ -95,11 +97,22 @@ abstract class LlmSession {
   /// Streaming variant of [respond]: yields incremental token chunks.
   Stream<String> respondStream(String prompt);
 
+  /// Sends one multimodal turn — [prompt] alongside [imageBytes] (a PNG/JPEG) —
+  /// and returns the whole reply. Only sessions opened with `supportImage: true`
+  /// can serve this; the default throws so text-only sessions (and test fakes)
+  /// need not implement it.
+  Future<String> respondWithImage(String prompt, Uint8List imageBytes) =>
+      throw UnsupportedError(
+          'This session was not opened with image support (supportImage: true).');
+
   Future<void> close();
 }
 
 /// Inference seam — implemented by [FlutterGemmaRuntime] in production.
 abstract class LlmRuntime {
+  /// Opens a loaded model with one session. Set [supportImage] to load the
+  /// model's vision encoder and enable [LlmSession.respondWithImage];
+  /// [maxNumImages] caps images per turn (ignored when text-only).
   Future<LlmSession> open({
     required LlmModelSpec spec,
     required double temperature,
@@ -108,6 +121,8 @@ abstract class LlmRuntime {
     int? maxOutputTokens,
     String? systemInstruction,
     int? randomSeed,
+    bool supportImage = false,
+    int maxNumImages = 1,
   });
 }
 
@@ -121,6 +136,8 @@ class FlutterGemmaRuntime implements LlmRuntime {
     int? maxOutputTokens,
     String? systemInstruction,
     int? randomSeed,
+    bool supportImage = false,
+    int maxNumImages = 1,
   }) async {
     await GemmaBootstrap.ensureInitialized();
 
@@ -134,6 +151,10 @@ class FlutterGemmaRuntime implements LlmRuntime {
       model = await FlutterGemma.getActiveModel(
         maxTokens: spec.maxTokens,
         preferredBackend: PreferredBackend.gpu, // falls back internally
+        // Loads the vision encoder too (Gemma 4 E2B ships one); no effect on
+        // the text path, which passes false.
+        supportImage: supportImage,
+        maxNumImages: supportImage ? maxNumImages : null,
       );
     } on StateError {
       throw LlmNotReadyException();
@@ -147,6 +168,9 @@ class FlutterGemmaRuntime implements LlmRuntime {
         maxOutputTokens: maxOutputTokens,
         systemInstruction: systemInstruction,
         randomSeed: randomSeed ?? 1, // plugin default
+        // Only turn the modality on when asked — a vision session costs more to
+        // build even if no image is ever sent.
+        enableVisionModality: supportImage ? true : null,
       );
       return _GemmaSession(model, session);
     } catch (e) {
@@ -176,6 +200,13 @@ class _GemmaSession implements LlmSession {
   Stream<String> respondStream(String prompt) async* {
     await _session.addQueryChunk(Message.text(text: prompt, isUser: true));
     yield* _session.getResponseAsync();
+  }
+
+  @override
+  Future<String> respondWithImage(String prompt, Uint8List imageBytes) async {
+    await _session.addQueryChunk(
+        Message.withImage(text: prompt, imageBytes: imageBytes, isUser: true));
+    return _session.getResponse();
   }
 
   @override

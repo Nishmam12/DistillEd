@@ -3,8 +3,37 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:inkflow/features/ai/data/ocr/gemma_vision_ocr_service.dart';
+import 'package:inkflow/features/ai/domain/ai_exception.dart';
+import 'package:inkflow/features/ai/domain/image_transcriber.dart';
 import 'package:inkflow/features/ai/domain/page_content.dart';
 import 'package:inkflow/features/ai/domain/page_content_extractor.dart';
+
+/// A Gemma transcriber that replies with a scripted string per attempt (the
+/// last is reused if more attempts happen), or throws [throwError] every call.
+class FakeTranscriber implements ImageTranscriber {
+  final List<String> replies;
+  final Object? throwError;
+  int calls = 0;
+  final prompts = <String>[];
+
+  FakeTranscriber(this.replies, {this.throwError});
+
+  @override
+  Future<String> transcribeImage(
+    Uint8List imageBytes, {
+    required String prompt,
+    double temperature = 0.0,
+    int maxOutputTokens = 1024,
+    int? randomSeed,
+  }) async {
+    prompts.add(prompt);
+    if (throwError != null) throw throwError!;
+    final reply = calls < replies.length ? replies[calls] : replies.last;
+    calls++;
+    return reply;
+  }
+}
 
 const _ink = FreehandElement(
   id: 'ink1',
@@ -45,12 +74,29 @@ void main() {
   PageContentExtractor extractor(
     List<SceneElement> elements, {
     ImageTextReader? readImageText,
+    GemmaVisionOcrService? visionOcr,
+    InkImageRenderer? renderInk,
+    ImageBytesLoader? loadImageBytes,
   }) =>
       PageContentExtractor(
         loadElements: (_) async => elements,
         recognition: HandwritingRecognitionService(),
         readImageText: readImageText,
+        visionOcr: visionOcr,
+        renderInk: renderInk,
+        loadImageBytes: loadImageBytes,
       );
+
+  /// A rendered-ink PNG (contents don't matter; the fake transcriber ignores
+  /// them) and an image-file byte loader, so the vision path has something to
+  /// hand Gemma.
+  Future<Uint8List?> renderInk(List<SceneElement> _) async =>
+      Uint8List.fromList(const [1, 2, 3]);
+  Future<Uint8List?> loadBytes(String _) async =>
+      Uint8List.fromList(const [4, 5, 6]);
+  GemmaVisionOcrService vision(List<String> replies, {Object? throwError}) =>
+      GemmaVisionOcrService(
+          transcriber: FakeTranscriber(replies, throwError: throwError));
 
   test('empty page extracts to PageContent.empty', () async {
     final content = await extractor([]).extractPage(1, languageCode: 'en');
@@ -298,6 +344,106 @@ void main() {
           .extractSelection(1, {'not-on-page'}, languageCode: 'en');
 
       expect(content.hasText, isFalse);
+    });
+  });
+
+  group('Gemma vision — primary read (useVision), ML Kit fallback', () {
+    const image = ImageElement(
+        id: 'img',
+        zOrder: 0,
+        geometryData: [0, 0, 100, 100],
+        relativeImagePath: 'imports/page1.png');
+
+    test('a good Gemma read wins; ML Kit is never consulted for the ink',
+        () async {
+      recognizedText = 'ML KIT GARBAGE senderee seprentti';
+      final content = await extractor(
+        [_ink],
+        visionOcr:
+            vision(const ['Sentence Segmentation is splitting text into units']),
+        renderInk: renderInk,
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.recognizedInkText,
+          'Sentence Segmentation is splitting text into units');
+      expect(content.inkTopScore, isNull,
+          reason: 'a Gemma read has no ML Kit confidence score');
+    });
+
+    test('useVision:false keeps the light ML Kit path (Gemma untouched)',
+        () async {
+      recognizedText = 'the ml kit reading';
+      final transcriber = FakeTranscriber(const ['gemma should not run']);
+      final content = await extractor(
+        [_ink],
+        visionOcr: GemmaVisionOcrService(transcriber: transcriber),
+        renderInk: renderInk,
+      ).extractPage(1, languageCode: 'en'); // useVision defaults to false
+
+      expect(content.recognizedInkText, 'the ml kit reading');
+      expect(transcriber.calls, 0, reason: 'no deep read was asked for');
+    });
+
+    test('a gibberish Gemma read (both attempts) falls back to ML Kit',
+        () async {
+      recognizedText = 'the reliable ml kit sentence here';
+      final ocr = vision(const ['::: ??? %%%', '### @@@ !!!']); // both fail gate
+      final content = await extractor(
+        [_ink],
+        visionOcr: ocr,
+        renderInk: renderInk,
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.recognizedInkText, 'the reliable ml kit sentence here');
+    });
+
+    test("Gemma's best effort is kept only when ML Kit finds nothing", () async {
+      recognizedText = ''; // ML Kit reads nothing
+      final content = await extractor(
+        [_ink],
+        visionOcr: vision(const ['## ?? %%', '@@ !! ##']), // gate-failing
+        renderInk: renderInk,
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.recognizedInkText, '## ?? %%',
+          reason: 'a poor Gemma read still beats an empty page');
+    });
+
+    test('a good Gemma read of an imported image becomes its text', () async {
+      final content = await extractor(
+        [image],
+        readImageText: (_) async => 'ml kit ocr fallback text',
+        visionOcr: vision(const ['Corpus: a large, structured set of texts.']),
+        loadImageBytes: loadBytes,
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.recognizedImageText,
+          'Corpus: a large, structured set of texts.');
+      expect(content.hasUnrecognizedImages, isFalse);
+    });
+
+    test('a missing Gemma model propagates (so the UI can offer the download)',
+        () async {
+      final content = extractor(
+        [_ink],
+        visionOcr: vision(const [],
+            throwError: const AiModelNotReadyException('not downloaded')),
+        renderInk: renderInk,
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      await expectLater(content, throwsA(isA<AiModelNotReadyException>()));
+    });
+
+    test('render failure falls back to ML Kit rather than losing the ink',
+        () async {
+      recognizedText = 'ml kit still reads the strokes';
+      final content = await extractor(
+        [_ink],
+        visionOcr: vision(const ['unused because render returned null']),
+        renderInk: (_) async => null,
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.recognizedInkText, 'ml kit still reads the strokes');
     });
   });
 }

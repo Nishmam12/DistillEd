@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
@@ -23,6 +24,7 @@ class StreamingFakeRuntime implements LlmRuntime {
   int? lastMaxOutputTokens;
   String? lastSystemInstruction;
   int? lastRandomSeed;
+  bool lastSupportImage = false;
   final sessions = <StreamingFakeSession>[];
 
   StreamingFakeRuntime(
@@ -40,6 +42,8 @@ class StreamingFakeRuntime implements LlmRuntime {
     int? maxOutputTokens,
     String? systemInstruction,
     int? randomSeed,
+    bool supportImage = false,
+    int maxNumImages = 1,
   }) async {
     openCalls++;
     openSessions++;
@@ -52,6 +56,7 @@ class StreamingFakeRuntime implements LlmRuntime {
     lastMaxOutputTokens = maxOutputTokens;
     lastSystemInstruction = systemInstruction;
     lastRandomSeed = randomSeed;
+    lastSupportImage = supportImage;
     final session = StreamingFakeSession(this, () => openSessions--);
     sessions.add(session);
     return session;
@@ -64,6 +69,8 @@ class StreamingFakeSession implements LlmSession {
   bool closed = false;
   final turns = <(String, bool)>[];
   String? lastPrompt;
+  String? lastImagePrompt;
+  Uint8List? lastImageBytes;
 
   StreamingFakeSession(this._runtime, this._onClose);
 
@@ -74,6 +81,15 @@ class StreamingFakeSession implements LlmSession {
   @override
   Future<String> respond(String prompt) async =>
       (await respondStream(prompt).toList()).join();
+
+  @override
+  Future<String> respondWithImage(String prompt, Uint8List imageBytes) async {
+    lastImagePrompt = prompt;
+    lastImageBytes = imageBytes;
+    final error = _runtime.streamError;
+    if (error != null) throw error;
+    return _runtime.chunks.join();
+  }
 
   @override
   Stream<String> respondStream(String prompt) async* {
@@ -105,6 +121,8 @@ class NotReadyRuntime implements LlmRuntime {
     int? maxOutputTokens,
     String? systemInstruction,
     int? randomSeed,
+    bool supportImage = false,
+    int maxNumImages = 1,
   }) async {
     throw LlmNotReadyException();
   }
@@ -291,10 +309,82 @@ void main() {
 
       expect(caps.isLocal, isTrue);
       expect(caps.supportsStreaming, isTrue);
+      expect(caps.supportsVision, isTrue,
+          reason: 'Gemma E2B ships a vision encoder; transcribeImage uses it');
       expect(caps.supportsEmbeddings, isFalse);
       expect(caps.approxCostPerCallUsd, 0.0);
       expect(caps.modelId, LlmModelSpec.active.filename);
       expect(caps.contextWindowTokens, LlmModelSpec.active.maxTokens);
+    });
+  });
+
+  group('LocalGemmaProvider — transcribeImage (vision)', () {
+    final bytes = Uint8List.fromList(const [1, 2, 3, 4]);
+
+    test('opens a vision session, returns the transcription, then unloads',
+        () async {
+      final runtime = StreamingFakeRuntime(['Sentence ', 'Segmentation']);
+      final provider = LocalGemmaProvider(runtime: runtime);
+
+      final text =
+          await provider.transcribeImage(bytes, prompt: 'read this');
+
+      expect(text, 'Sentence Segmentation');
+      expect(runtime.lastSupportImage, isTrue,
+          reason: 'the model must load its vision encoder');
+      final session = runtime.sessions.single;
+      expect(session.lastImagePrompt, 'read this');
+      expect(session.lastImageBytes, bytes);
+      expect(session.closed, isTrue, reason: 'model unloads after the read');
+      expect(runtime.openSessions, 0);
+    });
+
+    test('temperature 0 decodes greedily (top-k 1); a bump samples', () async {
+      final runtime = StreamingFakeRuntime(['x']);
+      final provider = LocalGemmaProvider(runtime: runtime);
+
+      await provider.transcribeImage(bytes, prompt: 'p'); // default temp 0
+      expect(runtime.lastTopK, 1);
+
+      await provider.transcribeImage(bytes, prompt: 'p', temperature: 0.35);
+      expect(runtime.lastTopK, 40);
+    });
+
+    test('missing model surfaces as AiModelNotReadyException', () {
+      final provider = LocalGemmaProvider(runtime: NotReadyRuntime());
+      expect(
+        provider.transcribeImage(bytes, prompt: 'p'),
+        throwsA(isA<AiModelNotReadyException>()),
+      );
+    });
+
+    test('a read failure surfaces as AiGenerationException and still unloads',
+        () async {
+      final runtime = StreamingFakeRuntime(const [],
+          streamError: LlmGenerationException('vision crash'));
+      final provider = LocalGemmaProvider(runtime: runtime);
+
+      await expectLater(
+        provider.transcribeImage(bytes, prompt: 'p'),
+        throwsA(isA<AiGenerationException>()),
+      );
+      expect(runtime.sessions.single.closed, isTrue);
+      expect(runtime.openSessions, 0);
+    });
+
+    test('transcription and generation share the mutex — never overlap',
+        () async {
+      final runtime = StreamingFakeRuntime(['ok'],
+          chunkDelay: const Duration(milliseconds: 15));
+      final provider = LocalGemmaProvider(runtime: runtime);
+
+      await Future.wait([
+        provider.transcribeImage(bytes, prompt: 'p'),
+        provider.generate(prompt: 'g').toList(),
+      ]);
+
+      expect(runtime.maxConcurrentSessions, 1,
+          reason: 'vision and text load the SAME model — one at a time');
     });
   });
 }
