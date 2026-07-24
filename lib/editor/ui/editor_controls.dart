@@ -25,6 +25,7 @@ import '../render/scene_element_painter.dart';
 import '../render/scene_image_cache.dart';
 import '../state/clipboard_service.dart';
 import '../state/editor_tool_controller.dart';
+import '../state/favorite_colors_controller.dart';
 import '../state/history_controller.dart';
 import '../state/library_controller.dart';
 import '../state/scene_controller.dart';
@@ -41,15 +42,17 @@ const List<int> kEditorPalette = [
   0xFFF08C00,
 ];
 
+// The primary drawing tools, in the order they sit in the toolbar. Frame and
+// hand stay in [EditorTool] (the canvas still handles them, and two-finger pan
+// covers hand) but are kept off this row to match the pared-back design; image
+// import rides at the end as an action, not a tool (see [EditorBottomBar]).
 const List<(EditorTool, IconData)> kEditorTools = [
   (EditorTool.select, Icons.near_me_outlined),
   (EditorTool.pen, Icons.edit),
   (EditorTool.shape, Icons.category),
   (EditorTool.text, Icons.title),
-  (EditorTool.frame, Icons.crop_free),
   (EditorTool.eraser, Icons.cleaning_services_outlined),
   (EditorTool.laser, Icons.flashlight_on_outlined),
-  (EditorTool.hand, Icons.pan_tool_alt),
 ];
 
 const List<(ShapeType, IconData)> kEditorShapes = [
@@ -72,77 +75,75 @@ List<SceneElement> editorSelection(WidgetRef ref, ScenePageKey key) {
       .toList();
 }
 
-/// Undo / redo + overflow menu (paste, library, export). Drop into AppBar.actions.
+/// Overflow menu (background, summarize, paste, library, export) for the editor
+/// app bar. Drop into AppBar.actions after the primary feature icons.
 ///
-/// [onChangeBackground], when supplied, adds a "Background & paper…" entry to
-/// the overflow menu. It is optional because the dev playground has no notebook
-/// to restyle — only the real notebook editor wires it up.
+/// The secondary actions live here rather than as their own app-bar buttons so
+/// the top bar stays down to the handful of primary destinations (AI, study
+/// plan, graph, book) plus this "⋮". Both entry points are optional because the
+/// dev playground has no notebook to restyle or summarize — only the real
+/// notebook editor wires them up.
 class EditorAppBarActions extends ConsumerWidget {
   final ScenePageKey pageKey;
   final VoidCallback? onChangeBackground;
+  final VoidCallback? onSummarize;
   const EditorAppBarActions({
     super.key,
     required this.pageKey,
     this.onChangeBackground,
+    this.onSummarize,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final history = ref.watch(historyProvider(pageKey));
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      IconButton(
-        tooltip: 'Undo',
-        icon: const Icon(Icons.undo),
-        onPressed: history.canUndo
-            ? () => ref.read(historyProvider(pageKey).notifier).undo()
-            : null,
-      ),
-      IconButton(
-        tooltip: 'Redo',
-        icon: const Icon(Icons.redo),
-        onPressed: history.canRedo
-            ? () => ref.read(historyProvider(pageKey).notifier).redo()
-            : null,
-      ),
-      PopupMenuButton<String>(
-        tooltip: 'More',
-        icon: const Icon(Icons.more_vert),
-        onSelected: (v) {
-          switch (v) {
-            case 'background':
-              onChangeBackground?.call();
-            case 'paste':
-              _paste(ref);
-            case 'library':
-              _openLibrary(context, ref);
-            case 'png':
-            case 'svg':
-            case 'pdf':
-              _export(context, ref, v);
-          }
-        },
-        itemBuilder: (_) => [
-          if (onChangeBackground != null) ...const [
-            PopupMenuItem(
-              value: 'background',
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.wallpaper_outlined),
-                title: Text('Background & paper…'),
-              ),
-            ),
-            PopupMenuDivider(),
-          ],
-          const PopupMenuItem(value: 'paste', child: Text('Paste')),
+    return PopupMenuButton<String>(
+      tooltip: 'More',
+      icon: const Icon(Icons.more_vert),
+      onSelected: (v) {
+        switch (v) {
+          case 'background':
+            onChangeBackground?.call();
+          case 'summarize':
+            onSummarize?.call();
+          case 'paste':
+            _paste(ref);
+          case 'library':
+            _openLibrary(context, ref);
+          case 'png':
+          case 'svg':
+          case 'pdf':
+            _export(context, ref, v);
+        }
+      },
+      itemBuilder: (_) => [
+        if (onChangeBackground != null)
           const PopupMenuItem(
-              value: 'library', child: Text('Element library…')),
+            value: 'background',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.wallpaper_outlined),
+              title: Text('Background & paper…'),
+            ),
+          ),
+        if (onSummarize != null)
+          const PopupMenuItem(
+            value: 'summarize',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.auto_awesome_outlined),
+              title: Text('Summarize'),
+            ),
+          ),
+        if (onChangeBackground != null || onSummarize != null)
           const PopupMenuDivider(),
-          const PopupMenuItem(value: 'png', child: Text('Export / share PNG')),
-          const PopupMenuItem(value: 'svg', child: Text('Export / share SVG')),
-          const PopupMenuItem(value: 'pdf', child: Text('Export / share PDF')),
-        ],
-      ),
-    ]);
+        const PopupMenuItem(value: 'paste', child: Text('Paste')),
+        const PopupMenuItem(value: 'library', child: Text('Element library…')),
+        const PopupMenuDivider(),
+        const PopupMenuItem(value: 'png', child: Text('Export / share PNG')),
+        const PopupMenuItem(value: 'svg', child: Text('Export / share SVG')),
+        const PopupMenuItem(value: 'pdf', child: Text('Export / share PDF')),
+      ],
+    );
   }
 
   Future<void> _paste(WidgetRef ref) async {
@@ -207,13 +208,21 @@ class EditorAppBarActions extends ConsumerWidget {
 /// When [floating] is true the bar paints its own translucent background and
 /// rounded bottom edge so it can be overlaid at the top of the canvas instead
 /// of sitting in the Scaffold's bottom slot.
+/// The tool/style bar. Docked directly under the app bar in the real editor
+/// (with a divider below it) and used as the bottom bar in the dev playground;
+/// callers wrap it in a [SafeArea] when it sits at a screen edge.
 class EditorBottomBar extends ConsumerWidget {
   final ScenePageKey pageKey;
-  final bool floating;
+
+  /// Opens the import sheet (photo / camera / PDF). When null — as in the dev
+  /// playground, which has no notebook to import into — the import button is
+  /// omitted from the tool row.
+  final VoidCallback? onImport;
+
   const EditorBottomBar({
     super.key,
     required this.pageKey,
-    this.floating = false,
+    this.onImport,
   });
 
   @override
@@ -222,7 +231,7 @@ class EditorBottomBar extends ConsumerWidget {
     final selectedIds = ref.watch(selectionProvider);
     final toolCtl = ref.read(editorToolProvider.notifier);
 
-    final content = Padding(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -251,10 +260,25 @@ class EditorBottomBar extends ConsumerWidget {
                             }
                           },
                         ),
+                      // Image import sits at the end of the tools as an action
+                      // (it opens the import sheet rather than selecting a tool).
+                      if (onImport != null)
+                        IconButton(
+                          tooltip: 'Import image / PDF',
+                          icon: const Icon(Icons.image_outlined),
+                          onPressed: onImport,
+                        ),
                     ],
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              // Three persisted favourite colours: tap to use, long-press to
+              // reassign. They stand in for the old always-on palette; the full
+              // colour grid and stroke size now live in the Style sheet.
+              const _FavoriteSwatches(),
+              const SizedBox(width: 4),
+              _UndoRedoButtons(pageKey: pageKey),
               IconButton.filledTonal(
                 tooltip: 'Style',
                 icon: const Icon(Icons.tune),
@@ -281,62 +305,46 @@ class EditorBottomBar extends ConsumerWidget {
               ],
             ),
           ],
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              for (final c in kEditorPalette)
-                GestureDetector(
-                  onTap: () => toolCtl.setColor(c),
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(
-                      color: Color(c),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: tool.color == c ? Colors.black : Colors.black26,
-                        width: tool.color == c ? 3 : 1,
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Slider(
-                  min: 1,
-                  max: 24,
-                  value: tool.size.clamp(1, 24),
-                  onChanged: toolCtl.setSize,
-                ),
-              ),
-            ],
-          ),
+          // Pen and eraser are the two tools driven by stroke thickness, so
+          // their size slider stays docked below the tool row the whole time
+          // either is selected (rather than being tucked into the Style sheet).
+          if (tool.tool == EditorTool.pen ||
+              tool.tool == EditorTool.eraser)
+            _ThicknessSlider(value: tool.size, onChanged: toolCtl.setSize),
         ],
       ),
     );
+  }
+}
 
-    if (!floating) return SafeArea(child: content);
+/// The pen/eraser stroke-thickness slider shown below the tool row. Its own
+/// stateless widget so the toolbar's build stays readable.
+class _ThicknessSlider extends StatelessWidget {
+  final double value;
+  final ValueChanged<double> onChanged;
+  const _ThicknessSlider({required this.value, required this.onChanged});
 
-    // Top overlay: translucent background, rounded bottom edge, soft shadow.
-    final scheme = Theme.of(context).colorScheme;
-    return SafeArea(
-      bottom: false,
-      child: Container(
-        decoration: BoxDecoration(
-          color: scheme.surface.withValues(alpha: 0.82),
-          borderRadius:
-              const BorderRadius.vertical(bottom: Radius.circular(16)),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Icon(Icons.line_weight, size: 18),
         ),
-        child: content,
-      ),
+        Expanded(
+          child: Slider(
+            min: 1,
+            max: 24,
+            value: value.clamp(1, 24),
+            onChanged: onChanged,
+          ),
+        ),
+        SizedBox(
+          width: 24,
+          child: Text('${value.round()}', textAlign: TextAlign.end),
+        ),
+      ],
     );
   }
 }
@@ -380,6 +388,170 @@ class _ToolIconButton extends StatelessWidget {
         backgroundColor:
             isActive ? Theme.of(context).colorScheme.primaryContainer : null,
       ),
+    );
+  }
+}
+
+/// The palette offered when reassigning a favourite swatch (long-press). A
+/// compact, purposeful spread — greys through the warm/cool spectrum — rather
+/// than a full colour wheel, which is overkill for three quick-pick slots.
+const List<int> kFavoritePickerColors = [
+  0xFF1F2933, // charcoal
+  0xFF000000, // black
+  0xFF868E96, // grey
+  0xFFE03131, // red
+  0xFFF2802E, // orange
+  0xFFE3A53D, // honey
+  0xFF2F9E44, // green
+  0xFF1971C2, // blue
+  0xFF6741D9, // violet
+  0xFF8B8BD8, // periwinkle
+  0xFFC2255C, // magenta
+  0xFFFFFFFF, // white
+];
+
+/// A circular colour swatch with an optional selection ring — the shared
+/// building block for the favourite swatches, the favourite picker and the
+/// style sheet's colour grid.
+class _ColorDot extends StatelessWidget {
+  final int color;
+  final double size;
+  final bool selected;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  const _ColorDot({
+    required this.color,
+    required this.size,
+    required this.selected,
+    this.onTap,
+    this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Color(color),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.black26,
+            width: selected ? 3 : 1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The three persisted favourite colours. Tapping a swatch sets it as the
+/// active drawing colour; long-pressing opens a picker to reassign that slot
+/// (and applies the new colour too). The active swatch wears a ring.
+class _FavoriteSwatches extends ConsumerWidget {
+  const _FavoriteSwatches();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favorites = ref.watch(favoriteColorsProvider);
+    final activeColor = ref.watch(editorToolProvider.select((s) => s.color));
+    final toolCtl = ref.read(editorToolProvider.notifier);
+    final favCtl = ref.read(favoriteColorsProvider.notifier);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < favorites.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Tooltip(
+              message: 'Tap to use · long-press to change',
+              child: _ColorDot(
+                color: favorites[i],
+                size: 26,
+                selected: activeColor == favorites[i],
+                onTap: () => toolCtl.setColor(favorites[i]),
+                onLongPress: () async {
+                  final picked =
+                      await _pickFavoriteColor(context, favorites[i]);
+                  if (picked == null) return;
+                  favCtl.setColor(i, picked);
+                  toolCtl.setColor(picked);
+                },
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Picks a colour from [kFavoritePickerColors] for a favourite slot, or null on
+/// cancel. Shared by the toolbar (reassigning a favourite) and could serve any
+/// "pick a preset colour" need.
+Future<int?> _pickFavoriteColor(BuildContext context, int current) {
+  return showDialog<int>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Favourite colour'),
+      content: SizedBox(
+        width: 300,
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final c in kFavoritePickerColors)
+              _ColorDot(
+                color: c,
+                size: 40,
+                selected: c == current,
+                onTap: () => Navigator.of(context).pop(c),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Undo / redo, relocated out of the app bar into the toolbar. Its own widget
+/// so only it — not the whole bar — rebuilds as the history depth changes.
+class _UndoRedoButtons extends ConsumerWidget {
+  final ScenePageKey pageKey;
+  const _UndoRedoButtons({required this.pageKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(historyProvider(pageKey));
+    final ctl = ref.read(historyProvider(pageKey).notifier);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'Undo',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.undo),
+          onPressed: history.canUndo ? ctl.undo : null,
+        ),
+        IconButton(
+          tooltip: 'Redo',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.redo),
+          onPressed: history.canRedo ? ctl.redo : null,
+        ),
+      ],
     );
   }
 }
@@ -797,6 +969,28 @@ class EditorStyleSheet extends ConsumerWidget {
       child: ListView(
         shrinkWrap: true,
         children: [
+          // Colour + stroke size moved here when the toolbar switched to three
+          // favourite swatches, so the full spread and the size control stay a
+          // tap away without cluttering the bar.
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('Colour', style: Theme.of(context).textTheme.titleSmall),
+          ),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final col in kEditorPalette)
+                _ColorDot(
+                  color: col,
+                  size: 32,
+                  selected: tool.color == col,
+                  onTap: () => c.setColor(col),
+                ),
+            ],
+          ),
+          _slider('Size', tool.size.clamp(1, 24), 1, 24, c.setSize),
+          const Divider(),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Pixel eraser (vs element eraser)'),

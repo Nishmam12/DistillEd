@@ -33,8 +33,10 @@ import '../state/library_controller.dart';
 import '../state/scene_controller.dart';
 import '../state/selection_controller.dart';
 import '../state/viewport_controller.dart';
+import 'editable_note_title.dart';
 import 'editor_controls.dart';
 import 'scene_canvas.dart';
+import 'zoom_pill.dart';
 
 /// On-screen size an inserted AI note aims for, in logical pixels. Converted
 /// to scene units against the live zoom so a note looks the same whether it
@@ -146,7 +148,6 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final pageState = ref.watch(pageProvider(widget.notebookId));
-    final zoom = ref.watch(viewportProvider.select((v) => v.zoom));
 
     if (pageState.pages.isEmpty) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -160,24 +161,17 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_notebook?.title ?? 'Notebook'),
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/'),
+        ),
+        title: EditableNoteTitle(
+          title: _notebook?.title ?? 'Notebook',
+          onRename: _notebook == null ? null : _rename,
+        ),
         actions: [
-          IconButton(
-            tooltip: 'Background & paper',
-            icon: const Icon(Icons.wallpaper_outlined),
-            onPressed: _notebook == null ? null : _showBackgroundSheet,
-          ),
-          IconButton(
-            tooltip: 'Import',
-            icon: const Icon(Icons.file_upload_outlined),
-            onPressed: () => _showImportSheet(key),
-          ),
-          IconButton(
-            tooltip: 'Summarize',
-            icon: const Icon(Icons.auto_awesome_outlined),
-            onPressed: () =>
-                _summarizeScope(key, SummarizeScopeChoice.notebook),
-          ),
           IconButton(
             tooltip: 'AI insights',
             isSelected: _aiPanelOpen,
@@ -200,55 +194,63 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             icon: const Icon(Icons.menu_book_outlined),
             onPressed: () => context.push('/note2/${widget.notebookId}/book'),
           ),
-          Center(child: Text('${(zoom * 100).round()}%')),
-          IconButton(
-            tooltip: 'Reset view',
-            icon: const Icon(Icons.center_focus_strong),
-            onPressed: () => ref.read(viewportProvider.notifier).reset(),
-          ),
           EditorAppBarActions(
             pageKey: key,
             onChangeBackground: _notebook == null ? null : _showBackgroundSheet,
+            onSummarize: () =>
+                _summarizeScope(key, SummarizeScopeChoice.notebook),
           ),
         ],
       ),
       body: Row(
         children: [
           Expanded(
-            child: LayoutBuilder(builder: (context, constraints) {
-              // The page's size is latched here rather than inside the canvas,
-              // because the canvas is keyed by page id and so is rebuilt from
-              // scratch on every page turn — a latch living there would re-take
-              // its size from whatever the canvas had shrunk to, and switching
-              // pages with the AI panel open would leave the new page a narrow
-              // sliver. This state outlives both.
-              if (!constraints.biggest.isEmpty) {
-                _pageSheet ??= constraints.biggest;
-              }
-              return Stack(
-                children: [
-                  Positioned.fill(
-                    child: SceneCanvas(
-                      key: ValueKey(page.id),
-                      notebookId: widget.notebookId,
-                      pageId: page.id,
-                      backgroundColor: _paperColor,
-                      templateType: _template,
-                      pageMode: _pageMode,
-                      pageSize: _pageSheet,
-                    ),
-                  ),
-                  // Quick-access tool bar overlaid at the top with a translucent
-                  // background, freeing the bottom for page navigation.
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: EditorBottomBar(pageKey: key, floating: true),
-                  ),
-                ],
-              );
-            }),
+            child: Column(
+              children: [
+                // Tool bar docked directly under the app bar, with a hairline
+                // divider separating it from the canvas below.
+                EditorBottomBar(
+                  pageKey: key,
+                  onImport: () => _showImportSheet(key),
+                ),
+                const Divider(height: 1, thickness: 1),
+                Expanded(
+                  child: LayoutBuilder(builder: (context, constraints) {
+                    // The page's size is latched here rather than inside the
+                    // canvas, because the canvas is keyed by page id and so is
+                    // rebuilt from scratch on every page turn — a latch living
+                    // there would re-take its size from whatever the canvas had
+                    // shrunk to, and switching pages with the AI panel open
+                    // would leave the new page a narrow sliver. This state
+                    // outlives both.
+                    if (!constraints.biggest.isEmpty) {
+                      _pageSheet ??= constraints.biggest;
+                    }
+                    return Stack(
+                      children: [
+                        Positioned.fill(
+                          child: SceneCanvas(
+                            key: ValueKey(page.id),
+                            notebookId: widget.notebookId,
+                            pageId: page.id,
+                            backgroundColor: _paperColor,
+                            templateType: _template,
+                            pageMode: _pageMode,
+                            pageSize: _pageSheet,
+                          ),
+                        ),
+                        // Zoom level, bottom-right; tap to reset the view.
+                        const Positioned(
+                          right: 16,
+                          bottom: 16,
+                          child: ZoomPill(),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
+              ],
+            ),
           ),
           // Docked AI panel beside the canvas on wide screens; phones use the
           // bottom sheet from _toggleAiPanel instead.
@@ -675,6 +677,15 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     setState(() => nb.backgroundColor = argb);
     NoteRepository(IsarService.instance)
         .updateBackgroundColor(widget.notebookId, argb);
+  }
+
+  /// Persists a renamed note, reflecting it in the app bar immediately.
+  void _rename(String title) {
+    final nb = _notebook;
+    if (nb == null) return;
+    setState(() => nb.title = title);
+    NoteRepository(IsarService.instance)
+        .updateTitle(widget.notebookId, title);
   }
 }
 

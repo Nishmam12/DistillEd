@@ -49,7 +49,9 @@ class _SceneEditorBody extends ConsumerWidget {
         ],
       ),
       body: const SceneCanvas(notebookId: 0, pageId: 0),
-      bottomNavigationBar: const EditorBottomBar(pageKey: _demoKey),
+      bottomNavigationBar: const SafeArea(
+        child: EditorBottomBar(pageKey: _demoKey),
+      ),
     );
   }
 }

@@ -60,6 +60,18 @@ class NoteRepository {
     });
   }
 
+  /// Updates the title of an existing notebook, keeping [modifiedAt] current.
+  Future<void> updateTitle(int id, String title) async {
+    final notebook = await _isar.notebooks.get(id);
+    if (notebook != null) {
+      notebook.title = title;
+      notebook.modifiedAt = DateTime.now();
+      await _isar.writeTxn(() async {
+        await _isar.notebooks.put(notebook);
+      });
+    }
+  }
+
   /// Updates the background color of an existing notebook.
   Future<void> updateBackgroundColor(int id, int color) async {
     final notebook = await _isar.notebooks.get(id);

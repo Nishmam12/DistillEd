@@ -67,9 +67,11 @@ class ViewportState {
 
 class ViewportController extends StateNotifier<ViewportState> {
   static const double infiniteMinZoom = 0.1;
-  static const double infiniteMaxZoom = 5.0;
+  // Zoom is capped at 250% in both modes — past that, ink and text start to
+  // look soft and the extra magnification isn't useful for note-taking.
+  static const double infiniteMaxZoom = 2.5;
   static const double pageMinZoom = 0.5;
-  static const double pageMaxZoom = 3.0;
+  static const double pageMaxZoom = 2.5;
 
   ViewportController() : super(const ViewportState());
 

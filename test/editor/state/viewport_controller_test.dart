@@ -41,7 +41,7 @@ void main() {
       expect(c.state.zoom, ViewportController.infiniteMinZoom);
     });
 
-    test('page mode clamps zoom to 50–300% and centres a small page', () {
+    test('page mode clamps zoom to 50–250% and centres a small page', () {
       final c = ViewportController();
       c.configure(
         pageMode: true,
