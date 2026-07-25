@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../../features/editor/domain/models/stroke_point.dart';
+import '../../domain/model/stroke_point.dart';
 import 'freehand_path.dart';
 
 class SceneActiveStrokeLayer extends CustomPainter {

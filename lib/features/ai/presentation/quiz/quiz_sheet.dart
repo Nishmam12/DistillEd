@@ -19,6 +19,7 @@ import '../../domain/memory/concept_mastery.dart';
 import '../../domain/memory/quiz_attempt.dart';
 import '../ai_providers.dart';
 import '../quiz_notifier.dart';
+import '../widgets/model_download_progress.dart';
 
 const Color _correct = Color(0xFF2E7D32);
 const Color _wrong = AppColors.accentRed;
@@ -110,23 +111,10 @@ class _Downloading extends ConsumerWidget {
           style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 20),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: progress / 100,
-            minHeight: 8,
-            color: AppColors.accent,
-            backgroundColor: AppColors.surfaceHighlight,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text('$progress%',
-            style: const TextStyle(color: AppColors.textSecondary)),
-        TextButton(
-          onPressed: () =>
+        ModelDownloadProgress(
+          progress: progress,
+          onCancel: () =>
               ref.read(quizNotifierProvider.notifier).cancelModelDownload(),
-          child: const Text('Cancel',
-              style: TextStyle(color: AppColors.textSecondary)),
         ),
       ],
     );

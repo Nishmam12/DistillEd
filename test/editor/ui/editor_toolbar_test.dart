@@ -5,7 +5,7 @@ import 'package:inkflow/data/persistence/scene_element_store.dart';
 import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/editor/state/editor_tool_controller.dart';
 import 'package:inkflow/editor/state/scene_controller.dart';
-import 'package:inkflow/editor/ui/editor_controls.dart';
+import 'package:inkflow/editor/ui/controls/editor_bottom_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

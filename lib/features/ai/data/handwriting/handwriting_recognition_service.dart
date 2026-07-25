@@ -11,7 +11,7 @@ import 'package:google_mlkit_digital_ink_recognition/google_mlkit_digital_ink_re
     as mlkit;
 
 import '../../../../domain/model/scene_element.dart';
-import '../../../editor/domain/models/stroke.dart';
+import '../../../../data/migration/legacy_models/stroke.dart';
 import '../../domain/handwriting/ink_lines.dart';
 import '../../domain/recognition_result.dart';
 import '../../domain/meaningfulness_gate.dart';

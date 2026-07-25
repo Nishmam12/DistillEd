@@ -112,13 +112,4 @@ class NoteRepository {
   Future<Notebook?> getNotebook(int id) async {
     return await _isar.notebooks.get(id);
   }
-
-  /// Returns all pages for a given notebook, ordered by page index.
-  Future<List<NotePage>> getPagesForNotebook(int notebookId) async {
-    return _isar.notePages
-        .filter()
-        .notebookIdEqualTo(notebookId)
-        .sortByPageIndex()
-        .findAll();
-  }
 }

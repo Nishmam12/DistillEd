@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import '../../domain/geometry/element_bounds.dart';
 import '../../domain/geometry/scene_geometry.dart';
 import '../../domain/model/scene_element.dart';
-import '../../features/editor/domain/services/shape_geometry.dart';
+import '../../domain/geometry/shape_geometry.dart';
 import 'dash_path.dart';
 import 'freehand_path.dart';
 import 'rough_renderer.dart';

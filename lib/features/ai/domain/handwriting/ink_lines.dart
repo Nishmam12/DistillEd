@@ -21,7 +21,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import '../../../editor/domain/models/stroke_point.dart';
+import '../../../../domain/model/stroke_point.dart';
 
 /// A handwritten line: the strokes sitting on it, ordered left-to-right.
 class InkLine {

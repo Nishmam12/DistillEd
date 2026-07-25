@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/features/editor/domain/models/stroke.dart';
+import 'package:inkflow/data/migration/legacy_models/stroke.dart';
 import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
 
 void main() {

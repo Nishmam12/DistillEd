@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/geometry/selection_bounds.dart';
 import '../../domain/model/scene_element.dart';
-import '../../features/editor/presentation/page_notifier.dart';
+import '../state/page_notifier.dart';
 import '../../features/home/domain/models/notebook.dart';
 import '../../shared/isar/isar_service.dart';
 import '../render/scene_image_cache.dart';

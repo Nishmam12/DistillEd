@@ -6,7 +6,7 @@
 
 import 'package:isar/isar.dart';
 
-import '../../features/editor/data/storage/ink_file_storage.dart';
+import 'legacy_models/ink_file_storage.dart';
 import '../../features/home/domain/models/note_page.dart';
 import '../../features/home/domain/models/notebook.dart';
 import '../../shared/isar/isar_service.dart';

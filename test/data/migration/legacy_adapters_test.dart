@@ -4,9 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/data/migration/legacy_adapters.dart';
 import 'package:inkflow/data/migration/legacy_page_data.dart';
 import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/features/editor/domain/models/imported_content.dart';
-import 'package:inkflow/features/editor/domain/models/shape_element.dart';
-import 'package:inkflow/features/editor/domain/models/stroke.dart';
+import 'package:inkflow/data/migration/legacy_models/imported_content.dart';
+import 'package:inkflow/data/migration/legacy_models/shape_element.dart';
+import 'package:inkflow/data/migration/legacy_models/stroke.dart';
 
 /// Builds a legacy ShapeElement of [type] with every required field set.
 ShapeElement _shape(

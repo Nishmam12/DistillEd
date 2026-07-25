@@ -2,9 +2,9 @@
 // the v2 migrator. Kept dependency-free so adapter/migrator tests need no
 // native Isar.
 
-import '../../features/editor/domain/models/imported_content.dart';
-import '../../features/editor/domain/models/shape_element.dart';
-import '../../features/editor/domain/models/stroke.dart';
+import 'legacy_models/imported_content.dart';
+import 'legacy_models/shape_element.dart';
+import 'legacy_models/stroke.dart';
 
 class LegacyPageData {
   final int notebookId;

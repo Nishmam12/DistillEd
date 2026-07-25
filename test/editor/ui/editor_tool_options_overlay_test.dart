@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/editor/state/editor_tool_controller.dart';
-import 'package:inkflow/editor/ui/editor_controls.dart';
+import 'package:inkflow/core/constants/editor_constants.dart';
+import 'package:inkflow/editor/ui/controls/editor_tool_options_overlay.dart';
 
 void main() {
   Future<ProviderContainer> pumpOverlay(

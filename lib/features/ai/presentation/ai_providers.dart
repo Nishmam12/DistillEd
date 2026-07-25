@@ -1,6 +1,6 @@
 // Riverpod wiring for the AI platform (this codebase uses Riverpod as its DI
-// mechanism throughout — get_it is unused). Features consume these providers;
-// nothing in features/ai depends on a consumer feature.
+// mechanism throughout). Features consume these providers; nothing in
+// features/ai depends on a consumer feature.
 
 import 'dart:async';
 import 'dart:io';

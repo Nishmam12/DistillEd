@@ -4,7 +4,7 @@
 
 import 'dart:ui';
 
-import '../../features/editor/domain/services/shape_geometry.dart';
+import 'shape_geometry.dart';
 import '../model/scene_element.dart';
 import 'element_bounds.dart';
 import 'geometry_utils.dart';

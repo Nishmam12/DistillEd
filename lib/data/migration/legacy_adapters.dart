@@ -11,9 +11,9 @@
 // The combined order is flattened to sequential zOrder values 0..N.
 
 import '../../domain/model/scene_element.dart';
-import '../../features/editor/domain/models/imported_content.dart';
-import '../../features/editor/domain/models/shape_element.dart';
-import '../../features/editor/domain/models/stroke.dart';
+import 'legacy_models/imported_content.dart';
+import 'legacy_models/shape_element.dart';
+import 'legacy_models/stroke.dart';
 import 'legacy_page_data.dart';
 
 class LegacyAdapters {

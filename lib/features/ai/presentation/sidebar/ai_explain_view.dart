@@ -13,6 +13,7 @@ import '../../domain/features/explainer.dart';
 import '../../domain/routing/intelligent_router.dart' show CloudTier;
 import '../ai_providers.dart';
 import '../explain_notifier.dart';
+import '../widgets/model_download_progress.dart';
 
 class AiExplainView extends ConsumerWidget {
   /// Hands the explanation text to the editor's text-insertion path.
@@ -394,23 +395,10 @@ class _Downloading extends ConsumerWidget {
               '${sizeGb.toStringAsFixed(1)} GB — one-time download',
         ),
         const SizedBox(height: 16),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: progress / 100,
-            minHeight: 8,
-            color: AppColors.accent,
-            backgroundColor: AppColors.surfaceHighlight,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text('$progress%',
-            style: const TextStyle(color: AppColors.textSecondary)),
-        TextButton(
-          onPressed: () =>
+        ModelDownloadProgress(
+          progress: progress,
+          onCancel: () =>
               ref.read(explainNotifierProvider.notifier).cancelModelDownload(),
-          child: const Text('Cancel',
-              style: TextStyle(color: AppColors.textSecondary)),
         ),
       ],
     );

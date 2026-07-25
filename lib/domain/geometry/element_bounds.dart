@@ -7,6 +7,7 @@
 import 'dart:ui';
 
 import '../model/scene_element.dart';
+import 'shape_geometry.dart';
 
 class ElementBounds {
   ElementBounds._();
@@ -60,15 +61,7 @@ class ElementBounds {
   }
 
   static Rect _boundsOfPoints(Iterable<Offset> points) {
-    double? minX, minY, maxX, maxY;
-    for (final p in points) {
-      minX = (minX == null || p.dx < minX) ? p.dx : minX;
-      minY = (minY == null || p.dy < minY) ? p.dy : minY;
-      maxX = (maxX == null || p.dx > maxX) ? p.dx : maxX;
-      maxY = (maxY == null || p.dy > maxY) ? p.dy : maxY;
-    }
-    if (minX == null) return Rect.zero;
-    return Rect.fromLTRB(minX, minY!, maxX!, maxY!);
+    return ShapeGeometry.boundingRect(points.toList());
   }
 }
 

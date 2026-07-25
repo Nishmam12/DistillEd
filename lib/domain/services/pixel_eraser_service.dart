@@ -32,7 +32,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import '../../features/editor/domain/services/shape_geometry.dart';
+import '../geometry/shape_geometry.dart';
 import '../model/scene_element.dart';
 
 /// The geometry changes a single pixel-erase gesture produces.

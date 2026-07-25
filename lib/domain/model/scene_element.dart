@@ -10,19 +10,15 @@
 // `data/persistence/scene_element_record.dart`; conversion to/from the legacy
 // Stroke / ShapeElement / ImportedContent formats lives in
 // `data/migration/legacy_adapters.dart`.
-//
-// `StrokePoint` and `ShapeType` are reused from the existing editor models so
-// there is a single source of truth (notably the Isar enum-index contract on
-// ShapeType). They migrate under `domain/model/` in a later cleanup phase.
 
 import 'dart:ui';
 
-import '../../features/editor/domain/models/shape_type.dart';
-import '../../features/editor/domain/models/stroke_point.dart';
+import 'shape_type.dart';
+import 'stroke_point.dart';
 import 'element_style.dart';
 
-export '../../features/editor/domain/models/shape_type.dart' show ShapeType;
-export '../../features/editor/domain/models/stroke_point.dart' show StrokePoint;
+export 'shape_type.dart' show ShapeType;
+export 'stroke_point.dart' show StrokePoint;
 export 'element_style.dart';
 
 /// Discriminates the [SceneElement] subtype for flat persistence.

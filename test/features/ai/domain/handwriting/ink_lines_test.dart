@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/features/ai/domain/handwriting/ink_lines.dart';
-import 'package:inkflow/features/editor/domain/models/stroke_point.dart';
+import 'package:inkflow/domain/model/stroke_point.dart';
 
 void main() {
   /// A stroke spanning the given box — enough geometry for grouping, which

@@ -10,7 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../editor/domain/models/template_type.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../domain/model/template_type.dart';
 import '../../../../editor/state/scene_image_cache_provider.dart';
 import '../home_notifier.dart';
 import '../models/note_card_data.dart';
@@ -301,7 +302,7 @@ class _NotesList extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFFCF4A36),
+              foregroundColor: AppColors.accentRed,
             ),
             child: const Text('Delete'),
           ),

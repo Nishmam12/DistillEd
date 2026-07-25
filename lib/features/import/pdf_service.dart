@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 
 import '../../core/constants/storage_paths.dart';
-import '../editor/domain/models/imported_content.dart';
+import '../../data/migration/legacy_models/imported_content.dart';
 
 class ImportException implements Exception {
   final String message;

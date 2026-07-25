@@ -11,7 +11,7 @@ import 'dart:ui';
 import 'package:perfect_freehand/perfect_freehand.dart'
     show getStroke, StrokeOptions, PointVector;
 
-import '../../features/editor/domain/models/stroke_point.dart';
+import '../../domain/model/stroke_point.dart';
 
 class FreehandPath {
   FreehandPath._();

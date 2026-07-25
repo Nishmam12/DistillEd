@@ -9,8 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/editor_constants.dart';
 import '../state/editor_tool_controller.dart';
-import 'editor_controls.dart' show kFavoritePickerColors;
 
 class UniversalColorPalette extends ConsumerStatefulWidget {
   const UniversalColorPalette({super.key});

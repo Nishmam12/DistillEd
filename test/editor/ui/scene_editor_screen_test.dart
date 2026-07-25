@@ -7,7 +7,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/editor/ui/editor_controls.dart';
+import 'package:inkflow/editor/ui/controls/editor_tool_options_overlay.dart';
 import 'package:inkflow/editor/ui/scene_canvas.dart';
 import 'package:inkflow/editor/ui/scene_editor_screen.dart';
 

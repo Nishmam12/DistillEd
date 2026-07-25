@@ -16,6 +16,7 @@ import '../../data/llm/llm_model_spec.dart';
 import '../../domain/models/flashcard.dart';
 import '../ai_providers.dart';
 import '../flashcard_notifier.dart';
+import '../widgets/model_download_progress.dart';
 
 /// Opens the flashcard sheet. Call after kicking off [FlashcardNotifier.generate].
 void showFlashcardSheet(BuildContext context) {
@@ -100,24 +101,11 @@ class _Downloading extends ConsumerWidget {
           style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 20),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: progress / 100,
-            minHeight: 8,
-            color: AppColors.accent,
-            backgroundColor: AppColors.surfaceHighlight,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text('$progress%',
-            style: const TextStyle(color: AppColors.textSecondary)),
-        TextButton(
-          onPressed: () => ref
+        ModelDownloadProgress(
+          progress: progress,
+          onCancel: () => ref
               .read(flashcardNotifierProvider.notifier)
               .cancelModelDownload(),
-          child: const Text('Cancel',
-              style: TextStyle(color: AppColors.textSecondary)),
         ),
       ],
     );

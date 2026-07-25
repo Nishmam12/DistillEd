@@ -18,6 +18,7 @@ import '../../data/llm/llm_model_spec.dart';
 import '../../domain/rag/rag_retriever.dart';
 import '../ai_providers.dart';
 import '../ask_notes_notifier.dart';
+import '../widgets/model_download_progress.dart';
 
 class AiAskView extends ConsumerStatefulWidget {
   /// Hands an answer to the editor's text-insertion path ("insert as note").
@@ -428,23 +429,10 @@ class _Downloading extends ConsumerWidget {
           subtitle: '$name · $size — one-time download',
         ),
         const SizedBox(height: 16),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: progress / 100,
-            minHeight: 8,
-            color: AppColors.accent,
-            backgroundColor: AppColors.surfaceHighlight,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text('$progress%',
-            style: const TextStyle(color: AppColors.textSecondary)),
-        TextButton(
-          onPressed: () =>
+        ModelDownloadProgress(
+          progress: progress,
+          onCancel: () =>
               ref.read(askNotesNotifierProvider.notifier).cancelModelDownload(),
-          child: const Text('Cancel',
-              style: TextStyle(color: AppColors.textSecondary)),
         ),
       ],
     );

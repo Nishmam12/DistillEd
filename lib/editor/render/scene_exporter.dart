@@ -16,7 +16,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../domain/geometry/selection_bounds.dart';
 import '../../domain/model/scene_element.dart';
-import '../../features/editor/domain/services/shape_geometry.dart';
+import '../../domain/geometry/shape_geometry.dart';
 import 'scene_static_layer.dart';
 
 class SceneExporter {

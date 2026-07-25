@@ -2,8 +2,8 @@
 
 import 'package:isar/isar.dart';
 
-import '../../../editor/domain/models/imported_content.dart';
-import '../../../editor/domain/models/shape_element.dart';
+import '../../../../data/migration/legacy_models/imported_content.dart';
+import '../../../../data/migration/legacy_models/shape_element.dart';
 
 part 'note_page.g.dart';
 

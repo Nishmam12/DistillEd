@@ -9,7 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/persistence/scene_element_store.dart';
 import '../state/scene_controller.dart';
 import '../state/viewport_controller.dart';
-import 'editor_controls.dart';
+import 'controls/editor_app_bar_actions.dart';
+import 'controls/editor_bottom_bar.dart';
+import 'controls/editor_tool_options_overlay.dart';
 import 'scene_canvas.dart';
 import 'universal_color_palette.dart';
 

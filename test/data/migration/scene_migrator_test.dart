@@ -5,8 +5,8 @@ import 'package:inkflow/data/migration/migration_gate.dart';
 import 'package:inkflow/data/migration/scene_migrator.dart';
 import 'package:inkflow/data/persistence/scene_element_store.dart';
 import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/features/editor/domain/models/shape_element.dart';
-import 'package:inkflow/features/editor/domain/models/stroke.dart';
+import 'package:inkflow/data/migration/legacy_models/shape_element.dart';
+import 'package:inkflow/data/migration/legacy_models/stroke.dart';
 
 class _FakeSource implements LegacyPageSource {
   final List<LegacyPageData> pages;

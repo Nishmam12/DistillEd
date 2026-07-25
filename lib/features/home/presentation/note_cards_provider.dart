@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/model/scene_element.dart';
+import '../../../editor/state/page_notifier.dart';
 import '../../../editor/state/scene_controller.dart';
 import '../../../editor/state/scene_image_cache_provider.dart';
 import 'home_notifier.dart';
@@ -16,13 +17,13 @@ import 'models/note_card_data.dart';
 
 final noteCardsProvider = FutureProvider<List<NoteCardData>>((ref) async {
   final notebooks = ref.watch(homeNotifierProvider);
-  final notes = ref.watch(noteRepositoryProvider);
+  final pageRepository = ref.watch(pageRepositoryProvider);
   final elements = ref.watch(sceneElementStoreProvider);
   final images = ref.watch(sceneImageCacheProvider);
 
   final cards = <NoteCardData>[];
   for (final notebook in notebooks) {
-    final pages = await notes.getPagesForNotebook(notebook.id);
+    final pages = await pageRepository.getPagesForNotebook(notebook.id);
     final scene = pages.isEmpty
         ? const <SceneElement>[]
         : await elements.loadForPage(pages.first.id);

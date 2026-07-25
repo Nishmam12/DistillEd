@@ -13,7 +13,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-import '../../features/editor/domain/models/stroke_point.dart';
+import '../../domain/model/stroke_point.dart';
 
 typedef PointerEventCallback = void Function(
     PointerEvent event, StrokePoint point);
