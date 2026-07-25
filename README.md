@@ -1,6 +1,6 @@
-# inkflow
+# DistillEd
 
-A new Flutter project.
+A beefed up notepad app
 
 ## Getting Started
 
