@@ -99,21 +99,6 @@ void main() {
       expect(find.byIcon(Icons.layers_clear), findsOneWidget);
     });
 
-    testWidgets('the eraser panel switches pixel/stroke mode', (tester) async {
-      final container = await pumpBar(tester, onImport: () {});
-      await tester.tap(find.byIcon(Icons.layers_clear));
-      await tester.pump();
-      expect(container.read(editorToolProvider).eraserPixel, isFalse);
-
-      await tester.tap(find.text('Pixel eraser'));
-      await tester.pump();
-      expect(container.read(editorToolProvider).eraserPixel, isTrue);
-
-      await tester.tap(find.text('Stroke eraser'));
-      await tester.pump();
-      expect(container.read(editorToolProvider).eraserPixel, isFalse);
-    });
-
     testWidgets('the import handler fires when the import button is tapped',
         (tester) async {
       var imported = 0;
@@ -178,56 +163,8 @@ void main() {
     });
   });
 
-  group('tool options panel', () {
-    testWidgets(
-        'shows the pen panel (size/roughness/opacity) for the default tool',
-        (tester) async {
-      final container = await pumpBar(tester, onImport: () {});
-      expect(container.read(editorToolProvider).tool, EditorTool.pen);
-      expect(find.byType(Slider), findsNWidgets(3));
-    });
-
-    testWidgets('shows the eraser panel (size/roughness) for the eraser',
-        (tester) async {
-      final container = await pumpBar(tester, onImport: () {});
-      container.read(editorToolProvider.notifier).setTool(EditorTool.eraser);
-      await tester.pump();
-      expect(find.byType(Slider), findsNWidgets(2));
-    });
-
-    testWidgets('shows the shape panel (size/opacity) for shapes',
-        (tester) async {
-      final container = await pumpBar(tester, onImport: () {});
-      container.read(editorToolProvider.notifier).setTool(EditorTool.shape);
-      await tester.pump();
-      expect(find.byType(Slider), findsNWidgets(2));
-    });
-
-    testWidgets('shows the text panel (font size) for text', (tester) async {
-      final container = await pumpBar(tester, onImport: () {});
-      container.read(editorToolProvider.notifier).setTool(EditorTool.text);
-      await tester.pump();
-      expect(find.byType(Slider), findsOneWidget);
-    });
-
-    testWidgets('is empty for tools with no options of their own',
-        (tester) async {
-      final container = await pumpBar(tester, onImport: () {});
-      for (final t in [EditorTool.select, EditorTool.laser]) {
-        container.read(editorToolProvider.notifier).setTool(t);
-        await tester.pump();
-        expect(find.byType(Slider), findsNothing, reason: 'no slider for $t');
-      }
-    });
-
-    testWidgets('dragging the thickness slider changes the stroke size',
-        (tester) async {
-      final container = await pumpBar(tester, onImport: () {});
-      final before = container.read(editorToolProvider).size;
-      // Thickness is the first slider in the pen panel.
-      await tester.drag(find.byType(Slider).first, const Offset(60, 0));
-      await tester.pump();
-      expect(container.read(editorToolProvider).size, greaterThan(before));
-    });
-  });
+  // The tool options panel used to live inline in this bar; it's now a
+  // separate floating overlay (see EditorToolOptionsOverlay) so opening it
+  // never resizes the bar/canvas. Its own behaviour is covered in
+  // editor_tool_options_overlay_test.dart.
 }

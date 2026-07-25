@@ -48,7 +48,22 @@ class _SceneEditorBody extends ConsumerWidget {
           const EditorAppBarActions(pageKey: _demoKey),
         ],
       ),
-      body: const SceneCanvas(notebookId: 0, pageId: 0),
+      body: const Stack(
+        children: [
+          Positioned.fill(child: SceneCanvas(notebookId: 0, pageId: 0)),
+          // Toolbar sits below in bottomNavigationBar here, so its options
+          // panel floats up from the bottom instead of down from the top.
+          Positioned(
+            bottom: 8,
+            left: 8,
+            right: 8,
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: EditorToolOptionsOverlay(anchorBottom: true),
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: const SafeArea(
         child: EditorBottomBar(pageKey: _demoKey),
       ),

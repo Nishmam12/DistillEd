@@ -158,6 +158,10 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
 
   void _onDown(PointerEvent _, StrokePoint p) {
     final tool = ref.read(editorToolProvider);
+    // The tool's options panel is only ever meant to be seen briefly after
+    // picking the tool — the moment the user actually starts using it on the
+    // page, the panel should get out of the way.
+    ref.read(editorToolProvider.notifier).closePanel();
     switch (tool.tool) {
       case EditorTool.select:
         _onSelectDown(p);

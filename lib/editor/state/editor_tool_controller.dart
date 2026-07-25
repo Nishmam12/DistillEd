@@ -35,6 +35,12 @@ class EditorToolState {
   // Eraser: pixel (clears ink) vs element (removes whole elements).
   final bool eraserPixel;
 
+  // Whether the active tool's floating options panel is showing. Distinct
+  // from which tool is active: the panel opens (briefly) when a tool is
+  // picked and closes the instant the user starts drawing — see
+  // [EditorToolController.setTool] and [EditorToolController.closePanel].
+  final bool panelOpen;
+
   const EditorToolState({
     this.tool = EditorTool.pen,
     this.color = 0xFF1F2933,
@@ -53,6 +59,7 @@ class EditorToolState {
     this.fontSize = 20.0,
     this.fontFamily = 'Roboto',
     this.eraserPixel = false,
+    this.panelOpen = true,
   });
 
   bool get isHand => tool == EditorTool.hand;
@@ -75,6 +82,7 @@ class EditorToolState {
     double? fontSize,
     String? fontFamily,
     bool? eraserPixel,
+    bool? panelOpen,
   }) {
     return EditorToolState(
       tool: tool ?? this.tool,
@@ -94,6 +102,7 @@ class EditorToolState {
       fontSize: fontSize ?? this.fontSize,
       fontFamily: fontFamily ?? this.fontFamily,
       eraserPixel: eraserPixel ?? this.eraserPixel,
+      panelOpen: panelOpen ?? this.panelOpen,
     );
   }
 }
@@ -101,7 +110,24 @@ class EditorToolState {
 class EditorToolController extends StateNotifier<EditorToolState> {
   EditorToolController() : super(const EditorToolState());
 
-  void setTool(EditorTool tool) => state = state.copyWith(tool: tool);
+  /// Selects [tool]. Picking a *different* tool (re)opens its options panel —
+  /// each tool gets a brief look at its own settings before the panel closes
+  /// again. Re-tapping the tool that's already active instead toggles the
+  /// panel, so tapping it again after it auto-closed brings it back.
+  void setTool(EditorTool tool) {
+    state = tool == state.tool
+        ? state.copyWith(panelOpen: !state.panelOpen)
+        : state.copyWith(tool: tool, panelOpen: true);
+  }
+
+  /// Hides the options panel without changing the active tool. Called the
+  /// moment a canvas gesture begins (draw, erase, shape drag, …) so the panel
+  /// never lingers over what the user is making.
+  void closePanel() {
+    if (!state.panelOpen) return;
+    state = state.copyWith(panelOpen: false);
+  }
+
   void setColor(int color) => state = state.copyWith(color: color);
   void setSize(double size) => state = state.copyWith(size: size);
   void setOpacity(double opacity) => state = state.copyWith(opacity: opacity);

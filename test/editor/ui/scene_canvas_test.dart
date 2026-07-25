@@ -231,6 +231,25 @@ void main() {
     expect(rect.geometryData[1], closeTo(120, 1)); // 100 + 20
   });
 
+  testWidgets('starting a stroke closes the tool options panel',
+      (tester) async {
+    final container = _container();
+    addTearDown(container.dispose);
+    await _pump(tester, container);
+    expect(container.read(editorToolProvider).panelOpen, isTrue);
+
+    final g = await tester.startGesture(const Offset(100, 100),
+        kind: PointerDeviceKind.stylus);
+    // Closed the instant the pointer goes down — not just once the stroke
+    // is committed on pointer-up.
+    expect(container.read(editorToolProvider).panelOpen, isFalse);
+
+    await g.moveBy(const Offset(20, 20));
+    await g.up();
+    await tester.pump();
+    expect(container.read(editorToolProvider).panelOpen, isFalse);
+  });
+
   testWidgets('element eraser removes a stroke it crosses', (tester) async {
     final container = _container();
     addTearDown(container.dispose);

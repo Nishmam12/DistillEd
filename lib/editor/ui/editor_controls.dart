@@ -10,6 +10,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../domain/commands/scene_command.dart';
 import '../../domain/geometry/element_bounds.dart';
 import '../../domain/model/library_item.dart';
@@ -277,38 +278,85 @@ class EditorBottomBar extends ConsumerWidget {
               _UndoRedoButtons(pageKey: pageKey),
             ],
           ),
-          // Every tool that has its own options (pen/eraser/shape/text) gets a
-          // panel that slides smoothly in below the tool row; other tools
-          // (select/laser) collapse it away entirely.
-          _ToolOptionsPanel(state: tool, ctl: toolCtl),
         ],
       ),
     );
   }
 }
 
-/// Dispatches to the options panel for whichever tool is active, animating
-/// smoothly between them (and collapsing to nothing for tools with no options
-/// of their own, e.g. select/laser) via [AnimatedSize].
-class _ToolOptionsPanel extends StatelessWidget {
-  final EditorToolState state;
-  final EditorToolController ctl;
-  const _ToolOptionsPanel({required this.state, required this.ctl});
+/// Floating, temporary options panel for whichever tool is active
+/// (pen/eraser/shape/text) — a squircle card that slides down and fades in
+/// the moment its tool is (re-)selected, then slides back up out of the way
+/// the instant the user starts actually using it on the page (see
+/// [EditorToolController.closePanel], called from the canvas on the first
+/// touch of a stroke/shape/erase gesture). Tools with no options of their own
+/// (select/laser/hand/frame) render nothing.
+///
+/// Deliberately *not* part of [EditorBottomBar]'s own layout: callers place it
+/// as an overlay in a [Stack] above the canvas instead, so opening or closing
+/// it never resizes — and so never visibly shifts — the canvas underneath a
+/// page the user may be mid-stroke on.
+class EditorToolOptionsOverlay extends ConsumerWidget {
+  /// Which edge of the [Stack] the panel is anchored to, so it slides away
+  /// *towards* its trigger rather than through the middle of the canvas: the
+  /// real editor docks its toolbar above the canvas (anchor the panel to the
+  /// top, slide up to hide — the default); the dev playground docks it below
+  /// (anchor to the bottom, slide down to hide instead).
+  final bool anchorBottom;
+
+  const EditorToolOptionsOverlay({super.key, this.anchorBottom = false});
+
+  /// Fixed rather than filling available width — a compact floating card
+  /// (matching the platform's own dropdown menus), not an edge-to-edge bar.
+  static const double _panelWidth = 340.0;
 
   @override
-  Widget build(BuildContext context) {
-    final Widget child = switch (state.tool) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(editorToolProvider);
+    final ctl = ref.read(editorToolProvider.notifier);
+
+    final Widget? content = switch (state.tool) {
       EditorTool.pen => _PenPanel(state: state, ctl: ctl),
       EditorTool.eraser => _EraserPanel(state: state, ctl: ctl),
       EditorTool.shape => _ShapePanel(state: state, ctl: ctl),
       EditorTool.text => _TextPanel(state: state, ctl: ctl),
-      _ => const SizedBox.shrink(),
+      _ => null,
     };
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      alignment: Alignment.topCenter,
-      child: child,
+    if (content == null) return const SizedBox.shrink();
+
+    final open = state.panelOpen;
+    final closedOffset = Offset(0, anchorBottom ? 1.2 : -1.2);
+    return IgnorePointer(
+      key: const ValueKey('editorToolOptionsIgnorePointer'),
+      // Hidden means visually gone *and* untouchable — otherwise a closed
+      // panel would still steal the first tap meant for the canvas beneath it.
+      ignoring: !open,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 240),
+        curve: open ? Curves.easeOutCubic : Curves.easeInCubic,
+        offset: open ? Offset.zero : closedOffset,
+        child: AnimatedOpacity(
+          duration: Duration(milliseconds: open ? 200 : 150),
+          opacity: open ? 1 : 0,
+          child: Container(
+            key: const ValueKey('editorToolOptionsPanelSurface'),
+            width: _panelWidth,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: ShapeDecoration(
+              color: AppColors.surface,
+              shadows: AppColors.shadowFloat,
+              // A "squircle" (Apple's continuous-corner rectangle) rather
+              // than an ordinary rounded rect, matching the platform's own
+              // floating dropdown menus.
+              shape: ContinuousRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+                side: const BorderSide(color: AppColors.border),
+              ),
+            ),
+            child: content,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -404,6 +452,33 @@ class _PenPanel extends StatelessWidget {
             onSelected: (_) {},
           ),
         ),
+        Row(
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: Icon(Icons.palette_outlined, size: 18),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final c in kFavoritePickerColors)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: _ColorDot(
+                          color: c,
+                          size: 22,
+                          selected: state.color == c,
+                          onTap: () => ctl.setColor(c),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
         _PanelSlider(
           icon: Icons.line_weight,
           value: state.size,
@@ -459,28 +534,32 @@ class _PenPanel extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 4),
               child: Icon(Icons.format_color_fill, size: 18),
             ),
+            const Spacer(),
             Switch(value: state.hasFill, onChanged: ctl.setHasFill),
-            if (state.hasFill)
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SegmentedButton<FillStyle>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                          value: FillStyle.hachure, label: Text('Hachure')),
-                      ButtonSegment(
-                          value: FillStyle.crossHatch, label: Text('Cross')),
-                      ButtonSegment(
-                          value: FillStyle.solid, label: Text('Solid')),
-                    ],
-                    selected: {state.fillStyle},
-                    onSelectionChanged: (s) => ctl.setFillStyle(s.first),
-                  ),
-                ),
-              ),
           ],
         ),
+        // On its own row rather than squeezed in after the switch — sharing a
+        // row with the icon + switch left too little width and clipped
+        // "Solid" off the edge of the (now fixed-width) floating panel.
+        if (state.hasFill)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<FillStyle>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                      value: FillStyle.hachure, label: Text('Hachure')),
+                  ButtonSegment(
+                      value: FillStyle.crossHatch, label: Text('Cross')),
+                  ButtonSegment(value: FillStyle.solid, label: Text('Solid')),
+                ],
+                selected: {state.fillStyle},
+                onSelectionChanged: (s) => ctl.setFillStyle(s.first),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -500,8 +579,13 @@ class _EraserPanel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         const SizedBox(height: 6),
-        Row(
-          mainAxisSize: MainAxisSize.min,
+        // Wraps rather than a fixed Row: the panel is now a compact
+        // fixed-width floating card, narrower than the old full-width inline
+        // bar these chips were sized for, so a two-line wrap on narrow
+        // widths beats either overflowing or hiding a chip off-screen.
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
           children: [
             ChoiceChip(
               showCheckmark: false,
@@ -509,7 +593,6 @@ class _EraserPanel extends StatelessWidget {
               selected: state.eraserPixel,
               onSelected: (_) => ctl.setEraserPixel(true),
             ),
-            const SizedBox(width: 8),
             ChoiceChip(
               showCheckmark: false,
               label: const Text('Stroke eraser'),

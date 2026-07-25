@@ -246,6 +246,19 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                           top: 12,
                           child: ZoomPill(),
                         ),
+                        // The active tool's options — floats over the canvas
+                        // rather than sitting in the toolbar's own layout, so
+                        // opening/closing it never resizes (and so never
+                        // shifts) the page underneath a mid-stroke drawing.
+                        const Positioned(
+                          top: 8,
+                          left: 8,
+                          right: 8,
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: EditorToolOptionsOverlay(),
+                          ),
+                        ),
                       ],
                     );
                   }),

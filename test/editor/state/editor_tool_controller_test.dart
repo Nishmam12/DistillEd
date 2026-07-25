@@ -49,4 +49,53 @@ void main() {
     expect(c.state.endArrowhead, Arrowhead.dot);
     expect(c.state.elbowed, true);
   });
+
+  group('options panel visibility', () {
+    test('the panel starts open on the default tool', () {
+      final c = EditorToolController();
+      expect(c.state.panelOpen, isTrue);
+    });
+
+    test('switching to a different tool (re)opens the panel', () {
+      final c = EditorToolController();
+      c.closePanel();
+      expect(c.state.panelOpen, isFalse);
+
+      c.setTool(EditorTool.eraser);
+      expect(c.state.tool, EditorTool.eraser);
+      expect(c.state.panelOpen, isTrue);
+    });
+
+    test('re-selecting the already-active tool toggles the panel', () {
+      final c = EditorToolController();
+      expect(c.state.tool, EditorTool.pen);
+      expect(c.state.panelOpen, isTrue);
+
+      c.setTool(EditorTool.pen); // same tool → toggle closed
+      expect(c.state.panelOpen, isFalse);
+
+      c.setTool(EditorTool.pen); // same tool again → toggle back open
+      expect(c.state.panelOpen, isTrue);
+    });
+
+    test('closePanel hides the panel and is idempotent', () {
+      final c = EditorToolController();
+      c.closePanel();
+      expect(c.state.panelOpen, isFalse);
+
+      // Calling it again while already closed must not throw or otherwise
+      // disturb state (it's called unconditionally on every canvas gesture).
+      c.closePanel();
+      expect(c.state.panelOpen, isFalse);
+      expect(c.state.tool, EditorTool.pen);
+    });
+
+    test('closePanel does not change the active tool', () {
+      final c = EditorToolController();
+      c.setTool(EditorTool.shape);
+      c.closePanel();
+      expect(c.state.tool, EditorTool.shape);
+      expect(c.state.panelOpen, isFalse);
+    });
+  });
 }
