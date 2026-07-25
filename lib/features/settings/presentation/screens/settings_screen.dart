@@ -126,7 +126,7 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               _SettingsRow(
                 icon: Icons.info_outline,
-                title: 'About Inkflow',
+                title: 'About DistillEd',
                 trailing: const Icon(
                   Icons.chevron_right,
                   color: AppColors.textMuted,

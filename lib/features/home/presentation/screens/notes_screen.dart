@@ -172,7 +172,7 @@ class _Header extends StatelessWidget {
         children: [
           const Expanded(
             child: Text(
-              'Notes',
+              'DistillEd',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 38,

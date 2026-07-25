@@ -22,7 +22,7 @@
 import '../../domain/models/flashcard.dart';
 
 /// Deck name used when the page has no identified topic to name the deck after.
-const String kDefaultAnkiDeckName = 'Inkflow Flashcards';
+const String kDefaultAnkiDeckName = 'DistillEd Flashcards';
 
 /// RFC-4180-style CSV: one `front,back` row per card, CRLF-separated, fields
 /// quoted only when they contain a comma, quote, or newline.

@@ -18,7 +18,7 @@ class _AboutScreenState extends State<AboutScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('About InkFlow'),
+        title: const Text('About DistillEd'),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -52,11 +52,11 @@ class _AboutScreenState extends State<AboutScreen> {
                 ),
                 children: [
                   TextSpan(
-                    text: 'Ink',
+                    text: 'Distill',
                     style: TextStyle(color: AppColors.accent),
                   ),
                   TextSpan(
-                    text: 'flow',
+                    text: 'Ed',
                     style: TextStyle(color: AppColors.textPrimary),
                   ),
                 ],
@@ -99,7 +99,7 @@ class _AboutScreenState extends State<AboutScreen> {
                 if (!context.mounted) return;
                 showLicensePage(
                   context: context,
-                  applicationName: 'InkFlow',
+                  applicationName: 'DistillEd',
                   applicationVersion: info.version,
                 );
               },

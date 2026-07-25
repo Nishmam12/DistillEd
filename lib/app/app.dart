@@ -14,7 +14,7 @@ class InkFlowApp extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
 
     return MaterialApp.router(
-      title: 'InkFlow',
+      title: 'DistillEd',
       debugShowCheckedModeBanner: false,
       showPerformanceOverlay: settings.devMode,
       theme: AppTheme.warmTheme,

@@ -240,7 +240,7 @@ class AnkiCollection {
   String get modelsJson => jsonEncode({
         '$kAnkiModelId': {
           'id': kAnkiModelId,
-          'name': 'Inkflow Basic',
+          'name': 'DistillEd Basic',
           'type': 0,
           'mod': crtSeconds,
           'usn': -1,
