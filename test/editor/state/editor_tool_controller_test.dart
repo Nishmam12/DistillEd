@@ -12,14 +12,19 @@ void main() {
     expect(c.state.tool, EditorTool.hand);
     expect(c.state.isHand, true);
 
-    c.setColor(0xFFFF0000);
-    expect(c.state.color, 0xFFFF0000);
-
     c.setSize(12);
     expect(c.state.size, 12);
 
     c.setOpacity(0.4);
     expect(c.state.opacity, 0.4);
+  });
+
+  test('setColor is the one universal colour — it sets stroke AND fill',
+      () {
+    final c = EditorToolController();
+    c.setColor(0xFFFF0000);
+    expect(c.state.color, 0xFFFF0000);
+    expect(c.state.fillColor, 0xFFFF0000);
   });
 
   test('setShapeType switches to the shape tool and records the type', () {
@@ -32,22 +37,54 @@ void main() {
   test('shape style setters update state', () {
     final c = EditorToolController();
     c.setHasFill(true);
-    c.setFillColor(0xFF00FF00);
     c.setFillStyle(FillStyle.solid);
     c.setStrokeStyle(StrokeStyle.dashed);
     c.setEdges(EdgeStyle.round);
-    c.setRoughness(2.0);
     c.setEndArrowhead(Arrowhead.dot);
     c.setElbowed(true);
 
     expect(c.state.hasFill, true);
-    expect(c.state.fillColor, 0xFF00FF00);
     expect(c.state.fillStyle, FillStyle.solid);
     expect(c.state.strokeStyle, StrokeStyle.dashed);
     expect(c.state.edges, EdgeStyle.round);
-    expect(c.state.roughness, 2.0);
     expect(c.state.endArrowhead, Arrowhead.dot);
     expect(c.state.elbowed, true);
+  });
+
+  group('arrow tool', () {
+    test('selectArrowTool switches into shape+arrow and opens the panel',
+        () {
+      final c = EditorToolController();
+      c.closePanel();
+      c.selectArrowTool();
+      expect(c.state.tool, EditorTool.shape);
+      expect(c.state.shapeType, ShapeType.arrow);
+      expect(c.state.panelOpen, isTrue);
+    });
+
+    test('selecting it again while already active toggles the panel', () {
+      final c = EditorToolController();
+      c.selectArrowTool();
+      expect(c.state.panelOpen, isTrue);
+
+      c.selectArrowTool(); // already arrow → toggle closed
+      expect(c.state.panelOpen, isFalse);
+      expect(c.state.shapeType, ShapeType.arrow);
+
+      c.selectArrowTool(); // already arrow → toggle back open
+      expect(c.state.panelOpen, isTrue);
+    });
+
+    test('switching to another shape and back to arrow reselects it', () {
+      final c = EditorToolController();
+      c.selectArrowTool();
+      c.setShapeType(ShapeType.rectangle);
+      expect(c.state.shapeType, ShapeType.rectangle);
+
+      c.selectArrowTool();
+      expect(c.state.shapeType, ShapeType.arrow);
+      expect(c.state.panelOpen, isTrue);
+    });
   });
 
   group('options panel visibility', () {

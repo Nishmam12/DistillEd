@@ -18,7 +18,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(EditorToolOptionsOverlay), findsOneWidget);
-    expect(find.byType(Slider), findsNWidgets(3)); // pen: size/roughness/opacity
+    expect(find.byType(Slider), findsNWidgets(2)); // pen: size/opacity
   });
 
   testWidgets('drawing on the canvas closes the panel without resizing it',
@@ -36,7 +36,13 @@ void main() {
     // The panel is gone (mid slide-away) but the canvas itself never
     // reflows — its size is unaffected by the panel opening or closing.
     expect(tester.getSize(find.byType(SceneCanvas)), canvasSize);
-    final slide = tester.widget<AnimatedSlide>(find.byType(AnimatedSlide));
+    // Scoped to the tool-options overlay: the universal colour palette also
+    // uses an AnimatedSlide for its own dropdown, so an unscoped type lookup
+    // would be ambiguous now that both live in this screen at once.
+    final slide = tester.widget<AnimatedSlide>(find.descendant(
+      of: find.byType(EditorToolOptionsOverlay),
+      matching: find.byType(AnimatedSlide),
+    ));
     expect(slide.offset, isNot(Offset.zero));
   });
 
@@ -48,7 +54,7 @@ void main() {
     // the stroke-eraser icon by default (see _ToolIconButton).
     await tester.tap(find.byIcon(Icons.layers_clear));
     await tester.pump();
-    expect(find.byType(Slider), findsNWidgets(2)); // eraser: size/roughness
+    expect(find.byType(Slider), findsOneWidget); // eraser: size only
 
     // Draw with it — the panel auto-closes.
     final g = await tester.startGesture(const Offset(120, 140),

@@ -11,6 +11,7 @@ import '../state/scene_controller.dart';
 import '../state/viewport_controller.dart';
 import 'editor_controls.dart';
 import 'scene_canvas.dart';
+import 'universal_color_palette.dart';
 
 const ScenePageKey _demoKey = (notebookId: 0, pageId: 0);
 
@@ -62,6 +63,7 @@ class _SceneEditorBody extends ConsumerWidget {
               child: EditorToolOptionsOverlay(anchorBottom: true),
             ),
           ),
+          Positioned(top: 8, right: 8, child: UniversalColorPalette()),
         ],
       ),
       bottomNavigationBar: const SafeArea(

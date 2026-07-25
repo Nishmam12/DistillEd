@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/data/persistence/scene_element_store.dart';
+import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/editor/state/editor_tool_controller.dart';
-import 'package:inkflow/editor/state/favorite_colors_controller.dart';
 import 'package:inkflow/editor/state/scene_controller.dart';
 import 'package:inkflow/editor/ui/editor_controls.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -109,38 +109,73 @@ void main() {
     });
   });
 
-  group('favourite colours + undo/redo', () {
-    testWidgets('shows three favourite swatches on the default colours',
+  group('arrow tool', () {
+    testWidgets('tapping the arrow icon selects the arrow shape directly',
         (tester) async {
       final container = await pumpBar(tester, onImport: () {});
-      expect(
-        container.read(favoriteColorsProvider),
-        FavoriteColorsController.defaults,
-      );
-      // Each swatch carries the tap/long-press affordance tooltip.
-      expect(
-        find.byTooltip('Tap to use · long-press to change'),
-        findsNWidgets(FavoriteColorsController.slots),
-      );
-    });
+      expect(container.read(editorToolProvider).tool, EditorTool.pen);
 
-    testWidgets('tapping a favourite sets it as the active drawing colour',
-        (tester) async {
-      final container = await pumpBar(tester, onImport: () {});
-      // Move off the first default so the tap is a real change.
-      container.read(editorToolProvider.notifier).setColor(0xFF000000);
-
-      await tester.tap(
-        find.byTooltip('Tap to use · long-press to change').first,
-      );
+      await tester.tap(find.byIcon(Icons.arrow_right_alt));
       await tester.pump();
 
-      expect(
-        container.read(editorToolProvider).color,
-        FavoriteColorsController.defaults.first,
-      );
+      expect(container.read(editorToolProvider).tool, EditorTool.shape);
+      expect(container.read(editorToolProvider).shapeType, ShapeType.arrow);
     });
 
+    testWidgets('the arrow button is visibly selected once active',
+        (tester) async {
+      final container = await pumpBar(tester, onImport: () {});
+      await tester.tap(find.byIcon(Icons.arrow_right_alt));
+      await tester.pump();
+
+      final btn = tester.widget<IconButton>(
+        find.ancestor(
+          of: find.byIcon(Icons.arrow_right_alt),
+          matching: find.byType(IconButton),
+        ),
+      );
+      expect(btn.isSelected, isTrue);
+
+      // Switching to an unrelated tool clears the highlight again.
+      await tester.tap(find.byIcon(Icons.near_me_outlined));
+      await tester.pump();
+      final btnAfter = tester.widget<IconButton>(
+        find.ancestor(
+          of: find.byIcon(Icons.arrow_right_alt),
+          matching: find.byType(IconButton),
+        ),
+      );
+      expect(btnAfter.isSelected, isFalse);
+      expect(container.read(editorToolProvider).tool, EditorTool.select);
+    });
+
+    testWidgets('long-pressing opens the arrowhead style menu', (tester) async {
+      final container = await pumpBar(tester, onImport: () {});
+      await tester.longPress(find.byIcon(Icons.arrow_right_alt));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Elbow arrow'), findsOneWidget);
+
+      // Picking the "no arrowhead" style (a plain line) updates the tool
+      // state and is reflected by the button's own icon afterwards.
+      await tester.tap(find.byIcon(Icons.remove).last);
+      await tester.pump();
+      expect(container.read(editorToolProvider).endArrowhead, Arrowhead.none);
+
+      await tester.tapAt(const Offset(5, 5)); // dismiss the popup
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.remove), findsOneWidget); // now the tool icon
+    });
+
+    testWidgets('long-press does not change the active tool', (tester) async {
+      final container = await pumpBar(tester, onImport: () {});
+      await tester.longPress(find.byIcon(Icons.arrow_right_alt));
+      await tester.pumpAndSettle();
+      expect(container.read(editorToolProvider).tool, EditorTool.pen);
+    });
+  });
+
+  group('undo/redo', () {
     testWidgets('undo and redo live in the bar and start disabled',
         (tester) async {
       await pumpBar(tester, onImport: () {});

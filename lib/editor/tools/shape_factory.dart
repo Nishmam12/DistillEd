@@ -31,7 +31,6 @@ class ShapeFactory {
       fillStyle: tool.fillStyle,
       strokeStyle: tool.strokeStyle,
       edges: tool.edges,
-      roughness: tool.roughness,
       seed: seed,
       startArrowhead: tool.startArrowhead,
       endArrowhead: tool.endArrowhead,

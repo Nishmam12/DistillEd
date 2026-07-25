@@ -23,7 +23,6 @@ class EditorToolState {
   final FillStyle fillStyle;
   final StrokeStyle strokeStyle;
   final EdgeStyle edges;
-  final double roughness;
   final Arrowhead startArrowhead;
   final Arrowhead endArrowhead;
   final bool elbowed;
@@ -52,7 +51,6 @@ class EditorToolState {
     this.fillStyle = FillStyle.hachure,
     this.strokeStyle = StrokeStyle.solid,
     this.edges = EdgeStyle.sharp,
-    this.roughness = 0.0,
     this.startArrowhead = Arrowhead.none,
     this.endArrowhead = Arrowhead.triangle,
     this.elbowed = false,
@@ -75,7 +73,6 @@ class EditorToolState {
     FillStyle? fillStyle,
     StrokeStyle? strokeStyle,
     EdgeStyle? edges,
-    double? roughness,
     Arrowhead? startArrowhead,
     Arrowhead? endArrowhead,
     bool? elbowed,
@@ -95,7 +92,6 @@ class EditorToolState {
       fillStyle: fillStyle ?? this.fillStyle,
       strokeStyle: strokeStyle ?? this.strokeStyle,
       edges: edges ?? this.edges,
-      roughness: roughness ?? this.roughness,
       startArrowhead: startArrowhead ?? this.startArrowhead,
       endArrowhead: endArrowhead ?? this.endArrowhead,
       elbowed: elbowed ?? this.elbowed,
@@ -128,18 +124,40 @@ class EditorToolController extends StateNotifier<EditorToolState> {
     state = state.copyWith(panelOpen: false);
   }
 
-  void setColor(int color) => state = state.copyWith(color: color);
+  /// The one universal drawing colour: sets both the stroke colour (pen +
+  /// shape outlines) and the shape fill colour together, so there is a single
+  /// "current colour" for the whole app rather than a separate control per
+  /// tool.
+  void setColor(int color) =>
+      state = state.copyWith(color: color, fillColor: color);
   void setSize(double size) => state = state.copyWith(size: size);
   void setOpacity(double opacity) => state = state.copyWith(opacity: opacity);
 
   void setShapeType(ShapeType t) =>
       state = state.copyWith(tool: EditorTool.shape, shapeType: t);
+
+  /// Selects the arrow shape (an arrowhead-tipped line — set the arrowhead
+  /// style to "none" for a plain line) as a first-class tool of its own,
+  /// rather than one chip buried in the shape-type picker. Mirrors
+  /// [setTool]'s open/toggle semantics: switching into it (re)opens the
+  /// shape options panel; tapping it again while already active toggles the
+  /// panel shut/open instead.
+  void selectArrowTool() {
+    final alreadyArrow =
+        state.tool == EditorTool.shape && state.shapeType == ShapeType.arrow;
+    state = alreadyArrow
+        ? state.copyWith(panelOpen: !state.panelOpen)
+        : state.copyWith(
+            tool: EditorTool.shape,
+            shapeType: ShapeType.arrow,
+            panelOpen: true,
+          );
+  }
+
   void setHasFill(bool v) => state = state.copyWith(hasFill: v);
-  void setFillColor(int c) => state = state.copyWith(fillColor: c);
   void setFillStyle(FillStyle f) => state = state.copyWith(fillStyle: f);
   void setStrokeStyle(StrokeStyle s) => state = state.copyWith(strokeStyle: s);
   void setEdges(EdgeStyle e) => state = state.copyWith(edges: e);
-  void setRoughness(double r) => state = state.copyWith(roughness: r);
   void setElbowed(bool v) => state = state.copyWith(elbowed: v);
   void setEndArrowhead(Arrowhead a) => state = state.copyWith(endArrowhead: a);
   void setStartArrowhead(Arrowhead a) =>

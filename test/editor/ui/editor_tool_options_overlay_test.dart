@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/editor/state/editor_tool_controller.dart';
 import 'package:inkflow/editor/ui/editor_controls.dart';
 
@@ -24,21 +25,29 @@ void main() {
   }
 
   group('panel content per tool', () {
-    testWidgets(
-        'shows the pen panel (size/roughness/opacity) for the default tool',
+    testWidgets('shows the pen panel (size/opacity) for the default tool',
         (tester) async {
       final container = await pumpOverlay(tester);
       expect(container.read(editorToolProvider).tool, EditorTool.pen);
       expect(container.read(editorToolProvider).panelOpen, isTrue);
-      expect(find.byType(Slider), findsNWidgets(3));
+      expect(find.byType(Slider), findsNWidgets(2));
     });
 
-    testWidgets('shows the eraser panel (size/roughness) for the eraser',
+    testWidgets(
+        'the pen panel has no stroke/edge/fill styling — those are shape '
+        'concepts now', (tester) async {
+      await pumpOverlay(tester);
+      expect(find.text('Dashed'), findsNothing);
+      expect(find.text('Round'), findsNothing);
+      expect(find.byType(Switch), findsNothing);
+    });
+
+    testWidgets('shows the eraser panel (size only) for the eraser',
         (tester) async {
       final container = await pumpOverlay(tester);
       container.read(editorToolProvider.notifier).setTool(EditorTool.eraser);
       await tester.pump();
-      expect(find.byType(Slider), findsNWidgets(2));
+      expect(find.byType(Slider), findsOneWidget);
     });
 
     testWidgets('shows the shape panel (size/opacity) for shapes',
@@ -47,6 +56,41 @@ void main() {
       container.read(editorToolProvider.notifier).setTool(EditorTool.shape);
       await tester.pump();
       expect(find.byType(Slider), findsNWidgets(2));
+    });
+
+    testWidgets(
+        'the shape-type picker has no line/arrow chips — those are the '
+        'dedicated arrow tool now', (tester) async {
+      final container = await pumpOverlay(tester);
+      container.read(editorToolProvider.notifier).setTool(EditorTool.shape);
+      await tester.pump();
+
+      expect(kEditorShapes.map((e) => e.$1), isNot(contains(ShapeType.line)));
+      expect(
+          kEditorShapes.map((e) => e.$1), isNot(contains(ShapeType.arrow)));
+      expect(find.byIcon(Icons.remove), findsNothing); // the old line chip
+      expect(find.byIcon(Icons.arrow_right_alt), findsNothing);
+    });
+
+    testWidgets('the shape panel now carries stroke style, edges and fill',
+        (tester) async {
+      final container = await pumpOverlay(tester);
+      container.read(editorToolProvider.notifier).setTool(EditorTool.shape);
+      await tester.pump();
+
+      expect(find.text('Dashed'), findsOneWidget);
+      expect(find.text('Dotted'), findsOneWidget);
+      expect(find.text('Sharp'), findsOneWidget);
+      expect(find.text('Round'), findsOneWidget);
+      expect(find.byType(Switch), findsOneWidget); // fill toggle
+
+      await tester.tap(find.text('Dashed'));
+      await tester.pump();
+      expect(container.read(editorToolProvider).strokeStyle, StrokeStyle.dashed);
+
+      await tester.tap(find.text('Round'));
+      await tester.pump();
+      expect(container.read(editorToolProvider).edges, EdgeStyle.round);
     });
 
     testWidgets('shows the text panel (font size) for text', (tester) async {
@@ -92,25 +136,11 @@ void main() {
       expect(container.read(editorToolProvider).size, greaterThan(before));
     });
 
-    testWidgets('the pen panel offers the same colour palette as shapes',
+    testWidgets('turning on shape fill does not overflow the panel',
         (tester) async {
       final container = await pumpOverlay(tester);
-      expect(container.read(editorToolProvider).tool, EditorTool.pen);
-      final before = container.read(editorToolProvider).color;
-
-      final target = kFavoritePickerColors.firstWhere((c) => c != before);
-      await tester.tap(find.byWidgetPredicate((w) =>
-          w is Container &&
-          w.decoration is BoxDecoration &&
-          (w.decoration as BoxDecoration).color == Color(target)));
+      container.read(editorToolProvider.notifier).setTool(EditorTool.shape);
       await tester.pump();
-
-      expect(container.read(editorToolProvider).color, target);
-    });
-
-    testWidgets('turning on pen fill does not overflow the panel',
-        (tester) async {
-      final container = await pumpOverlay(tester);
       expect(container.read(editorToolProvider).hasFill, isFalse);
 
       await tester.tap(find.byType(Switch));

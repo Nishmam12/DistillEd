@@ -36,6 +36,7 @@ import '../state/viewport_controller.dart';
 import 'editable_note_title.dart';
 import 'editor_controls.dart';
 import 'scene_canvas.dart';
+import 'universal_color_palette.dart';
 import 'zoom_pill.dart';
 
 /// On-screen size an inserted AI note aims for, in logical pixels. Converted
@@ -239,12 +240,20 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                             pageSize: _pageSheet,
                           ),
                         ),
-                        // Zoom level, just under the toolbar on the right;
-                        // tap to reset the view.
+                        // Zoom level and the universal colour palette, both
+                        // top-right under the toolbar; tap the pill to reset
+                        // the view, tap the swatch to open the colour grid.
                         const Positioned(
                           right: 16,
                           top: 12,
-                          child: ZoomPill(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              ZoomPill(),
+                              SizedBox(height: 8),
+                              UniversalColorPalette(),
+                            ],
+                          ),
                         ),
                         // The active tool's options — floats over the canvas
                         // rather than sitting in the toolbar's own layout, so
