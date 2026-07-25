@@ -30,6 +30,7 @@ class EditorToolState {
 
   // Text options.
   final double fontSize;
+  final String fontFamily;
 
   // Eraser: pixel (clears ink) vs element (removes whole elements).
   final bool eraserPixel;
@@ -50,6 +51,7 @@ class EditorToolState {
     this.endArrowhead = Arrowhead.triangle,
     this.elbowed = false,
     this.fontSize = 20.0,
+    this.fontFamily = 'Roboto',
     this.eraserPixel = false,
   });
 
@@ -71,6 +73,7 @@ class EditorToolState {
     Arrowhead? endArrowhead,
     bool? elbowed,
     double? fontSize,
+    String? fontFamily,
     bool? eraserPixel,
   }) {
     return EditorToolState(
@@ -89,6 +92,7 @@ class EditorToolState {
       endArrowhead: endArrowhead ?? this.endArrowhead,
       elbowed: elbowed ?? this.elbowed,
       fontSize: fontSize ?? this.fontSize,
+      fontFamily: fontFamily ?? this.fontFamily,
       eraserPixel: eraserPixel ?? this.eraserPixel,
     );
   }
@@ -115,6 +119,7 @@ class EditorToolController extends StateNotifier<EditorToolState> {
   void setStartArrowhead(Arrowhead a) =>
       state = state.copyWith(startArrowhead: a);
   void setFontSize(double s) => state = state.copyWith(fontSize: s);
+  void setFontFamily(String f) => state = state.copyWith(fontFamily: f);
   void setEraserPixel(bool v) => state = state.copyWith(eraserPixel: v);
 }
 

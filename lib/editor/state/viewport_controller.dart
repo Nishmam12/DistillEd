@@ -1,10 +1,11 @@
 // Viewport for the unified canvas — ported from the proven 1.0.2
 // `viewport_notifier.dart`. Transform model: screenX = scrollX + zoom * sceneX.
 //
-// Supports two layout modes (see [configure]): an infinite whiteboard (free
-// pan, wide zoom range) and a single bounded page (zoom limited to 50–300% and
-// pan clamped so the page stays in view / centred when it is smaller than the
-// viewport).
+// Supports two layout modes (see [configure]): an infinite whiteboard and a
+// single bounded page (pan clamped so the page stays in view / centred when
+// it is smaller than the viewport). Zoom is bounded to 100–200% in both modes
+// — the toolbar's zoom pill only ever zooms in/out within that range, never
+// past it.
 
 import 'dart:math' as math;
 
@@ -66,12 +67,21 @@ class ViewportState {
 }
 
 class ViewportController extends StateNotifier<ViewportState> {
-  static const double infiniteMinZoom = 0.1;
-  // Zoom is capped at 250% in both modes — past that, ink and text start to
-  // look soft and the extra magnification isn't useful for note-taking.
-  static const double infiniteMaxZoom = 2.5;
-  static const double pageMinZoom = 0.5;
-  static const double pageMaxZoom = 2.5;
+  // Zoom is bounded to 100–200% in both modes: 100% is the floor (no zooming
+  // out past the page's natural size) and 200% the ceiling (past that ink and
+  // text start to look soft and the extra magnification isn't useful for
+  // note-taking).
+  static const double infiniteMinZoom = 1.0;
+  static const double infiniteMaxZoom = 2.0;
+  static const double pageMinZoom = 1.0;
+  static const double pageMaxZoom = 2.0;
+
+  // A lower floor used only by the auto re-fit safety net in [configure]
+  // (never by manual zoom) — so a viewport cramped enough that fitting the
+  // whole page would shrink it past legibility still clamps to *something*
+  // readable, while ordinary re-fits (e.g. the AI panel docking, which lands
+  // well above this) stay free to go below [pageMinZoom]/[infiniteMinZoom].
+  static const double autoFitMinZoom = 0.5;
 
   ViewportController() : super(const ViewportState());
 
@@ -119,8 +129,16 @@ class ViewportController extends StateNotifier<ViewportState> {
     // without this the page keeps its size while the window around it shrinks,
     // so content slides off screen. A user who had deliberately zoomed past the
     // fit is left alone: they are inspecting detail, not reading the page.
+    //
+    // This re-fit is a clipping-prevention safety net, not a user zoom action,
+    // so it stays free to go below [_minZoom] — otherwise a page could end up
+    // wider than a narrowed viewport and slide off screen again, the exact bug
+    // it exists to fix. Manual zoom (pinch / the zoom pill, via [zoomAtPoint])
+    // is the only thing bounded to [_minZoom, _maxZoom].
     final target = wasWhole ? fitZoom : state.zoom;
-    final z = target.clamp(_minZoom, _maxZoom);
+    final z = wasWhole
+        ? target.clamp(autoFitMinZoom, _maxZoom)
+        : target.clamp(_minZoom, _maxZoom);
     state = _constrain(state.copyWith(zoom: z));
   }
 

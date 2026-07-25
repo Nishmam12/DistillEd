@@ -664,6 +664,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
         text: text.trim(),
         color: tool.color,
         fontSize: tool.fontSize,
+        fontFamily: tool.fontFamily,
         opacity: tool.opacity,
       )
     ]));

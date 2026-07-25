@@ -239,10 +239,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                             pageSize: _pageSheet,
                           ),
                         ),
-                        // Zoom level, bottom-right; tap to reset the view.
+                        // Zoom level, just under the toolbar on the right;
+                        // tap to reset the view.
                         const Positioned(
                           right: 16,
-                          bottom: 16,
+                          top: 12,
                           child: ZoomPill(),
                         ),
                       ],

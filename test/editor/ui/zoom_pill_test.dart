@@ -33,9 +33,9 @@ void main() {
 
   testWidgets('tapping resets the view to 100%', (tester) async {
     final container = await pump(tester);
-    container.read(viewportProvider.notifier).zoomAtPoint(2.5, Offset.zero);
+    container.read(viewportProvider.notifier).zoomAtPoint(2.0, Offset.zero);
     await tester.pump();
-    expect(find.text('250%'), findsOneWidget);
+    expect(find.text('200%'), findsOneWidget);
 
     await tester.tap(find.byType(ZoomPill));
     await tester.pump();

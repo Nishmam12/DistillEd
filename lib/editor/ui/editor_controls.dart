@@ -1,8 +1,9 @@
-// Shared editor chrome for the unified canvas — the bottom tool/style bar, the
-// selection action bar, the app-bar actions (undo/redo + overflow menu), and the
-// style / library bottom sheets. Parameterised by [ScenePageKey] so the dev
-// playground and the real notebook editor drive the same controls over their own
-// page (and their own provider scope / store).
+// Shared editor chrome for the unified canvas — the bottom tool/style bar (with
+// its per-tool sliding options panels), the selection action bar, the app-bar
+// actions (undo/redo + overflow menu), and the library bottom sheet.
+// Parameterised by [ScenePageKey] so the dev playground and the real notebook
+// editor drive the same controls over their own page (and their own provider
+// scope / store).
 
 import 'dart:math' as math;
 
@@ -34,14 +35,6 @@ import '../state/selection_controller.dart';
 import '../state/viewport_controller.dart';
 import 'text_input_dialog.dart';
 
-const List<int> kEditorPalette = [
-  0xFF1F2933,
-  0xFFE03131,
-  0xFF1971C2,
-  0xFF2F9E44,
-  0xFFF08C00,
-];
-
 // The primary drawing tools, in the order they sit in the toolbar. Frame and
 // hand stay in [EditorTool] (the canvas still handles them, and two-finger pan
 // covers hand) but are kept off this row to match the pared-back design; image
@@ -50,8 +43,8 @@ const List<(EditorTool, IconData)> kEditorTools = [
   (EditorTool.select, Icons.near_me_outlined),
   (EditorTool.pen, Icons.edit),
   (EditorTool.shape, Icons.category),
-  (EditorTool.text, Icons.title),
   (EditorTool.eraser, Icons.cleaning_services_outlined),
+  (EditorTool.text, Icons.title),
   (EditorTool.laser, Icons.flashlight_on_outlined),
 ];
 
@@ -63,6 +56,18 @@ const List<(ShapeType, IconData)> kEditorShapes = [
   (ShapeType.line, Icons.remove),
   (ShapeType.arrow, Icons.arrow_right_alt),
 ];
+
+// No font assets are bundled with the app, so these are generic family names
+// resolved by each platform's own font matching rather than guaranteed custom
+// typefaces — real visual variety depends on what's installed on the device.
+const List<String> kFontFamilies = ['Roboto', 'Serif', 'Monospace', 'Cursive'];
+
+const Map<Arrowhead, IconData> kArrowheadIcons = {
+  Arrowhead.none: Icons.remove,
+  Arrowhead.triangle: Icons.arrow_right_alt,
+  Arrowhead.dot: Icons.fiber_manual_record,
+  Arrowhead.bar: Icons.border_vertical,
+};
 
 String editorNewId() =>
     '${DateTime.now().microsecondsSinceEpoch}_${math.Random().nextInt(1 << 30)}';
@@ -249,100 +254,472 @@ class EditorBottomBar extends ConsumerWidget {
                           tool: t,
                           icon: icon,
                           state: tool,
-                          onTap: () {
-                            // Re-tapping the active eraser flips its mode
-                            // (stroke/element ↔ pixel) without opening a menu.
-                            if (t == EditorTool.eraser &&
-                                tool.tool == EditorTool.eraser) {
-                              toolCtl.setEraserPixel(!tool.eraserPixel);
-                            } else {
-                              toolCtl.setTool(t);
-                            }
-                          },
+                          onTap: () => toolCtl.setTool(t),
                         ),
-                      // Image import sits at the end of the tools as an action
-                      // (it opens the import sheet rather than selecting a tool).
+                      // Image import and the arrowhead preset sit at the end
+                      // of the tools as actions/presets, not selectable tools.
                       if (onImport != null)
                         IconButton(
                           tooltip: 'Import image / PDF',
                           icon: const Icon(Icons.image_outlined),
                           onPressed: onImport,
                         ),
+                      const _ArrowheadButton(),
                     ],
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               // Three persisted favourite colours: tap to use, long-press to
-              // reassign. They stand in for the old always-on palette; the full
-              // colour grid and stroke size now live in the Style sheet.
+              // reassign.
               const _FavoriteSwatches(),
               const SizedBox(width: 4),
               _UndoRedoButtons(pageKey: pageKey),
-              IconButton.filledTonal(
-                tooltip: 'Style',
-                icon: const Icon(Icons.tune),
-                onPressed: () => showModalBottomSheet<void>(
-                  context: context,
-                  showDragHandle: true,
-                  builder: (_) => const EditorStyleSheet(),
-                ),
-              ),
             ],
           ),
-          if (tool.tool == EditorTool.shape) ...[
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 4,
-              children: [
-                for (final (type, icon) in kEditorShapes)
-                  ChoiceChip(
-                    showCheckmark: false,
-                    label: Icon(icon, size: 18),
-                    selected: tool.shapeType == type,
-                    onSelected: (_) => toolCtl.setShapeType(type),
-                  ),
-              ],
-            ),
-          ],
-          // Pen and eraser are the two tools driven by stroke thickness, so
-          // their size slider stays docked below the tool row the whole time
-          // either is selected (rather than being tucked into the Style sheet).
-          if (tool.tool == EditorTool.pen ||
-              tool.tool == EditorTool.eraser)
-            _ThicknessSlider(value: tool.size, onChanged: toolCtl.setSize),
+          // Every tool that has its own options (pen/eraser/shape/text) gets a
+          // panel that slides smoothly in below the tool row; other tools
+          // (select/laser) collapse it away entirely.
+          _ToolOptionsPanel(state: tool, ctl: toolCtl),
         ],
       ),
     );
   }
 }
 
-/// The pen/eraser stroke-thickness slider shown below the tool row. Its own
-/// stateless widget so the toolbar's build stays readable.
-class _ThicknessSlider extends StatelessWidget {
+/// Dispatches to the options panel for whichever tool is active, animating
+/// smoothly between them (and collapsing to nothing for tools with no options
+/// of their own, e.g. select/laser) via [AnimatedSize].
+class _ToolOptionsPanel extends StatelessWidget {
+  final EditorToolState state;
+  final EditorToolController ctl;
+  const _ToolOptionsPanel({required this.state, required this.ctl});
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget child = switch (state.tool) {
+      EditorTool.pen => _PenPanel(state: state, ctl: ctl),
+      EditorTool.eraser => _EraserPanel(state: state, ctl: ctl),
+      EditorTool.shape => _ShapePanel(state: state, ctl: ctl),
+      EditorTool.text => _TextPanel(state: state, ctl: ctl),
+      _ => const SizedBox.shrink(),
+    };
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: child,
+    );
+  }
+}
+
+/// A labelled slider row shared by every tool panel — an icon, the slider
+/// itself, and a compact readout of the current value.
+class _PanelSlider extends StatelessWidget {
+  final IconData icon;
   final double value;
+  final double min;
+  final double max;
   final ValueChanged<double> onChanged;
-  const _ThicknessSlider({required this.value, required this.onChanged});
+  final String Function(double) label;
+
+  const _PanelSlider({
+    required this.icon,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Icon(Icons.line_weight, size: 18),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Icon(icon, size: 18),
         ),
         Expanded(
           child: Slider(
-            min: 1,
-            max: 24,
-            value: value.clamp(1, 24),
+            min: min,
+            max: max,
+            value: value.clamp(min, max),
             onChanged: onChanged,
           ),
         ),
-        SizedBox(
-          width: 24,
-          child: Text('${value.round()}', textAlign: TextAlign.end),
+        SizedBox(width: 36, child: Text(label(value), textAlign: TextAlign.end)),
+      ],
+    );
+  }
+}
+
+/// A leading-icon row whose control scrolls horizontally if it doesn't fit —
+/// shared by the panel rows built from a [SegmentedButton].
+Widget _panelRow(IconData icon, Widget control) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Icon(icon, size: 18),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: control,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+String _percentLabel(double v) => '${(v * 100).round()}%';
+String _roundedLabel(double v) => v.round().toString();
+String _oneDecimalLabel(double v) => v.toStringAsFixed(1);
+
+/// Pen options: a reserved slot for future brush types (only "Pen" exists
+/// today), thickness, roughness, opacity, and the stroke/fill/edge styling
+/// that used to live in the standalone Style sheet.
+class _PenPanel extends StatelessWidget {
+  final EditorToolState state;
+  final EditorToolController ctl;
+  const _PenPanel({required this.state, required this.ctl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: ChoiceChip(
+            showCheckmark: false,
+            label: const Icon(Icons.brush, size: 18),
+            tooltip: 'Pen',
+            selected: true,
+            onSelected: (_) {},
+          ),
+        ),
+        _PanelSlider(
+          icon: Icons.line_weight,
+          value: state.size,
+          min: 1,
+          max: 24,
+          onChanged: ctl.setSize,
+          label: _roundedLabel,
+        ),
+        _PanelSlider(
+          icon: Icons.gesture,
+          value: state.roughness,
+          min: 0,
+          max: 3,
+          onChanged: ctl.setRoughness,
+          label: _oneDecimalLabel,
+        ),
+        _PanelSlider(
+          icon: Icons.opacity,
+          value: state.opacity,
+          min: 0.1,
+          max: 1,
+          onChanged: ctl.setOpacity,
+          label: _percentLabel,
+        ),
+        _panelRow(
+          Icons.line_style,
+          SegmentedButton<StrokeStyle>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: StrokeStyle.solid, label: Text('Solid')),
+              ButtonSegment(value: StrokeStyle.dashed, label: Text('Dashed')),
+              ButtonSegment(value: StrokeStyle.dotted, label: Text('Dotted')),
+            ],
+            selected: {state.strokeStyle},
+            onSelectionChanged: (s) => ctl.setStrokeStyle(s.first),
+          ),
+        ),
+        _panelRow(
+          Icons.rounded_corner,
+          SegmentedButton<EdgeStyle>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: EdgeStyle.sharp, label: Text('Sharp')),
+              ButtonSegment(value: EdgeStyle.round, label: Text('Round')),
+            ],
+            selected: {state.edges},
+            onSelectionChanged: (s) => ctl.setEdges(s.first),
+          ),
+        ),
+        Row(
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: Icon(Icons.format_color_fill, size: 18),
+            ),
+            Switch(value: state.hasFill, onChanged: ctl.setHasFill),
+            if (state.hasFill)
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SegmentedButton<FillStyle>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                          value: FillStyle.hachure, label: Text('Hachure')),
+                      ButtonSegment(
+                          value: FillStyle.crossHatch, label: Text('Cross')),
+                      ButtonSegment(
+                          value: FillStyle.solid, label: Text('Solid')),
+                    ],
+                    selected: {state.fillStyle},
+                    onSelectionChanged: (s) => ctl.setFillStyle(s.first),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Eraser options: explicit pixel/stroke mode chips, thickness and roughness.
+/// Mode used to also be toggled by re-tapping the active eraser icon; that
+/// shortcut is gone now that this panel gives it an explicit control.
+class _EraserPanel extends StatelessWidget {
+  final EditorToolState state;
+  final EditorToolController ctl;
+  const _EraserPanel({required this.state, required this.ctl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 6),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ChoiceChip(
+              showCheckmark: false,
+              label: const Text('Pixel eraser'),
+              selected: state.eraserPixel,
+              onSelected: (_) => ctl.setEraserPixel(true),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              showCheckmark: false,
+              label: const Text('Stroke eraser'),
+              selected: !state.eraserPixel,
+              onSelected: (_) => ctl.setEraserPixel(false),
+            ),
+          ],
+        ),
+        _PanelSlider(
+          icon: Icons.line_weight,
+          value: state.size,
+          min: 1,
+          max: 24,
+          onChanged: ctl.setSize,
+          label: _roundedLabel,
+        ),
+        _PanelSlider(
+          icon: Icons.gesture,
+          value: state.roughness,
+          min: 0,
+          max: 3,
+          onChanged: ctl.setRoughness,
+          label: _oneDecimalLabel,
+        ),
+      ],
+    );
+  }
+}
+
+/// Shape options: the shape-type picker (moved in from its old standalone
+/// row), thickness, opacity and a fill-colour swatch row.
+class _ShapePanel extends StatelessWidget {
+  final EditorToolState state;
+  final EditorToolController ctl;
+  const _ShapePanel({required this.state, required this.ctl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 4,
+          children: [
+            for (final (type, icon) in kEditorShapes)
+              ChoiceChip(
+                showCheckmark: false,
+                label: Icon(icon, size: 18),
+                selected: state.shapeType == type,
+                onSelected: (_) => ctl.setShapeType(type),
+              ),
+          ],
+        ),
+        _PanelSlider(
+          icon: Icons.line_weight,
+          value: state.size,
+          min: 1,
+          max: 24,
+          onChanged: ctl.setSize,
+          label: _roundedLabel,
+        ),
+        _PanelSlider(
+          icon: Icons.opacity,
+          value: state.opacity,
+          min: 0.1,
+          max: 1,
+          onChanged: ctl.setOpacity,
+          label: _percentLabel,
+        ),
+        Row(
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: Icon(Icons.format_color_fill, size: 18),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final c in kFavoritePickerColors)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: _ColorDot(
+                          color: c,
+                          size: 22,
+                          selected: state.fillColor == c,
+                          onTap: () => ctl.setFillColor(c),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Text options: font family and font size, replacing the old sheet's single
+/// shared font-size slider with a panel of its own.
+class _TextPanel extends StatelessWidget {
+  final EditorToolState state;
+  final EditorToolController ctl;
+  const _TextPanel({required this.state, required this.ctl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: Icon(Icons.font_download_outlined, size: 18),
+            ),
+            Expanded(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: state.fontFamily,
+                items: [
+                  for (final f in kFontFamilies)
+                    DropdownMenuItem(
+                      value: f,
+                      child: Text(f, style: TextStyle(fontFamily: f)),
+                    ),
+                ],
+                onChanged: (v) {
+                  if (v != null) ctl.setFontFamily(v);
+                },
+              ),
+            ),
+          ],
+        ),
+        _PanelSlider(
+          icon: Icons.format_size,
+          value: state.fontSize,
+          min: 10,
+          max: 72,
+          onChanged: ctl.setFontSize,
+          label: _roundedLabel,
+        ),
+      ],
+    );
+  }
+}
+
+/// Persistent arrowhead preset, next to the image-import action rather than
+/// gated behind a specific tool: it sets what the *next* arrow drawn will use,
+/// whichever tool is active when that happens. Its popup also holds the
+/// elbow-arrow toggle.
+class _ArrowheadButton extends ConsumerWidget {
+  const _ArrowheadButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(editorToolProvider);
+    final ctl = ref.read(editorToolProvider.notifier);
+
+    return PopupMenuButton<void>(
+      tooltip: 'Arrowhead',
+      icon: Icon(kArrowheadIcons[state.endArrowhead] ?? Icons.arrow_right_alt),
+      itemBuilder: (context) => [
+        PopupMenuItem<void>(
+          child: StatefulBuilder(
+            builder: (context, setMenuState) {
+              final live = ref.read(editorToolProvider);
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      for (final a in Arrowhead.values)
+                        ChoiceChip(
+                          showCheckmark: false,
+                          label: Icon(kArrowheadIcons[a] ?? Icons.arrow_right_alt,
+                              size: 18),
+                          selected: live.endArrowhead == a,
+                          onSelected: (_) {
+                            ctl.setEndArrowhead(a);
+                            setMenuState(() {});
+                          },
+                        ),
+                    ],
+                  ),
+                  const Divider(height: 16),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Elbow arrow'),
+                      Switch(
+                        value: live.elbowed,
+                        onChanged: (v) {
+                          ctl.setElbowed(v);
+                          setMenuState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ],
     );
@@ -350,8 +727,9 @@ class _ThicknessSlider extends StatelessWidget {
 }
 
 /// A single tool button in the bottom bar. For the eraser it shows a distinct
-/// icon per mode (stroke/element vs pixel) so the current mode is visible, and
-/// its tap behaviour (select vs toggle mode) is decided by the parent.
+/// icon per mode (stroke/element vs pixel) so the current mode is visible —
+/// that mode is chosen in the eraser's options panel, not by tapping this
+/// button, which always just selects the tool.
 class _ToolIconButton extends StatelessWidget {
   final EditorTool tool;
   final IconData icon;
@@ -374,9 +752,7 @@ class _ToolIconButton extends StatelessWidget {
         ? (state.eraserPixel ? Icons.auto_fix_high : Icons.layers_clear)
         : icon;
     final tooltip = isEraser
-        ? (state.eraserPixel
-            ? 'Pixel eraser — tap to switch to stroke'
-            : 'Stroke eraser — tap to switch to pixel')
+        ? (state.eraserPixel ? 'Pixel eraser' : 'Stroke eraser')
         : null;
 
     return IconButton(
@@ -956,145 +1332,3 @@ class EditorLibrarySheet extends ConsumerWidget {
   }
 }
 
-class EditorStyleSheet extends ConsumerWidget {
-  const EditorStyleSheet({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tool = ref.watch(editorToolProvider);
-    final c = ref.read(editorToolProvider.notifier);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      child: ListView(
-        shrinkWrap: true,
-        children: [
-          // Colour + stroke size moved here when the toolbar switched to three
-          // favourite swatches, so the full spread and the size control stay a
-          // tap away without cluttering the bar.
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text('Colour', style: Theme.of(context).textTheme.titleSmall),
-          ),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final col in kEditorPalette)
-                _ColorDot(
-                  color: col,
-                  size: 32,
-                  selected: tool.color == col,
-                  onTap: () => c.setColor(col),
-                ),
-            ],
-          ),
-          _slider('Size', tool.size.clamp(1, 24), 1, 24, c.setSize),
-          const Divider(),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Pixel eraser (vs element eraser)'),
-            value: tool.eraserPixel,
-            onChanged: c.setEraserPixel,
-          ),
-          const Divider(),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Fill'),
-            value: tool.hasFill,
-            onChanged: c.setHasFill,
-          ),
-          _row(
-              'Fill style',
-              SegmentedButton<FillStyle>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(
-                      value: FillStyle.hachure, label: Text('Hachure')),
-                  ButtonSegment(
-                      value: FillStyle.crossHatch, label: Text('Cross')),
-                  ButtonSegment(value: FillStyle.solid, label: Text('Solid')),
-                ],
-                selected: {tool.fillStyle},
-                onSelectionChanged: (s) => c.setFillStyle(s.first),
-              )),
-          _row(
-              'Stroke style',
-              SegmentedButton<StrokeStyle>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: StrokeStyle.solid, label: Text('Solid')),
-                  ButtonSegment(
-                      value: StrokeStyle.dashed, label: Text('Dashed')),
-                  ButtonSegment(
-                      value: StrokeStyle.dotted, label: Text('Dotted')),
-                ],
-                selected: {tool.strokeStyle},
-                onSelectionChanged: (s) => c.setStrokeStyle(s.first),
-              )),
-          _row(
-              'Edges',
-              SegmentedButton<EdgeStyle>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: EdgeStyle.sharp, label: Text('Sharp')),
-                  ButtonSegment(value: EdgeStyle.round, label: Text('Round')),
-                ],
-                selected: {tool.edges},
-                onSelectionChanged: (s) => c.setEdges(s.first),
-              )),
-          _row(
-              'Arrowhead',
-              SegmentedButton<Arrowhead>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: Arrowhead.none, label: Text('None')),
-                  ButtonSegment(value: Arrowhead.triangle, label: Text('Tri')),
-                  ButtonSegment(value: Arrowhead.dot, label: Text('Dot')),
-                  ButtonSegment(value: Arrowhead.bar, label: Text('Bar')),
-                ],
-                selected: {tool.endArrowhead},
-                onSelectionChanged: (s) => c.setEndArrowhead(s.first),
-              )),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Elbow arrow'),
-            value: tool.elbowed,
-            onChanged: c.setElbowed,
-          ),
-          _slider('Roughness', tool.roughness, 0, 3, c.setRoughness),
-          _slider('Opacity', tool.opacity, 0.1, 1, c.setOpacity),
-        ],
-      ),
-    );
-  }
-
-  Widget _row(String label, Widget child) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label),
-            Flexible(
-                child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal, child: child)),
-          ],
-        ),
-      );
-
-  Widget _slider(String label, double value, double min, double max,
-          ValueChanged<double> onChanged) =>
-      Row(
-        children: [
-          SizedBox(width: 80, child: Text(label)),
-          Expanded(
-            child: Slider(
-              min: min,
-              max: max,
-              value: value.clamp(min, max),
-              onChanged: onChanged,
-            ),
-          ),
-        ],
-      );
-}

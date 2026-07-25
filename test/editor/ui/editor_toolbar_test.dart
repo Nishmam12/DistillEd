@@ -84,7 +84,7 @@ void main() {
       expect(selectBtn.isSelected, isTrue);
     });
 
-    testWidgets('re-tapping the active eraser toggles pixel/stroke mode',
+    testWidgets('re-tapping the active eraser does not change its mode',
         (tester) async {
       final container = await pumpBar(tester, onImport: () {});
 
@@ -95,9 +95,23 @@ void main() {
 
       await tester.tap(find.byIcon(Icons.layers_clear));
       await tester.pump();
+      expect(container.read(editorToolProvider).eraserPixel, isFalse);
+      expect(find.byIcon(Icons.layers_clear), findsOneWidget);
+    });
+
+    testWidgets('the eraser panel switches pixel/stroke mode', (tester) async {
+      final container = await pumpBar(tester, onImport: () {});
+      await tester.tap(find.byIcon(Icons.layers_clear));
+      await tester.pump();
+      expect(container.read(editorToolProvider).eraserPixel, isFalse);
+
+      await tester.tap(find.text('Pixel eraser'));
+      await tester.pump();
       expect(container.read(editorToolProvider).eraserPixel, isTrue);
-      expect(find.byIcon(Icons.auto_fix_high), findsOneWidget);
-      expect(find.byIcon(Icons.layers_clear), findsNothing);
+
+      await tester.tap(find.text('Stroke eraser'));
+      await tester.pump();
+      expect(container.read(editorToolProvider).eraserPixel, isFalse);
     });
 
     testWidgets('the import handler fires when the import button is tapped',
@@ -164,39 +178,54 @@ void main() {
     });
   });
 
-  group('thickness slider', () {
-    testWidgets('is shown for the pen (the default tool)', (tester) async {
+  group('tool options panel', () {
+    testWidgets(
+        'shows the pen panel (size/roughness/opacity) for the default tool',
+        (tester) async {
       final container = await pumpBar(tester, onImport: () {});
       expect(container.read(editorToolProvider).tool, EditorTool.pen);
-      expect(find.byType(Slider), findsOneWidget);
+      expect(find.byType(Slider), findsNWidgets(3));
     });
 
-    testWidgets('stays docked for the eraser', (tester) async {
+    testWidgets('shows the eraser panel (size/roughness) for the eraser',
+        (tester) async {
       final container = await pumpBar(tester, onImport: () {});
       container.read(editorToolProvider.notifier).setTool(EditorTool.eraser);
+      await tester.pump();
+      expect(find.byType(Slider), findsNWidgets(2));
+    });
+
+    testWidgets('shows the shape panel (size/opacity) for shapes',
+        (tester) async {
+      final container = await pumpBar(tester, onImport: () {});
+      container.read(editorToolProvider.notifier).setTool(EditorTool.shape);
+      await tester.pump();
+      expect(find.byType(Slider), findsNWidgets(2));
+    });
+
+    testWidgets('shows the text panel (font size) for text', (tester) async {
+      final container = await pumpBar(tester, onImport: () {});
+      container.read(editorToolProvider.notifier).setTool(EditorTool.text);
       await tester.pump();
       expect(find.byType(Slider), findsOneWidget);
     });
 
-    testWidgets('is hidden for tools that do not use thickness', (tester) async {
+    testWidgets('is empty for tools with no options of their own',
+        (tester) async {
       final container = await pumpBar(tester, onImport: () {});
-      for (final t in [
-        EditorTool.select,
-        EditorTool.shape,
-        EditorTool.text,
-        EditorTool.laser,
-      ]) {
+      for (final t in [EditorTool.select, EditorTool.laser]) {
         container.read(editorToolProvider.notifier).setTool(t);
         await tester.pump();
         expect(find.byType(Slider), findsNothing, reason: 'no slider for $t');
       }
     });
 
-    testWidgets('dragging the slider changes the stroke size', (tester) async {
+    testWidgets('dragging the thickness slider changes the stroke size',
+        (tester) async {
       final container = await pumpBar(tester, onImport: () {});
       final before = container.read(editorToolProvider).size;
-      // Drag toward the right end of the track to increase thickness.
-      await tester.drag(find.byType(Slider), const Offset(60, 0));
+      // Thickness is the first slider in the pen panel.
+      await tester.drag(find.byType(Slider).first, const Offset(60, 0));
       await tester.pump();
       expect(container.read(editorToolProvider).size, greaterThan(before));
     });

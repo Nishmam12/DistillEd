@@ -26,9 +26,9 @@ void main() {
       final c = ViewportController();
       const focal = Offset(200, 150);
       final sceneBefore = c.state.toScene(focal);
-      c.zoomAtPoint(2.5, focal);
+      c.zoomAtPoint(1.5, focal);
       final sceneAfter = c.state.toScene(focal);
-      expect(c.state.zoom, 2.5);
+      expect(c.state.zoom, 1.5);
       expect(sceneAfter.dx, closeTo(sceneBefore.dx, 1e-9));
       expect(sceneAfter.dy, closeTo(sceneBefore.dy, 1e-9));
     });
@@ -41,21 +41,22 @@ void main() {
       expect(c.state.zoom, ViewportController.infiniteMinZoom);
     });
 
-    test('page mode clamps zoom to 50–250% and centres a small page', () {
+    test('page mode clamps zoom to 100–200% and centres a small page', () {
       final c = ViewportController();
       c.configure(
         pageMode: true,
         pageSize: const Size(100, 200),
-        viewportSize: const Size(100, 200),
+        viewportSize: const Size(200, 400),
       );
       // Zoom is limited to the page range.
-      c.zoomAtPoint(99, const Offset(50, 100));
+      c.zoomAtPoint(99, const Offset(100, 200));
       expect(c.state.zoom, ViewportController.pageMaxZoom);
-      c.zoomAtPoint(0.0001, const Offset(50, 100));
+      c.zoomAtPoint(0.0001, const Offset(100, 200));
       expect(c.state.zoom, ViewportController.pageMinZoom);
-      // At 50% the page is smaller than the viewport, so it is centred.
-      expect(c.state.scrollX, closeTo((100 - 100 * 0.5) / 2, 1e-9));
-      expect(c.state.scrollY, closeTo((200 - 200 * 0.5) / 2, 1e-9));
+      // At the 100% floor the page is still smaller than the viewport, so it
+      // is centred.
+      expect(c.state.scrollX, closeTo((200 - 100 * 1.0) / 2, 1e-9));
+      expect(c.state.scrollY, closeTo((400 - 200 * 1.0) / 2, 1e-9));
     });
 
     group('re-fitting when the viewport narrows', () {
@@ -122,9 +123,11 @@ void main() {
           viewportSize: const Size(400, 500),
         );
         expect(c.fitZoom, closeTo(0.4, 1e-9));
-        // 0.4 is below the page-mode floor, so zoom clamps and the page is
-        // pannable rather than shrunk past legibility.
-        expect(c.state.zoom, ViewportController.pageMinZoom);
+        // 0.4 is below the auto-fit's own legibility floor (well below the
+        // page-mode manual-zoom floor, which this safety net ignores), so
+        // zoom clamps there and the page is pannable rather than shrunk past
+        // legibility.
+        expect(c.state.zoom, ViewportController.autoFitMinZoom);
       });
 
       test('fitZoom is 1.0 on the infinite canvas', () {
