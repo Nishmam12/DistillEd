@@ -515,36 +515,31 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   }
 
   /// Drops [imported] onto the current page, sized against what's on screen and
-  /// placed in the first clear slot — the same rules an inserted AI note uses.
+  /// centred in it.
+  ///
+  /// Centred, rather than slotted into the first clear gap the way an inserted
+  /// AI note is: a picture is something the user positions and resizes by hand
+  /// straight away, and the note's slide-down search would carry it to the far
+  /// corner of a page that already has work on it — or off the sheet entirely
+  /// in page mode, where the visible area extends past the paper and anything
+  /// outside it is clipped away.
   void _addImageInline(ScenePageKey key, ImportedImage imported) {
     final viewport = ref.read(viewportProvider);
     final canvasSize = ref.read(viewportProvider.notifier).viewportSize;
     if (canvasSize.isEmpty) return; // canvas hasn't laid out yet
-    final visible = viewport.visibleSceneRect(canvasSize);
 
-    // Sized in scene units against the visible area, so a photo occupies the
-    // same share of the screen whatever the zoom.
-    final size = inlineSize(imported.pixelSize, visible.size);
-    if (size.isEmpty) {
-      _toast("That image couldn't be measured.");
-      return;
-    }
-
-    final existing = <Rect>[];
-    for (final e in ref.read(sceneControllerProvider(key))) {
-      if (e is FreehandElement && e.isEraser) continue;
-      final r = ElementBounds.of(e);
-      if (!r.isEmpty) existing.add(r);
-    }
-
-    final box = placeNoteSlot(
-      bounds: visible,
-      width: size.width,
-      height: size.height,
-      existing: existing,
+    final sheet = _pageSheet;
+    // Sized in scene units against the area it lands in, so a photo occupies
+    // the same share of the screen whatever the zoom.
+    final box = inlinePlacement(
+      imported.pixelSize,
+      viewport.visibleSceneRect(canvasSize),
+      page: _pageMode && sheet != null && !sheet.isEmpty
+          ? Offset.zero & sheet
+          : null,
     );
-    if (box == null) {
-      _toast('No empty space in view — scroll or zoom out to make room.');
+    if (box.isEmpty) {
+      _toast("That image couldn't be measured.");
       return;
     }
 

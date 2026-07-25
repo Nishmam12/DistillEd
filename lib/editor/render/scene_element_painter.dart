@@ -222,22 +222,77 @@ class SceneElementPainter {
     final pts = _shaftPoints(s);
     if (pts.length < 2) return;
 
+    final isArrow = s.shapeType == ShapeType.arrow;
+    // The shaft stops at the back of each head, so the head's point is the end
+    // of the arrow. Drawn to full length it runs past the tip by half a stroke
+    // width — more once roughness jitters the endpoint — and that overshoot
+    // reads as the head sitting short of where the line ends.
+    final shaftPts = isArrow
+        ? _trimShaft(pts, s.startArrowhead, s.endArrowhead, s.strokeWidth)
+        : pts;
+
     final Path shaft;
     if (s.roughness > 0) {
-      shaft = _roughOutline(s, pts, false);
+      shaft = _roughOutline(s, shaftPts, false);
     } else {
-      shaft = Path()..moveTo(pts.first.dx, pts.first.dy);
-      for (int i = 1; i < pts.length; i++) {
-        shaft.lineTo(pts[i].dx, pts[i].dy);
+      shaft = Path()..moveTo(shaftPts.first.dx, shaftPts.first.dy);
+      for (int i = 1; i < shaftPts.length; i++) {
+        shaft.lineTo(shaftPts[i].dx, shaftPts[i].dy);
       }
     }
     canvas.drawPath(_dash(shaft, s.strokeStyle, s.strokeWidth), strokePaint);
 
-    if (s.shapeType == ShapeType.arrow) {
+    if (isArrow) {
+      // Angles come from the untrimmed points, so trimming can never turn a
+      // head away from the direction the user drew.
       _arrowhead(canvas, pts.last, pts[pts.length - 2], s.endArrowhead,
           strokePaint.color, s.strokeWidth);
       _arrowhead(canvas, pts.first, pts[1], s.startArrowhead, strokePaint.color,
           s.strokeWidth);
+    }
+  }
+
+  /// [pts] with each end pulled back by however far its arrowhead reaches along
+  /// the shaft, so the shaft finishes inside the head rather than through it.
+  @visibleForTesting
+  static List<Offset> trimShaftForHeads(
+          List<Offset> pts, Arrowhead start, Arrowhead end, double w) =>
+      _trimShaft(pts, start, end, w);
+
+  static List<Offset> _trimShaft(
+      List<Offset> pts, Arrowhead start, Arrowhead end, double w) {
+    final out = [...pts];
+    final last = out.length - 1;
+    out[0] = _pullBack(out[0], out[1], _headInset(start, w));
+    out[last] = _pullBack(out[last], out[last - 1], _headInset(end, w));
+    return out;
+  }
+
+  /// [tip] moved [inset] towards [towards], never past it — a stub of an arrow
+  /// shorter than its own head collapses instead of doubling back.
+  static Offset _pullBack(Offset tip, Offset towards, double inset) {
+    if (inset <= 0) return tip;
+    final d = towards - tip;
+    final len = d.distance;
+    if (len == 0) return tip;
+    return tip + d * (math.min(inset, len) / len);
+  }
+
+  /// How far back from the tip an [Arrowhead] already covers the shaft. Only
+  /// heads that would leave the shaft's round cap showing need one: a dot is
+  /// centred on the tip and always wider than the cap, so it hides it already.
+  static double _headInset(Arrowhead type, double w) {
+    switch (type) {
+      case Arrowhead.none:
+      case Arrowhead.dot:
+        return 0;
+      case Arrowhead.triangle:
+        // Where the barbs meet the shaft, kept half a stroke shallower so the
+        // trim can never open a gap between shaft and head.
+        return math.max(
+            0, _arrowheadSize(w) * math.cos(_kArrowSpread) - w * 0.5);
+      case Arrowhead.bar:
+        return w * 0.5;
     }
   }
 
@@ -250,19 +305,30 @@ class SceneElementPainter {
     return [start, end];
   }
 
+  /// Angle between the shaft and each barb of a triangular arrowhead. Shared
+  /// with [_headInset], which needs the same geometry to know how far the head
+  /// reaches back down the shaft.
+  static const double _kArrowSpread = 0.5;
+
+  static double _arrowheadSize(double w) => math.max(10.0, w * 3.5);
+
   static void _arrowhead(Canvas canvas, Offset tip, Offset from, Arrowhead type,
       Color color, double w) {
     if (type == Arrowhead.none) return;
     final angle = math.atan2(tip.dy - from.dy, tip.dx - from.dx);
-    final size = math.max(10.0, w * 3.5);
+    final size = _arrowheadSize(w);
     switch (type) {
       case Arrowhead.none:
         return;
       case Arrowhead.triangle:
         final p1 = tip -
-            Offset(math.cos(angle - 0.5), math.sin(angle - 0.5)) * size;
+            Offset(math.cos(angle - _kArrowSpread),
+                    math.sin(angle - _kArrowSpread)) *
+                size;
         final p2 = tip -
-            Offset(math.cos(angle + 0.5), math.sin(angle + 0.5)) * size;
+            Offset(math.cos(angle + _kArrowSpread),
+                    math.sin(angle + _kArrowSpread)) *
+                size;
         final path = Path()
           ..moveTo(tip.dx, tip.dy)
           ..lineTo(p1.dx, p1.dy)

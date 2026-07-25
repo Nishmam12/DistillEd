@@ -118,4 +118,74 @@ void main() {
       expect(inlineSize(const Size(100, 100), Size.zero), Size.zero);
     });
   });
+
+  group('inlinePlacement', () {
+    // A viewport looking at the middle of an infinite canvas.
+    const visible = Rect.fromLTWH(200, 400, 1000, 800);
+
+    test('the image is centred in the visible area, not tucked in a corner',
+        () {
+      final r = inlinePlacement(const Size(4000, 3000), visible);
+      expect(r.center, visible.center);
+      expect(r.width, closeTo(500, 1e-9));
+      expect(r.height, closeTo(375, 1e-9));
+    });
+
+    test('it lands where the user is looking, not at the scene origin', () {
+      final r = inlinePlacement(const Size(4000, 3000), visible);
+      expect(visible.contains(r.center), isTrue);
+      expect(r.left, greaterThan(visible.left));
+      expect(r.right, lessThan(visible.right));
+      expect(r.top, greaterThan(visible.top));
+      expect(r.bottom, lessThan(visible.bottom));
+    });
+
+    test('in page mode it stays on the sheet when the view overhangs it', () {
+      // Page mode centres a page smaller than the canvas, so the visible area
+      // runs off the paper on both sides — content out there is clipped away.
+      const page = Rect.fromLTWH(0, 0, 600, 900);
+      const overhanging = Rect.fromLTRB(-120, -80, 720, 980);
+
+      final r = inlinePlacement(const Size(4000, 3000), overhanging,
+          page: page);
+
+      expect(page.contains(r.topLeft), isTrue);
+      expect(page.contains(r.bottomRight), isTrue);
+      expect(r.center, page.center);
+    });
+
+    test('page mode centres on the visible slice when zoomed in', () {
+      // Zoomed in on the lower half of the sheet: the image belongs there, not
+      // at the middle of a page the user cannot currently see.
+      const page = Rect.fromLTWH(0, 0, 600, 900);
+      const lowerHalf = Rect.fromLTWH(0, 450, 600, 450);
+
+      final r = inlinePlacement(const Size(4000, 3000), lowerHalf, page: page);
+
+      expect(r.center, lowerHalf.center);
+      expect(page.contains(r.center), isTrue);
+    });
+
+    test('a view scrolled clear off the page falls back to the page centre',
+        () {
+      const page = Rect.fromLTWH(0, 0, 600, 900);
+      const elsewhere = Rect.fromLTWH(5000, 5000, 800, 800);
+
+      final r = inlinePlacement(const Size(4000, 3000), elsewhere, page: page);
+
+      expect(r.center, page.center,
+          reason: 'off-page is clipped away; the page is at least findable');
+    });
+
+    test('a small image keeps its own size and is still centred', () {
+      final r = inlinePlacement(const Size(40, 30), visible);
+      expect(r.size, const Size(40, 30));
+      expect(r.center, visible.center);
+    });
+
+    test('an unmeasurable source yields nothing to place', () {
+      expect(inlinePlacement(Size.zero, visible), Rect.zero);
+      expect(inlinePlacement(const Size(100, 100), Rect.zero), Rect.zero);
+    });
+  });
 }

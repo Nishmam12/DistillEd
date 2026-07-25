@@ -3,7 +3,7 @@
 //
 // Supports two layout modes (see [configure]): an infinite whiteboard and a
 // single bounded page (pan clamped so the page stays in view / centred when
-// it is smaller than the viewport). Zoom is bounded to 100–200% in both modes
+// it is smaller than the viewport). Zoom is bounded to 50–300% in both modes
 // — the toolbar's zoom pill only ever zooms in/out within that range, never
 // past it.
 
@@ -67,20 +67,21 @@ class ViewportState {
 }
 
 class ViewportController extends StateNotifier<ViewportState> {
-  // Zoom is bounded to 100–200% in both modes: 100% is the floor (no zooming
-  // out past the page's natural size) and 200% the ceiling (past that ink and
-  // text start to look soft and the extra magnification isn't useful for
-  // note-taking).
-  static const double infiniteMinZoom = 1.0;
-  static const double infiniteMaxZoom = 2.0;
-  static const double pageMinZoom = 1.0;
-  static const double pageMaxZoom = 2.0;
+  // Zoom is bounded to 50–300% in both modes: 50% pulls back far enough to see
+  // a whole page's worth of work at once, and 300% is the ceiling (past that
+  // ink and text start to look soft and the extra magnification isn't useful
+  // for note-taking).
+  static const double infiniteMinZoom = 0.5;
+  static const double infiniteMaxZoom = 3.0;
+  static const double pageMinZoom = 0.5;
+  static const double pageMaxZoom = 3.0;
 
-  // A lower floor used only by the auto re-fit safety net in [configure]
-  // (never by manual zoom) — so a viewport cramped enough that fitting the
-  // whole page would shrink it past legibility still clamps to *something*
-  // readable, while ordinary re-fits (e.g. the AI panel docking, which lands
-  // well above this) stay free to go below [pageMinZoom]/[infiniteMinZoom].
+  // The floor for the auto re-fit safety net in [configure] — so a viewport
+  // cramped enough that fitting the whole page would shrink it past legibility
+  // still clamps to *something* readable. It coincides with the manual floor
+  // now that that is also 50%; it is kept separate because the two answer
+  // different questions (what a user may ask for vs. how far an automatic
+  // re-fit may shrink the page on their behalf).
   static const double autoFitMinZoom = 0.5;
 
   ViewportController() : super(const ViewportState());

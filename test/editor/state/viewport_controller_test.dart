@@ -41,7 +41,17 @@ void main() {
       expect(c.state.zoom, ViewportController.infiniteMinZoom);
     });
 
-    test('page mode clamps zoom to 100–200% and centres a small page', () {
+    test('manual zoom spans 50–300% in both modes', () {
+      // Pinned as numbers, not as the constants the clamp reads, so widening
+      // or narrowing the range has to be a deliberate edit here too.
+      expect(ViewportController.infiniteMinZoom, 0.5);
+      expect(ViewportController.infiniteMaxZoom, 3.0);
+      expect(ViewportController.pageMinZoom, 0.5);
+      expect(ViewportController.pageMaxZoom, 3.0);
+    });
+
+    test('page mode clamps zoom to the page range and centres a small page',
+        () {
       final c = ViewportController();
       c.configure(
         pageMode: true,
@@ -53,10 +63,18 @@ void main() {
       expect(c.state.zoom, ViewportController.pageMaxZoom);
       c.zoomAtPoint(0.0001, const Offset(100, 200));
       expect(c.state.zoom, ViewportController.pageMinZoom);
-      // At the 100% floor the page is still smaller than the viewport, so it
-      // is centred.
-      expect(c.state.scrollX, closeTo((200 - 100 * 1.0) / 2, 1e-9));
-      expect(c.state.scrollY, closeTo((400 - 200 * 1.0) / 2, 1e-9));
+      // At the floor the page is still smaller than the viewport, so it is
+      // centred.
+      const z = ViewportController.pageMinZoom;
+      expect(c.state.scrollX, closeTo((200 - 100 * z) / 2, 1e-9));
+      expect(c.state.scrollY, closeTo((400 - 200 * z) / 2, 1e-9));
+    });
+
+    test('zooming out to 50% is allowed on the infinite canvas', () {
+      // The old floor was 100%, so pinching out did nothing at all.
+      final c = ViewportController();
+      c.zoomAtPoint(0.5, const Offset(400, 300));
+      expect(c.state.zoom, 0.5);
     });
 
     group('re-fitting when the viewport narrows', () {

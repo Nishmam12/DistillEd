@@ -3,7 +3,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../features/home/presentation/screens/home_screen.dart';
+import '../features/home/presentation/screens/notes_screen.dart';
 import '../features/import/presentation/pdf_import_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/settings/presentation/screens/about_screen.dart';
@@ -18,7 +18,7 @@ final GoRouter appRouter = GoRouter(
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => const HomeScreen(),
+      builder: (context, state) => const NotesScreen(),
     ),
     GoRoute(
       path: '/import/pdf',
@@ -34,7 +34,7 @@ final GoRouter appRouter = GoRouter(
             initialPageIndex: extra['pageIndex'] as int,
           );
         }
-        return const HomeScreen();
+        return const NotesScreen();
       },
     ),
     // Canvas 2.0 — the unified drawing engine, now the default editor.

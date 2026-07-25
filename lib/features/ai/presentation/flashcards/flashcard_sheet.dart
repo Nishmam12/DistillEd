@@ -36,12 +36,18 @@ class _FlashcardSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(flashcardNotifierProvider);
+    // The deck view earns its own near-full-height, edge-to-edge canvas — the
+    // big color card is the point. Every other state keeps the standard sheet
+    // padding used across the AI surfaces (quiz, summarize).
+    final isDeck = state is FlashcardReady;
     return SafeArea(
       child: Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * 0.92,
         ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        padding: isDeck
+            ? const EdgeInsets.fromLTRB(16, 10, 16, 12)
+            : const EdgeInsets.fromLTRB(20, 12, 20, 16),
         child: switch (state) {
           FlashcardIdle() || FlashcardGenerating() =>
             const _Status(label: 'Making flashcards…'),
@@ -228,68 +234,117 @@ class _DeckState extends State<_Deck> {
     }
   }
 
+  bool get _flippedCurrent => _flipped.contains(_index);
+
+  void _toggleFlip() => setState(() {
+        if (!_flipped.add(_index)) _flipped.remove(_index);
+      });
+
+  void _nextCard() => _controller.nextPage(
+      duration: const Duration(milliseconds: 280), curve: Curves.easeOut);
+
   @override
   Widget build(BuildContext context) {
     final total = widget.cards.length;
+    final flipped = _flippedCurrent;
+    final onLastCard = _index == total - 1;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Minimal top chrome — just position + close. The color card itself
+        // carries the "Flashcards" identity, so no title line competes for
+        // height here.
         Row(
           children: [
-            const Expanded(child: _SheetTitle('Flashcards')),
-            Text('${_index + 1} / $total',
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary)),
             IconButton(
               tooltip: 'Close',
               icon: const Icon(Icons.close,
                   size: 20, color: AppColors.textSecondary),
               onPressed: () => Navigator.of(context).pop(),
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
             ),
+            const Spacer(),
+            Text('${_index + 1} / $total',
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted)),
           ],
         ),
-        const SizedBox(height: 8),
-        Flexible(
+        const SizedBox(height: 4),
+        Expanded(
           child: PageView.builder(
             controller: _controller,
             itemCount: total,
             onPageChanged: (i) => setState(() => _index = i),
-            itemBuilder: (context, i) => _CardFace(
-              card: widget.cards[i],
-              showBack: _flipped.contains(i),
-              onTap: () => setState(() {
-                if (!_flipped.add(i)) _flipped.remove(i);
-              }),
+            itemBuilder: (context, i) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: _CardFace(
+                card: widget.cards[i],
+                showBack: _flipped.contains(i),
+                onTap: () => setState(() {
+                  if (!_flipped.add(i)) _flipped.remove(i);
+                }),
+              ),
             ),
           ),
         ),
         const SizedBox(height: 12),
-        FilledButton.icon(
-          style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
-          onPressed: _exporting ? null : () => _export(apkg: true),
-          icon: _exporting
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.textOnAccent))
-              : const Icon(Icons.style_outlined,
-                  size: 18, color: AppColors.textOnAccent),
-          label: const Text('Export to Anki (.apkg)',
-              style: TextStyle(color: AppColors.textOnAccent)),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: !flipped
+                ? _toggleFlip
+                : (onLastCard ? _toggleFlip : _nextCard),
+            icon: Icon(!flipped
+                ? Icons.sync
+                : (onLastCard ? Icons.arrow_back : Icons.arrow_forward)),
+            label: Text(!flipped
+                ? 'Flip to answer'
+                : (onLastCard ? 'Back to prompt' : 'Next card')),
+          ),
         ),
-        TextButton(
-          onPressed: _exporting ? null : () => _export(apkg: false),
-          child: const Text('Export as CSV',
-              style: TextStyle(color: AppColors.textSecondary)),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: _exporting ? null : () => _export(apkg: true),
+                icon: _exporting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.textOnAccent))
+                    : const Icon(Icons.style_outlined,
+                        size: 16, color: AppColors.textOnAccent),
+                label: const Text('Export to Anki (.apkg)',
+                    style:
+                        TextStyle(fontSize: 13, color: AppColors.textOnAccent)),
+              ),
+            ),
+            TextButton(
+              onPressed: _exporting ? null : () => _export(apkg: false),
+              child: const Text('Export as CSV',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            ),
+          ],
         ),
       ],
     );
   }
 }
 
+/// One full-bleed color card per side: a soft honey wash for the prompt, solid
+/// coral for the answer. The color swap itself signals "flipped" — there's no
+/// separate caption competing with the term for attention.
 class _CardFace extends StatelessWidget {
   final Flashcard card;
   final bool showBack;
@@ -302,49 +357,56 @@ class _CardFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+    final bg = showBack ? AppColors.accent : AppColors.accentYellowWash;
+    final fg = showBack ? AppColors.textOnAccent : AppColors.textPrimary;
+    final labelBg = showBack ? AppColors.accentStrong : AppColors.surface;
+    final labelFg = showBack ? AppColors.textOnAccent : AppColors.textSecondary;
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: showBack ? AppColors.accentWash : AppColors.surfaceWarm,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(showBack ? 'ANSWER' : 'PROMPT',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                    color: AppColors.textMuted,
-                  )),
-              const SizedBox(height: 14),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Text(
-                    showBack ? card.back : card.front,
-                    textAlign: TextAlign.center,
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: labelBg,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(showBack ? 'ANSWER' : 'PROMPT',
                     style: TextStyle(
-                      fontSize: showBack ? 16 : 18,
-                      height: 1.4,
-                      fontWeight:
-                          showBack ? FontWeight.w400 : FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: labelFg,
+                    )),
+              ),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SingleChildScrollView(
+                    child: Text(
+                      showBack ? card.back : card.front,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: showBack ? 20 : 26,
+                        height: 1.32,
+                        letterSpacing: -0.2,
+                        fontWeight:
+                            showBack ? FontWeight.w500 : FontWeight.w700,
+                        color: fg,
+                      ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
-              Text(showBack ? 'Tap to see prompt' : 'Tap to reveal answer',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textMuted)),
             ],
           ),
         ),

@@ -6,8 +6,8 @@
 //  * a whole page — a PDF page, or a photo the user wants as its own sheet —
 //    which is aspect-fitted and centred to fill the page (see [fitCentred]);
 //  * an inline image dropped onto a page that already has work on it, which is
-//    capped against what the user can currently see (see [scaledToFit]) and
-//    then positioned by the caller's usual free-slot search.
+//    capped against what the user can currently see and centred there (see
+//    [inlineSize] and [inlinePlacement]).
 
 import 'dart:ui';
 
@@ -66,4 +66,40 @@ Size inlineSize(Size source, Size visible, {double fraction = 0.5}) {
   );
   if (capped.isEmpty) return Size.zero;
   return capped.width > source.width ? source : capped;
+}
+
+/// Where an inline image lands: sized by [inlineSize] against the area it will
+/// occupy, then centred in it.
+///
+/// [visible] is the slice of scene currently on screen; [page] is the sheet in
+/// single-page mode, or null on the infinite canvas. Only the sheet is drawn in
+/// page mode and everything outside it is clipped away, so the image is centred
+/// in the part of the page the user can see — centring it in the visible area
+/// alone would push it off the paper whenever the view extends past the edge.
+/// A view that has left the page entirely falls back to the page's own centre,
+/// which is at least somewhere the image exists.
+///
+/// The centre is deliberately not a free-slot search: a picture is positioned
+/// and resized by hand the moment it arrives, and a search that slides it clear
+/// of existing work drops it in a far corner of a page that already has any.
+///
+/// [Rect.zero] when [source] has no measurable size — callers report that
+/// rather than adding an image nobody can find.
+Rect inlinePlacement(
+  Size source,
+  Rect visible, {
+  Rect? page,
+  double fraction = 0.5,
+}) {
+  var area = visible;
+  if (page != null && !page.isEmpty) {
+    area = visible.overlaps(page) ? visible.intersect(page) : page;
+  }
+  final size = inlineSize(source, area.size, fraction: fraction);
+  if (size.isEmpty) return Rect.zero;
+  return Rect.fromCenter(
+    center: area.center,
+    width: size.width,
+    height: size.height,
+  );
 }
