@@ -81,22 +81,35 @@ class SettingsState {
 }
 
 class SettingsNotifier extends StateNotifier<SettingsState> {
+  static const _kDarkMode = 'ui.darkMode';
+  static const _kDevMode = 'ui.devMode';
+  static const _kExportDefault = 'ui.exportDefault';
   static const _kCloudAiEnabled = 'ai.cloudEnabled';
   static const _kCloudPrivacy = 'ai.cloudPrivacy';
   static const _kHasSeenFirstCloudCall = 'ai.hasSeenFirstCloudCall';
   static const _kRecognitionLanguage = 'ai.recognitionLanguage';
   static const _kHuggingFaceToken = 'ai.huggingFaceToken';
 
+  /// Export formats the Settings picker offers. A persisted value outside this
+  /// set (an older build's format, or hand-edited prefs) falls back to the
+  /// default rather than leaving the picker showing no selection at all.
+  static const exportFormats = {'PNG', 'PDF'};
+
   SettingsNotifier() : super(SettingsState()) {
-    _restoreAiSettings();
+    _restore();
   }
 
-  /// The AI settings are persisted (the cloud opt-in especially must survive
-  /// restarts); the pre-existing settings keep their in-memory behavior.
-  Future<void> _restoreAiSettings() async {
+  /// Restores every persisted setting. Runs asynchronously from the
+  /// constructor, so the first frame renders defaults and then settles onto the
+  /// stored values — the same behavior the AI settings already had.
+  Future<void> _restore() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
+    final storedExport = prefs.getString(_kExportDefault);
     state = state.copyWith(
+      darkMode: prefs.getBool(_kDarkMode) ?? false,
+      devMode: prefs.getBool(_kDevMode) ?? false,
+      exportDefault: exportFormats.contains(storedExport) ? storedExport : 'PNG',
       cloudAiEnabled: prefs.getBool(_kCloudAiEnabled) ?? false,
       cloudPrivacy: CloudPrivacy.values.firstWhere(
         (v) => v.name == prefs.getString(_kCloudPrivacy),
@@ -108,16 +121,23 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     );
   }
 
-  void toggleDarkMode(bool value) {
+  Future<void> toggleDarkMode(bool value) async {
     state = state.copyWith(darkMode: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kDarkMode, value);
   }
 
-  void toggleDevMode(bool value) {
+  Future<void> toggleDevMode(bool value) async {
     state = state.copyWith(devMode: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kDevMode, value);
   }
 
-  void setExportDefault(String value) {
+  Future<void> setExportDefault(String value) async {
+    if (!exportFormats.contains(value)) return;
     state = state.copyWith(exportDefault: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kExportDefault, value);
   }
 
   Future<void> setCloudAiEnabled(bool value) async {

@@ -27,28 +27,48 @@ const NotebookSchema = CollectionSchema(
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
-    r'layoutMode': PropertySchema(
+    r'deletedAt': PropertySchema(
       id: 2,
+      name: r'deletedAt',
+      type: IsarType.dateTime,
+    ),
+    r'folderId': PropertySchema(
+      id: 3,
+      name: r'folderId',
+      type: IsarType.long,
+    ),
+    r'layoutMode': PropertySchema(
+      id: 4,
       name: r'layoutMode',
       type: IsarType.long,
     ),
     r'modifiedAt': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'modifiedAt',
       type: IsarType.dateTime,
     ),
     r'pageCount': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'pageCount',
       type: IsarType.long,
     ),
+    r'pinned': PropertySchema(
+      id: 7,
+      name: r'pinned',
+      type: IsarType.bool,
+    ),
+    r'tags': PropertySchema(
+      id: 8,
+      name: r'tags',
+      type: IsarType.stringList,
+    ),
     r'templateIndex': PropertySchema(
-      id: 5,
+      id: 9,
       name: r'templateIndex',
       type: IsarType.long,
     ),
     r'title': PropertySchema(
-      id: 6,
+      id: 10,
       name: r'title',
       type: IsarType.string,
     )
@@ -71,6 +91,58 @@ const NotebookSchema = CollectionSchema(
           caseSensitive: false,
         )
       ],
+    ),
+    r'pinned': IndexSchema(
+      id: -8913717909547348198,
+      name: r'pinned',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'pinned',
+          type: IndexType.value,
+          caseSensitive: false,
+        )
+      ],
+    ),
+    r'folderId': IndexSchema(
+      id: 6340065978996931043,
+      name: r'folderId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'folderId',
+          type: IndexType.value,
+          caseSensitive: false,
+        )
+      ],
+    ),
+    r'tags': IndexSchema(
+      id: 4029205728550669204,
+      name: r'tags',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'tags',
+          type: IndexType.value,
+          caseSensitive: true,
+        )
+      ],
+    ),
+    r'deletedAt': IndexSchema(
+      id: -8969437169173379604,
+      name: r'deletedAt',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'deletedAt',
+          type: IndexType.value,
+          caseSensitive: false,
+        )
+      ],
     )
   },
   links: {},
@@ -87,6 +159,13 @@ int _notebookEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.tags.length * 3;
+  {
+    for (var i = 0; i < object.tags.length; i++) {
+      final value = object.tags[i];
+      bytesCount += value.length * 3;
+    }
+  }
   bytesCount += 3 + object.title.length * 3;
   return bytesCount;
 }
@@ -99,11 +178,15 @@ void _notebookSerialize(
 ) {
   writer.writeLong(offsets[0], object.backgroundColor);
   writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeLong(offsets[2], object.layoutMode);
-  writer.writeDateTime(offsets[3], object.modifiedAt);
-  writer.writeLong(offsets[4], object.pageCount);
-  writer.writeLong(offsets[5], object.templateIndex);
-  writer.writeString(offsets[6], object.title);
+  writer.writeDateTime(offsets[2], object.deletedAt);
+  writer.writeLong(offsets[3], object.folderId);
+  writer.writeLong(offsets[4], object.layoutMode);
+  writer.writeDateTime(offsets[5], object.modifiedAt);
+  writer.writeLong(offsets[6], object.pageCount);
+  writer.writeBool(offsets[7], object.pinned);
+  writer.writeStringList(offsets[8], object.tags);
+  writer.writeLong(offsets[9], object.templateIndex);
+  writer.writeString(offsets[10], object.title);
 }
 
 Notebook _notebookDeserialize(
@@ -115,12 +198,16 @@ Notebook _notebookDeserialize(
   final object = Notebook();
   object.backgroundColor = reader.readLong(offsets[0]);
   object.createdAt = reader.readDateTime(offsets[1]);
+  object.deletedAt = reader.readDateTimeOrNull(offsets[2]);
+  object.folderId = reader.readLongOrNull(offsets[3]);
   object.id = id;
-  object.layoutMode = reader.readLong(offsets[2]);
-  object.modifiedAt = reader.readDateTime(offsets[3]);
-  object.pageCount = reader.readLong(offsets[4]);
-  object.templateIndex = reader.readLong(offsets[5]);
-  object.title = reader.readString(offsets[6]);
+  object.layoutMode = reader.readLong(offsets[4]);
+  object.modifiedAt = reader.readDateTime(offsets[5]);
+  object.pageCount = reader.readLong(offsets[6]);
+  object.pinned = reader.readBool(offsets[7]);
+  object.tags = reader.readStringList(offsets[8]) ?? [];
+  object.templateIndex = reader.readLong(offsets[9]);
+  object.title = reader.readString(offsets[10]);
   return object;
 }
 
@@ -136,14 +223,22 @@ P _notebookDeserializeProp<P>(
     case 1:
       return (reader.readDateTime(offset)) as P;
     case 2:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 3:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 4:
       return (reader.readLong(offset)) as P;
     case 5:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 6:
+      return (reader.readLong(offset)) as P;
+    case 7:
+      return (reader.readBool(offset)) as P;
+    case 8:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 9:
+      return (reader.readLong(offset)) as P;
+    case 10:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -173,6 +268,38 @@ extension NotebookQueryWhereSort on QueryBuilder<Notebook, Notebook, QWhere> {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         const IndexWhereClause.any(indexName: r'pageCount'),
+      );
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhere> anyPinned() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'pinned'),
+      );
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhere> anyFolderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'folderId'),
+      );
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhere> anyTagsElement() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'tags'),
+      );
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhere> anyDeletedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'deletedAt'),
       );
     });
   }
@@ -333,6 +460,407 @@ extension NotebookQueryWhere on QueryBuilder<Notebook, Notebook, QWhereClause> {
       ));
     });
   }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> pinnedEqualTo(
+      bool pinned) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'pinned',
+        value: [pinned],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> pinnedNotEqualTo(
+      bool pinned) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pinned',
+              lower: [],
+              upper: [pinned],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pinned',
+              lower: [pinned],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pinned',
+              lower: [pinned],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pinned',
+              lower: [],
+              upper: [pinned],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> folderIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'folderId',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> folderIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'folderId',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> folderIdEqualTo(
+      int? folderId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'folderId',
+        value: [folderId],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> folderIdNotEqualTo(
+      int? folderId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderId',
+              lower: [],
+              upper: [folderId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderId',
+              lower: [folderId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderId',
+              lower: [folderId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderId',
+              lower: [],
+              upper: [folderId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> folderIdGreaterThan(
+    int? folderId, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'folderId',
+        lower: [folderId],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> folderIdLessThan(
+    int? folderId, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'folderId',
+        lower: [],
+        upper: [folderId],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> folderIdBetween(
+    int? lowerFolderId,
+    int? upperFolderId, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'folderId',
+        lower: [lowerFolderId],
+        includeLower: includeLower,
+        upper: [upperFolderId],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> tagsElementEqualTo(
+      String tagsElement) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'tags',
+        value: [tagsElement],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> tagsElementNotEqualTo(
+      String tagsElement) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'tags',
+              lower: [],
+              upper: [tagsElement],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'tags',
+              lower: [tagsElement],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'tags',
+              lower: [tagsElement],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'tags',
+              lower: [],
+              upper: [tagsElement],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> tagsElementGreaterThan(
+    String tagsElement, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'tags',
+        lower: [tagsElement],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> tagsElementLessThan(
+    String tagsElement, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'tags',
+        lower: [],
+        upper: [tagsElement],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> tagsElementBetween(
+    String lowerTagsElement,
+    String upperTagsElement, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'tags',
+        lower: [lowerTagsElement],
+        includeLower: includeLower,
+        upper: [upperTagsElement],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> tagsElementStartsWith(
+      String TagsElementPrefix) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'tags',
+        lower: [TagsElementPrefix],
+        upper: ['$TagsElementPrefix\u{FFFFF}'],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> tagsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'tags',
+        value: [''],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> tagsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.lessThan(
+              indexName: r'tags',
+              upper: [''],
+            ))
+            .addWhereClause(IndexWhereClause.greaterThan(
+              indexName: r'tags',
+              lower: [''],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.greaterThan(
+              indexName: r'tags',
+              lower: [''],
+            ))
+            .addWhereClause(IndexWhereClause.lessThan(
+              indexName: r'tags',
+              upper: [''],
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> deletedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'deletedAt',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> deletedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'deletedAt',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> deletedAtEqualTo(
+      DateTime? deletedAt) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'deletedAt',
+        value: [deletedAt],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> deletedAtNotEqualTo(
+      DateTime? deletedAt) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'deletedAt',
+              lower: [],
+              upper: [deletedAt],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'deletedAt',
+              lower: [deletedAt],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'deletedAt',
+              lower: [deletedAt],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'deletedAt',
+              lower: [],
+              upper: [deletedAt],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> deletedAtGreaterThan(
+    DateTime? deletedAt, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'deletedAt',
+        lower: [deletedAt],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> deletedAtLessThan(
+    DateTime? deletedAt, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'deletedAt',
+        lower: [],
+        upper: [deletedAt],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterWhereClause> deletedAtBetween(
+    DateTime? lowerDeletedAt,
+    DateTime? upperDeletedAt, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'deletedAt',
+        lower: [lowerDeletedAt],
+        includeLower: includeLower,
+        upper: [upperDeletedAt],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
 }
 
 extension NotebookQueryFilter
@@ -438,6 +966,144 @@ extension NotebookQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'createdAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> deletedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'deletedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> deletedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'deletedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> deletedAtEqualTo(
+      DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'deletedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> deletedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'deletedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> deletedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'deletedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> deletedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'deletedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> folderIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'folderId',
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> folderIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'folderId',
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> folderIdEqualTo(
+      int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'folderId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> folderIdGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'folderId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> folderIdLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'folderId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> folderIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'folderId',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -657,6 +1323,232 @@ extension NotebookQueryFilter
     });
   }
 
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> pinnedEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'pinned',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition>
+      tagsElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'tags',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsElementContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'tags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsElementMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'tags',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'tags',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition>
+      tagsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'tags',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'tags',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'tags',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'tags',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'tags',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'tags',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> tagsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'tags',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Notebook, Notebook, QAfterFilterCondition> templateIndexEqualTo(
       int value) {
     return QueryBuilder.apply(this, (query) {
@@ -873,6 +1765,30 @@ extension NotebookQuerySortBy on QueryBuilder<Notebook, Notebook, QSortBy> {
     });
   }
 
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByDeletedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByDeletedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByFolderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByFolderIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByLayoutMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'layoutMode', Sort.asc);
@@ -906,6 +1822,18 @@ extension NotebookQuerySortBy on QueryBuilder<Notebook, Notebook, QSortBy> {
   QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByPageCountDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'pageCount', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByPinned() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinned', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByPinnedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinned', Sort.desc);
     });
   }
 
@@ -960,6 +1888,30 @@ extension NotebookQuerySortThenBy
     });
   }
 
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> thenByDeletedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> thenByDeletedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> thenByFolderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> thenByFolderIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Notebook, Notebook, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -1008,6 +1960,18 @@ extension NotebookQuerySortThenBy
     });
   }
 
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> thenByPinned() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinned', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> thenByPinnedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinned', Sort.desc);
+    });
+  }
+
   QueryBuilder<Notebook, Notebook, QAfterSortBy> thenByTemplateIndex() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'templateIndex', Sort.asc);
@@ -1047,6 +2011,18 @@ extension NotebookQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Notebook, Notebook, QDistinct> distinctByDeletedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'deletedAt');
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QDistinct> distinctByFolderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'folderId');
+    });
+  }
+
   QueryBuilder<Notebook, Notebook, QDistinct> distinctByLayoutMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'layoutMode');
@@ -1062,6 +2038,18 @@ extension NotebookQueryWhereDistinct
   QueryBuilder<Notebook, Notebook, QDistinct> distinctByPageCount() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'pageCount');
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QDistinct> distinctByPinned() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'pinned');
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QDistinct> distinctByTags() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'tags');
     });
   }
 
@@ -1099,6 +2087,18 @@ extension NotebookQueryProperty
     });
   }
 
+  QueryBuilder<Notebook, DateTime?, QQueryOperations> deletedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'deletedAt');
+    });
+  }
+
+  QueryBuilder<Notebook, int?, QQueryOperations> folderIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'folderId');
+    });
+  }
+
   QueryBuilder<Notebook, int, QQueryOperations> layoutModeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'layoutMode');
@@ -1114,6 +2114,18 @@ extension NotebookQueryProperty
   QueryBuilder<Notebook, int, QQueryOperations> pageCountProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'pageCount');
+    });
+  }
+
+  QueryBuilder<Notebook, bool, QQueryOperations> pinnedProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'pinned');
+    });
+  }
+
+  QueryBuilder<Notebook, List<String>, QQueryOperations> tagsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'tags');
     });
   }
 

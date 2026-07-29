@@ -8,6 +8,7 @@ import '../../../ai/data/embeddings/embedder_adapter.dart';
 import '../../../ai/data/embeddings/embedder_spec.dart';
 import '../../../ai/data/llm/llm_exceptions.dart';
 import '../../../ai/data/llm/llm_model_spec.dart';
+import '../../../home/data/repositories/note_repository.dart';
 import '../../../summarize/presentation/summarize_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -36,6 +37,21 @@ class SettingsScreen extends ConsumerWidget {
                 trailing: Switch(
                   value: settings.darkMode,
                   onChanged: notifier.toggleDarkMode,
+                ),
+              ),
+            ],
+          ),
+          const _SectionHeader('Notes'),
+          _SettingsCard(
+            children: [
+              _SettingsRow(
+                icon: Icons.delete_outline,
+                title: 'Trash',
+                subtitle: 'Restore deleted notes for '
+                    '${NoteRepository.trashRetention.inDays} days',
+                trailing: IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () => context.push('/trash'),
                 ),
               ),
             ],
@@ -658,7 +674,7 @@ class _FormatToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: ['PNG', 'PDF'].map((f) {
+      children: SettingsNotifier.exportFormats.map((f) {
         final selected = value == f;
         return Padding(
           padding: const EdgeInsets.only(left: 6),

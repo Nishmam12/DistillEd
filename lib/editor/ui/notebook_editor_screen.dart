@@ -20,6 +20,8 @@ import '../../domain/model/scene_element.dart';
 import '../../features/ai/presentation/sidebar/ai_sidebar.dart';
 import '../../domain/model/template_type.dart';
 import '../../features/import/pdf_service.dart' show ImportException;
+import '../../features/audio/presentation/recording_notifier.dart';
+import '../../features/search/presentation/note_search_sheet.dart';
 import '../import/fit_image_rect.dart';
 import '../import/scene_import_service.dart';
 import '../state/page_notifier.dart';
@@ -37,6 +39,7 @@ import 'editable_note_title.dart';
 import 'controls/editor_app_bar_actions.dart';
 import 'controls/editor_bottom_bar.dart';
 import 'controls/editor_tool_options_overlay.dart';
+import 'controls/page_actions_sheet.dart';
 import 'scene_canvas.dart';
 import 'universal_color_palette.dart';
 import 'zoom_pill.dart';
@@ -175,12 +178,23 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           onRename: _notebook == null ? null : _rename,
         ),
         actions: [
+          _RecordButton(notebookId: widget.notebookId, pageId: key.pageId),
+          IconButton(
+            tooltip: 'Find in notebook',
+            icon: const Icon(Icons.search),
+            onPressed: _findInNotebook,
+          ),
           IconButton(
             tooltip: 'AI insights',
             isSelected: _aiPanelOpen,
             icon: const Icon(Icons.psychology_outlined),
             selectedIcon: const Icon(Icons.psychology),
             onPressed: () => _toggleAiPanel(key),
+          ),
+          IconButton(
+            tooltip: 'Review flashcards',
+            icon: const Icon(Icons.style_outlined),
+            onPressed: () => context.push('/note2/${widget.notebookId}/review'),
           ),
           IconButton(
             tooltip: 'Study plan',
@@ -301,6 +315,13 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             : null,
         onAdd: () =>
             ref.read(pageProvider(widget.notebookId).notifier).insertPage(),
+        onManage: () => showPageActionsSheet(
+          context,
+          ref,
+          notebookId: widget.notebookId,
+          pageIndex: index,
+          pageCount: pageState.pages.length,
+        ),
       ),
     );
   }
@@ -308,6 +329,17 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   void _switchTo(int i) {
     ref.read(selectionProvider.notifier).clear();
     ref.read(pageProvider(widget.notebookId).notifier).switchPage(i);
+  }
+
+  /// Find-in-notebook. Picking a result jumps to that page.
+  Future<void> _findInNotebook() async {
+    final pageIndex = await showNoteSearchSheet(
+      context,
+      ref,
+      notebookId: widget.notebookId,
+    );
+    if (pageIndex == null || !mounted) return;
+    _switchTo(pageIndex);
   }
 
   /// Toggles the live AI insights surface. Wide screens dock it beside the
@@ -831,12 +863,63 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
   }
 }
 
+/// Start/stop lecture recording. Red and pulsing while live, so it is never
+/// ambiguous whether the microphone is on.
+class _RecordButton extends ConsumerStatefulWidget {
+  final int notebookId;
+  final int pageId;
+
+  const _RecordButton({required this.notebookId, required this.pageId});
+
+  @override
+  ConsumerState<_RecordButton> createState() => _RecordButtonState();
+}
+
+class _RecordButtonState extends ConsumerState<_RecordButton> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref
+        .read(recordingNotifierProvider(widget.notebookId).notifier)
+        .loadForPage(widget.pageId));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(recordingNotifierProvider(widget.notebookId));
+    final notifier =
+        ref.read(recordingNotifierProvider(widget.notebookId).notifier);
+
+    // Surface a failure once, then clear it — a permission refusal should say
+    // so rather than leaving a button that silently does nothing.
+    ref.listen(recordingNotifierProvider(widget.notebookId), (_, next) {
+      final error = next.error;
+      if (error == null || !mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
+      notifier.clearError();
+    });
+
+    return IconButton(
+      tooltip: state.isRecording ? 'Stop recording' : 'Record lecture',
+      icon: Icon(
+        state.isRecording ? Icons.stop_circle : Icons.mic_none_outlined,
+        color: state.isRecording ? AppColors.accentRed : null,
+      ),
+      onPressed: () => state.isRecording
+          ? notifier.stop(widget.pageId)
+          : notifier.start(widget.pageId),
+    );
+  }
+}
+
 class _PageNavBar extends StatelessWidget {
   final int index;
   final int count;
   final VoidCallback? onPrev;
   final VoidCallback? onNext;
   final VoidCallback onAdd;
+  final VoidCallback onManage;
 
   const _PageNavBar({
     required this.index,
@@ -844,6 +927,7 @@ class _PageNavBar extends StatelessWidget {
     required this.onPrev,
     required this.onNext,
     required this.onAdd,
+    required this.onManage,
   });
 
   @override
@@ -860,7 +944,16 @@ class _PageNavBar extends StatelessWidget {
               icon: const Icon(Icons.chevron_left),
               onPressed: onPrev,
             ),
-            Text('Page ${index + 1} / $count'),
+            // Tapping the counter opens the same menu as the explicit button,
+            // so the gesture is available without being the only affordance.
+            InkWell(
+              onTap: onManage,
+              onLongPress: onManage,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Text('Page ${index + 1} / $count'),
+              ),
+            ),
             IconButton(
               tooltip: 'Next page',
               icon: const Icon(Icons.chevron_right),
@@ -871,6 +964,11 @@ class _PageNavBar extends StatelessWidget {
               tooltip: 'Add page',
               icon: const Icon(Icons.add),
               onPressed: onAdd,
+            ),
+            IconButton(
+              tooltip: 'Page options',
+              icon: const Icon(Icons.more_vert),
+              onPressed: onManage,
             ),
           ],
         ),

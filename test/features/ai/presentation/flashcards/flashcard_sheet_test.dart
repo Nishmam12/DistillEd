@@ -41,6 +41,10 @@ class _NoopStore implements FlashcardStore {
   Future<List<Flashcard>> forNotebook(int n) async => const [];
   @override
   Future<List<Flashcard>> forPage(int p) async => const [];
+  @override
+  Future<List<Flashcard>> dueForNotebook(int n, DateTime now) async => const [];
+  @override
+  Future<void> updateSchedule(Flashcard card) async {}
 }
 
 class _FakeInstaller implements ModelInstaller {

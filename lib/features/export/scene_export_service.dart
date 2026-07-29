@@ -56,6 +56,27 @@ class SceneExportService {
     return true;
   }
 
+  /// Shares every page of a notebook as one PDF. Returns false when the whole
+  /// notebook is empty.
+  static Future<bool> shareNotebookPdf(
+    List<List<SceneElement>> pages, {
+    String title = 'inkflow',
+    Color background = Colors.white,
+    SceneImageCache? imageCache,
+  }) async {
+    // One resolver pass over every page's images, so a picture reused across
+    // pages is decoded once rather than per page.
+    final all = [for (final page in pages) ...page];
+    final pdf = await SceneExporter.toNotebookPdf(
+      pages,
+      background: background,
+      imageResolver: await _resolver(all, imageCache),
+    );
+    if (pdf == null) return false;
+    await ExportShareService.sharePdf(pdf, title);
+    return true;
+  }
+
   static Future<bool> shareSvg(
     List<SceneElement> elements, {
     String title = 'inkflow',

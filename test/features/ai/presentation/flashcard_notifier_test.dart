@@ -48,6 +48,16 @@ class _FakeStore implements FlashcardStore {
       savedCards ?? const [];
   @override
   Future<List<Flashcard>> forPage(int pageId) async => savedCards ?? const [];
+  @override
+  Future<List<Flashcard>> dueForNotebook(int notebookId, DateTime now) async =>
+      selectDue(savedCards ?? const [], now);
+  @override
+  Future<void> updateSchedule(Flashcard card) async {
+    final cards = savedCards;
+    if (cards == null) return;
+    final i = cards.indexWhere((c) => c.identityKey == card.identityKey);
+    if (i >= 0) cards[i] = card;
+  }
 }
 
 class _FakeGenerator extends FlashcardGenerator {

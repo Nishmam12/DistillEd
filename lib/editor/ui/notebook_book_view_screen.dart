@@ -16,6 +16,7 @@ import '../render/scene_image_cache.dart';
 import '../render/scene_static_layer.dart';
 import '../state/scene_controller.dart';
 import '../state/scene_image_cache_provider.dart';
+import 'controls/page_actions_sheet.dart';
 
 class NotebookBookViewScreen extends ConsumerStatefulWidget {
   final int notebookId;
@@ -45,9 +46,17 @@ class _NotebookBookViewScreenState
 
   Future<void> _load() async {
     await ref.read(pageProvider(widget.notebookId).notifier).initialize();
+    await _refresh();
+  }
+
+  /// Re-reads pages and their scene content without re-running `initialize()`
+  /// (which would recreate a page if the notebook were momentarily empty).
+  /// Used after a page mutation, since this screen caches its own page list.
+  Future<void> _refresh() async {
     final nb = await IsarService.instance.notebooks.get(widget.notebookId);
     final pages = ref.read(pageProvider(widget.notebookId)).pages;
     final store = ref.read(sceneElementStoreProvider);
+    _byPage.clear();
     for (final p in pages) {
       _byPage[p.id] = await store.loadForPage(p.id);
     }
@@ -74,6 +83,28 @@ class _NotebookBookViewScreenState
   void _jumpTo(int i) {
     _controller.jumpToPage(i);
     setState(() => _index = i);
+  }
+
+  /// Opens the page menu for the long-pressed thumbnail, then reloads — this
+  /// screen caches its own page list, so a duplicate/delete/reorder performed
+  /// through [PageNotifier] would otherwise not be visible here.
+  Future<void> _managePage(int i) async {
+    await showPageActionsSheet(
+      context,
+      ref,
+      notebookId: widget.notebookId,
+      pageIndex: i,
+      pageCount: _pageIds.length,
+    );
+    if (!mounted) return;
+    await _refresh();
+    if (!mounted || _pageIds.isEmpty) return;
+    // A delete can leave the cached index past the end of the shortened list.
+    final clamped = _index.clamp(0, _pageIds.length - 1);
+    if (_controller.hasClients) {
+      _controller.jumpToPage(clamped);
+    }
+    setState(() => _index = clamped);
   }
 
   @override
@@ -113,6 +144,7 @@ class _NotebookBookViewScreenState
                         imageCache: _imageCache,
                       ),
                       onTap: _jumpTo,
+                      onLongPress: _managePage,
                     ),
                   ],
                 ),
@@ -196,12 +228,14 @@ class _Filmstrip extends StatelessWidget {
   final int current;
   final Widget Function(int) builder;
   final ValueChanged<int> onTap;
+  final ValueChanged<int> onLongPress;
 
   const _Filmstrip({
     required this.count,
     required this.current,
     required this.builder,
     required this.onTap,
+    required this.onLongPress,
   });
 
   @override
@@ -214,6 +248,7 @@ class _Filmstrip extends StatelessWidget {
         itemCount: count,
         itemBuilder: (_, i) => GestureDetector(
           onTap: () => onTap(i),
+          onLongPress: () => onLongPress(i),
           child: Container(
             width: 56,
             margin: const EdgeInsets.symmetric(horizontal: 4),

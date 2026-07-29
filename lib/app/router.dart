@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/home/presentation/screens/notes_screen.dart';
+import '../features/home/presentation/screens/trash_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/settings/presentation/screens/about_screen.dart';
 import '../editor/ui/scene_editor_screen.dart';
 import '../editor/ui/notebook_editor_screen.dart';
 import '../editor/ui/notebook_book_view_screen.dart';
+import '../features/ai/presentation/flashcards/review_screen.dart';
 import '../features/ai/presentation/knowledge_graph/knowledge_graph_screen.dart';
 import '../features/ai/presentation/study_planner/study_planner_screen.dart';
 
@@ -42,6 +44,13 @@ final GoRouter appRouter = GoRouter(
           },
         ),
         GoRoute(
+          path: 'review',
+          builder: (context, state) {
+            final id = int.parse(state.pathParameters['id']!);
+            return ReviewScreen(notebookId: id);
+          },
+        ),
+        GoRoute(
           path: 'plan',
           builder: (context, state) {
             final id = int.parse(state.pathParameters['id']!);
@@ -49,6 +58,10 @@ final GoRouter appRouter = GoRouter(
           },
         ),
       ],
+    ),
+    GoRoute(
+      path: '/trash',
+      builder: (context, state) => const TrashScreen(),
     ),
     GoRoute(
       path: '/settings',

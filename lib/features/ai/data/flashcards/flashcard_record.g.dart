@@ -27,19 +27,49 @@ const FlashcardRecordSchema = CollectionSchema(
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
-    r'front': PropertySchema(
+    r'dueAt': PropertySchema(
       id: 2,
+      name: r'dueAt',
+      type: IsarType.dateTime,
+    ),
+    r'easeFactor': PropertySchema(
+      id: 3,
+      name: r'easeFactor',
+      type: IsarType.double,
+    ),
+    r'front': PropertySchema(
+      id: 4,
       name: r'front',
       type: IsarType.string,
     ),
+    r'intervalDays': PropertySchema(
+      id: 5,
+      name: r'intervalDays',
+      type: IsarType.long,
+    ),
+    r'lapses': PropertySchema(
+      id: 6,
+      name: r'lapses',
+      type: IsarType.long,
+    ),
+    r'lastReviewedAt': PropertySchema(
+      id: 7,
+      name: r'lastReviewedAt',
+      type: IsarType.dateTime,
+    ),
     r'notebookId': PropertySchema(
-      id: 3,
+      id: 8,
       name: r'notebookId',
       type: IsarType.long,
     ),
     r'pageId': PropertySchema(
-      id: 4,
+      id: 9,
       name: r'pageId',
+      type: IsarType.long,
+    ),
+    r'repetitions': PropertySchema(
+      id: 10,
+      name: r'repetitions',
       type: IsarType.long,
     )
   },
@@ -74,6 +104,19 @@ const FlashcardRecordSchema = CollectionSchema(
           caseSensitive: false,
         )
       ],
+    ),
+    r'dueAt': IndexSchema(
+      id: 3701044435752459706,
+      name: r'dueAt',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'dueAt',
+          type: IndexType.value,
+          caseSensitive: false,
+        )
+      ],
     )
   },
   links: {},
@@ -103,9 +146,15 @@ void _flashcardRecordSerialize(
 ) {
   writer.writeString(offsets[0], object.back);
   writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeString(offsets[2], object.front);
-  writer.writeLong(offsets[3], object.notebookId);
-  writer.writeLong(offsets[4], object.pageId);
+  writer.writeDateTime(offsets[2], object.dueAt);
+  writer.writeDouble(offsets[3], object.easeFactor);
+  writer.writeString(offsets[4], object.front);
+  writer.writeLong(offsets[5], object.intervalDays);
+  writer.writeLong(offsets[6], object.lapses);
+  writer.writeDateTime(offsets[7], object.lastReviewedAt);
+  writer.writeLong(offsets[8], object.notebookId);
+  writer.writeLong(offsets[9], object.pageId);
+  writer.writeLong(offsets[10], object.repetitions);
 }
 
 FlashcardRecord _flashcardRecordDeserialize(
@@ -117,10 +166,16 @@ FlashcardRecord _flashcardRecordDeserialize(
   final object = FlashcardRecord();
   object.back = reader.readString(offsets[0]);
   object.createdAt = reader.readDateTime(offsets[1]);
-  object.front = reader.readString(offsets[2]);
+  object.dueAt = reader.readDateTimeOrNull(offsets[2]);
+  object.easeFactor = reader.readDouble(offsets[3]);
+  object.front = reader.readString(offsets[4]);
   object.id = id;
-  object.notebookId = reader.readLong(offsets[3]);
-  object.pageId = reader.readLong(offsets[4]);
+  object.intervalDays = reader.readLong(offsets[5]);
+  object.lapses = reader.readLong(offsets[6]);
+  object.lastReviewedAt = reader.readDateTimeOrNull(offsets[7]);
+  object.notebookId = reader.readLong(offsets[8]);
+  object.pageId = reader.readLong(offsets[9]);
+  object.repetitions = reader.readLong(offsets[10]);
   return object;
 }
 
@@ -136,10 +191,22 @@ P _flashcardRecordDeserializeProp<P>(
     case 1:
       return (reader.readDateTime(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 3:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 4:
+      return (reader.readString(offset)) as P;
+    case 5:
+      return (reader.readLong(offset)) as P;
+    case 6:
+      return (reader.readLong(offset)) as P;
+    case 7:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 8:
+      return (reader.readLong(offset)) as P;
+    case 9:
+      return (reader.readLong(offset)) as P;
+    case 10:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -179,6 +246,14 @@ extension FlashcardRecordQueryWhereSort
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         const IndexWhereClause.any(indexName: r'pageId'),
+      );
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterWhere> anyDueAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'dueAt'),
       );
     });
   }
@@ -439,6 +514,121 @@ extension FlashcardRecordQueryWhere
       ));
     });
   }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterWhereClause>
+      dueAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'dueAt',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterWhereClause>
+      dueAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'dueAt',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterWhereClause>
+      dueAtEqualTo(DateTime? dueAt) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'dueAt',
+        value: [dueAt],
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterWhereClause>
+      dueAtNotEqualTo(DateTime? dueAt) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'dueAt',
+              lower: [],
+              upper: [dueAt],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'dueAt',
+              lower: [dueAt],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'dueAt',
+              lower: [dueAt],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'dueAt',
+              lower: [],
+              upper: [dueAt],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterWhereClause>
+      dueAtGreaterThan(
+    DateTime? dueAt, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'dueAt',
+        lower: [dueAt],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterWhereClause>
+      dueAtLessThan(
+    DateTime? dueAt, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'dueAt',
+        lower: [],
+        upper: [dueAt],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterWhereClause>
+      dueAtBetween(
+    DateTime? lowerDueAt,
+    DateTime? upperDueAt, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'dueAt',
+        lower: [lowerDueAt],
+        includeLower: includeLower,
+        upper: [upperDueAt],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
 }
 
 extension FlashcardRecordQueryFilter
@@ -636,6 +826,146 @@ extension FlashcardRecordQueryFilter
   }
 
   QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      dueAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'dueAt',
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      dueAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'dueAt',
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      dueAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'dueAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      dueAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'dueAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      dueAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'dueAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      dueAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'dueAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      easeFactorEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'easeFactor',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      easeFactorGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'easeFactor',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      easeFactorLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'easeFactor',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      easeFactorBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'easeFactor',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
       frontEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -828,6 +1158,192 @@ extension FlashcardRecordQueryFilter
   }
 
   QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      intervalDaysEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'intervalDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      intervalDaysGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'intervalDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      intervalDaysLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'intervalDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      intervalDaysBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'intervalDays',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      lapsesEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'lapses',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      lapsesGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'lapses',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      lapsesLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'lapses',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      lapsesBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'lapses',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      lastReviewedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'lastReviewedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      lastReviewedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'lastReviewedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      lastReviewedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'lastReviewedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      lastReviewedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'lastReviewedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      lastReviewedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'lastReviewedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      lastReviewedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'lastReviewedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
       notebookIdEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -938,6 +1454,62 @@ extension FlashcardRecordQueryFilter
       ));
     });
   }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      repetitionsEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'repetitions',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      repetitionsGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'repetitions',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      repetitionsLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'repetitions',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterFilterCondition>
+      repetitionsBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'repetitions',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
 }
 
 extension FlashcardRecordQueryObject
@@ -975,6 +1547,33 @@ extension FlashcardRecordQuerySortBy
     });
   }
 
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy> sortByDueAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dueAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      sortByDueAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dueAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      sortByEaseFactor() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'easeFactor', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      sortByEaseFactorDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'easeFactor', Sort.desc);
+    });
+  }
+
   QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy> sortByFront() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'front', Sort.asc);
@@ -985,6 +1584,47 @@ extension FlashcardRecordQuerySortBy
       sortByFrontDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'front', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      sortByIntervalDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'intervalDays', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      sortByIntervalDaysDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'intervalDays', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy> sortByLapses() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lapses', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      sortByLapsesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lapses', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      sortByLastReviewedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastReviewedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      sortByLastReviewedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastReviewedAt', Sort.desc);
     });
   }
 
@@ -1012,6 +1652,20 @@ extension FlashcardRecordQuerySortBy
       sortByPageIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'pageId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      sortByRepetitions() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'repetitions', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      sortByRepetitionsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'repetitions', Sort.desc);
     });
   }
 }
@@ -1045,6 +1699,33 @@ extension FlashcardRecordQuerySortThenBy
     });
   }
 
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy> thenByDueAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dueAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      thenByDueAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dueAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      thenByEaseFactor() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'easeFactor', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      thenByEaseFactorDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'easeFactor', Sort.desc);
+    });
+  }
+
   QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy> thenByFront() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'front', Sort.asc);
@@ -1067,6 +1748,47 @@ extension FlashcardRecordQuerySortThenBy
   QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy> thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      thenByIntervalDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'intervalDays', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      thenByIntervalDaysDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'intervalDays', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy> thenByLapses() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lapses', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      thenByLapsesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lapses', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      thenByLastReviewedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastReviewedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      thenByLastReviewedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastReviewedAt', Sort.desc);
     });
   }
 
@@ -1096,6 +1818,20 @@ extension FlashcardRecordQuerySortThenBy
       return query.addSortBy(r'pageId', Sort.desc);
     });
   }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      thenByRepetitions() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'repetitions', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QAfterSortBy>
+      thenByRepetitionsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'repetitions', Sort.desc);
+    });
+  }
 }
 
 extension FlashcardRecordQueryWhereDistinct
@@ -1114,10 +1850,43 @@ extension FlashcardRecordQueryWhereDistinct
     });
   }
 
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QDistinct> distinctByDueAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'dueAt');
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QDistinct>
+      distinctByEaseFactor() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'easeFactor');
+    });
+  }
+
   QueryBuilder<FlashcardRecord, FlashcardRecord, QDistinct> distinctByFront(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'front', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QDistinct>
+      distinctByIntervalDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'intervalDays');
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QDistinct> distinctByLapses() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lapses');
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QDistinct>
+      distinctByLastReviewedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lastReviewedAt');
     });
   }
 
@@ -1131,6 +1900,13 @@ extension FlashcardRecordQueryWhereDistinct
   QueryBuilder<FlashcardRecord, FlashcardRecord, QDistinct> distinctByPageId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'pageId');
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, FlashcardRecord, QDistinct>
+      distinctByRepetitions() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'repetitions');
     });
   }
 }
@@ -1156,9 +1932,40 @@ extension FlashcardRecordQueryProperty
     });
   }
 
+  QueryBuilder<FlashcardRecord, DateTime?, QQueryOperations> dueAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'dueAt');
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, double, QQueryOperations> easeFactorProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'easeFactor');
+    });
+  }
+
   QueryBuilder<FlashcardRecord, String, QQueryOperations> frontProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'front');
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, int, QQueryOperations> intervalDaysProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'intervalDays');
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, int, QQueryOperations> lapsesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lapses');
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, DateTime?, QQueryOperations>
+      lastReviewedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lastReviewedAt');
     });
   }
 
@@ -1171,6 +1978,12 @@ extension FlashcardRecordQueryProperty
   QueryBuilder<FlashcardRecord, int, QQueryOperations> pageIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'pageId');
+    });
+  }
+
+  QueryBuilder<FlashcardRecord, int, QQueryOperations> repetitionsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'repetitions');
     });
   }
 }

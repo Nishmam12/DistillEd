@@ -9,12 +9,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/commands/scene_command.dart';
 import '../../../domain/geometry/element_bounds.dart';
+import '../../../domain/model/checklist_text.dart';
 import '../../../domain/model/scene_element.dart';
 import '../../../domain/services/alignment_service.dart';
 import '../../../domain/services/selection_editing.dart';
 import '../../../domain/services/z_order_service.dart';
 import '../../../features/ai/data/ocr/image_text_recognition_service.dart';
 import '../../../features/ai/presentation/ai_providers.dart';
+import '../../../features/audio/presentation/recording_notifier.dart';
 import '../../import/ocr_layout.dart';
 import '../../render/scene_element_painter.dart';
 import '../../render/scene_image_cache.dart';
@@ -74,6 +76,22 @@ class SelectionBar extends ConsumerWidget {
               tooltip: 'Edit text',
               icon: const Icon(Icons.edit_outlined),
               onPressed: () => _editText(context, ref, t),
+            ),
+          // Formatting applies to every unlocked text element in the selection,
+          // so it still works when text is selected alongside other elements.
+          if (_editableTexts(ids, all) case final texts when texts.isNotEmpty)
+            ..._textFormatControls(ref, texts),
+          // A stroke drawn while a lecture was recording can replay that moment.
+          if (_recordedStroke(ids, all) case final FreehandElement stroke)
+            IconButton(
+              tooltip: 'Play from here',
+              icon: const Icon(Icons.play_circle_outline),
+              onPressed: () => ref
+                  .read(recordingNotifierProvider(pageKey.notebookId).notifier)
+                  .playFromStroke(
+                    recordingId: stroke.recordingId,
+                    audioOffsetMs: stroke.audioOffsetMs,
+                  ),
             ),
           // Turns an imported page or photo into editable text sitting over it.
           if (_singleImage(ids, all) case final ImageElement im)
@@ -199,6 +217,120 @@ class SelectionBar extends ConsumerWidget {
     return e is TextElement && !e.isLocked ? e : null;
   }
 
+  /// Every unlocked text element in the selection, in scene order. Locked text
+  /// is excluded for the same reason it can't be edited — a locked element is
+  /// not up for changing.
+  static List<TextElement> _editableTexts(
+      Set<String> ids, List<SceneElement> all) {
+    return [
+      for (final e in all)
+        if (ids.contains(e.id) && e is TextElement && !e.isLocked) e,
+    ];
+  }
+
+  /// Re-measures [t] and updates its bottom edge.
+  ///
+  /// Bold and italic change the laid-out height (bold is wider, so it wraps
+  /// sooner), and a box that no longer matches the glyphs is what selection,
+  /// hit-testing and AI note placement all read — the same reason changing the
+  /// words re-measures.
+  static TextElement _refit(TextElement t) {
+    final rect = ElementBounds.of(t);
+    final height = SceneElementPainter.layOutText(t, rect.width).height;
+    return t.copyWith(geometryData: [
+      rect.left,
+      rect.top,
+      rect.right,
+      rect.top + math.max(height, t.fontSize),
+    ]);
+  }
+
+  /// Bold / italic / alignment. One [UpdateElementsCommand] per press, so a
+  /// single undo reverts the whole selection rather than one element at a time.
+  List<Widget> _textFormatControls(WidgetRef ref, List<TextElement> texts) {
+    void apply(TextElement Function(TextElement) change) {
+      ref.read(historyProvider(pageKey).notifier).push(UpdateElementsCommand(
+            before: texts,
+            after: [for (final t in texts) _refit(change(t))],
+          ));
+    }
+
+    // A mixed selection turns the attribute ON for everything first; pressing
+    // again then clears it. Matches how the lock button resolves a mix.
+    final makeBold = texts.any((t) => !t.isBold);
+    final makeItalic = texts.any((t) => !t.isItalic);
+    final commonAlign = texts.map((t) => t.align).toSet().singleOrNull;
+
+    return [
+      IconButton(
+        tooltip: makeBold ? 'Bold' : 'Remove bold',
+        isSelected: !makeBold,
+        icon: const Icon(Icons.format_bold),
+        onPressed: () => apply((t) => t.copyWith(isBold: makeBold)),
+      ),
+      IconButton(
+        tooltip: makeItalic ? 'Italic' : 'Remove italic',
+        isSelected: !makeItalic,
+        icon: const Icon(Icons.format_italic),
+        onPressed: () => apply((t) => t.copyWith(isItalic: makeItalic)),
+      ),
+      // Checklists are a text convention, so this converts in place rather
+      // than making a different kind of element.
+      IconButton(
+        tooltip: texts.every((t) => ChecklistText.isChecklist(t.text))
+            ? 'Remove checklist'
+            : 'Make checklist',
+        isSelected: texts.every((t) => ChecklistText.isChecklist(t.text)),
+        icon: const Icon(Icons.checklist),
+        onPressed: () {
+          final makeList =
+              texts.any((t) => !ChecklistText.isChecklist(t.text));
+          apply((t) => t.copyWith(
+                text: makeList
+                    ? ChecklistText.toChecklist(t.text)
+                    : ChecklistText.fromChecklist(t.text),
+              ));
+        },
+      ),
+      PopupMenuButton<TextAlignKind>(
+        tooltip: 'Align text',
+        icon: Icon(_alignIcon(commonAlign)),
+        onSelected: (a) => apply((t) => t.copyWith(align: a)),
+        itemBuilder: (_) => [
+          for (final a in TextAlignKind.values)
+            PopupMenuItem(
+              value: a,
+              child: Row(
+                children: [
+                  Icon(_alignIcon(a)),
+                  const SizedBox(width: 12),
+                  Text(_alignLabel(a)),
+                  if (a == commonAlign) ...[
+                    const Spacer(),
+                    const Icon(Icons.check, size: 18),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  /// Null [a] means the selection mixes alignments — show the neutral default
+  /// rather than implying one of them applies to everything.
+  static IconData _alignIcon(TextAlignKind? a) => switch (a) {
+        TextAlignKind.center => Icons.format_align_center,
+        TextAlignKind.right => Icons.format_align_right,
+        TextAlignKind.left || null => Icons.format_align_left,
+      };
+
+  static String _alignLabel(TextAlignKind a) => switch (a) {
+        TextAlignKind.left => 'Left',
+        TextAlignKind.center => 'Center',
+        TextAlignKind.right => 'Right',
+      };
+
   /// Width of one extracted line drawn at [fontSize], in the same font a
   /// [TextElement] defaults to — so the size chosen for a line is the size it
   /// actually renders at, not an average-character guess.
@@ -217,6 +349,14 @@ class SelectionBar extends ConsumerWidget {
   /// The single [ImageElement] in the selection that has a file behind it, or
   /// null when the selection is anything else. Locked is fine — a page-sized
   /// import is locked by default, and reading it changes nothing about it.
+  /// A single selected stroke that was drawn during a recording, or null.
+  static FreehandElement? _recordedStroke(
+      Set<String> ids, List<SceneElement> all) {
+    if (ids.length != 1) return null;
+    final e = all.where((e) => e.id == ids.first).firstOrNull;
+    return e is FreehandElement && e.hasAudio ? e : null;
+  }
+
   static ImageElement? _singleImage(Set<String> ids, List<SceneElement> all) {
     if (ids.length != 1) return null;
     final e = all.where((e) => e.id == ids.first).firstOrNull;
@@ -317,32 +457,38 @@ class SelectionBar extends ConsumerWidget {
   /// selection, hit-testing and AI note placement all read.
   Future<void> _editText(
       BuildContext context, WidgetRef ref, TextElement t) async {
-    final text = await showSceneTextDialog(
+    final result = await showSceneTextDialog(
       context,
       initial: t.text,
+      initialBold: t.isBold,
+      initialItalic: t.isItalic,
+      initialAlign: t.align,
       title: 'Edit text',
       confirmLabel: 'Save',
     );
     // Null is cancel. Empty is a deliberate clear, but an empty text element is
     // invisible and unselectable — a trap — so treat it as "delete the text"
     // being unavailable here and leave the element alone.
-    if (text == null || text.trim().isEmpty || text == t.text) return;
+    if (result == null || result.text.trim().isEmpty) return;
 
-    final rect = ElementBounds.of(t);
-    final updated = t.copyWith(text: text.trim());
-    final height = SceneElementPainter.layOutText(updated, rect.width).height;
+    final updated = t.copyWith(
+      text: result.text.trim(),
+      isBold: result.isBold,
+      isItalic: result.isItalic,
+      align: result.align,
+    );
+    // Nothing changed — don't push an undo step for a no-op save.
+    if (updated.text == t.text &&
+        updated.isBold == t.isBold &&
+        updated.isItalic == t.isItalic &&
+        updated.align == t.align) {
+      return;
+    }
     if (!context.mounted) return;
 
     ref.read(historyProvider(pageKey).notifier).push(UpdateElementsCommand(
           before: [t],
-          after: [
-            updated.copyWith(geometryData: [
-              rect.left,
-              rect.top,
-              rect.right,
-              rect.top + math.max(height, t.fontSize),
-            ]),
-          ],
+          after: [_refit(updated)],
         ));
   }
 

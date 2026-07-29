@@ -17,6 +17,7 @@ import '../home_notifier.dart';
 import '../models/note_card_data.dart';
 import '../note_cards_provider.dart';
 import '../notes_palette.dart';
+import '../widgets/organize_sheets.dart';
 import '../widgets/note_card.dart';
 import '../widgets/search_bar_widget.dart';
 
@@ -62,6 +63,7 @@ class NotesScreen extends ConsumerWidget {
                             value,
                   ),
                 ),
+                const _OrganizeFilterRow(),
                 Expanded(
                   child: cards.when(
                     loading: () => const Center(
@@ -249,6 +251,26 @@ class _NotesList extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: Icon(note.pinned
+                  ? Icons.push_pin
+                  : Icons.push_pin_outlined),
+              title: Text(note.pinned ? 'Unpin' : 'Pin to top'),
+              onTap: () => Navigator.of(context).pop('pin'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder_outlined),
+              title: const Text('Move to folder…'),
+              onTap: () => Navigator.of(context).pop('folder'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.label_outline),
+              title: const Text('Tags…'),
+              subtitle:
+                  note.tags.isEmpty ? null : Text(note.tags.join(', ')),
+              onTap: () => Navigator.of(context).pop('tags'),
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: const Icon(Icons.auto_stories_outlined),
               title: const Text('Open in book view'),
               onTap: () => Navigator.of(context).pop('book'),
@@ -274,6 +296,14 @@ class _NotesList extends ConsumerWidget {
     if (!context.mounted || action == null) return;
 
     switch (action) {
+      case 'pin':
+        await ref
+            .read(homeNotifierProvider.notifier)
+            .setPinned(note.id, !note.pinned);
+      case 'folder':
+        await showMoveToFolderSheet(context, ref, note: note);
+      case 'tags':
+        await showEditTagsDialog(context, ref, note: note);
       case 'book':
         context.push('/note2/${note.id}/book');
       case 'graph':
@@ -292,8 +322,11 @@ class _NotesList extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: NotesPalette.card,
-        title: const Text('Delete note'),
-        content: Text('Delete "${note.title}"? This cannot be undone.'),
+        title: const Text('Move to trash'),
+        content: Text(
+          'Move "${note.title}" to the trash? '
+          'You can restore it for the next 30 days.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -304,15 +337,147 @@ class _NotesList extends ConsumerWidget {
             style: TextButton.styleFrom(
               foregroundColor: AppColors.accentRed,
             ),
-            child: const Text('Delete'),
+            child: const Text('Move to trash'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true) {
-      await ref.read(homeNotifierProvider.notifier).deleteNotebook(note.id);
-    }
+    if (confirmed != true || !context.mounted) return;
+
+    await ref.read(homeNotifierProvider.notifier).deleteNotebook(note.id);
+    if (!context.mounted) return;
+
+    // Undo right where the action happened — the trash is the safety net, but
+    // an immediate undo is what an accidental tap actually wants.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Moved "${note.title}" to trash'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => ref
+              .read(homeNotifierProvider.notifier)
+              .restoreNotebook(note.id),
+        ),
+      ),
+    );
+  }
+}
+
+/// Folder and tag filters. Hidden entirely until the user has made at least one
+/// folder or tag, so a fresh install is not asked to reason about organisation
+/// it has not created yet.
+class _OrganizeFilterRow extends ConsumerWidget {
+  const _OrganizeFilterRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final folders = ref.watch(foldersProvider).valueOrNull ?? const [];
+    final tags = ref.watch(tagCountsProvider).valueOrNull ?? const {};
+    if (folders.isEmpty && tags.isEmpty) return const SizedBox.shrink();
+
+    final folderFilter = ref.watch(notesFolderFilterProvider);
+    final selectedTags = ref.watch(notesTagFilterProvider);
+    final tagNames = tags.keys.toList()..sort();
+
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+        children: [
+          _FilterChip(
+            label: 'All',
+            selected: folderFilter == FolderFilter.all,
+            onTap: () => ref.read(notesFolderFilterProvider.notifier).state =
+                FolderFilter.all,
+          ),
+          for (final folder in folders)
+            _FilterChip(
+              label: folder.name,
+              icon: Icons.folder_outlined,
+              selected: folderFilter == FolderFilter.only(folder.id),
+              onTap: () => ref.read(notesFolderFilterProvider.notifier).state =
+                  folderFilter == FolderFilter.only(folder.id)
+                      ? FolderFilter.all
+                      : FolderFilter.only(folder.id),
+            ),
+          if (folders.isNotEmpty)
+            _FilterChip(
+              label: 'Unfiled',
+              selected: folderFilter == FolderFilter.unfiled,
+              onTap: () => ref.read(notesFolderFilterProvider.notifier).state =
+                  folderFilter == FolderFilter.unfiled
+                      ? FolderFilter.all
+                      : FolderFilter.unfiled,
+            ),
+          for (final tag in tagNames)
+            _FilterChip(
+              label: '#$tag',
+              selected: selectedTags.contains(tag),
+              onTap: () {
+                final next = {...selectedTags};
+                next.contains(tag) ? next.remove(tag) : next.add(tag);
+                ref.read(notesTagFilterProvider.notifier).state = next;
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.accentWash : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? AppColors.accent : AppColors.border,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 14, color: NotesPalette.textSecondary),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: selected
+                      ? AppColors.accent
+                      : NotesPalette.textSecondary,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

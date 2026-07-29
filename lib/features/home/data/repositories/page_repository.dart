@@ -2,6 +2,7 @@
 
 import 'package:isar/isar.dart';
 
+import '../../../../data/persistence/page_text_record.dart';
 import '../../domain/models/note_page.dart';
 import '../../domain/models/notebook.dart';
 
@@ -73,6 +74,12 @@ class PageRepository {
 
       if (pageToDelete != null) {
         await _isar.notePages.delete(pageToDelete.id);
+        // Drop the page's searchable text with it, or erased content stays
+        // findable and the note keeps matching words it no longer contains.
+        await _isar.pageTextRecords
+            .filter()
+            .pageIdEqualTo(pageToDelete.id)
+            .deleteAll();
       }
 
       // Decrement all pages with index > pageIndex

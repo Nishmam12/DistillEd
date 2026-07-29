@@ -37,6 +37,8 @@ class NoteCardData {
     this.previewImage,
     this.previewText = '',
     this.pinned = false,
+    this.folderId,
+    this.tags = const [],
   });
 
   final int id;
@@ -56,18 +58,26 @@ class NoteCardData {
 
   final bool pinned;
 
+  /// The folder this note is filed in, or null when unfiled.
+  final int? folderId;
+
+  /// Normalised (lowercase) labels, as stored.
+  final List<String> tags;
+
   /// Builds a card from a notebook plus whatever preview could be resolved.
   ///
   /// The type follows the data, best first: the note's own page, then a
   /// rendered thumbnail, then text (bulleted or not). A note with none of those
   /// still renders as [NoteType.text] — the preview falls back to the title,
   /// which every note has.
+  /// [pinned] defaults to the notebook's own flag; the named argument stays so
+  /// tests can build a pinned card without a notebook fixture.
   factory NoteCardData.fromNotebook(
     Notebook notebook, {
     List<SceneElement> previewScene = const [],
     String? previewImage,
     String previewText = '',
-    bool pinned = false,
+    bool? pinned,
   }) {
     final text = previewText.trim();
     return NoteCardData(
@@ -83,7 +93,9 @@ class NoteCardData {
       previewScene: previewScene,
       previewImage: previewImage,
       previewText: text,
-      pinned: pinned,
+      pinned: pinned ?? notebook.pinned,
+      folderId: notebook.folderId,
+      tags: List.unmodifiable(notebook.tags),
     );
   }
 

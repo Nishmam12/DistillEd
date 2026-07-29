@@ -15,6 +15,15 @@
          README, "Foreground Service" section). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <!-- Lecture recording alongside ink (Tier 4.12). Requested at runtime by
+         `record` via AudioCapturePort.ensurePermission(); the feature degrades
+         to "recording unavailable" if the user declines, and every other part
+         of the app is unaffected. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Recording keeps running while the user writes with the screen off or
+         the app backgrounded, which Android 14+ requires be declared. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
     <application
         android:label="DistillEd"
         android:name="${applicationName}"

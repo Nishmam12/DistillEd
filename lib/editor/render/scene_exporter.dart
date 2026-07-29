@@ -102,6 +102,81 @@ class SceneExporter {
     return doc.save();
   }
 
+  /// A PDF containing every page of a notebook, in order.
+  ///
+  /// Unlike [toPdf], which sizes its single page to that scene's content, this
+  /// gives the whole document one uniform page size — the largest content box
+  /// across all pages — and centres each page's content inside it at its true
+  /// scale. A document with pages of differing sizes prints and paginates
+  /// badly, and scaling each page to fill would silently blow a small doodle up
+  /// to the size of a dense page.
+  ///
+  /// Empty pages are kept as blank pages so the PDF's page numbering matches
+  /// the notebook's. Returns null when every page is empty.
+  static Future<Uint8List?> toNotebookPdf(
+    List<List<SceneElement>> pages, {
+    Color background = Colors.white,
+    double scale = 2.0,
+    double padding = defaultPadding,
+    ui.Image? Function(String relativePath)? imageResolver,
+  }) async {
+    if (pages.isEmpty) return null;
+
+    final boxes = [
+      for (final page in pages) contentBounds(page, padding: padding),
+    ];
+    var width = 0.0, height = 0.0;
+    for (final box in boxes) {
+      if (box == null) continue;
+      width = math.max(width, box.width);
+      height = math.max(height, box.height);
+    }
+    // Every page was empty — there is no document to make.
+    if (width <= 0 || height <= 0) return null;
+
+    final doc = pw.Document();
+    final format = PdfPageFormat(width, height);
+    final pdfBackground = PdfColor.fromInt(background.toARGB32());
+
+    for (var i = 0; i < pages.length; i++) {
+      final box = boxes[i];
+      if (box == null) {
+        doc.addPage(pw.Page(
+          pageFormat: format,
+          build: (_) => pw.Container(color: pdfBackground),
+        ));
+        continue;
+      }
+
+      final png = await toPng(
+        pages[i],
+        background: background,
+        scale: scale,
+        padding: padding,
+        imageResolver: imageResolver,
+      );
+      if (png == null) continue;
+
+      final image = pw.MemoryImage(png);
+      doc.addPage(pw.Page(
+        pageFormat: format,
+        build: (_) => pw.Container(
+          color: pdfBackground,
+          child: pw.Center(
+            // Natural size, not BoxFit.contain — the content keeps the scale it
+            // was drawn at rather than being stretched to the page.
+            child: pw.SizedBox(
+              width: box.width,
+              height: box.height,
+              child: pw.Image(image, fit: pw.BoxFit.fill),
+            ),
+          ),
+        ),
+      ));
+    }
+    return doc.save();
+  }
+
   // ---- SVG ------------------------------------------------------------------
 
   /// Vector SVG of the scene. Freehand ink is approximated as a stroked

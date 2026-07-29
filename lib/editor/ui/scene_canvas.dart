@@ -21,6 +21,7 @@ import '../../domain/services/frame_service.dart';
 import '../../domain/services/pixel_eraser_service.dart';
 import '../../domain/services/snap_engine.dart';
 import '../../domain/model/template_type.dart';
+import '../../features/audio/presentation/audio_providers.dart';
 import '../render/background_layer.dart';
 import '../input/scene_pointer_listener.dart';
 import '../render/freehand_path.dart';
@@ -581,6 +582,12 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     final points = _active.value;
     _active.value = const [];
     if (points.isEmpty) return;
+    // If a lecture is being recorded, stamp the stroke with how far into that
+    // recording it began — measured from the stroke's FIRST point, so tapping
+    // it later seeks to when the writing started, not when the pen lifted.
+    final stamp = ref
+        .read(recordingSessionProvider(_key.notebookId))
+        .stampFor(points.first.t ?? _engineNowMs());
     _history.push(AddElementsCommand([
       FreehandElement(
         id: _newId(),
@@ -589,9 +596,13 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
         color: tool.color,
         size: tool.size,
         opacity: tool.opacity,
+        recordingId: stamp?.recordingId,
+        audioOffsetMs: stamp?.audioOffsetMs,
       )
     ]));
   }
+
+  int _engineNowMs() => ref.read(engineClockProvider)();
 
   void _commitShape(EditorToolState tool, Offset end) {
     final start = _shapeStart;
@@ -647,14 +658,15 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
 
   Future<void> _createText(Offset scene) async {
     final tool = ref.read(editorToolProvider);
-    final text = await showSceneTextDialog(
+    final result = await showSceneTextDialog(
       context,
       title: 'Add text',
       confirmLabel: 'Add',
     );
-    if (text == null || text.trim().isEmpty) return;
+    if (result == null || result.text.trim().isEmpty) return;
     if (!mounted) return;
-    final w = math.max(120.0, text.trim().length * tool.fontSize * 0.6);
+    final body = result.text.trim();
+    final w = math.max(120.0, body.length * tool.fontSize * 0.6);
     _history.push(AddElementsCommand([
       TextElement(
         id: _newId(),
@@ -665,11 +677,14 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
           scene.dx + w,
           scene.dy + tool.fontSize * 1.6
         ],
-        text: text.trim(),
+        text: body,
         color: tool.color,
         fontSize: tool.fontSize,
         fontFamily: tool.fontFamily,
         opacity: tool.opacity,
+        isBold: result.isBold,
+        isItalic: result.isItalic,
+        align: result.align,
       )
     ]));
   }

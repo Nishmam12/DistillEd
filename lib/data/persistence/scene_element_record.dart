@@ -49,6 +49,11 @@ class SceneElementRecord {
   List<int> pointT = const [];
   bool isEraser = false;
 
+  /// Lecture-recording link (Tier 4.12). Null on strokes drawn with no
+  /// recording running, and on every row written before these fields existed.
+  int? recordingId;
+  int? audioOffsetMs;
+
   // --- shape only ---
   @enumerated
   ShapeType shapeType = ShapeType.rectangle; // ignored unless kind == shape

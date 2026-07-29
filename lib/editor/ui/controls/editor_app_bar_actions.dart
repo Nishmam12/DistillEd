@@ -8,9 +8,12 @@ import '../../../domain/commands/scene_command.dart';
 import '../../../domain/model/library_item.dart';
 import '../../../domain/services/library_service.dart';
 import '../../../domain/services/z_order_service.dart';
+import '../../../domain/model/scene_element.dart';
 import '../../../features/export/scene_export_service.dart';
+import '../../../features/home/presentation/home_notifier.dart';
 import '../../state/clipboard_service.dart';
 import '../../state/history_controller.dart';
+import '../../state/page_notifier.dart';
 import '../../state/scene_controller.dart';
 import '../../state/scene_image_cache_provider.dart';
 import '../../state/selection_controller.dart';
@@ -53,6 +56,8 @@ class EditorAppBarActions extends ConsumerWidget {
           case 'svg':
           case 'pdf':
             _export(context, ref, v);
+          case 'pdf-notebook':
+            _exportNotebook(context, ref);
         }
       },
       itemBuilder: (_) => [
@@ -82,6 +87,18 @@ class EditorAppBarActions extends ConsumerWidget {
         const PopupMenuItem(value: 'png', child: Text('Export / share PNG')),
         const PopupMenuItem(value: 'svg', child: Text('Export / share SVG')),
         const PopupMenuItem(value: 'pdf', child: Text('Export / share PDF')),
+        // Only the real notebook editor has a notebook behind it; the dev
+        // playground uses the same widget with nothing to walk.
+        if (onChangeBackground != null || onSummarize != null)
+          const PopupMenuItem(
+            value: 'pdf-notebook',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.picture_as_pdf_outlined),
+              title: Text('Export whole notebook (PDF)'),
+              subtitle: Text('Every page, in order'),
+            ),
+          ),
       ],
     );
   }
@@ -136,6 +153,42 @@ class EditorAppBarActions extends ConsumerWidget {
       'pdf' => await SceneExportService.sharePdf(els, imageCache: cache),
       _ => false,
     };
+    if (!ok && context.mounted) _toast(context, 'Nothing to export');
+  }
+
+  /// Exports every page of the notebook as one PDF.
+  ///
+  /// Pages come from the store, except the page currently open — that one is
+  /// read from its live controller, so edits made since the last write are in
+  /// the export rather than a stale copy of the page the user is looking at.
+  Future<void> _exportNotebook(BuildContext context, WidgetRef ref) async {
+    final notebookId = pageKey.notebookId;
+    final pages =
+        await ref.read(pageRepositoryProvider).getPagesForNotebook(notebookId);
+    if (pages.isEmpty) {
+      if (context.mounted) _toast(context, 'Nothing to export');
+      return;
+    }
+
+    final store = ref.read(sceneElementStoreProvider);
+    final live = ref.read(sceneControllerProvider(pageKey));
+    final scenes = <List<SceneElement>>[];
+    for (final page in pages) {
+      scenes.add(page.id == pageKey.pageId
+          ? live
+          : await store.loadForPage(page.id));
+    }
+
+    final notebook = await ref.read(noteRepositoryProvider).getNotebook(notebookId);
+    if (!context.mounted) return;
+
+    _toast(context, 'Exporting ${pages.length} pages…');
+    final ok = await SceneExportService.shareNotebookPdf(
+      scenes,
+      title: notebook?.title ?? 'notebook',
+      background: Color(notebook?.backgroundColor ?? 0xFFFFFFFF),
+      imageCache: ref.read(sceneImageCacheProvider),
+    );
     if (!ok && context.mounted) _toast(context, 'Nothing to export');
   }
 

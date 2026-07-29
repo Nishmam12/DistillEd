@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/search_providers.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../dev/dev_secrets.dart';
 import '../../../editor/render/scene_exporter.dart';
@@ -423,6 +424,16 @@ final pageContextProvider = StateNotifierProvider.autoDispose
     // Writing Assistant and RAG indexing both ride this same debounce +
     // extraction (no second recognition pass, no second loop).
     onContent: (content) {
+      // Searchable text is persisted immediately and unconditionally — before
+      // anything that could throw, and deliberately NOT behind the indexer's
+      // 20s debounce or its embedding step. Search must work for someone who
+      // has never downloaded the embedding model, so this write is the one
+      // thing here that cannot be allowed to depend on the AI stack.
+      unawaited(ref.read(pageTextStoreProvider).save(
+            notebookId: key.notebookId,
+            pageId: key.pageId,
+            text: content.combinedText,
+          ));
       // Indexing goes FIRST deliberately. ContextEngineNotifier._notifyContent
       // guards the engine from this callback, but nothing guards these two
       // listeners from each other: a throw in the first would silently starve

@@ -95,6 +95,16 @@ dependencies:
   #    Bumping past 0.15.x means unpinning digital ink first.
   google_mlkit_text_recognition: ^0.15.1
 
+  # ── Lecture audio recorded alongside ink (Tier 4.12) ─────
+  #    Split deliberately: `record` captures, `just_audio` plays and seeks.
+  #    Both sit behind AudioCapturePort / AudioPlaybackPort
+  #    (features/audio/domain/audio_ports.dart), so everything above them is
+  #    plugin-agnostic and unit-tested with fakes. Neither shares a transitive
+  #    dependency with the pinned ML Kit plugins — verified by `pub get`
+  #    resolving without touching google_mlkit_commons.
+  record: ^5.1.2
+  just_audio: ^0.9.42
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

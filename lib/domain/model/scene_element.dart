@@ -67,6 +67,17 @@ final class FreehandElement extends SceneElement {
   final double size;
   final bool isEraser;
 
+  /// The lecture recording this stroke was drawn during, or null if there was
+  /// none. Paired with [audioOffsetMs] to seek audio from a tapped stroke.
+  final int? recordingId;
+
+  /// How far into [recordingId] this stroke began, in milliseconds.
+  ///
+  /// An offset rather than a timestamp on purpose: StrokePoint.t is a monotonic
+  /// engine clock whose epoch resets each launch, so it cannot be compared with
+  /// a persisted recording. See `features/audio/domain/lecture_recording.dart`.
+  final int? audioOffsetMs;
+
   const FreehandElement({
     required super.id,
     required super.zOrder,
@@ -74,11 +85,16 @@ final class FreehandElement extends SceneElement {
     required this.color,
     required this.size,
     this.isEraser = false,
+    this.recordingId,
+    this.audioOffsetMs,
     super.rotation,
     super.opacity,
     super.isLocked,
     super.groupId,
   });
+
+  /// Whether tapping this stroke can seek audio.
+  bool get hasAudio => recordingId != null && audioOffsetMs != null;
 
   @override
   SceneElementKind get kind => SceneElementKind.freehand;
@@ -94,6 +110,8 @@ final class FreehandElement extends SceneElement {
     int? color,
     double? size,
     bool? isEraser,
+    int? recordingId,
+    int? audioOffsetMs,
   }) {
     return FreehandElement(
       id: id ?? this.id,
@@ -106,6 +124,8 @@ final class FreehandElement extends SceneElement {
       color: color ?? this.color,
       size: size ?? this.size,
       isEraser: isEraser ?? this.isEraser,
+      recordingId: recordingId ?? this.recordingId,
+      audioOffsetMs: audioOffsetMs ?? this.audioOffsetMs,
     );
   }
 }

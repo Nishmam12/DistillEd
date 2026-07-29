@@ -29,6 +29,8 @@ class SceneElementRecordMapper {
         r.color = element.color;
         r.strokeWidth = element.size;
         r.isEraser = element.isEraser;
+        r.recordingId = element.recordingId;
+        r.audioOffsetMs = element.audioOffsetMs;
         final pts = <double>[];
         final sim = <bool>[];
         final t = <int>[];
@@ -105,6 +107,8 @@ class SceneElementRecordMapper {
           color: r.color,
           size: r.strokeWidth,
           isEraser: r.isEraser,
+          recordingId: r.recordingId,
+          audioOffsetMs: r.audioOffsetMs,
         );
       case SceneElementKind.shape:
         return SceneShapeElement(
