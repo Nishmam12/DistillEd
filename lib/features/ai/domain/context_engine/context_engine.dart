@@ -63,7 +63,10 @@ Rules:
     PageContent content, {
     PageContext? previousContext,
   }) async {
-    final text = content.combinedText;
+    // Figures are part of what the page is ABOUT — a page whose only content is
+    // a labelled circuit diagram has a topic and key concepts, and gating on
+    // the written words alone would report it as empty.
+    final text = content.combinedTextWithFigures;
     final gate = _gate.evaluate(text, topScores: [
       if (content.inkTopScore != null) content.inkTopScore!,
     ]);

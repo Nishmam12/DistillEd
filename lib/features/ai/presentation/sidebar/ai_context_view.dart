@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/ink_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
+import '../../data/llm/llm_exceptions.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/ai_provider.dart';
 import '../../domain/context_engine/page_context.dart';
@@ -180,6 +181,13 @@ class _ModelNotReadyState extends ConsumerState<_ModelNotReady> {
       if (!mounted) return;
       // Force a re-run: the previous attempt failed on the missing model.
       await ref.read(pageContextProvider(widget.pageKey).notifier).refresh();
+    } on LlmException catch (e) {
+      // Typed failures already carry a message written for the user — auth,
+      // licence, rate limit, storage. Flattening them into "check your
+      // connection" sent people to fix their wifi over a HuggingFace licence
+      // they had never accepted, with nothing on screen pointing at the real
+      // cause. Settings shows these verbatim; so does this.
+      if (mounted) setState(() => _failure = e.message);
     } catch (e) {
       if (mounted) setState(() => _failure = 'Download failed. Check your connection and try again.');
     } finally {

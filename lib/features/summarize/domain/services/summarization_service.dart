@@ -105,28 +105,67 @@ class LocalModelRequiredException extends SummarizeException {
 }
 
 class SummarizationService {
-  static const String _instruction =
-      'You summarize handwritten notes. Write a faithful summary of the note '
-      'in 3 to 6 sentences. Use only information present in the note — never '
-      'invent facts, names, dates, or numbers. If parts of the note are '
-      'unclear, summarize only what is clear.';
+  /// The voice contract, shared by every summarization pass.
+  ///
+  /// Small on-device models default to an assistant register: they open with a
+  /// preamble ("Here is a summary of your note:"), narrate the document
+  /// ("the note discusses…", "the author mentions…"), and close by offering
+  /// more help. That reads as a chatbot reporting on a file rather than a tutor
+  /// recapping the material, so the register is pinned explicitly here instead
+  /// of being left to the model's default. Matches the tutor voice [Explainer]
+  /// establishes for explanations.
+  static const String _voice =
+      'You are a tutor recapping a student\'s handwritten notes with them, out '
+      'loud, the way you would at the end of a session. Speak about the '
+      'material itself, not about the note as a document — say "photosynthesis '
+      'converts light into sugar", never "the note explains that '
+      'photosynthesis…" or "the student writes about…". Start straight in on '
+      'the content: no preamble, no greeting, no "here is a summary", no '
+      'heading, no closing offer of further help or follow-up question. Use '
+      'plain, warm, direct prose in flowing sentences — no bullet points, no '
+      'bold labels, no emoji, and no phrases like "certainly", "it is '
+      'important to note", "delve", or "in conclusion". Address the student as '
+      '"you" only when the note is about something they did.';
+
+  static const String _instruction = '$_voice\n\n'
+      'Recap the note below in 3 to 6 sentences, keeping what a student would '
+      'need for revision: the key ideas, and the names, dates and numbers that '
+      'carry them. Use only information present in the note — never invent '
+      'facts, names, dates, or numbers. If parts of the note are unclear, '
+      'cover only what is clear, without remarking on the gaps.\n\n$_figureRule';
+
+  /// How to treat the `[Figure N — kind: title]` blocks [PageContent] appends.
+  ///
+  /// Without this the model does one of two wrong things with them: quotes the
+  /// scaffolding back verbatim ("Figure 1 — chart shows…"), or ignores them as
+  /// metadata. Both lose the graph the student drew, which is the entire point
+  /// of reading it. Shared by every pass so a chunked summary treats figures
+  /// the same way a single-pass one does.
+  static const String _figureRule =
+      'Blocks marked [Figure …] are charts, diagrams or tables from the page, '
+      'described for you because they are pictures rather than writing. Treat '
+      'what they say as part of the note and fold it into the recap in your own '
+      'words — a trend, a relationship, a process. Never write "Figure 1", '
+      '"the figure shows", "the diagram", or "the chart"; say what it means '
+      'instead, the way you would if the student had written it in a sentence.';
 
   /// Per-chunk pass of chunk-and-reduce: condense one section of a long note
   /// without losing the specifics later passes rely on.
-  static const String _sectionInstruction =
-      'You summarize one section of a longer handwritten note. Write a '
-      'faithful, compact summary of just this section, keeping the key facts, '
-      'names, and numbers. Use only what this section says — never invent '
-      'anything.';
+  static const String _sectionInstruction = '$_voice\n\n'
+      'The text below is one section of a longer note. Recap just this section, '
+      'compactly, keeping its key facts, names, and numbers — later passes '
+      'depend on those specifics surviving. Use only what this section says — '
+      'never invent anything.\n\n$_figureRule';
 
   /// Final reduce pass: fold the section summaries into one summary. The input
   /// is already summarized text, so it must not be summarized any further than
   /// the note itself would be.
-  static const String _reduceInstruction =
-      'You are given section summaries of a single handwritten note, in order. '
-      'Combine them into one faithful summary of the whole note in 3 to 6 '
-      'sentences. Use only information in the section summaries — never invent '
-      'facts, names, dates, or numbers.';
+  static const String _reduceInstruction = '$_voice\n\n'
+      'The text below is section-by-section recaps of a single note, in order. '
+      'Draw them together into one recap of the whole note in 3 to 6 '
+      'sentences, and do not mention that it came in sections. Use only '
+      'information in those recaps — never invent facts, names, dates, or '
+      'numbers.';
 
   /// Cap on reduce recursion; a safety net for pathologically small context
   /// windows so chunk-and-reduce always terminates.
@@ -140,6 +179,13 @@ class SummarizationService {
   final SummaryStore _store;
   final String _localModelLabel;
 
+  /// Whether pages are read with the VLM (charts and diagrams understood) or on
+  /// the light ML Kit path. On by default — a summary that silently drops the
+  /// graph on the page is the bug this exists to fix. Off is an escape hatch
+  /// for tests and for low-end devices where the extra per-visual model pass is
+  /// too slow.
+  final bool _visionEnabled;
+
   SummarizationService({
     required PageContentExtractor extractor,
     required AiRouter router,
@@ -148,13 +194,15 @@ class SummarizationService {
     required SummaryStore store,
     MeaningfulnessGate gate = const MeaningfulnessGate(),
     String localModelLabel = 'gemma4-e2b-local',
+    bool visionEnabled = true,
   })  : _extractor = extractor,
         _gate = gate,
         _router = router,
         _local = local,
         _cloud = cloud,
         _store = store,
-        _localModelLabel = localModelLabel;
+        _localModelLabel = localModelLabel,
+        _visionEnabled = visionEnabled;
 
   /// Summarizes a whole notebook. [pageIds] must be in page order. Kept as the
   /// notebook entry point (the app-bar Summarize action); delegates to
@@ -275,19 +323,26 @@ class SummarizationService {
 
   /// Resolves a scope to its combined text and the ink confidence scores that
   /// feed the meaningfulness gate.
+  ///
+  /// Reads with vision on ([_visionEnabled]), so a page's charts and diagrams
+  /// arrive as described figures rather than as a handful of stray axis labels.
+  /// That costs an extra VLM pass per visual — accepted here because summarize
+  /// is an explicit, user-initiated action, unlike the passive Context Engine
+  /// loop which stays on the light path between deep reads.
   Future<(String, List<double>)> _gather(
     SummarizeScope scope,
     String languageCode,
   ) async {
+    final vision = _visionEnabled;
     switch (scope) {
       case NotebookScope(:final pageIds):
         final pages = <PageContent>[];
         for (final pageId in pageIds) {
-          pages.add(
-              await _extractor.extractPage(pageId, languageCode: languageCode));
+          pages.add(await _extractor.extractPage(pageId,
+              languageCode: languageCode, useVision: vision));
         }
         final text = pages
-            .map((p) => p.combinedText)
+            .map((p) => p.combinedTextWithFigures)
             .where((t) => t.isNotEmpty)
             .join('\n\n');
         final scores = [
@@ -297,19 +352,23 @@ class SummarizationService {
         return (text, scores);
 
       case PageScope(:final pageId):
-        final page =
-            await _extractor.extractPage(pageId, languageCode: languageCode);
+        final page = await _extractor.extractPage(pageId,
+            languageCode: languageCode, useVision: vision);
         return _single(page);
 
       case SelectionScope(:final pageId, :final elementIds):
         final page = await _extractor.extractSelection(pageId, elementIds,
-            languageCode: languageCode);
+            languageCode: languageCode, useVision: vision);
         return _single(page);
     }
   }
 
+  /// Figures are included in the gated/summarized text — a page whose only
+  /// content is a hand-drawn graph has almost no words, and gating on
+  /// [PageContent.combinedText] alone is exactly why such a page used to be
+  /// rejected as "not meaningful" instead of summarized.
   static (String, List<double>) _single(PageContent page) => (
-        page.combinedText,
+        page.combinedTextWithFigures,
         [if (page.inkTopScore != null) page.inkTopScore!],
       );
 

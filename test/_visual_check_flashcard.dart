@@ -55,6 +55,7 @@ class _FakeInstaller implements ModelInstaller {
   @override
   Future<void> install({
     required LlmModelSpec spec,
+    String? authToken,
     void Function(int percent)? onProgress,
     CancelToken? cancelToken,
   }) async {}

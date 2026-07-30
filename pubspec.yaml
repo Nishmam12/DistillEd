@@ -105,6 +105,19 @@ dependencies:
   record: ^5.1.2
   just_audio: ^0.9.42
 
+  # ── Opening HuggingFace in the user's browser ────────────
+  #    EmbeddingGemma is a GATED model, and HuggingFace only accepts a licence
+  #    click from a browser — there is no API for it ("Requesting access can
+  #    only be done from your browser", huggingface.co/docs/hub/models-gated).
+  #    So the app has to hand the user off. Used via
+  #    core/utils/external_links.dart, which prefers LaunchMode.inAppBrowserView
+  #    (an Android Custom Tab) precisely because it SHARES the default browser's
+  #    cookie jar — the user who just created a token is already signed in —
+  #    while an embedded WebView would have its own jar and force a second
+  #    login inside our app. 6.3.x matches the url_launcher_* platform shims
+  #    already resolved transitively via share_plus/printing.
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -116,6 +129,9 @@ dev_dependencies:
 
   # ── Testing ───────────────────────────────────────────────
   mocktail: ^1.0.4
+
+dependency_overrides:
+  record_platform_interface: 1.1.0
 
 flutter:
   uses-material-design: true

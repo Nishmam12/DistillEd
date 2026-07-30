@@ -9,8 +9,12 @@
 //   * images (incl. rasterized PDF pages) → on-device OCR
 //     ([recognizedImageText]) when an [ImageTextReader] is wired in; still
 //     flagged needsOcr when it isn't, or when the image holds no text
-//   * shapes/frames     → carry no standalone text (labels are bound
-//     TextElements, covered above); ignored
+//   * charts/diagrams, drawn OR pasted → structured [PageContent.figures] via
+//     the VLM figure pass ([FigureAnalyzer]), when one is wired and the caller
+//     asked for a deep read
+//   * shapes/frames     → no standalone TEXT of their own, but they are the
+//     bones of a hand-drawn flowchart, so they ARE rendered into the image the
+//     figure pass reads (see [_drawnLayer])
 //
 // Elements are loaded through an injected loader (wired to
 // SceneElementStore.loadForPage in production) so the extractor stays free of
@@ -22,6 +26,9 @@ import 'dart:ui';
 import '../../../domain/model/scene_element.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/ocr/gemma_vision_ocr_service.dart';
+import 'ai_exception.dart';
+import 'figure.dart';
+import 'figure_analyzer.dart';
 import 'page_content.dart';
 
 /// Reads the text out of the image at [relativeImagePath] (relative to the app
@@ -29,8 +36,12 @@ import 'page_content.dart';
 /// picture should cost its own text, not the whole page's.
 typedef ImageTextReader = Future<String> Function(String relativeImagePath);
 
-/// Rasterises the handwritten ink among a page's elements to a PNG for Gemma
-/// vision, or null when there is nothing to draw. Must not throw.
+/// Rasterises the given scene elements to a PNG for Gemma vision, or null when
+/// there is nothing to draw. Must not throw.
+///
+/// Called with two different slices: just the handwritten strokes (for the OCR
+/// read) and the whole drawn layer including shapes, arrows and their text
+/// labels (for the figure read) — see [PageContentExtractor._drawnLayer].
 typedef InkImageRenderer = Future<Uint8List?> Function(
     List<SceneElement> inkElements);
 
@@ -53,6 +64,11 @@ class PageContentExtractor {
   final InkImageRenderer? _renderInk;
   final ImageBytesLoader? _loadImageBytes;
 
+  /// Reads charts and diagrams as structured [FigureDescription]s. Null leaves
+  /// [PageContent.figures] empty and the pipeline behaves exactly as it did
+  /// before figures existed.
+  final FigureAnalyzer? _figures;
+
   PageContentExtractor({
     required Future<List<SceneElement>> Function(int pageId) loadElements,
     required HandwritingRecognitionService recognition,
@@ -60,12 +76,14 @@ class PageContentExtractor {
     GemmaVisionOcrService? visionOcr,
     InkImageRenderer? renderInk,
     ImageBytesLoader? loadImageBytes,
+    FigureAnalyzer? figureAnalyzer,
   })  : _loadElements = loadElements,
         _recognition = recognition,
         _readImageText = readImageText,
         _visionOcr = visionOcr,
         _renderInk = renderInk,
-        _loadImageBytes = loadImageBytes;
+        _loadImageBytes = loadImageBytes,
+        _figures = figureAnalyzer;
 
   /// Extracts everything AI-readable from the page. The recognition language
   /// model for [languageCode] must be present (see
@@ -128,7 +146,11 @@ class PageContentExtractor {
     if (elements.isEmpty) return PageContent.empty;
 
     final vision = useVision ? _visionOcr : null;
+    // The figure pass is a second VLM call per visual, so it rides the same
+    // opt-in as the deep read — the passive live loop never pays for it.
+    final figureAnalyzer = useVision ? _figures : null;
     final sources = <PageContentSource>[];
+    final figures = <FigureDescription>[];
 
     // Ink → recognized text. Gemma vision reads the rendered strokes when asked;
     // otherwise ML Kit's grouped digital-ink call (stroke order is drawing order).
@@ -172,14 +194,37 @@ class PageContentExtractor {
     for (final e in elements) {
       if (e is! ImageElement) continue;
 
-      final text = await _readImageElement(e, vision, varyVision);
+      final bytes = await _imageBytesOf(e);
+      final text = await _readImageElement(e, bytes, vision, varyVision);
       if (text.isNotEmpty) imageTexts.add(text);
+
+      // A pasted graph is the case that motivated this whole pass: it usually
+      // OCRs to a handful of axis labels, so text alone never described it.
+      final figure = bytes == null
+          ? null
+          : await _analyzeFigure(figureAnalyzer, bytes);
+      if (figure != null) figures.add(figure);
 
       sources.add(PageContentSource(
         kind: PageSourceKind.image,
         bounds: _rectOf(e.geometryData),
-        needsOcr: text.isEmpty,
+        // A figure we understood is content we DID read, even with no text.
+        needsOcr: text.isEmpty && figure == null,
       ));
+    }
+
+    // The hand-drawn figure: strokes, shapes, arrows and their labels rendered
+    // together, so a flowchart built from the shape tools is finally visible.
+    // Rendered separately from the OCR ink image because that one deliberately
+    // excludes shapes and typed labels.
+    final drawn = _drawnLayer(elements);
+    if (figureAnalyzer != null && drawn.isNotEmpty) {
+      final render = _renderInk;
+      final png = render == null ? null : await render(drawn);
+      if (png != null) {
+        final figure = await _analyzeFigure(figureAnalyzer, png);
+        if (figure != null) figures.add(figure);
+      }
     }
 
     return PageContent(
@@ -187,8 +232,49 @@ class PageContentExtractor {
       inkTopScore: inkScore,
       typedText: textElements.map((e) => e.text.trim()).join('\n'),
       recognizedImageText: imageTexts.join('\n\n'),
+      figures: figures,
       sources: sources,
     );
+  }
+
+  /// Everything the student DREW, in z-order: strokes, shapes and frames, plus
+  /// the text labels bound to them. Images are excluded — each is analysed on
+  /// its own bytes above, at full resolution rather than as a scaled-down
+  /// rectangle inside a page render.
+  ///
+  /// Returns empty when the page has no shape and no ink, so a page of pure
+  /// typed text never triggers a figure call.
+  static List<SceneElement> _drawnLayer(List<SceneElement> elements) {
+    final hasVisual = elements.any((e) =>
+        (e is FreehandElement && !e.isEraser && e.points.isNotEmpty) ||
+        e is SceneShapeElement);
+    if (!hasVisual) return const [];
+    return [
+      for (final e in elements)
+        if (e is! ImageElement && !(e is FreehandElement && e.isEraser)) e,
+    ];
+  }
+
+  /// Runs the figure pass, swallowing everything except a missing local model —
+  /// a figure is an enhancement, and a page must still summarize without one.
+  Future<FigureDescription?> _analyzeFigure(
+      FigureAnalyzer? analyzer, Uint8List bytes) async {
+    if (analyzer == null) return null;
+    try {
+      return await analyzer.analyze(bytes);
+    } on AiModelNotReadyException {
+      // Same contract as the OCR path: the caller offers the download rather
+      // than silently producing a figure-less read.
+      rethrow;
+    } on AiException {
+      return null;
+    }
+  }
+
+  Future<Uint8List?> _imageBytesOf(ImageElement e) async {
+    final loadBytes = _loadImageBytes;
+    if (loadBytes == null || e.relativeImagePath.isEmpty) return null;
+    return loadBytes(e.relativeImagePath);
   }
 
   /// Reads a page's handwriting. Gemma vision (rendered ink → transcription) is
@@ -222,19 +308,19 @@ class PageContentExtractor {
   /// Reads one image element. Gemma vision is primary when wired; ML Kit OCR
   /// backstops a poor Gemma read, and Gemma's best-effort text is kept only when
   /// ML Kit finds nothing.
-  Future<String> _readImageElement(
-      ImageElement e, GemmaVisionOcrService? vision, bool vary) async {
+  ///
+  /// [bytes] is the already-loaded image (null when it couldn't be read or no
+  /// loader is wired), passed in so the OCR and figure passes decode the file
+  /// once between them rather than once each.
+  Future<String> _readImageElement(ImageElement e, Uint8List? bytes,
+      GemmaVisionOcrService? vision, bool vary) async {
     if (e.relativeImagePath.isEmpty) return '';
 
-    final loadBytes = _loadImageBytes;
-    if (vision != null && loadBytes != null) {
-      final bytes = await loadBytes(e.relativeImagePath);
-      if (bytes != null) {
-        final result = await vision.read(bytes, vary: vary);
-        if (result.passed) return result.text;
-        final ml = await _readImageTextOrEmpty(e.relativeImagePath);
-        return ml.isNotEmpty ? ml : result.text;
-      }
+    if (vision != null && bytes != null) {
+      final result = await vision.read(bytes, vary: vary);
+      if (result.passed) return result.text;
+      final ml = await _readImageTextOrEmpty(e.relativeImagePath);
+      return ml.isNotEmpty ? ml : result.text;
     }
     return _readImageTextOrEmpty(e.relativeImagePath);
   }

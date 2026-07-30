@@ -31,6 +31,19 @@ abstract class EmbedderInstaller {
   /// True only when BOTH the model and its tokenizer are present.
   Future<bool> isInstalled(EmbedderSpec spec);
 
+  /// True when EXACTLY ONE of the two files is present — a half-finished
+  /// install.
+  ///
+  /// This state is reachable and is not self-clearing. flutter_gemma installs
+  /// the two files as separate, independently-recorded steps with no
+  /// transaction around them (`EmbeddingInstallationBuilder.install` has no
+  /// try/catch and never calls the plugin's own `cleanupFailedDownload` —
+  /// that runs only on the inference path, which this does not go through).
+  /// So a failure on the tokenizer leg leaves the ~171 MB model file behind,
+  /// [isInstalled] answers false, and without this the UI would offer only a
+  /// Download button — no way to see or reclaim the space.
+  Future<bool> isPartiallyInstalled(EmbedderSpec spec);
+
   /// Downloads and installs [spec], reporting whole percents via [onProgress].
   ///
   /// Throws [EmbedderTokenRequiredException] when [spec] is gated and
@@ -58,6 +71,15 @@ class FlutterGemmaEmbedderInstaller implements EmbedderInstaller {
     await GemmaBootstrap.ensureInitialized();
     return await FlutterGemma.isModelInstalled(spec.modelFilename) &&
         await FlutterGemma.isModelInstalled(spec.tokenizerFilename);
+  }
+
+  @override
+  Future<bool> isPartiallyInstalled(EmbedderSpec spec) async {
+    await GemmaBootstrap.ensureInitialized();
+    final model = await FlutterGemma.isModelInstalled(spec.modelFilename);
+    final tokenizer =
+        await FlutterGemma.isModelInstalled(spec.tokenizerFilename);
+    return model != tokenizer;
   }
 
   @override
@@ -100,8 +122,26 @@ class FlutterGemmaEmbedderInstaller implements EmbedderInstaller {
     await GemmaBootstrap.ensureInitialized();
     // Two files, one model: leaving the tokenizer behind would strand ~4.5 MB
     // and leave [isInstalled] reporting a half-present model.
-    await FlutterGemma.uninstallModel(spec.modelFilename);
-    await FlutterGemma.uninstallModel(spec.tokenizerFilename);
+    await _uninstallIfPresent(spec.modelFilename);
+    await _uninstallIfPresent(spec.tokenizerFilename);
+  }
+
+  /// Removes one file, tolerating its absence.
+  ///
+  /// `FlutterGemma.uninstallModel` THROWS a bare `Exception('Model not found')`
+  /// when the file has no metadata rather than treating a delete of something
+  /// absent as a no-op. Calling it blind for both files means that cleaning up
+  /// a half-installed model — the exact case cleanup exists for — deletes the
+  /// first file and then throws on the second, so the caller sees a failure
+  /// after a partial success. Each file is therefore isolated.
+  static Future<void> _uninstallIfPresent(String filename) async {
+    if (!await FlutterGemma.isModelInstalled(filename)) return;
+    try {
+      await FlutterGemma.uninstallModel(filename);
+    } catch (_) {
+      // Lost a race with another delete, or the metadata vanished underneath
+      // us. Either way the file is gone or unreachable; nothing to report.
+    }
   }
 }
 

@@ -10,11 +10,12 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from .routers import generate, tools
+from .routers import generate, tools, vision
 
 app = FastAPI(title="InkFlow AI Gateway", version="0.1.0")
 app.include_router(generate.router)
 app.include_router(tools.router)
+app.include_router(vision.router)
 
 
 @app.get("/health")

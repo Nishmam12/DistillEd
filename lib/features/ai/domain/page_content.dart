@@ -3,6 +3,8 @@
 
 import 'dart:ui';
 
+import 'figure.dart';
+
 /// Where a piece of page content came from.
 enum PageSourceKind { ink, typedText, image }
 
@@ -48,6 +50,16 @@ class PageContent {
   /// not type it, and it carries OCR's error rate.
   final String recognizedImageText;
 
+  /// Charts, diagrams, tables and equations the vision pass understood, in the
+  /// order they were read.
+  ///
+  /// Deliberately NOT folded into [recognizedImageText]: these are descriptions
+  /// the model wrote about a picture, not words the student wrote. Downstream
+  /// prompts must be able to label them as such (see [figureBlocks]), and a
+  /// figure's quality bar is different from a transcription's — see
+  /// `figure.dart`.
+  final List<FigureDescription> figures;
+
   /// Which parts of the page contributed (or couldn't), with bounds.
   final List<PageContentSource> sources;
 
@@ -56,19 +68,43 @@ class PageContent {
     required this.typedText,
     this.recognizedImageText = '',
     this.inkTopScore,
+    this.figures = const [],
     this.sources = const [],
   });
 
   static const empty = PageContent(recognizedInkText: '', typedText: '');
 
-  /// Everything readable on the page, ink first, blank-line separated.
+  /// Everything the student WROTE, ink first, blank-line separated. Excludes
+  /// figure descriptions — use [combinedTextWithFigures] for prompting.
   String get combinedText => [
         recognizedInkText.trim(),
         typedText.trim(),
         recognizedImageText.trim(),
       ].where((t) => t.isNotEmpty).join('\n\n');
 
+  /// The figures rendered as labelled, LLM-ready blocks ('' when there are
+  /// none). Numbered from 1 when the page holds more than one, so a prompt can
+  /// refer to "Figure 2".
+  String get figureBlocks {
+    if (figures.isEmpty) return '';
+    final single = figures.length == 1;
+    return [
+      for (var i = 0; i < figures.length; i++)
+        figures[i].toPromptBlock(index: single ? null : i + 1),
+    ].join('\n\n');
+  }
+
+  /// What an AI feature should actually reason over: the written text plus the
+  /// described figures. This is the string every prompt-building caller wants —
+  /// [combinedText] alone is what made diagrams invisible.
+  String get combinedTextWithFigures =>
+      [combinedText, figureBlocks].where((t) => t.isNotEmpty).join('\n\n');
+
   bool get hasText => combinedText.isNotEmpty;
+
+  /// True when the page carries understood visual content, even if it holds no
+  /// readable words at all — a page that is nothing but a hand-drawn graph.
+  bool get hasFigures => figures.isNotEmpty;
 
   /// True when the page holds images the pipeline cannot read yet.
   bool get hasUnrecognizedImages => sources.any((s) => s.needsOcr);

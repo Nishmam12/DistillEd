@@ -20,7 +20,9 @@ import '../data/embeddings/local_text_embedder.dart';
 import '../data/flashcards/flashcard_store.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/cloud_llm_client.dart';
+import '../data/llm/hf_token_check.dart';
 import '../data/llm/model_download_manager.dart';
+import '../data/llm/model_storage_cleaner.dart';
 import '../data/memory/learning_memory_repository.dart';
 import '../data/ocr/gemma_vision_ocr_service.dart';
 import '../data/ocr/image_text_recognition_service.dart';
@@ -37,6 +39,7 @@ import '../domain/features/quiz_generator.dart';
 import '../domain/features/notes_qa.dart';
 import '../domain/features/researcher.dart';
 import '../domain/features/writing_assistant.dart';
+import '../domain/figure_analyzer.dart';
 import '../domain/image_transcriber.dart';
 import '../domain/knowledge_graph/knowledge_graph.dart';
 import '../domain/page_content_extractor.dart';
@@ -66,11 +69,22 @@ final handwritingRecognitionServiceProvider =
   return service;
 });
 
+/// Manages the on-device LLM download. The token is optional here (this model's
+/// repo is ungated) but is passed when present — see [ModelDownloadManager]'s
+/// `_authToken` for why an anonymous 2.4 GB download is the fragile one.
 final modelDownloadManagerProvider = Provider<ModelDownloadManager>((ref) {
-  final manager = ModelDownloadManager();
+  final manager = ModelDownloadManager(
+    authToken: () => ref.read(huggingFaceTokenProvider),
+  );
   ref.onDispose(manager.dispose);
   return manager;
 });
+
+/// Finds and reclaims model files left on disk that no installed model claims
+/// — see [ModelStorageCleaner] for how these arise and why the delete is
+/// guarded.
+final modelStorageCleanerProvider =
+    Provider<ModelStorageCleaner>((ref) => FlutterGemmaStorageCleaner());
 
 /// The on-device model behind the platform-wide [AiProvider] contract —
 /// streaming, typed failures, load→generate→unload memory invariant.
@@ -99,6 +113,16 @@ final huggingFaceTokenProvider = Provider<String>((ref) {
   if (kDebugMode) return kDevHuggingFaceToken.trim();
   return '';
 });
+
+/// Validates a HuggingFace token against `/api/whoami-v2`, independently of any
+/// model repo.
+///
+/// Exposed as a provider (rather than staying private to the download manager)
+/// so Settings can check a token the moment it is pasted. Catching a bad paste
+/// there, instead of 185 MB into a download, is most of what makes the gated
+/// setup bearable.
+final huggingFaceIdentityProvider =
+    Provider<HuggingFaceIdentity>((ref) => DioHuggingFaceIdentity());
 
 /// Manages the gated, user-triggered download of the embedding model, reading
 /// the effective token at download time (see the manager's [authToken] doc for
@@ -189,6 +213,26 @@ final imageTranscriberProvider = Provider<ImageTranscriber>(
 final gemmaVisionOcrServiceProvider = Provider<GemmaVisionOcrService>((ref) =>
     GemmaVisionOcrService(transcriber: ref.watch(imageTranscriberProvider)));
 
+/// Reads charts and diagrams as structured figures — on-device first, cloud
+/// only when the on-device read misses the quality bar.
+///
+/// The escalation predicate is the privacy control for this feature: an image
+/// leaves the device only when the user has turned cloud AI on AND the local
+/// VLM already failed to read the figure. Read (not watched) at call time so
+/// toggling the setting takes effect on the next read without rebuilding the
+/// extractor.
+final figureAnalyzerProvider = Provider<FigureAnalyzer>((ref) {
+  final local = ref.watch(imageTranscriberProvider);
+  final cloud = ref.watch(cloudGatewayMidProvider);
+  return FigureAnalyzer(
+    local: local,
+    cloud: cloud,
+    canEscalate: () async => ref.read(settingsProvider).cloudAiEnabled,
+    localModelId: ref.watch(localAiProvider).capabilities.modelId,
+    cloudModelId: cloud.capabilities.modelId,
+  );
+});
+
 /// The one way AI features read a page (editor-2.0 scene store underneath).
 final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
   final store = ref.watch(sceneElementStoreProvider);
@@ -207,6 +251,9 @@ final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
     renderInk: (inkElements) => SceneExporter.toPng(inkElements),
     loadImageBytes: (relative) =>
         _readFileBytes(SceneImageCache.resolvePath(docsDir, relative)),
+    // Charts and diagrams — drawn with the shape tools or pasted in — read as
+    // structured figures instead of vanishing into a few OCR'd axis labels.
+    figureAnalyzer: ref.watch(figureAnalyzerProvider),
   );
 });
 
@@ -439,10 +486,13 @@ final pageContextProvider = StateNotifierProvider.autoDispose
       // listeners from each other: a throw in the first would silently starve
       // the second. Scheduling only sets a timer and cannot realistically
       // throw, whereas review() reaches into an autoDispose notifier.
+      // Figures ARE indexed (unlike the search text above, which stays the
+      // student's own words): "what did my revenue chart show" has to be able
+      // to retrieve the page holding that chart.
       ref.read(ragIndexSchedulerProvider).schedule(
             notebookId: key.notebookId,
             pageId: key.pageId,
-            text: content.combinedText,
+            text: content.combinedTextWithFigures,
           );
       ref.read(writingSuggestionsProvider(key).notifier).review(content);
     },

@@ -82,5 +82,14 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Required on Android 11+ (API 30) for url_launcher: package
+             visibility hides other apps' intent filters by default, so without
+             this canLaunchUrl() answers false and opening the HuggingFace
+             licence page silently does nothing. See
+             core/utils/external_links.dart. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
     </queries>
 </manifest>

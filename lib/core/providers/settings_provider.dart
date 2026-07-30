@@ -65,6 +65,16 @@ class SettingsState {
   /// ever live here, revisit with secure storage.
   final String huggingFaceToken;
 
+  /// False until [SettingsNotifier] has finished reading SharedPreferences.
+  ///
+  /// Exists because that read is asynchronous while the first frame is not:
+  /// until it lands, every field here is a DEFAULT, and `huggingFaceToken` in
+  /// particular defaults to '' — indistinguishable from "the user has no
+  /// token". Screens that turn a missing token into a message or a disabled
+  /// button must wait for this, or they will tell someone who has a perfectly
+  /// good token saved that they need to add one.
+  final bool loaded;
+
   SettingsState({
     this.themeMode = AppThemeMode.system,
     this.devMode = false,
@@ -74,6 +84,7 @@ class SettingsState {
     this.hasSeenFirstCloudCall = false,
     this.recognitionLanguage = 'en',
     this.huggingFaceToken = '',
+    this.loaded = false,
   });
 
   /// True when gated model downloads can be attempted.
@@ -88,6 +99,7 @@ class SettingsState {
     bool? hasSeenFirstCloudCall,
     String? recognitionLanguage,
     String? huggingFaceToken,
+    bool? loaded,
   }) {
     return SettingsState(
       themeMode: themeMode ?? this.themeMode,
@@ -98,6 +110,7 @@ class SettingsState {
       hasSeenFirstCloudCall: hasSeenFirstCloudCall ?? this.hasSeenFirstCloudCall,
       recognitionLanguage: recognitionLanguage ?? this.recognitionLanguage,
       huggingFaceToken: huggingFaceToken ?? this.huggingFaceToken,
+      loaded: loaded ?? this.loaded,
     );
   }
 }
@@ -146,6 +159,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       hasSeenFirstCloudCall: prefs.getBool(_kHasSeenFirstCloudCall) ?? false,
       recognitionLanguage: prefs.getString(_kRecognitionLanguage) ?? 'en',
       huggingFaceToken: prefs.getString(_kHuggingFaceToken) ?? '',
+      loaded: true,
     );
   }
 
@@ -212,11 +226,30 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     await prefs.setString(_kRecognitionLanguage, languageCode);
   }
 
-  /// Stores the user's HuggingFace token (trimmed — tokens pasted from a browser
-  /// routinely carry whitespace, and a stray space would 401 confusingly).
-  /// Passing a blank value clears it.
+  /// Stores the user's HuggingFace token. Passing a blank value clears it.
+  ///
+  /// The value is sanitized, not merely trimmed, because every one of these
+  /// mangles a token that the user believes they pasted correctly and produces
+  /// an unexplained 401 hours later:
+  ///
+  /// • ALL whitespace is stripped, not just the ends — copying from a wrapped
+  ///   terminal or a soft-wrapped web page embeds newlines mid-token. HF tokens
+  ///   are `hf_` + alphanumerics, so no internal whitespace is ever legitimate.
+  /// • Surrounding quotes are dropped — pasting from a `HF_TOKEN="hf_…"` line
+  ///   or a JSON snippet is a common way to get here.
+  static String sanitizeToken(String token) {
+    final stripped = token.replaceAll(RegExp(r'\s'), '');
+    if (stripped.length >= 2) {
+      final first = stripped[0];
+      if ((first == '"' || first == "'") && stripped.endsWith(first)) {
+        return stripped.substring(1, stripped.length - 1);
+      }
+    }
+    return stripped;
+  }
+
   Future<void> setHuggingFaceToken(String token) async {
-    final cleaned = token.trim();
+    final cleaned = sanitizeToken(token);
     state = state.copyWith(huggingFaceToken: cleaned);
     final prefs = await SharedPreferences.getInstance();
     if (cleaned.isEmpty) {

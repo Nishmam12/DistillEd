@@ -58,6 +58,43 @@ void main() {
         reason: 'clearing must delete the key, not store an empty string');
   });
 
+  test('a newline wrapped into the middle of a paste is stripped', () async {
+    final notifier = await restoredNotifier();
+    // Copying a token out of a soft-wrapped page or a wrapped terminal embeds
+    // a line break mid-token. Trimming the ends alone left it in, and the user
+    // then got an unexplained 401 from a token they pasted "correctly".
+    await notifier.setHuggingFaceToken('hf_abc\n123\r\n456');
+
+    expect(notifier.state.huggingFaceToken, 'hf_abc123456');
+  });
+
+  test('surrounding quotes from a copied env line are dropped', () async {
+    final notifier = await restoredNotifier();
+    await notifier.setHuggingFaceToken('"hf_abc123"');
+    expect(notifier.state.huggingFaceToken, 'hf_abc123');
+
+    await notifier.setHuggingFaceToken("'hf_xyz789'");
+    expect(notifier.state.huggingFaceToken, 'hf_xyz789');
+  });
+
+  test('a quote on only one side is left alone — it may be part of the token',
+      () async {
+    final notifier = await restoredNotifier();
+    await notifier.setHuggingFaceToken('"hf_abc123');
+    expect(notifier.state.huggingFaceToken, '"hf_abc123');
+  });
+
+  test('settings report themselves unloaded until prefs have been read',
+      () async {
+    // The download UI keys off this: before it flips, huggingFaceToken is ''
+    // because nothing has been read yet — NOT because the user lacks a token.
+    final notifier = SettingsNotifier();
+    expect(notifier.state.loaded, isFalse);
+
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(notifier.state.loaded, isTrue);
+  });
+
   test('setting a token leaves the other AI settings alone', () async {
     SharedPreferences.setMockInitialValues({
       'ai.cloudEnabled': true,

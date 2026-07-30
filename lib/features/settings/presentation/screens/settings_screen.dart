@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/providers/settings_provider.dart';
 import '../../../../core/theme/ink_colors.dart';
-import '../../../ai/data/embeddings/embedder_adapter.dart';
+import '../../../../core/utils/external_links.dart';
 import '../../../ai/data/embeddings/embedder_spec.dart';
+import '../../../ai/data/llm/hf_token_check.dart';
 import '../../../ai/data/llm/llm_exceptions.dart';
 import '../../../ai/data/llm/llm_model_spec.dart';
+import '../../../ai/data/llm/model_storage_cleaner.dart';
 import '../../../home/data/repositories/note_repository.dart';
 import '../../../summarize/presentation/summarize_providers.dart';
 
@@ -166,6 +169,49 @@ Future<void> _editHuggingFaceToken(BuildContext context, WidgetRef ref) async {
   );
   if (token == null) return;
   await ref.read(settingsProvider.notifier).setHuggingFaceToken(token);
+  if (!context.mounted) return;
+
+  // Verify the paste immediately rather than letting a typo hide until a
+  // 185 MB download dies on it. Reads the token back so the check sees the
+  // same sanitised string the download will (`sanitizeToken` strips the
+  // whitespace and quotes a browser copy tends to bring along).
+  final saved = ref.read(settingsProvider).huggingFaceToken;
+  if (saved.isEmpty) return; // cleared — nothing to verify
+  final info = await ref.read(huggingFaceIdentityProvider).whoami(saved);
+  if (!context.mounted) return;
+
+  final String? message = switch (info.status) {
+    HfTokenStatus.valid when info.username != null =>
+      'Token verified — signed in as ${info.username}.',
+    HfTokenStatus.valid => 'Token verified.',
+    HfTokenStatus.invalid =>
+      "HuggingFace didn't recognise that token. Check it was copied whole.",
+    // Offline or timed out. Saying nothing beats accusing a good token, and
+    // the download will re-check anyway.
+    HfTokenStatus.unknown => null,
+  };
+  if (message == null) return;
+  ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(message)));
+}
+
+/// Opens [url] in a browser, or tells the user where to go if none exists.
+///
+/// Every HuggingFace hand-off routes through here so that a device without a
+/// browser degrades to a readable URL instead of a button that does nothing.
+Future<void> _openHuggingFace(BuildContext context, String url) async {
+  final opened = await openExternalUrl(url);
+  if (opened || !context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Could not open a browser. Visit $url'),
+      action: SnackBarAction(
+        label: 'Copy',
+        onPressed: () => Clipboard.setData(ClipboardData(text: url)),
+      ),
+      duration: const Duration(seconds: 8),
+    ),
+  );
 }
 
 class _HuggingFaceTokenDialog extends StatefulWidget {
@@ -204,12 +250,35 @@ class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
             'Some models — like EmbeddingGemma, which powers searching your '
             'notes — are gated: HuggingFace asks you to accept the licence '
             'first.\n\n'
-            'Accept it on the model page, create a read token, and paste it '
-            'here. It stays on this device and is only ever sent to '
+            'Both steps happen in your browser, where you are already signed '
+            'in. Your token stays on this device and is only ever sent to '
             'HuggingFace to download the model.',
             style: TextStyle(fontSize: 13, color: context.ink.textSecondary),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 4),
+          // The two steps as taps rather than instructions. Previously this
+          // paragraph told the user to visit a page the app gave them no way
+          // to reach — and HuggingFace accepts a licence ONLY from a browser,
+          // so there is no in-app alternative to offer.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              children: [
+                TextButton(
+                  onPressed: () => _openHuggingFace(
+                      context, 'https://huggingface.co/settings/tokens/new'
+                          '?tokenType=read'),
+                  child: const Text('Create a read token'),
+                ),
+                TextButton(
+                  onPressed: () => _openHuggingFace(
+                      context, EmbedderSpec.active.modelPageUrl),
+                  child: const Text('Accept the licence'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           TextField(
             controller: _controller,
             obscureText: _obscured,
@@ -541,6 +610,10 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           isInstalled: () => recognition.isModelDownloaded('bn'),
           onDelete: () => recognition.deleteModel('bn'),
         ),
+        _ReclaimSpaceRow(
+          key: ValueKey('reclaim-$_refresh'),
+          onChanged: () => setState(() => _refresh++),
+        ),
       ],
     );
   }
@@ -626,17 +699,91 @@ class _EmbeddingModelRow extends ConsumerStatefulWidget {
   ConsumerState<_EmbeddingModelRow> createState() => _EmbeddingModelRowState();
 }
 
-class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow> {
+/// What is actually on disk for the embedding model.
+enum _InstallState {
+  /// Both files present — ready to use.
+  installed,
+
+  /// Exactly one file present, left by a failed attempt. Costs real space
+  /// (the model file is ~171 MB of the ~175 MB pair) while being unusable.
+  partial,
+
+  /// Nothing downloaded.
+  absent,
+}
+
+class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
+    with WidgetsBindingObserver {
   int? _progress; // non-null while downloading
-  String? _error;
+
+  /// The typed failure, not just its text, so `build` can offer the fix that
+  /// matches it — a licence problem needs a link to HuggingFace, a dead token
+  /// needs the Change button above.
+  LlmException? _failure;
+
+  /// Set while the user is away accepting the licence in a browser. Their
+  /// return is the signal to re-check: without this the app would sit on a
+  /// stale error until they thought to press Retry, which is exactly the
+  /// friction the browser hand-off was meant to remove.
+  bool _awaitingLicence = false;
 
   static const _spec = EmbedderSpec.active;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !_awaitingLicence) return;
+    _awaitingLicence = false;
+    _resumeAfterLicence();
+  }
+
+  /// Re-asks HuggingFace whether access was granted, and just carries on if it
+  /// was. `gated: auto` repos grant access the moment the form is submitted,
+  /// so by the time the Custom Tab is dismissed this usually succeeds.
+  Future<void> _resumeAfterLicence() async {
+    if (!mounted) return;
+    setState(() => _failure = null);
+    // download() re-runs the same preflight probe, so a still-unaccepted
+    // licence lands back on the licence error rather than starting a doomed
+    // 185 MB transfer.
+    await _download();
+  }
+
+  /// Held in state rather than created inside `build`.
+  ///
+  /// These are platform-channel round trips behind plugin initialization.
+  /// Building the future inline meant every rebuild — each progress tick,
+  /// theme change, or parent `setState` — fired a fresh one and snapped the
+  /// row back to "Checking…" while it resolved. It is recomputed only when
+  /// something can actually have changed the answer.
+  late Future<_InstallState> _installedCheck = _checkInstalled();
+
+  Future<_InstallState> _checkInstalled() async {
+    final manager = ref.read(embedderDownloadManagerProvider);
+    if (await manager.isInstalled()) return _InstallState.installed;
+    if (await manager.isPartiallyInstalled()) return _InstallState.partial;
+    return _InstallState.absent;
+  }
+
+  void _refreshInstalled() =>
+      setState(() => _installedCheck = _checkInstalled());
 
   Future<void> _download() async {
     final manager = ref.read(embedderDownloadManagerProvider);
     setState(() {
       _progress = 0;
-      _error = null;
+      _failure = null;
     });
     final sub = manager.progress.listen((p) {
       if (mounted) setState(() => _progress = p);
@@ -644,26 +791,45 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow> {
     try {
       await manager.download();
       if (mounted) widget.onChanged(); // flips the row to "Downloaded"
-    } on EmbedderTokenRequiredException catch (e) {
-      _fail(e.message);
-    } on InsufficientStorageException catch (e) {
-      _fail(e.message);
-    } on ModelDownloadCancelledException {
-      _fail('Download cancelled.');
     } on LlmException catch (e) {
-      _fail(e.message);
+      // Every typed download failure — auth, licence, rate limit, storage,
+      // network — already carries a message written for the user, so one arm
+      // covers them all. See `download_failure.dart`.
+      _fail(e);
     } finally {
       await sub.cancel();
-      if (mounted) setState(() => _progress = null);
+      if (mounted) {
+        setState(() => _progress = null);
+        // A failed download can still have landed one of the two files; re-ask
+        // rather than assuming the row's state is unchanged.
+        _refreshInstalled();
+      }
     }
   }
 
-  void _fail(String message) {
-    if (mounted) setState(() => _error = message);
+  void _fail(LlmException failure) {
+    if (mounted) setState(() => _failure = failure);
+  }
+
+  /// Hands the user to HuggingFace to accept the licence, then waits for them
+  /// to come back (see [didChangeAppLifecycleState]).
+  Future<void> _acceptLicence(String url) async {
+    // Armed before launching, not after: the app can be backgrounded the
+    // instant the Custom Tab appears, and a flag set afterwards could miss the
+    // resume entirely.
+    _awaitingLicence = true;
+    final opened = await openExternalUrl(url);
+    if (opened) return;
+    _awaitingLicence = false;
+    if (!mounted) return;
+    await _openHuggingFace(context, url); // shows the copyable fallback
   }
 
   Future<void> _delete() async {
     await ref.read(embedderDownloadManagerProvider).delete();
+    if (!mounted) return;
+    setState(() => _failure = null);
+    _refreshInstalled();
     widget.onChanged();
   }
 
@@ -674,6 +840,11 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow> {
     // The effective token, so a local dev token (debug only) also enables the
     // download — not just a token typed into Settings.
     final hasToken = ref.watch(huggingFaceTokenProvider).isNotEmpty;
+    // Settings load from SharedPreferences asynchronously. Until that lands the
+    // token reads as '' even when one is stored, so treat "not loaded yet" as
+    // unknown rather than as "no token" — otherwise the row briefly tells a
+    // user who HAS a token to go add one, and disables the button under them.
+    final settingsLoaded = ref.watch(settingsProvider).loaded;
 
     if (_progress != null) {
       return _SettingsRow(
@@ -691,19 +862,34 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow> {
       );
     }
 
-    return FutureBuilder<bool>(
-      future: ref.read(embedderDownloadManagerProvider).isInstalled(),
+    return FutureBuilder<_InstallState>(
+      future: _installedCheck,
       builder: (context, snapshot) {
-        final installed = snapshot.data ?? false;
-        final checking = !snapshot.hasData && !snapshot.hasError;
+        final state = snapshot.data ?? _InstallState.absent;
+        final checking =
+            !settingsLoaded || (!snapshot.hasData && !snapshot.hasError);
+        final installed = state == _InstallState.installed;
+        final partial = state == _InstallState.partial;
+
+        // A gated-model failure the user can fix in one tap, rather than by
+        // re-examining a token that is usually fine.
+        final licenceUrl = switch (_failure) {
+          ModelLicenceNotAcceptedException(:final modelPageUrl) => modelPageUrl,
+          ModelTokenScopeException(:final modelPageUrl) => modelPageUrl,
+          _ => null,
+        };
 
         final String subtitle;
-        if (_error != null) {
-          subtitle = _error!;
+        if (_failure != null) {
+          subtitle = _failure!.message;
         } else if (checking) {
           subtitle = 'Checking…';
         } else if (installed) {
           subtitle = '$sizeLabel · Downloaded';
+        } else if (partial) {
+          // Say the space is recoverable, because nothing else in the UI would
+          // reveal that a failed attempt is still holding most of it.
+          subtitle = 'Download incomplete — finish it, or delete to free space';
         } else if (!hasToken) {
           subtitle = 'Add a HuggingFace token above to download';
         } else {
@@ -721,9 +907,156 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow> {
                   tooltip: 'Delete model',
                   onPressed: _delete,
                 )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // A half-finished attempt is the only not-installed state
+                    // that occupies space, so it is the only one that also
+                    // gets a delete.
+                    if (partial && !checking)
+                      IconButton(
+                        icon: Icon(Icons.delete_outline,
+                            color: context.ink.textSecondary),
+                        tooltip: 'Delete partial download',
+                        onPressed: _delete,
+                      ),
+                    // Leads, because when it is shown it is the ONLY thing
+                    // that unblocks the download — retrying without accepting
+                    // the licence just reproduces the same error.
+                    if (licenceUrl != null)
+                      TextButton(
+                        onPressed: () => _acceptLicence(licenceUrl),
+                        child: Text(
+                          _failure is ModelTokenScopeException
+                              ? 'Fix token'
+                              : 'Accept licence',
+                          style: TextStyle(color: context.ink.accent),
+                        ),
+                      ),
+                    TextButton(
+                      // Disabled only once we KNOW there is no token — a
+                      // pending settings load must not look like a missing one.
+                      onPressed:
+                          (hasToken && settingsLoaded) ? _download : null,
+                      child: Text(
+                          (_failure != null || partial) ? 'Retry' : 'Download'),
+                    ),
+                  ],
+                ),
+        );
+      },
+    );
+  }
+}
+
+/// Offers to reclaim model files sitting on disk that no installed model
+/// claims — see [ModelStorageCleaner] for how they come about.
+///
+/// Renders NOTHING when there is nothing to reclaim, which is the normal case.
+/// A permanently-visible "0 B to free" row would be noise in a settings screen,
+/// and this is a recovery affordance, not a feature.
+class _ReclaimSpaceRow extends ConsumerStatefulWidget {
+  /// Called after a cleanup so the parent re-queries every model row — freeing
+  /// space can change what is installed.
+  final VoidCallback onChanged;
+
+  const _ReclaimSpaceRow({super.key, required this.onChanged});
+
+  @override
+  ConsumerState<_ReclaimSpaceRow> createState() => _ReclaimSpaceRowState();
+}
+
+class _ReclaimSpaceRowState extends ConsumerState<_ReclaimSpaceRow> {
+  /// Cached for the same reason as the model rows': this is a directory scan
+  /// behind a platform channel, not something to re-run on every rebuild.
+  late Future<List<OrphanedModelFile>> _orphans = _findOrphans();
+
+  bool _busy = false;
+  String? _error;
+
+  Future<List<OrphanedModelFile>> _findOrphans() =>
+      ref.read(modelStorageCleanerProvider).findOrphans();
+
+  Future<void> _cleanup(List<OrphanedModelFile> orphans) async {
+    final freed = orphans.fold<int>(0, (sum, o) => sum + o.sizeBytes);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.ink.surface,
+        title: const Text('Free up space?'),
+        content: Text(
+          '${orphans.length} leftover file${orphans.length == 1 ? '' : 's'} '
+          '(${_formatBytes(freed)}) will be deleted. These are remnants of '
+          'downloads that did not finish — the models you have installed are '
+          'not affected.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Delete', style: TextStyle(color: context.ink.accentRed)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(modelStorageCleanerProvider).cleanup();
+      if (!mounted) return;
+      setState(() => _orphans = _findOrphans());
+      widget.onChanged();
+    } on LlmException catch (e) {
+      // Includes the refuse-to-delete guard, whose message is the whole point
+      // of it firing — surface it rather than silently doing nothing.
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  static String _formatBytes(int bytes) {
+    const mb = 1024 * 1024;
+    if (bytes >= 1024 * mb) {
+      return '${(bytes / (1024 * mb)).toStringAsFixed(1)} GB';
+    }
+    return '${(bytes / mb).round()} MB';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<OrphanedModelFile>>(
+      future: _orphans,
+      builder: (context, snapshot) {
+        final orphans = snapshot.data ?? const <OrphanedModelFile>[];
+        // Stay invisible until there is genuinely something to offer. A failed
+        // scan returns empty too, which is the right silence: we have nothing
+        // useful to say and nothing safe to do.
+        if (orphans.isEmpty && _error == null) return const SizedBox.shrink();
+
+        final freed = orphans.fold<int>(0, (sum, o) => sum + o.sizeBytes);
+        return _SettingsRow(
+          icon: Icons.cleaning_services_outlined,
+          title: 'Leftover download files',
+          subtitle: _error ??
+              '${_formatBytes(freed)} from downloads that did not finish',
+          trailing: _busy
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : TextButton(
-                  onPressed: hasToken ? _download : null,
-                  child: const Text('Download'),
+                  onPressed:
+                      orphans.isEmpty ? null : () => _cleanup(orphans),
+                  child: const Text('Free up'),
                 ),
         );
       },

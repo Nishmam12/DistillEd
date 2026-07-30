@@ -340,9 +340,11 @@ class _ExplainBar extends ConsumerWidget {
           mode: mode,
           resolveContent: () async {
             await recognition.ensureModelDownloaded(languageCode);
+            // Explicit user action → deep read, so a selected chart is
+            // explained rather than reduced to its axis labels.
             final content = await extractor.extractSelection(pageId, ids,
-                languageCode: languageCode);
-            return content.combinedText;
+                languageCode: languageCode, useVision: true);
+            return content.combinedTextWithFigures;
           },
         ));
   }
@@ -389,9 +391,11 @@ class _QuizBar extends ConsumerWidget {
           concepts: context0?.keyConcepts ?? const [],
           resolveText: () async {
             await recognition.ensureModelDownloaded(languageCode);
-            final content =
-                await extractor.extractPage(pageId, languageCode: languageCode);
-            return content.combinedText;
+            // Deep read: "what does this graph show" is exactly the kind of
+            // question a quiz should be able to ask.
+            final content = await extractor.extractPage(pageId,
+                languageCode: languageCode, useVision: true);
+            return content.combinedTextWithFigures;
           },
         ));
     showQuizSheet(context);
@@ -431,9 +435,9 @@ class _FlashcardBar extends ConsumerWidget {
           context: pageContext,
           resolveText: () async {
             await recognition.ensureModelDownloaded(languageCode);
-            final content =
-                await extractor.extractPage(pageId, languageCode: languageCode);
-            return content.combinedText;
+            final content = await extractor.extractPage(pageId,
+                languageCode: languageCode, useVision: true);
+            return content.combinedTextWithFigures;
           },
         ));
     showFlashcardSheet(context);

@@ -5,6 +5,8 @@ import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
 import 'package:inkflow/features/ai/data/ocr/gemma_vision_ocr_service.dart';
 import 'package:inkflow/features/ai/domain/ai_exception.dart';
+import 'package:inkflow/features/ai/domain/figure.dart';
+import 'package:inkflow/features/ai/domain/figure_analyzer.dart';
 import 'package:inkflow/features/ai/domain/image_transcriber.dart';
 import 'package:inkflow/features/ai/domain/page_content.dart';
 import 'package:inkflow/features/ai/domain/page_content_extractor.dart';
@@ -77,6 +79,7 @@ void main() {
     GemmaVisionOcrService? visionOcr,
     InkImageRenderer? renderInk,
     ImageBytesLoader? loadImageBytes,
+    FigureAnalyzer? figureAnalyzer,
   }) =>
       PageContentExtractor(
         loadElements: (_) async => elements,
@@ -85,6 +88,7 @@ void main() {
         visionOcr: visionOcr,
         renderInk: renderInk,
         loadImageBytes: loadImageBytes,
+        figureAnalyzer: figureAnalyzer,
       );
 
   /// A rendered-ink PNG (contents don't matter; the fake transcriber ignores
@@ -444,6 +448,131 @@ void main() {
       ).extractPage(1, languageCode: 'en', useVision: true);
 
       expect(content.recognizedInkText, 'ml kit still reads the strokes');
+    });
+  });
+
+  group('figures (charts and diagrams)', () {
+    const chartJson = '{"kind":"chart","title":"Revenue",'
+        '"summary":"A bar chart of revenue across four quarters.",'
+        '"insight":"Revenue roughly quadruples.","confidence":0.9}';
+
+    /// A flowchart box — the case that used to be invisible entirely, because
+    /// shapes carry no text of their own and were never rendered for vision.
+    const box = SceneShapeElement(
+      id: 'box1',
+      zOrder: 0,
+      shapeType: ShapeType.rectangle,
+      geometryData: [0, 0, 120, 60],
+      color: 0xFF000000,
+      strokeWidth: 2,
+    );
+
+    const image = ImageElement(
+      id: 'img',
+      zOrder: 0,
+      geometryData: [0, 0, 200, 200],
+      relativeImagePath: 'imports/chart.png',
+      sourceDescription: '',
+    );
+
+    FigureAnalyzer analyzer(List<String> replies, {Object? throwError}) =>
+        FigureAnalyzer(
+          local: FakeTranscriber(replies, throwError: throwError),
+          localModelId: 'local-x',
+        );
+
+    test('a shape-only page produces a figure', () async {
+      final content = await extractor(
+        [box],
+        renderInk: renderInk,
+        figureAnalyzer: analyzer(const [chartJson]),
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.figures, hasLength(1));
+      expect(content.figures.single.kind, FigureKind.chart);
+      // The page has no words at all, yet is no longer empty to the AI.
+      expect(content.combinedText, isEmpty);
+      expect(content.combinedTextWithFigures, contains('Revenue'));
+    });
+
+    test('a pasted image is analysed as a figure', () async {
+      final content = await extractor(
+        [image],
+        loadImageBytes: loadBytes,
+        figureAnalyzer: analyzer(const [chartJson]),
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.figures, hasLength(1));
+      // An image we understood is read content, so it is no longer "unread".
+      expect(content.sources.single.needsOcr, isFalse);
+    });
+
+    test('the figure pass is skipped entirely without useVision', () async {
+      final transcriber = FakeTranscriber(const [chartJson]);
+      final content = await extractor(
+        [box],
+        renderInk: renderInk,
+        figureAnalyzer:
+            FigureAnalyzer(local: transcriber, localModelId: 'local-x'),
+      ).extractPage(1, languageCode: 'en');
+
+      expect(content.figures, isEmpty);
+      expect(transcriber.calls, 0,
+          reason: 'the passive light path must not pay for a VLM call');
+    });
+
+    test('a page of typed text alone never triggers a figure call', () async {
+      const text = TextElement(
+        id: 't1',
+        zOrder: 0,
+        geometryData: [0, 0, 100, 20],
+        text: 'just some typed words',
+        color: 0xFF000000,
+        fontSize: 14,
+      );
+      final transcriber = FakeTranscriber(const [chartJson]);
+      final content = await extractor(
+        [text],
+        renderInk: renderInk,
+        figureAnalyzer:
+            FigureAnalyzer(local: transcriber, localModelId: 'local-x'),
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.figures, isEmpty);
+      expect(transcriber.calls, 0);
+    });
+
+    test('"no figure here" leaves the page figure-free', () async {
+      final content = await extractor(
+        [box],
+        renderInk: renderInk,
+        figureAnalyzer: analyzer(const ['{"kind":"none"}']),
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.figures, isEmpty);
+    });
+
+    test('a failed figure read never costs the page its text', () async {
+      recognizedText = 'the ink still reads fine';
+      final content = await extractor(
+        [_ink],
+        renderInk: renderInk,
+        figureAnalyzer: analyzer(const [],
+            throwError: const AiGenerationException('vision blew up')),
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.figures, isEmpty);
+      expect(content.recognizedInkText, 'the ink still reads fine');
+    });
+
+    test('a selection can be analysed for figures too', () async {
+      final content = await extractor(
+        [box],
+        renderInk: renderInk,
+        figureAnalyzer: analyzer(const [chartJson]),
+      ).extractSelection(1, {'box1'}, languageCode: 'en', useVision: true);
+
+      expect(content.figures, hasLength(1));
     });
   });
 }

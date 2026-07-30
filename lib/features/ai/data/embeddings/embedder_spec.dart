@@ -54,6 +54,21 @@ class EmbedderSpec {
 
   static String _basename(String url) => Uri.parse(url).pathSegments.last;
 
+  /// The human-facing repo page — where a gated model's licence is accepted.
+  ///
+  /// Derived from [modelUrl] (host + `owner/repo`, dropping the
+  /// `/resolve/<ref>/<file>` tail) for the same reason [modelFilename] is: a
+  /// second hand-maintained copy of the same identity can drift, and the
+  /// symptom would be sending a stuck user to the wrong page. For
+  /// [embeddingGemma300m] this is
+  /// `https://huggingface.co/litert-community/embeddinggemma-300m`.
+  String get modelPageUrl {
+    final uri = Uri.parse(modelUrl);
+    final owner = uri.pathSegments.take(2); // <owner>/<repo>
+    return Uri(scheme: uri.scheme, host: uri.host, pathSegments: owner)
+        .toString();
+  }
+
   /// The model the app embeds with. Swap here — chunks record [modelId], so a
   /// change invalidates the old index rather than corrupting search.
   static const EmbedderSpec active = embeddingGemma300m;

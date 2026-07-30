@@ -46,8 +46,13 @@ abstract class ModelInstaller {
   Future<bool> isInstalled(String modelId);
 
   /// Downloads and installs [spec], reporting whole percents via [onProgress].
+  ///
+  /// [authToken] overrides [LlmModelSpec.authToken] when non-null — the caller
+  /// resolves the effective token so the user's live Settings value wins over
+  /// whatever the const spec pins.
   Future<void> install({
     required LlmModelSpec spec,
+    String? authToken,
     void Function(int percent)? onProgress,
     CancelToken? cancelToken,
   });
@@ -65,6 +70,7 @@ class FlutterGemmaInstaller implements ModelInstaller {
   @override
   Future<void> install({
     required LlmModelSpec spec,
+    String? authToken,
     void Function(int percent)? onProgress,
     CancelToken? cancelToken,
   }) async {
@@ -72,7 +78,7 @@ class FlutterGemmaInstaller implements ModelInstaller {
     var builder = FlutterGemma.installModel(
       modelType: spec.modelType,
       fileType: spec.fileType,
-    ).fromNetwork(spec.downloadUrl, token: spec.authToken);
+    ).fromNetwork(spec.downloadUrl, token: authToken ?? spec.authToken);
     if (onProgress != null) builder = builder.withProgress(onProgress);
     if (cancelToken != null) builder = builder.withCancelToken(cancelToken);
     await builder.install();
