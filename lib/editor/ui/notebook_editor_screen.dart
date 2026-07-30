@@ -14,6 +14,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/settings_provider.dart';
+import '../../core/theme/ink_colors.dart';
 import '../../domain/commands/scene_command.dart';
 import '../../domain/geometry/element_bounds.dart';
 import '../../domain/model/scene_element.dart';
@@ -904,7 +905,7 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
       tooltip: state.isRecording ? 'Stop recording' : 'Record lecture',
       icon: Icon(
         state.isRecording ? Icons.stop_circle : Icons.mic_none_outlined,
-        color: state.isRecording ? AppColors.accentRed : null,
+        color: state.isRecording ? context.ink.accentRed : null,
       ),
       onPressed: () => state.isRecording
           ? notifier.stop(widget.pageId)

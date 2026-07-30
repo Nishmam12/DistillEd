@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/ink_colors.dart';
 import '../notes_palette.dart';
 
 class KnowledgeGraphButton extends StatefulWidget {
@@ -53,14 +54,14 @@ class _KnowledgeGraphButtonState extends State<KnowledgeGraphButton> {
               width: diameter,
               height: diameter,
               decoration: BoxDecoration(
-                color: NotesPalette.card,
+                color: context.notes.card,
                 shape: BoxShape.circle,
-                boxShadow: NotesPalette.floatShadow,
+                boxShadow: context.notes.floatShadow,
               ),
               child: Icon(
                 Icons.hub_rounded,
                 size: widget.radius * 0.85,
-                color: NotesPalette.accent,
+                color: context.notes.accent,
               ),
             ),
           ),

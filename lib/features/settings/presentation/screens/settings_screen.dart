@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/settings_provider.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../../../ai/data/embeddings/embedder_adapter.dart';
 import '../../../ai/data/embeddings/embedder_spec.dart';
 import '../../../ai/data/llm/llm_exceptions.dart';
@@ -23,21 +23,16 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Settings'),
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: context.ink.background,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           const _SectionHeader('Appearance'),
           _SettingsCard(
             children: [
-              _SettingsRow(
-                icon: Icons.dark_mode_outlined,
-                title: 'Dark Mode',
-                subtitle: 'Use dark theme across the app',
-                trailing: Switch(
-                  value: settings.darkMode,
-                  onChanged: notifier.toggleDarkMode,
-                ),
+              _ThemeModeRow(
+                value: settings.themeMode,
+                onChanged: notifier.setThemeMode,
               ),
             ],
           ),
@@ -63,8 +58,11 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.image_outlined,
                 title: 'Format',
                 subtitle: 'Default format when exporting notebooks',
-                trailing: _FormatToggle(
+                trailing: _PillToggle<String>(
                   value: settings.exportDefault,
+                  options: [
+                    for (final f in SettingsNotifier.exportFormats) (f, f),
+                  ],
                   onChanged: notifier.setExportDefault,
                 ),
               ),
@@ -88,8 +86,9 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.translate,
                 title: 'Handwriting Language',
                 subtitle: 'Language used to read your notes',
-                trailing: _LanguageToggle(
+                trailing: _PillToggle<String>(
                   value: settings.recognitionLanguage,
+                  options: const [('en', 'English'), ('bn', 'বাংলা')],
                   onChanged: notifier.setRecognitionLanguage,
                 ),
               ),
@@ -104,7 +103,7 @@ class SettingsScreen extends ConsumerWidget {
                   onPressed: () => _editHuggingFaceToken(context, ref),
                   child: Text(
                     settings.hasHuggingFaceToken ? 'Change' : 'Add',
-                    style: const TextStyle(color: AppColors.accentStrong),
+                    style: TextStyle(color: context.ink.accentStrong),
                   ),
                 ),
               ),
@@ -129,9 +128,9 @@ class SettingsScreen extends ConsumerWidget {
                   icon: Icons.brush_outlined,
                   title: 'Canvas 2.0 (dev)',
                   subtitle: 'Preview the rebuilt drawing canvas',
-                  trailing: const Icon(
+                  trailing: Icon(
                     Icons.chevron_right,
-                    color: AppColors.textMuted,
+                    color: context.ink.textMuted,
                   ),
                   onTap: () => context.push('/canvas-demo'),
                 ),
@@ -143,9 +142,9 @@ class SettingsScreen extends ConsumerWidget {
               _SettingsRow(
                 icon: Icons.info_outline,
                 title: 'About DistillEd',
-                trailing: const Icon(
+                trailing: Icon(
                   Icons.chevron_right,
-                  color: AppColors.textMuted,
+                  color: context.ink.textMuted,
                 ),
                 onTap: () => context.push('/about'),
               ),
@@ -195,20 +194,20 @@ class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.ink.surface,
       title: const Text('HuggingFace Token'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Some models — like EmbeddingGemma, which powers searching your '
             'notes — are gated: HuggingFace asks you to accept the licence '
             'first.\n\n'
             'Accept it on the model page, create a read token, and paste it '
             'here. It stays on this device and is only ever sent to '
             'HuggingFace to download the model.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: TextStyle(fontSize: 13, color: context.ink.textSecondary),
           ),
           const SizedBox(height: 16),
           TextField(
@@ -237,19 +236,19 @@ class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
         if (widget.initial.isNotEmpty)
           TextButton(
             onPressed: () => Navigator.of(context).pop(''),
-            child: const Text('Remove',
-                style: TextStyle(color: AppColors.accentRed)),
+            child: Text('Remove',
+                style: TextStyle(color: context.ink.accentRed)),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel',
-              style: TextStyle(color: AppColors.textSecondary)),
+          child: Text('Cancel',
+              style: TextStyle(color: context.ink.textSecondary)),
         ),
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+          style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
           onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('Save',
-              style: TextStyle(color: AppColors.textOnAccent)),
+          child: Text('Save',
+              style: TextStyle(color: context.ink.textOnAccent)),
         ),
       ],
     );
@@ -266,9 +265,9 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 20, 8, 8),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Poppins',
-          color: AppColors.accent,
+          color: context.ink.accent,
           fontWeight: FontWeight.w700,
           fontSize: 12,
           letterSpacing: 1.4,
@@ -292,12 +291,13 @@ class _SettingsCard extends StatelessWidget {
       rows.add(children[i]);
     }
 
+    final ink = context.ink;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: ink.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppColors.shadowCard,
+        border: Border.all(color: ink.border),
+        boxShadow: ink.shadowCard,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: rows),
@@ -322,6 +322,7 @@ class _SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ink = context.ink;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -332,10 +333,10 @@ class _SettingsRow extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.accentWash,
+                color: ink.accentWash,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, size: 20, color: AppColors.accent),
+              child: Icon(icon, size: 20, color: ink.accent),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -344,20 +345,20 @@ class _SettingsRow extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: ink.textPrimary,
                     ),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       subtitle!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textSecondary,
+                        color: ink.textSecondary,
                         height: 1.35,
                       ),
                     ),
@@ -376,49 +377,115 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
-class _LanguageToggle extends StatelessWidget {
-  final String value;
-  final ValueChanged<String> onChanged;
+/// The screen's one pill-selector. Language, export format and anything else
+/// that picks one of a short list share it, so a token change lands everywhere
+/// at once instead of in three near-identical copies.
+class _PillToggle<T> extends StatelessWidget {
+  final T value;
+  final List<(T, String)> options;
+  final ValueChanged<T> onChanged;
 
-  const _LanguageToggle({required this.value, required this.onChanged});
-
-  static const _options = [('en', 'English'), ('bn', 'বাংলা')];
+  const _PillToggle({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final ink = context.ink;
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: _options.map((option) {
-        final (code, label) = option;
-        final selected = value == code;
-        return Padding(
-          padding: const EdgeInsets.only(left: 6),
-          child: GestureDetector(
-            onTap: () => onChanged(code),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 140),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.accentWash : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: selected ? AppColors.accent : AppColors.border,
-                  width: 1.5,
+      children: [
+        for (final (option, label) in options)
+          Padding(
+            padding: const EdgeInsets.only(left: 6),
+            child: GestureDetector(
+              onTap: () => onChanged(option),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: value == option ? ink.accentWash : Colors.transparent,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: value == option ? ink.accent : ink.border,
+                    width: 1.5,
+                  ),
                 ),
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? AppColors.accent : AppColors.textSecondary,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: value == option ? ink.accent : ink.textSecondary,
+                  ),
                 ),
               ),
             ),
           ),
-        );
-      }).toList(),
+      ],
+    );
+  }
+}
+
+/// Theme picker. Laid out as a full-width segmented control below the row
+/// rather than as a trailing pill group, because three labelled options plus a
+/// title do not fit across a phone.
+class _ThemeModeRow extends StatelessWidget {
+  final AppThemeMode value;
+  final ValueChanged<AppThemeMode> onChanged;
+
+  const _ThemeModeRow({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _SettingsRow(
+          icon: switch (value) {
+            AppThemeMode.system => Icons.brightness_auto_outlined,
+            AppThemeMode.light => Icons.light_mode_outlined,
+            AppThemeMode.dark => Icons.dark_mode_outlined,
+          },
+          title: 'Theme',
+          subtitle: switch (value) {
+            AppThemeMode.system => 'Following your device setting',
+            AppThemeMode.light => 'Always light',
+            AppThemeMode.dark => 'Always dark',
+          },
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          child: SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<AppThemeMode>(
+              segments: const [
+                ButtonSegment(
+                  value: AppThemeMode.system,
+                  label: Text('System'),
+                  icon: Icon(Icons.brightness_auto_outlined, size: 18),
+                ),
+                ButtonSegment(
+                  value: AppThemeMode.light,
+                  label: Text('Light'),
+                  icon: Icon(Icons.light_mode_outlined, size: 18),
+                ),
+                ButtonSegment(
+                  value: AppThemeMode.dark,
+                  label: Text('Dark'),
+                  icon: Icon(Icons.dark_mode_outlined, size: 18),
+                ),
+              ],
+              selected: {value},
+              showSelectedIcon: false,
+              onSelectionChanged: (selection) => onChanged(selection.first),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -503,8 +570,8 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
                   : 'Not downloaded — fetched on first use',
           trailing: installed
               ? IconButton(
-                  icon: const Icon(Icons.delete_outline,
-                      color: AppColors.textSecondary),
+                  icon: Icon(Icons.delete_outline,
+                      color: context.ink.textSecondary),
                   tooltip: 'Delete model',
                   onPressed: () => _delete(onDelete, confirmDelete, title),
                 )
@@ -531,8 +598,8 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete',
-                  style: TextStyle(color: AppColors.accentRed)),
+              child: Text('Delete',
+                  style: TextStyle(color: context.ink.accentRed)),
             ),
           ],
         ),
@@ -649,8 +716,8 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow> {
           subtitle: subtitle,
           trailing: installed
               ? IconButton(
-                  icon: const Icon(Icons.delete_outline,
-                      color: AppColors.textSecondary),
+                  icon: Icon(Icons.delete_outline,
+                      color: context.ink.textSecondary),
                   tooltip: 'Delete model',
                   onPressed: _delete,
                 )
@@ -664,46 +731,3 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow> {
   }
 }
 
-class _FormatToggle extends StatelessWidget {
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  const _FormatToggle({required this.value, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: SettingsNotifier.exportFormats.map((f) {
-        final selected = value == f;
-        return Padding(
-          padding: const EdgeInsets.only(left: 6),
-          child: GestureDetector(
-            onTap: () => onChanged(f),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 140),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.accentWash : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: selected ? AppColors.accent : AppColors.border,
-                  width: 1.5,
-                ),
-              ),
-              child: Text(
-                f,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? AppColors.accent : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}

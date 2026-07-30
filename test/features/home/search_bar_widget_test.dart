@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkflow/core/theme/ink_palette.dart';
 import 'package:inkflow/features/home/presentation/notes_palette.dart';
 import 'package:inkflow/features/home/presentation/widgets/search_bar_widget.dart';
 
@@ -63,7 +64,7 @@ void main() {
     final border = decoration.enabledBorder! as OutlineInputBorder;
 
     expect(decoration.filled, isTrue);
-    expect(decoration.fillColor, NotesPalette.field);
+    expect(decoration.fillColor, InkPalette.light.notes.field);
     expect(border.borderRadius.topLeft.x, greaterThan(0));
     expect(border.borderSide.style, BorderStyle.none);
   });

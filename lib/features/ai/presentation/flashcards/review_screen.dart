@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../../domain/flashcards/spaced_repetition.dart';
 import '../../domain/models/flashcard.dart';
 import 'review_notifier.dart';
@@ -19,9 +19,9 @@ class ReviewScreen extends ConsumerWidget {
     final state = ref.watch(reviewNotifierProvider(notebookId));
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.ink.surface,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.ink.surface,
         title: const Text('Review'),
         actions: [
           if (state is ReviewInProgress)
@@ -30,7 +30,7 @@ class ReviewScreen extends ConsumerWidget {
               child: Center(
                 child: Text(
                   '${state.index + 1} / ${state.total}',
-                  style: const TextStyle(color: AppColors.textSecondary),
+                  style: TextStyle(color: context.ink.textSecondary),
                 ),
               ),
             ),
@@ -38,7 +38,7 @@ class ReviewScreen extends ConsumerWidget {
       ),
       body: switch (state) {
         ReviewLoading() =>
-          const Center(child: CircularProgressIndicator(color: AppColors.accent)),
+          Center(child: CircularProgressIndicator(color: context.ink.accent)),
         ReviewCaughtUp(:final nextDueAt) => _CaughtUp(nextDueAt: nextDueAt),
         ReviewFinished(:final reviewed) => _Finished(reviewed: reviewed),
         ReviewInProgress() => _Session(notebookId: notebookId, state: state),
@@ -65,8 +65,8 @@ class _Session extends ConsumerWidget {
           children: [
             LinearProgressIndicator(
               value: state.completed / state.total,
-              backgroundColor: AppColors.border,
-              color: AppColors.accent,
+              backgroundColor: context.ink.border,
+              color: context.ink.accent,
             ),
             const SizedBox(height: 16),
             Expanded(
@@ -79,7 +79,7 @@ class _Session extends ConsumerWidget {
                 child: FilledButton(
                   onPressed: notifier.reveal,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accent,
+                    backgroundColor: context.ink.accent,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: const Text('Show answer'),
@@ -109,9 +109,9 @@ class _CardFace extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.accentWash,
+        color: context.ink.accentWash,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.ink.border),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -120,10 +120,10 @@ class _CardFace extends StatelessWidget {
           children: [
             Text(
               card.front,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.ink.textPrimary,
               ),
             ),
             if (revealed) ...[
@@ -132,9 +132,9 @@ class _CardFace extends StatelessWidget {
               const SizedBox(height: 20),
               Text(
                 card.back,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
-                  color: AppColors.textPrimary,
+                  color: context.ink.textPrimary,
                 ),
               ),
             ],
@@ -165,8 +165,8 @@ class _GradeButtons extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 foregroundColor: grade == ReviewGrade.again
-                    ? AppColors.accentRed
-                    : AppColors.textPrimary,
+                    ? context.ink.accentRed
+                    : context.ink.textPrimary,
               ),
               child: Column(
                 children: [
@@ -174,9 +174,9 @@ class _GradeButtons extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     _intervalLabel(card.schedule.afterReview(grade, now: now)),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.textSecondary,
+                      color: context.ink.textSecondary,
                     ),
                   ),
                 ],
@@ -212,15 +212,15 @@ class _CaughtUp extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle_outline,
-                size: 56, color: AppColors.accent),
+            Icon(Icons.check_circle_outline,
+                size: 56, color: context.ink.accent),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Nothing due',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.ink.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -229,7 +229,7 @@ class _CaughtUp extends StatelessWidget {
                   ? 'Make some flashcards from a page to start reviewing.'
                   : 'Next card is due ${_relative(next)}.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: context.ink.textSecondary),
             ),
           ],
         ),
@@ -258,21 +258,21 @@ class _Finished extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.celebration_outlined,
-                size: 56, color: AppColors.accent),
+            Icon(Icons.celebration_outlined,
+                size: 56, color: context.ink.accent),
             const SizedBox(height: 16),
             Text(
               'Reviewed $reviewed ${reviewed == 1 ? 'card' : 'cards'}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.ink.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Come back when the next batch is due.',
-              style: TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: context.ink.textSecondary),
             ),
           ],
         ),

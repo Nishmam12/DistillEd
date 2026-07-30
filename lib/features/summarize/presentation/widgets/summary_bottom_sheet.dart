@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../../../ai/data/llm/llm_model_spec.dart';
 import '../summarize_notifier.dart';
 
@@ -13,7 +13,7 @@ import '../summarize_notifier.dart';
 void showSummarySheet(BuildContext context) {
   showModalBottomSheet(
     context: context,
-    backgroundColor: AppColors.surface,
+    backgroundColor: context.ink.surface,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -63,11 +63,11 @@ class _SheetTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: 'Poppins',
         fontSize: 17,
         fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
+        color: context.ink.textPrimary,
       ),
     );
   }
@@ -84,10 +84,10 @@ class _Progress extends StatelessWidget {
       children: [
         const _SheetTitle('Summary'),
         const SizedBox(height: 28),
-        const CircularProgressIndicator(color: AppColors.accent),
+        CircularProgressIndicator(color: context.ink.accent),
         const SizedBox(height: 16),
         Text(label,
-            style: const TextStyle(color: AppColors.textSecondary)),
+            style: TextStyle(color: context.ink.textSecondary)),
         const SizedBox(height: 12),
       ],
     );
@@ -110,7 +110,7 @@ class _DownloadProgress extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           '${LlmModelSpec.active.displayName} · ${sizeGb.toStringAsFixed(1)} GB — one-time download',
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 13, color: context.ink.textSecondary),
         ),
         const SizedBox(height: 20),
         ClipRRect(
@@ -118,19 +118,19 @@ class _DownloadProgress extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress / 100,
             minHeight: 8,
-            color: AppColors.accent,
-            backgroundColor: AppColors.surfaceHighlight,
+            color: context.ink.accent,
+            backgroundColor: context.ink.surfaceHighlight,
           ),
         ),
         const SizedBox(height: 8),
         Text('$progress%',
-            style: const TextStyle(color: AppColors.textSecondary)),
+            style: TextStyle(color: context.ink.textSecondary)),
         const SizedBox(height: 16),
         TextButton(
           onPressed: () =>
               ref.read(summarizeNotifierProvider.notifier).cancelModelDownload(),
-          child: const Text('Cancel',
-              style: TextStyle(color: AppColors.textSecondary)),
+          child: Text('Cancel',
+              style: TextStyle(color: context.ink.textSecondary)),
         ),
       ],
     );
@@ -160,10 +160,10 @@ class _SuccessView extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             state.summary,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               height: 1.5,
-              color: AppColors.textPrimary,
+              color: context.ink.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -171,12 +171,12 @@ class _SuccessView extends StatelessWidget {
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
-              title: const Text(
+              title: Text(
                 'Recognized text',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: context.ink.textSecondary,
                 ),
               ),
               children: [
@@ -184,16 +184,16 @@ class _SuccessView extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceWarm,
+                    color: context.ink.surfaceWarm,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(color: context.ink.border),
                   ),
                   child: Text(
                     state.recognizedText,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       height: 1.45,
-                      color: AppColors.textSecondary,
+                      color: context.ink.textSecondary,
                     ),
                   ),
                 ),
@@ -215,15 +215,15 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.accentWash,
+        color: context.ink.accentWash,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: AppColors.accentStrong,
+          color: context.ink.accentStrong,
         ),
       ),
     );
@@ -241,35 +241,35 @@ class _ErrorView extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.error_outline, color: AppColors.accentRed, size: 40),
+        Icon(Icons.error_outline, color: context.ink.accentRed, size: 40),
         const SizedBox(height: 12),
         Text(
           state.message,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 14, color: context.ink.textPrimary),
         ),
         const SizedBox(height: 20),
         if (state.offerModelDownload)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text(
               'Download model '
               '(${(LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB)',
-              style: const TextStyle(color: AppColors.textOnAccent),
+              style: TextStyle(color: context.ink.textOnAccent),
             ),
           )
         else if (state.retryable)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
             onPressed: notifier.retry,
-            child: const Text('Retry',
-                style: TextStyle(color: AppColors.textOnAccent)),
+            child: Text('Retry',
+                style: TextStyle(color: context.ink.textOnAccent)),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close',
-              style: TextStyle(color: AppColors.textSecondary)),
+          child: Text('Close',
+              style: TextStyle(color: context.ink.textSecondary)),
         ),
       ],
     );

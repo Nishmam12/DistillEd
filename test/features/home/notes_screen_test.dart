@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkflow/core/theme/ink_palette.dart';
 import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
 import 'package:inkflow/features/home/presentation/note_cards_provider.dart';
 import 'package:inkflow/features/home/presentation/notes_palette.dart';
@@ -69,7 +70,7 @@ void main() {
       await _pump(tester);
 
       final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
-      expect(scaffold.backgroundColor, NotesPalette.background);
+      expect(scaffold.backgroundColor, InkPalette.light.notes.background);
     });
 
     testWidgets('leads with a large bold DistillEd title', (tester) async {

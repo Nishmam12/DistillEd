@@ -1,7 +1,11 @@
-// Tier 0.2: dark mode, dev mode, and the default export format must survive a
+// Tier 0.2: theme mode, dev mode, and the default export format must survive a
 // relaunch. Before this, only the AI settings were persisted and these three
 // reset on every launch.
+//
+// Theme mode replaced a `darkMode` bool that persisted fine but drove nothing —
+// see the migration group at the bottom, which covers upgrading from it.
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,42 +24,82 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('defaults', () {
-    test('start light, non-dev, PNG', () async {
+    test('follow the system theme, non-dev, PNG', () async {
       final notifier = await _restored();
 
-      expect(notifier.state.darkMode, isFalse);
+      expect(notifier.state.themeMode, AppThemeMode.system);
       expect(notifier.state.devMode, isFalse);
       expect(notifier.state.exportDefault, 'PNG');
     });
   });
 
-  group('dark mode', () {
-    test('is written to prefs', () async {
+  group('theme mode', () {
+    test('is written to prefs by name, not by ordinal', () async {
       final notifier = await _restored();
 
-      await notifier.toggleDarkMode(true);
+      await notifier.setThemeMode(AppThemeMode.dark);
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('ui.darkMode'), isTrue);
+      expect(prefs.getString('ui.themeMode'), 'dark');
     });
 
     test('survives a relaunch', () async {
-      SharedPreferences.setMockInitialValues({'ui.darkMode': true});
+      SharedPreferences.setMockInitialValues({'ui.themeMode': 'dark'});
 
-      final notifier = await _restored();
-
-      expect(notifier.state.darkMode, isTrue);
+      expect((await _restored()).state.themeMode, AppThemeMode.dark);
     });
 
-    test('can be turned back off', () async {
-      SharedPreferences.setMockInitialValues({'ui.darkMode': true});
+    test('can be set back to light', () async {
+      SharedPreferences.setMockInitialValues({'ui.themeMode': 'dark'});
       final notifier = await _restored();
 
-      await notifier.toggleDarkMode(false);
+      await notifier.setThemeMode(AppThemeMode.light);
+
+      expect((await _restored()).state.themeMode, AppThemeMode.light);
+    });
+
+    test('an unrecognised stored value falls back to system', () async {
+      SharedPreferences.setMockInitialValues({'ui.themeMode': 'sepia'});
+
+      expect((await _restored()).state.themeMode, AppThemeMode.system);
+    });
+
+    test('maps onto the framework enum', () {
+      expect(AppThemeMode.system.toThemeMode, ThemeMode.system);
+      expect(AppThemeMode.light.toThemeMode, ThemeMode.light);
+      expect(AppThemeMode.dark.toThemeMode, ThemeMode.dark);
+    });
+  });
+
+  group('upgrading from the old darkMode bool', () {
+    test('someone who had it on lands in dark', () async {
+      SharedPreferences.setMockInitialValues({'ui.darkMode': true});
+
+      expect((await _restored()).state.themeMode, AppThemeMode.dark);
+    });
+
+    test('someone who had it off follows the system', () async {
+      SharedPreferences.setMockInitialValues({'ui.darkMode': false});
+
+      expect((await _restored()).state.themeMode, AppThemeMode.system);
+    });
+
+    test('an explicit choice wins over the legacy key', () async {
+      SharedPreferences.setMockInitialValues({
+        'ui.darkMode': true,
+        'ui.themeMode': 'light',
+      });
+
+      expect((await _restored()).state.themeMode, AppThemeMode.light);
+    });
+
+    test('the legacy key is never written back', () async {
+      final notifier = await _restored();
+
+      await notifier.setThemeMode(AppThemeMode.dark);
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('ui.darkMode'), isFalse);
-      expect((await _restored()).state.darkMode, isFalse);
+      expect(prefs.getBool('ui.darkMode'), isNull);
     });
   });
 
@@ -114,13 +158,13 @@ void main() {
     test('cloud opt-in is unaffected by the new keys', () async {
       SharedPreferences.setMockInitialValues({
         'ai.cloudEnabled': true,
-        'ui.darkMode': true,
+        'ui.themeMode': 'dark',
       });
 
       final notifier = await _restored();
 
       expect(notifier.state.cloudAiEnabled, isTrue);
-      expect(notifier.state.darkMode, isTrue);
+      expect(notifier.state.themeMode, AppThemeMode.dark);
       expect(notifier.state.cloudPrivacy, CloudPrivacy.askEachTime);
     });
   });

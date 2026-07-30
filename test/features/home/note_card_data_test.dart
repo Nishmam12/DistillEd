@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkflow/core/theme/ink_palette.dart';
 import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/features/home/domain/models/notebook.dart';
 import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
@@ -207,11 +208,13 @@ void main() {
 
   group('NotesPalette', () {
     test('exposes the spec colours', () {
-      expect(NotesPalette.background.toARGB32(), 0xFFF7F8FA);
-      expect(NotesPalette.card.toARGB32(), 0xFFFFFFFF);
-      expect(NotesPalette.textPrimary.toARGB32(), 0xFF111111);
-      expect(NotesPalette.textSecondary.toARGB32(), 0xFF7A7A7A);
-      expect(NotesPalette.accent.toARGB32(), 0xFF192841);
+      expect(InkPalette.light.notes.background.toARGB32(), 0xFFF7F8FA);
+      expect(InkPalette.light.notes.card.toARGB32(), 0xFFFFFFFF);
+      expect(InkPalette.light.notes.textPrimary.toARGB32(), 0xFF111111);
+      // Darkened from the spec's #7A7A7A to clear WCAG AA on a white card —
+      // see the contrast group in test/core/theme/app_theme_test.dart.
+      expect(InkPalette.light.notes.textSecondary.toARGB32(), 0xFF6E6E6E);
+      expect(InkPalette.light.notes.accent.toARGB32(), 0xFF192841);
     });
 
     test('keeps the card height inside the 150–170 band', () {
@@ -224,11 +227,11 @@ void main() {
     });
 
     test('gives a note a stable tint', () {
-      expect(NotesPalette.tintFor(3), NotesPalette.tintFor(3));
-      expect(NotesPalette.tintFor(-3), NotesPalette.tintFor(3));
+      expect(InkPalette.light.notes.tintFor(3), InkPalette.light.notes.tintFor(3));
+      expect(InkPalette.light.notes.tintFor(-3), InkPalette.light.notes.tintFor(3));
       expect(
-        NotesPalette.tintFor(NotesPalette.previewTints.length),
-        NotesPalette.previewTints.first,
+        InkPalette.light.notes.tintFor(InkPalette.light.notes.previewTints.length),
+        InkPalette.light.notes.previewTints.first,
       );
     });
   });

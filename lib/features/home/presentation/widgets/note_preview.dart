@@ -11,8 +11,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/ink_colors.dart';
 import '../models/note_card_data.dart';
-import '../notes_palette.dart';
 import 'note_scene_preview.dart';
 
 class NotePreview extends StatelessWidget {
@@ -52,7 +52,7 @@ class NotePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tint = NotesPalette.tintFor(note.id);
+    final tint = context.notes.tintFor(note.id);
     final image = _resolvedImage;
 
     return DecoratedBox(
@@ -151,13 +151,13 @@ class _TypographicPreview extends StatelessWidget {
               note.title.toUpperCase(),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 26,
                 height: 1.05,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 1.5,
-                color: NotesPalette.textPrimary,
+                color: context.notes.textPrimary,
               ),
             ),
           ),
@@ -176,11 +176,11 @@ class _TypographicPreview extends StatelessWidget {
                         showBullets ? '•  $line' : line,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: 13,
                           height: 1.3,
-                          color: NotesPalette.textPrimary,
+                          color: context.notes.textPrimary,
                         ),
                       ),
                     ),

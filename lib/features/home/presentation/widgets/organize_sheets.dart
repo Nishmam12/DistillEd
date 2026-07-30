@@ -6,11 +6,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/ink_colors.dart';
 import '../../data/repositories/note_repository.dart';
 import '../home_notifier.dart';
 import '../models/note_card_data.dart';
 import '../note_cards_provider.dart';
-import '../notes_palette.dart';
 
 /// Moves [note] into a folder, out of one, or into a folder created on the spot.
 Future<void> showMoveToFolderSheet(
@@ -26,7 +26,7 @@ Future<void> showMoveToFolderSheet(
   // sheet away silently unfile the note.
   final choice = await showModalBottomSheet<_FolderChoice>(
     context: context,
-    backgroundColor: NotesPalette.card,
+    backgroundColor: context.notes.card,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -106,7 +106,7 @@ Future<String?> _promptFolderName(BuildContext context) {
   return showDialog<String>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      backgroundColor: NotesPalette.card,
+      backgroundColor: context.notes.card,
       title: const Text('New folder'),
       content: TextField(
         controller: controller,
@@ -196,7 +196,7 @@ class _TagsDialogState extends State<_TagsDialog> {
     ];
 
     return AlertDialog(
-      backgroundColor: NotesPalette.card,
+      backgroundColor: context.notes.card,
       title: const Text('Tags'),
       content: Column(
         mainAxisSize: MainAxisSize.min,

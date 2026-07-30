@@ -4,7 +4,8 @@
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/ink_colors.dart';
+
 
 class ModelDownloadProgress extends StatelessWidget {
   final int progress;
@@ -26,17 +27,17 @@ class ModelDownloadProgress extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress / 100,
             minHeight: 8,
-            color: AppColors.accent,
-            backgroundColor: AppColors.surfaceHighlight,
+            color: context.ink.accent,
+            backgroundColor: context.ink.surfaceHighlight,
           ),
         ),
         const SizedBox(height: 8),
         Text('$progress%',
-            style: const TextStyle(color: AppColors.textSecondary)),
+            style: TextStyle(color: context.ink.textSecondary)),
         TextButton(
           onPressed: onCancel,
-          child: const Text('Cancel',
-              style: TextStyle(color: AppColors.textSecondary)),
+          child: Text('Cancel',
+              style: TextStyle(color: context.ink.textSecondary)),
         ),
       ],
     );

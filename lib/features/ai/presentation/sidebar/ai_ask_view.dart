@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../../data/embeddings/embedder_spec.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/rag/rag_retriever.dart';
@@ -95,16 +95,16 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
   Widget _header(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.travel_explore, size: 18, color: AppColors.accent),
+        Icon(Icons.travel_explore, size: 18, color: context.ink.accent),
         const SizedBox(width: 8),
-        const Expanded(
+        Expanded(
           child: Text('Ask your notes',
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.ink.textPrimary,
               )),
         ),
         IconButton(
@@ -112,7 +112,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           visualDensity: VisualDensity.compact,
           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
           padding: EdgeInsets.zero,
-          icon: const Icon(Icons.close, size: 18, color: AppColors.textSecondary),
+          icon: Icon(Icons.close, size: 18, color: context.ink.textSecondary),
           onPressed: () => ref.read(askNotesNotifierProvider.notifier).reset(),
         ),
       ],
@@ -128,12 +128,12 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
       onSubmitted: (_) => _submit(),
       minLines: 1,
       maxLines: 3,
-      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+      style: TextStyle(fontSize: 14, color: context.ink.textPrimary),
       decoration: InputDecoration(
         hintText: 'e.g. What did I write about mitosis?',
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        hintStyle: TextStyle(color: context.ink.textMuted, fontSize: 13),
         filled: true,
-        fillColor: AppColors.surfaceHighlight,
+        fillColor: context.ink.surfaceHighlight,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -143,7 +143,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           tooltip: 'Ask',
           icon: Icon(Icons.arrow_upward,
               size: 20,
-              color: enabled ? AppColors.accent : AppColors.textMuted),
+              color: enabled ? context.ink.accent : context.ink.textMuted),
           onPressed: enabled ? _submit : null,
         ),
       ),
@@ -231,20 +231,20 @@ class _Answer extends StatelessWidget {
               children: [
                 SelectableText(
                   trimmed.isEmpty ? 'Thinking…' : trimmed,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     height: 1.5,
-                    color: AppColors.textPrimary,
+                    color: context.ink.textPrimary,
                   ),
                 ),
                 if (sources.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  const Text('SOURCES',
+                  Text('SOURCES',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
-                        color: AppColors.textMuted,
+                        color: context.ink.textMuted,
                       )),
                   const SizedBox(height: 8),
                   for (var i = 0; i < sources.length; i++)
@@ -269,8 +269,8 @@ class _Answer extends StatelessWidget {
     return Row(
       children: [
         if (streaming)
-          const Padding(
-            padding: EdgeInsets.only(left: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -278,12 +278,12 @@ class _Answer extends StatelessWidget {
                   width: 12,
                   height: 12,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.accentSoft),
+                      strokeWidth: 2, color: context.ink.accentSoft),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text('Writing…',
                     style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
+                        fontSize: 12, color: context.ink.textSecondary)),
               ],
             ),
           )
@@ -301,21 +301,21 @@ class _Answer extends StatelessWidget {
                           duration: Duration(seconds: 1)),
                     );
                   },
-            icon: const Icon(Icons.copy_outlined,
-                size: 18, color: AppColors.textSecondary),
+            icon: Icon(Icons.copy_outlined,
+                size: 18, color: context.ink.textSecondary),
           ),
         const Spacer(),
         Flexible(
           child: FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
             onPressed: (streaming || trimmed.isEmpty)
                 ? null
                 : () => onInsertNote(trimmed),
-            icon: const Icon(Icons.note_add_outlined,
-                size: 18, color: AppColors.textOnAccent),
-            label: const Text('Insert as note',
+            icon: Icon(Icons.note_add_outlined,
+                size: 18, color: context.ink.textOnAccent),
+            label: Text('Insert as note',
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: AppColors.textOnAccent)),
+                style: TextStyle(color: context.ink.textOnAccent)),
           ),
         ),
       ],
@@ -350,9 +350,9 @@ class _SourceCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.surfaceHighlight,
+            color: context.ink.surfaceHighlight,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.ink.border),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,15 +361,15 @@ class _SourceCard extends StatelessWidget {
                 width: 22,
                 height: 22,
                 alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: AppColors.accentWash,
+                decoration: BoxDecoration(
+                  color: context.ink.accentWash,
                   shape: BoxShape.circle,
                 ),
                 child: Text('$index',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.accentStrong,
+                      color: context.ink.accentStrong,
                     )),
               ),
               const SizedBox(width: 10),
@@ -377,16 +377,16 @@ class _SourceCard extends StatelessWidget {
                 child: Text(snippet,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
                         height: 1.4,
-                        color: AppColors.textSecondary)),
+                        color: context.ink.textSecondary)),
               ),
               if (jump != null)
-                const Padding(
-                  padding: EdgeInsets.only(left: 6, top: 2),
+                Padding(
+                  padding: const EdgeInsets.only(left: 6, top: 2),
                   child: Icon(Icons.north_east,
-                      size: 14, color: AppColors.textMuted),
+                      size: 14, color: context.ink.textMuted),
                 ),
             ],
           ),
@@ -474,17 +474,17 @@ class _ErrorBody extends ConsumerWidget {
         const SizedBox(height: 14),
         if (downloadLabel != null)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text(downloadLabel,
-                style: const TextStyle(color: AppColors.textOnAccent)),
+                style: TextStyle(color: context.ink.textOnAccent)),
           )
         else if (state.retryable)
           TextButton.icon(
             onPressed: notifier.retry,
-            icon: const Icon(Icons.refresh, size: 18, color: AppColors.accent),
-            label: const Text('Try again',
-                style: TextStyle(color: AppColors.accent)),
+            icon: Icon(Icons.refresh, size: 18, color: context.ink.accent),
+            label: Text('Try again',
+                style: TextStyle(color: context.ink.accent)),
           ),
       ],
     );
@@ -511,24 +511,24 @@ class _Centered extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showSpinner)
-            const CircularProgressIndicator(color: AppColors.accent)
+            CircularProgressIndicator(color: context.ink.accent)
           else
-            Icon(icon, size: 34, color: AppColors.accentSoft),
+            Icon(icon, size: 34, color: context.ink.accentSoft),
           const SizedBox(height: 14),
           Text(title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.ink.textPrimary,
               )),
           if (subtitle != null) ...[
             const SizedBox(height: 6),
             Text(subtitle!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 13, height: 1.4, color: AppColors.textSecondary)),
+                style: TextStyle(
+                    fontSize: 13, height: 1.4, color: context.ink.textSecondary)),
           ],
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkflow/core/theme/ink_palette.dart';
 import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
 import 'package:inkflow/features/home/presentation/notes_palette.dart';
 import 'package:inkflow/features/home/presentation/widgets/note_overlay.dart';
@@ -88,7 +89,7 @@ void main() {
       final style = tester.widget<Text>(find.text('IDs')).style!;
       expect(style.fontSize, 20);
       expect(style.fontWeight, FontWeight.w600);
-      expect(style.color, NotesPalette.textPrimary);
+      expect(style.color, InkPalette.light.notes.textPrimary);
     });
 
     testWidgets('metadata is 14 medium grey', (tester) async {
@@ -98,7 +99,7 @@ void main() {
         final style = tester.widget<Text>(find.text(label)).style!;
         expect(style.fontSize, 14, reason: label);
         expect(style.fontWeight, FontWeight.w500, reason: label);
-        expect(style.color, NotesPalette.textSecondary, reason: label);
+        expect(style.color, InkPalette.light.notes.textSecondary, reason: label);
       }
     });
   });

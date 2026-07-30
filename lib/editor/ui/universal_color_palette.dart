@@ -8,8 +8,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../core/constants/editor_constants.dart';
+import '../../core/theme/ink_colors.dart';
 import '../state/editor_tool_controller.dart';
 
 class UniversalColorPalette extends ConsumerStatefulWidget {
@@ -54,11 +54,11 @@ class _UniversalColorPaletteState extends ConsumerState<UniversalColorPalette> {
                   constraints: const BoxConstraints(maxWidth: 176),
                   padding: const EdgeInsets.all(10),
                   decoration: ShapeDecoration(
-                    color: AppColors.surface,
-                    shadows: AppColors.shadowFloat,
+                    color: context.ink.surface,
+                    shadows: context.ink.shadowFloat,
                     shape: ContinuousRectangleBorder(
                       borderRadius: BorderRadius.circular(22),
-                      side: const BorderSide(color: AppColors.border),
+                      side: BorderSide(color: context.ink.border),
                     ),
                   ),
                   child: Wrap(
@@ -100,9 +100,9 @@ class _Trigger extends StatelessWidget {
     return Tooltip(
       message: 'Colour',
       child: Material(
-        color: AppColors.surface,
+        color: context.ink.surface,
         elevation: 2,
-        shape: const StadiumBorder(side: BorderSide(color: AppColors.border)),
+        shape: StadiumBorder(side: BorderSide(color: context.ink.border)),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onTap,
@@ -117,14 +117,14 @@ class _Trigger extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Color(color),
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border, width: 1.5),
+                    border: Border.all(color: context.ink.border, width: 1.5),
                   ),
                 ),
                 const SizedBox(width: 4),
                 Icon(
                   open ? Icons.expand_less : Icons.expand_more,
                   size: 16,
-                  color: AppColors.textSecondary,
+                  color: context.ink.textSecondary,
                 ),
               ],
             ),

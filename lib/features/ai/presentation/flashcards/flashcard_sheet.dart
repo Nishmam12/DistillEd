@@ -8,7 +8,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../../../export/export_share_service.dart';
 import '../../data/flashcards/flashcard_apkg.dart';
 import '../../data/flashcards/flashcard_csv.dart';
@@ -22,7 +22,7 @@ import '../widgets/model_download_progress.dart';
 void showFlashcardSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
-    backgroundColor: AppColors.surface,
+    backgroundColor: context.ink.surface,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -74,9 +74,9 @@ class _Status extends StatelessWidget {
       children: [
         const _SheetTitle('Flashcards'),
         const SizedBox(height: 28),
-        const CircularProgressIndicator(color: AppColors.accent),
+        CircularProgressIndicator(color: context.ink.accent),
         const SizedBox(height: 16),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        Text(label, style: TextStyle(color: context.ink.textSecondary)),
         const SizedBox(height: 12),
       ],
     );
@@ -98,7 +98,7 @@ class _Downloading extends ConsumerWidget {
         Text(
           '${LlmModelSpec.active.displayName} · '
           '${sizeGb.toStringAsFixed(1)} GB — one-time download',
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 13, color: context.ink.textSecondary),
         ),
         const SizedBox(height: 20),
         ModelDownloadProgress(
@@ -125,30 +125,30 @@ class _ErrorView extends ConsumerWidget {
       children: [
         const _SheetTitle('Flashcards'),
         const SizedBox(height: 20),
-        const Icon(Icons.error_outline, color: AppColors.accentRed, size: 40),
+        Icon(Icons.error_outline, color: context.ink.accentRed, size: 40),
         const SizedBox(height: 12),
         Text(state.message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+            style: TextStyle(fontSize: 14, color: context.ink.textPrimary)),
         const SizedBox(height: 20),
         if (state.offerModelDownload)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
-                style: const TextStyle(color: AppColors.textOnAccent)),
+                style: TextStyle(color: context.ink.textOnAccent)),
           )
         else if (state.retryable)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
             onPressed: notifier.retry,
-            child: const Text('Try again',
-                style: TextStyle(color: AppColors.textOnAccent)),
+            child: Text('Try again',
+                style: TextStyle(color: context.ink.textOnAccent)),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close',
-              style: TextStyle(color: AppColors.textSecondary)),
+          child: Text('Close',
+              style: TextStyle(color: context.ink.textSecondary)),
         ),
       ],
     );
@@ -248,18 +248,18 @@ class _DeckState extends State<_Deck> {
           children: [
             IconButton(
               tooltip: 'Close',
-              icon: const Icon(Icons.close,
-                  size: 20, color: AppColors.textSecondary),
+              icon: Icon(Icons.close,
+                  size: 20, color: context.ink.textSecondary),
               onPressed: () => Navigator.of(context).pop(),
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
             ),
             const Spacer(),
             Text('${_index + 1} / $total',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textMuted)),
+                    color: context.ink.textMuted)),
           ],
         ),
         const SizedBox(height: 4),
@@ -301,27 +301,27 @@ class _DeckState extends State<_Deck> {
             Expanded(
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accent,
+                  backgroundColor: context.ink.accent,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 onPressed: _exporting ? null : () => _export(apkg: true),
                 icon: _exporting
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.textOnAccent))
-                    : const Icon(Icons.style_outlined,
-                        size: 16, color: AppColors.textOnAccent),
-                label: const Text('Export to Anki (.apkg)',
+                            strokeWidth: 2, color: context.ink.textOnAccent))
+                    : Icon(Icons.style_outlined,
+                        size: 16, color: context.ink.textOnAccent),
+                label: Text('Export to Anki (.apkg)',
                     style:
-                        TextStyle(fontSize: 13, color: AppColors.textOnAccent)),
+                        TextStyle(fontSize: 13, color: context.ink.textOnAccent)),
               ),
             ),
             TextButton(
               onPressed: _exporting ? null : () => _export(apkg: false),
-              child: const Text('Export as CSV',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              child: Text('Export as CSV',
+                  style: TextStyle(fontSize: 12, color: context.ink.textSecondary)),
             ),
           ],
         ),
@@ -345,10 +345,10 @@ class _CardFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = showBack ? AppColors.accent : AppColors.accentYellowWash;
-    final fg = showBack ? AppColors.textOnAccent : AppColors.textPrimary;
-    final labelBg = showBack ? AppColors.accentStrong : AppColors.surface;
-    final labelFg = showBack ? AppColors.textOnAccent : AppColors.textSecondary;
+    final bg = showBack ? context.ink.accent : context.ink.accentYellowWash;
+    final fg = showBack ? context.ink.textOnAccent : context.ink.textPrimary;
+    final labelBg = showBack ? context.ink.accentStrong : context.ink.surface;
+    final labelFg = showBack ? context.ink.textOnAccent : context.ink.textSecondary;
 
     return Material(
       color: bg,
@@ -410,11 +410,11 @@ class _SheetTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Poppins',
           fontSize: 17,
           fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+          color: context.ink.textPrimary,
         ));
   }
 }

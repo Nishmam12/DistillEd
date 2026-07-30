@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkflow/core/theme/ink_palette.dart';
 import 'package:inkflow/features/home/presentation/notes_palette.dart';
 import 'package:inkflow/features/home/presentation/widgets/knowledge_graph_button.dart';
 
@@ -39,7 +40,7 @@ void main() {
 
     final decoration = _decoration(tester);
     expect(decoration.shape, BoxShape.circle);
-    expect(decoration.color, NotesPalette.card);
+    expect(decoration.color, InkPalette.light.notes.card);
     expect(NotesPalette.graphButtonRadius, 26.0);
     expect(
       tester.getSize(find.byType(KnowledgeGraphButton)),
@@ -62,7 +63,7 @@ void main() {
 
     final shadows = _decoration(tester).boxShadow!;
     expect(shadows, isNotEmpty);
-    final cardShadow = NotesPalette.cardShadow.first;
+    final cardShadow = InkPalette.light.notes.cardShadow.first;
     expect(shadows.first.color.a, greaterThan(cardShadow.color.a));
   });
 

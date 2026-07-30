@@ -6,6 +6,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/ink_colors.dart';
 import '../notes_palette.dart';
 
 class SearchBarWidget extends StatefulWidget {
@@ -70,27 +71,27 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
         onChanged: _handleChanged,
         textAlignVertical: TextAlignVertical.center,
         textInputAction: TextInputAction.search,
-        cursorColor: NotesPalette.accent,
-        style: const TextStyle(
+        cursorColor: context.notes.accent,
+        style: TextStyle(
           fontFamily: 'Nunito',
           fontSize: 16,
-          color: NotesPalette.textPrimary,
+          color: context.notes.textPrimary,
         ),
         decoration: InputDecoration(
           isDense: true,
           filled: true,
-          fillColor: NotesPalette.field,
+          fillColor: context.notes.field,
           hintText: widget.hintText,
-          hintStyle: const TextStyle(
+          hintStyle: TextStyle(
             fontFamily: 'Nunito',
             fontSize: 16,
-            color: NotesPalette.textSecondary,
+            color: context.notes.textSecondary,
           ),
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
-          prefixIcon: const Icon(
+          prefixIcon: Icon(
             Icons.search_rounded,
             size: 22,
-            color: NotesPalette.textSecondary,
+            color: context.notes.textSecondary,
           ),
           suffixIcon: IgnorePointer(
             ignoring: !_hasText,
@@ -99,7 +100,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
               duration: const Duration(milliseconds: 160),
               child: IconButton(
                 icon: const Icon(Icons.close_rounded, size: 18),
-                color: NotesPalette.textSecondary,
+                color: context.notes.textSecondary,
                 tooltip: 'Clear search',
                 onPressed: _clear,
               ),
@@ -107,9 +108,9 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
           ),
           border: border,
           enabledBorder: border,
-          focusedBorder: const OutlineInputBorder(
+          focusedBorder: OutlineInputBorder(
             borderRadius: radius,
-            borderSide: BorderSide(color: NotesPalette.accent, width: 1.4),
+            borderSide: BorderSide(color: context.notes.accent, width: 1.4),
           ),
         ),
       ),

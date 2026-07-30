@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import '../../../../core/constants/app_colors.dart';
+
+import '../../../../core/theme/ink_colors.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -19,11 +20,11 @@ class _AboutScreenState extends State<AboutScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('About DistillEd'),
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: context.ink.surface,
+        foregroundColor: context.ink.textPrimary,
         elevation: 0,
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: context.ink.background,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -32,19 +33,19 @@ class _AboutScreenState extends State<AboutScreen> {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: AppColors.accent.withValues(alpha: 0.1),
+                color: context.ink.accent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.draw,
                 size: 64,
-                color: AppColors.accent,
+                color: context.ink.accent,
               ),
             ),
             const SizedBox(height: 24),
-            const Text.rich(
+            Text.rich(
               TextSpan(
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 32,
                   fontWeight: FontWeight.w700,
@@ -53,11 +54,11 @@ class _AboutScreenState extends State<AboutScreen> {
                 children: [
                   TextSpan(
                     text: 'Distill',
-                    style: TextStyle(color: AppColors.accent),
+                    style: TextStyle(color: context.ink.accent),
                   ),
                   TextSpan(
                     text: 'Ed',
-                    style: TextStyle(color: AppColors.textPrimary),
+                    style: TextStyle(color: context.ink.textPrimary),
                   ),
                 ],
               ),
@@ -72,22 +73,22 @@ class _AboutScreenState extends State<AboutScreen> {
                     : 'Version ${info.version} (build ${info.buildNumber})';
                 return Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
-                    color: AppColors.textSecondary,
+                    color: context.ink.textSecondary,
                   ),
                 );
               },
             ),
             const SizedBox(height: 32),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 48.0),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 48.0),
               child: Text(
                 'A beautifully simple, infinite-canvas note-taking app with no artificial limitations.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
-                  color: AppColors.textSecondary,
+                  color: context.ink.textSecondary,
                   height: 1.5,
                 ),
               ),

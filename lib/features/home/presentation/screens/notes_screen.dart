@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../../../../domain/model/template_type.dart';
 import '../../../../editor/state/scene_image_cache_provider.dart';
 import '../home_notifier.dart';
@@ -47,7 +47,7 @@ class NotesScreen extends ConsumerWidget {
     final query = ref.watch(notesSearchQueryProvider);
 
     return Scaffold(
-      backgroundColor: NotesPalette.background,
+      backgroundColor: context.notes.background,
       body: SafeArea(
         bottom: false,
         child: Stack(
@@ -66,9 +66,9 @@ class NotesScreen extends ConsumerWidget {
                 const _OrganizeFilterRow(),
                 Expanded(
                   child: cards.when(
-                    loading: () => const Center(
+                    loading: () => Center(
                       child: CircularProgressIndicator(
-                        color: NotesPalette.accent,
+                        color: context.notes.accent,
                       ),
                     ),
                     error: (error, _) => _Message(
@@ -117,7 +117,7 @@ class NotesScreen extends ConsumerWidget {
     final current = ref.read(notesSortProvider);
     final picked = await showModalBottomSheet<NotesSort>(
       context: context,
-      backgroundColor: NotesPalette.card,
+      backgroundColor: context.notes.card,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -130,7 +130,7 @@ class NotesScreen extends ConsumerWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: NotesPalette.textSecondary.withValues(alpha: 0.3),
+                color: context.notes.textSecondary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -139,16 +139,16 @@ class NotesScreen extends ConsumerWidget {
               ListTile(
                 title: Text(
                   sort.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    color: NotesPalette.textPrimary,
+                    color: context.notes.textPrimary,
                   ),
                 ),
                 trailing: sort == current
-                    ? const Icon(Icons.check_rounded,
-                        color: NotesPalette.accent)
+                    ? Icon(Icons.check_rounded,
+                        color: context.notes.accent)
                     : null,
                 onTap: () => Navigator.of(context).pop(sort),
               ),
@@ -173,7 +173,7 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 12, 8, 12),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               'DistillEd',
               style: TextStyle(
@@ -181,14 +181,14 @@ class _Header extends StatelessWidget {
                 fontSize: 38,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -1,
-                color: NotesPalette.textPrimary,
+                color: context.notes.textPrimary,
               ),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.more_horiz_rounded),
             iconSize: 26,
-            color: NotesPalette.accent,
+            color: context.notes.accent,
             tooltip: 'Settings',
             onPressed: () => context.push('/settings'),
           ),
@@ -242,7 +242,7 @@ class _NotesList extends ConsumerWidget {
   ) async {
     final action = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: NotesPalette.card,
+      backgroundColor: context.notes.card,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -281,11 +281,11 @@ class _NotesList extends ConsumerWidget {
               onTap: () => Navigator.of(context).pop('graph'),
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline_rounded,
-                  color: Color(0xFFCF4A36)),
-              title: const Text(
+              leading: Icon(Icons.delete_outline_rounded,
+                  color: context.ink.accentRed),
+              title: Text(
                 'Delete note',
-                style: TextStyle(color: Color(0xFFCF4A36)),
+                style: TextStyle(color: context.ink.accentRed),
               ),
               onTap: () => Navigator.of(context).pop('delete'),
             ),
@@ -321,7 +321,7 @@ class _NotesList extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: NotesPalette.card,
+        backgroundColor: context.notes.card,
         title: const Text('Move to trash'),
         content: Text(
           'Move "${note.title}" to the trash? '
@@ -335,7 +335,7 @@ class _NotesList extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(
-              foregroundColor: AppColors.accentRed,
+              foregroundColor: context.ink.accentRed,
             ),
             child: const Text('Move to trash'),
           ),
@@ -450,17 +450,17 @@ class _FilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppColors.accentWash : Colors.transparent,
+            color: selected ? context.ink.accentWash : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppColors.accent : AppColors.border,
+              color: selected ? context.ink.accent : context.ink.border,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 14, color: NotesPalette.textSecondary),
+                Icon(icon, size: 14, color: context.notes.textSecondary),
                 const SizedBox(width: 4),
               ],
               Text(
@@ -468,8 +468,8 @@ class _FilterChip extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   color: selected
-                      ? AppColors.accent
-                      : NotesPalette.textSecondary,
+                      ? context.ink.accent
+                      : context.notes.textSecondary,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
@@ -505,9 +505,13 @@ class _BottomBar extends StatelessWidget {
           height: NotesScreen.bottomBarHeight + safeBottom,
           padding: EdgeInsets.only(left: 18, right: 18, bottom: safeBottom),
           decoration: BoxDecoration(
-            color: NotesPalette.background.withValues(alpha: 0.86),
-            border: const Border(
-              top: BorderSide(color: Color(0x14000000)),
+            color: context.notes.background.withValues(alpha: 0.86),
+            // Themed rather than a fixed black wash: a 8%-black hairline is
+            // invisible against a dark canvas.
+            border: Border(
+              top: BorderSide(
+                color: context.notes.textSecondary.withValues(alpha: 0.15),
+              ),
             ),
           ),
           child: Row(
@@ -521,11 +525,11 @@ class _BottomBar extends StatelessWidget {
                 child: Text(
                   '$count ${count == 1 ? 'Note' : 'Notes'}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: NotesPalette.textSecondary,
+                    color: context.notes.textSecondary,
                   ),
                 ),
               ),
@@ -561,7 +565,7 @@ class _BarButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: filled ? NotesPalette.accent : Colors.transparent,
+        color: filled ? context.notes.accent : Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -577,7 +581,7 @@ class _BarButton extends StatelessWidget {
               child: Icon(
                 icon,
                 size: 22,
-                color: filled ? Colors.white : NotesPalette.accent,
+                color: filled ? Colors.white : context.notes.accent,
               ),
             ),
           ),
@@ -628,26 +632,26 @@ class _Message extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: NotesPalette.textSecondary),
+            Icon(icon, size: 56, color: context.notes.textSecondary),
             const SizedBox(height: 16),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: NotesPalette.textPrimary,
+                color: context.notes.textPrimary,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Nunito',
                 fontSize: 14,
-                color: NotesPalette.textSecondary,
+                color: context.notes.textSecondary,
               ),
             ),
           ],
@@ -684,7 +688,7 @@ class _CreateNotebookDialogState extends State<_CreateNotebookDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: NotesPalette.card,
+      backgroundColor: context.notes.card,
       title: const Text('New note'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -697,10 +701,10 @@ class _CreateNotebookDialogState extends State<_CreateNotebookDialog> {
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Page style',
             style: TextStyle(
-              color: NotesPalette.textSecondary,
+              color: context.notes.textSecondary,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -745,7 +749,7 @@ class _TemplateChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colour =
-        selected ? NotesPalette.accent : NotesPalette.textSecondary;
+        selected ? context.notes.accent : context.notes.textSecondary;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -753,13 +757,13 @@ class _TemplateChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: selected
-              ? NotesPalette.accent.withValues(alpha: 0.08)
+              ? context.notes.accent.withValues(alpha: 0.08)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected
-                ? NotesPalette.accent
-                : NotesPalette.textSecondary.withValues(alpha: 0.35),
+                ? context.notes.accent
+                : context.notes.textSecondary.withValues(alpha: 0.35),
           ),
         ),
         child: Row(

@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/ink_colors.dart';
 import '../models/note_card_data.dart';
 import '../notes_palette.dart';
 
@@ -26,7 +27,7 @@ class NoteOverlay extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        boxShadow: NotesPalette.overlayShadow,
+        boxShadow: context.notes.overlayShadow,
       ),
       child: ClipRRect(
         borderRadius: borderRadius,
@@ -43,10 +44,10 @@ class NoteOverlay extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (note.pinned) ...[
-                  const Icon(
+                  Icon(
                     Icons.push_pin_rounded,
                     size: 16,
-                    color: NotesPalette.textSecondary,
+                    color: context.notes.textSecondary,
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -55,13 +56,13 @@ class NoteOverlay extends StatelessWidget {
                     note.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 20,
                       height: 1.2,
                       fontWeight: FontWeight.w600,
                       letterSpacing: -0.3,
-                      color: NotesPalette.textPrimary,
+                      color: context.notes.textPrimary,
                     ),
                   ),
                 ),
@@ -91,18 +92,18 @@ class _MetaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 15, color: NotesPalette.textSecondary),
+        Icon(icon, size: 15, color: context.notes.textSecondary),
         const SizedBox(width: 6),
         Flexible(
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Nunito',
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: NotesPalette.textSecondary,
+              color: context.notes.textSecondary,
             ),
           ),
         ),

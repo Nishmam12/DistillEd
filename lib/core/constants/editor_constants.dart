@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
 import '../../domain/model/scene_element.dart';
 import '../../editor/state/editor_tool_controller.dart';
 
@@ -44,19 +43,23 @@ const Map<Arrowhead, IconData> kArrowheadIcons = {
 /// The palette offered when reassigning a favourite swatch (long-press). A
 /// compact, purposeful spread — greys through the warm/cool spectrum — rather
 /// than a full colour wheel, which is overkill for three quick-pick slots.
-/// Not `const`: three entries resolve from [AppColors] at load time rather
-/// than repeating its hex values here.
-final List<int> kFavoritePickerColors = [
+///
+/// These are *ink* values, so they are written out literally rather than
+/// borrowed from the app's chrome palette. Three of them used to resolve from
+/// `AppColors` — which meant a chosen swatch would have silently changed hue
+/// when the app theme did. A stroke keeps the colour it was drawn in; see
+/// `core/theme/ink_palette.dart` for the boundary between ink and chrome.
+const List<int> kFavoritePickerColors = [
   0xFF1F2933, // charcoal
   0xFF000000, // black
   0xFF868E96, // grey
   0xFFE03131, // red
-  AppColors.sunny.toARGB32(), // orange
-  AppColors.accentYellow.toARGB32(), // honey
+  0xFFF2802E, // orange
+  0xFFE3A53D, // honey
   0xFF2F9E44, // green
   0xFF1971C2, // blue
   0xFF6741D9, // violet
-  AppColors.accentPurple.toARGB32(), // periwinkle
+  0xFF8B8BD8, // periwinkle
   0xFFC2255C, // magenta
   0xFFFFFFFF, // white
 ];

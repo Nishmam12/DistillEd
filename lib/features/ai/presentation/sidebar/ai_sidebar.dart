@@ -10,8 +10,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/settings_provider.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../../../editor/state/selection_controller.dart';
 import '../../domain/context_engine/page_context.dart';
@@ -73,16 +73,16 @@ class AiSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: kAiSidebarWidth,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(left: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.ink.surface,
+        border: Border(left: BorderSide(color: context.ink.border)),
       ),
       child: SafeArea(
         left: false,
         child: Column(
           children: [
             _SidebarHeader(onClose: onClose),
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: context.ink.border),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
@@ -111,7 +111,7 @@ Future<void> showAiSidebarSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
-    backgroundColor: AppColors.surface,
+    backgroundColor: context.ink.surface,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -193,7 +193,7 @@ class _SidebarFooter extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Divider(height: 1, color: AppColors.border),
+        Divider(height: 1, color: context.ink.border),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Wrap(
@@ -453,11 +453,11 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = enabled ? AppColors.accentStrong : AppColors.textMuted;
+    final fg = enabled ? context.ink.accentStrong : context.ink.textMuted;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       decoration: BoxDecoration(
-        color: enabled ? AppColors.accentWash : AppColors.surfaceHighlight,
+        color: enabled ? context.ink.accentWash : context.ink.surfaceHighlight,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -486,19 +486,19 @@ class _SidebarHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 8, 12),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome, size: 18, color: AppColors.accent),
+          Icon(Icons.auto_awesome, size: 18, color: context.ink.accent),
           const SizedBox(width: 8),
-          const Text('AI insights',
+          Text('AI insights',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.ink.textPrimary,
               )),
           const Spacer(),
           IconButton(
             tooltip: 'Close',
-            icon: const Icon(Icons.close, size: 20, color: AppColors.textSecondary),
+            icon: Icon(Icons.close, size: 20, color: context.ink.textSecondary),
             onPressed: onClose,
           ),
         ],

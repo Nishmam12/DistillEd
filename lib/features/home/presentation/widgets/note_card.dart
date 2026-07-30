@@ -13,6 +13,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/ink_colors.dart';
 import '../models/note_card_data.dart';
 import '../notes_palette.dart';
 import 'knowledge_graph_button.dart';
@@ -99,10 +100,10 @@ class _NoteCardState extends State<NoteCard> {
         duration: NoteCard._motion,
         curve: Curves.easeOut,
         decoration: BoxDecoration(
-          color: NotesPalette.card,
+          color: context.notes.card,
           borderRadius: NoteCard.borderRadius,
           boxShadow:
-              _raised ? NotesPalette.cardShadowRaised : NotesPalette.cardShadow,
+              _raised ? context.notes.cardShadowRaised : context.notes.cardShadow,
         ),
         child: ClipRRect(
           borderRadius: NoteCard.borderRadius,

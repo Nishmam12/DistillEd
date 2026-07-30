@@ -1,4 +1,5 @@
-// Root application widget — applies theme and sets up routing.
+// Root application widget — applies the light/dark themes and the persisted
+// theme mode, and sets up routing.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,13 +12,18 @@ class InkFlowApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
+    // Watch only the two fields that affect the MaterialApp, so unrelated
+    // settings edits (the HuggingFace token, say) don't rebuild the whole app.
+    final themeMode = ref.watch(settingsProvider.select((s) => s.themeMode));
+    final devMode = ref.watch(settingsProvider.select((s) => s.devMode));
 
     return MaterialApp.router(
       title: 'DistillEd',
       debugShowCheckedModeBanner: false,
-      showPerformanceOverlay: settings.devMode,
-      theme: AppTheme.warmTheme,
+      showPerformanceOverlay: devMode,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: themeMode.toThemeMode,
       routerConfig: appRouter,
     );
   }

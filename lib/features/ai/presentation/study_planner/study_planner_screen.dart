@@ -9,16 +9,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../../domain/study_planner/study_plan.dart';
 import '../ai_providers.dart';
 
 /// Task kind → colour. Distinct from the graph's mastery palette on purpose —
 /// here the colour means the KIND of work, not how well a concept is known.
-Color _taskColor(StudyTaskKind kind) => switch (kind) {
-      StudyTaskKind.review => AppColors.accentYellow,
-      StudyTaskKind.quiz => AppColors.accent,
-      StudyTaskKind.learnNew => AppColors.accentPurple,
+Color _taskColor(InkPalette ink, StudyTaskKind kind) => switch (kind) {
+      StudyTaskKind.review => ink.accentYellow,
+      StudyTaskKind.quiz => ink.accent,
+      StudyTaskKind.learnNew => ink.accentPurple,
     };
 
 class StudyPlannerScreen extends ConsumerWidget {
@@ -30,7 +30,7 @@ class StudyPlannerScreen extends ConsumerWidget {
     final planAsync = ref.watch(studyPlannerProvider(notebookId));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.ink.background,
       appBar: AppBar(
         title: const Text('Study plan'),
         actions: [
@@ -100,24 +100,24 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
       padding: const EdgeInsets.all(20),
       children: [
         const SizedBox(height: 8),
-        const Icon(Icons.event_note_outlined,
-            size: 40, color: AppColors.accentSoft),
+        Icon(Icons.event_note_outlined,
+            size: 40, color: context.ink.accentSoft),
         const SizedBox(height: 12),
-        const Text('Plan your study',
+        Text('Plan your study',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: context.ink.textPrimary,
             )),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'A day-by-day plan built from what you\'re struggling with, what\'s '
           'due for review, and concepts your notes mention but don\'t explain '
           'yet. Everything on-device.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 14, height: 1.5, color: context.ink.textSecondary),
         ),
         const SizedBox(height: 24),
         for (final kind in StudyHorizonKind.values)
@@ -139,12 +139,12 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
         const SizedBox(height: 24),
         FilledButton(
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.accent,
+            backgroundColor: context.ink.accent,
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           onPressed: _canGenerate ? _generate : null,
-          child: const Text('Generate plan',
-              style: TextStyle(color: AppColors.textOnAccent, fontSize: 15)),
+          child: Text('Generate plan',
+              style: TextStyle(color: context.ink.textOnAccent, fontSize: 15)),
         ),
       ],
     );
@@ -171,10 +171,10 @@ class _HorizonTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: selected ? AppColors.accentWash : AppColors.surface,
+            color: selected ? context.ink.accentWash : context.ink.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? AppColors.accent : AppColors.border,
+              color: selected ? context.ink.accent : context.ink.border,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -185,14 +185,14 @@ class _HorizonTile extends StatelessWidget {
                     ? Icons.radio_button_checked
                     : Icons.radio_button_unchecked,
                 size: 20,
-                color: selected ? AppColors.accent : AppColors.textMuted,
+                color: selected ? context.ink.accent : context.ink.textMuted,
               ),
               const SizedBox(width: 12),
               Text(kind.label,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    color: AppColors.textPrimary,
+                    color: context.ink.textPrimary,
                   )),
             ],
           ),
@@ -249,18 +249,18 @@ class _PlanHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.ink.surface,
+        border: Border(bottom: BorderSide(color: context.ink.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('${plan.horizonKind.label} plan · ${plan.conceptCount} concepts',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.ink.textPrimary,
               )),
           const SizedBox(height: 10),
           ClipRRect(
@@ -268,14 +268,14 @@ class _PlanHeader extends StatelessWidget {
             child: LinearProgressIndicator(
               value: plan.progress,
               minHeight: 8,
-              color: AppColors.accentGreen,
-              backgroundColor: AppColors.surfaceHighlight,
+              color: context.ink.accentGreen,
+              backgroundColor: context.ink.surfaceHighlight,
             ),
           ),
           const SizedBox(height: 6),
           Text('$pct% complete',
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary)),
+              style: TextStyle(
+                  fontSize: 12, color: context.ink.textSecondary)),
         ],
       ),
     );
@@ -297,9 +297,9 @@ class _DayCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.ink.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.ink.border),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
@@ -309,34 +309,34 @@ class _DayCard extends StatelessWidget {
             Row(
               children: [
                 Text('Day ${index + 1}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: context.ink.textPrimary,
                     )),
                 const SizedBox(width: 8),
                 Text(_formatDate(day.date),
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textMuted)),
+                    style: TextStyle(
+                        fontSize: 12, color: context.ink.textMuted)),
                 const Spacer(),
                 if (!day.isRest)
                   // A subtle "done" toggle per day.
                   Checkbox(
                     value: day.completed,
                     onChanged: (v) => onToggle(v ?? false),
-                    activeColor: AppColors.accentGreen,
+                    activeColor: context.ink.accentGreen,
                     visualDensity: VisualDensity.compact,
                   ),
               ],
             ),
             if (day.isRest)
-              const Padding(
-                padding: EdgeInsets.only(top: 2, bottom: 2),
+              Padding(
+                padding: const EdgeInsets.only(top: 2, bottom: 2),
                 child: Text('Rest / catch-up day',
                     style: TextStyle(
                         fontSize: 13,
                         fontStyle: FontStyle.italic,
-                        color: AppColors.textSecondary)),
+                        color: context.ink.textSecondary)),
               )
             else
               for (final task in day.tasks) _TaskRow(task: task),
@@ -363,18 +363,20 @@ class _TaskRow extends StatelessWidget {
             height: 8,
             margin: const EdgeInsets.only(top: 5, right: 10),
             decoration:
-                BoxDecoration(color: _taskColor(task.kind), shape: BoxShape.circle),
+                BoxDecoration(
+                    color: _taskColor(context.ink, task.kind),
+                    shape: BoxShape.circle),
           ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(task.label,
-                    style: const TextStyle(
-                        fontSize: 14, color: AppColors.textPrimary)),
+                    style: TextStyle(
+                        fontSize: 14, color: context.ink.textPrimary)),
                 Text(task.kind.reason,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
+                    style: TextStyle(
+                        fontSize: 12, color: context.ink.textSecondary)),
               ],
             ),
           ),
@@ -402,21 +404,21 @@ class _Centered extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 40, color: AppColors.accentSoft),
+            Icon(icon, size: 40, color: context.ink.accentSoft),
             const SizedBox(height: 16),
             Text(title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: context.ink.textPrimary,
                 )),
             const SizedBox(height: 8),
             Text(subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 14, height: 1.5, color: AppColors.textSecondary)),
+                style: TextStyle(
+                    fontSize: 14, height: 1.5, color: context.ink.textSecondary)),
           ],
         ),
       ),

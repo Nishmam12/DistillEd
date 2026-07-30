@@ -9,7 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../../domain/knowledge_graph/graph_layout.dart';
 import '../../domain/knowledge_graph/knowledge_graph.dart';
 import '../../domain/memory/concept_mastery.dart';
@@ -17,11 +17,14 @@ import '../ai_providers.dart';
 
 /// Mastery → colour. A clear progression the legend explains: not-studied grey,
 /// learning honey, practiced coral, mastered green.
-Color masteryColor(MasteryLevel level) => switch (level) {
-      MasteryLevel.unseen => AppColors.textMuted,
-      MasteryLevel.learning => AppColors.accentYellow,
-      MasteryLevel.practiced => AppColors.accent,
-      MasteryLevel.mastered => AppColors.accentGreen,
+///
+/// Takes the palette rather than a BuildContext so the painter below — which
+/// has no context — can call it with the palette its widget resolved.
+Color masteryColor(InkPalette ink, MasteryLevel level) => switch (level) {
+      MasteryLevel.unseen => ink.textMuted,
+      MasteryLevel.learning => ink.accentYellow,
+      MasteryLevel.practiced => ink.accent,
+      MasteryLevel.mastered => ink.accentGreen,
     };
 
 class KnowledgeGraphScreen extends ConsumerWidget {
@@ -33,7 +36,7 @@ class KnowledgeGraphScreen extends ConsumerWidget {
     final graphAsync = ref.watch(knowledgeGraphProvider(notebookId));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.ink.background,
       appBar: AppBar(
         title: const Text('Knowledge graph'),
         actions: [
@@ -107,6 +110,7 @@ class _GraphViewState extends State<_GraphView> {
                         graph: widget.graph,
                         layout: _layout,
                         textDirection: Directionality.of(context),
+                        ink: context.ink,
                       ),
                     ),
                   ),
@@ -126,10 +130,14 @@ class _GraphPainter extends CustomPainter {
   final Map<String, Offset> layout;
   final TextDirection textDirection;
 
+  /// Resolved by the widget above — a painter has no BuildContext of its own.
+  final InkPalette ink;
+
   _GraphPainter({
     required this.graph,
     required this.layout,
     required this.textDirection,
+    required this.ink,
   });
 
   static const _pad = 40.0;
@@ -147,7 +155,7 @@ class _GraphPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final edgePaint = Paint()
-      ..color = AppColors.border
+      ..color = ink.border
       ..strokeWidth = 1.4
       ..style = PaintingStyle.stroke;
 
@@ -165,7 +173,7 @@ class _GraphPainter extends CustomPainter {
     for (final node in graph.nodes) {
       final center = _at(node.key, size);
       final r = _radius(node.degree);
-      final color = masteryColor(node.level);
+      final color = masteryColor(ink, node.level);
 
       canvas.drawCircle(center, r, Paint()..color = color);
       if (node.referencedOnly) {
@@ -178,7 +186,7 @@ class _GraphPainter extends CustomPainter {
           center,
           r,
           Paint()
-            ..color = AppColors.textSecondary
+            ..color = ink.textSecondary
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2,
         );
@@ -213,10 +221,10 @@ class _GraphPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
         text: text.length > 22 ? '${text.substring(0, 22)}…' : text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           height: 1.1,
-          color: AppColors.textPrimary,
+          color: ink.textPrimary,
         ),
       ),
       textDirection: textDirection,
@@ -229,7 +237,9 @@ class _GraphPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GraphPainter old) =>
-      !identical(old.graph, graph) || !identical(old.layout, layout);
+      !identical(old.graph, graph) ||
+      !identical(old.layout, layout) ||
+      !identical(old.ink, ink); // repaint when the theme flips
 }
 
 class _Legend extends StatelessWidget {
@@ -240,9 +250,9 @@ class _Legend extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: context.ink.surface,
+        border: Border(top: BorderSide(color: context.ink.border)),
       ),
       child: Wrap(
         spacing: 16,
@@ -250,9 +260,11 @@ class _Legend extends StatelessWidget {
         alignment: WrapAlignment.center,
         children: [
           for (final level in MasteryLevel.values)
-            _Swatch(color: masteryColor(level), label: _levelLabel(level)),
+            _Swatch(
+                color: masteryColor(context.ink, level),
+                label: _levelLabel(level)),
           _Swatch(
-            color: masteryColor(MasteryLevel.learning),
+            color: masteryColor(context.ink, MasteryLevel.learning),
             label: 'Mentioned, not explained',
             ringed: true,
           ),
@@ -290,14 +302,14 @@ class _Swatch extends StatelessWidget {
             color: color,
             shape: BoxShape.circle,
             border: ringed
-                ? Border.all(color: AppColors.textSecondary, width: 2)
+                ? Border.all(color: context.ink.textSecondary, width: 2)
                 : null,
           ),
         ),
         const SizedBox(width: 6),
         Text(label,
-            style: const TextStyle(
-                fontSize: 12, color: AppColors.textSecondary)),
+            style: TextStyle(
+                fontSize: 12, color: context.ink.textSecondary)),
       ],
     );
   }
@@ -321,21 +333,21 @@ class _Message extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 40, color: AppColors.accentSoft),
+            Icon(icon, size: 40, color: context.ink.accentSoft),
             const SizedBox(height: 16),
             Text(title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: context.ink.textPrimary,
                 )),
             const SizedBox(height: 8),
             Text(subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 14, height: 1.5, color: AppColors.textSecondary)),
+                style: TextStyle(
+                    fontSize: 14, height: 1.5, color: context.ink.textSecondary)),
           ],
         ),
       ),

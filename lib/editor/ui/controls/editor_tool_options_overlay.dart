@@ -9,8 +9,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/editor_constants.dart';
+import '../../../core/theme/ink_colors.dart';
 import '../../../domain/model/scene_element.dart';
 import '../../state/editor_tool_controller.dart';
 
@@ -65,14 +65,14 @@ class EditorToolOptionsOverlay extends ConsumerWidget {
             width: _panelWidth,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: ShapeDecoration(
-              color: AppColors.surface,
-              shadows: AppColors.shadowFloat,
+              color: context.ink.surface,
+              shadows: context.ink.shadowFloat,
               // A "squircle" (Apple's continuous-corner rectangle) rather
               // than an ordinary rounded rect, matching the platform's own
               // floating dropdown menus.
               shape: ContinuousRectangleBorder(
                 borderRadius: BorderRadius.circular(28),
-                side: const BorderSide(color: AppColors.border),
+                side: BorderSide(color: context.ink.border),
               ),
             ),
             child: content,

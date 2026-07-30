@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -8,8 +9,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// type rather than the reverse.
 enum CloudPrivacy { localOnly, askEachTime, allowCloudForNonSensitive }
 
+/// App theme preference. `system` follows the OS setting (the Android
+/// convention, and the default); `light` / `dark` pin one regardless.
+///
+/// Kept as our own enum rather than persisting Flutter's [ThemeMode] directly,
+/// so the stored value does not depend on the framework enum's declaration
+/// order — a reorder upstream would silently reinterpret everyone's setting.
+enum AppThemeMode {
+  system,
+  light,
+  dark;
+
+  ThemeMode get toThemeMode => switch (this) {
+        AppThemeMode.system => ThemeMode.system,
+        AppThemeMode.light => ThemeMode.light,
+        AppThemeMode.dark => ThemeMode.dark,
+      };
+}
+
 class SettingsState {
-  final bool darkMode;
+  /// Which theme the app renders. Replaced a `darkMode` bool that persisted
+  /// correctly but which nothing ever read — the toggle moved a stored value
+  /// and changed no pixels.
+  final AppThemeMode themeMode;
   final bool devMode;
   final String exportDefault;
 
@@ -44,7 +66,7 @@ class SettingsState {
   final String huggingFaceToken;
 
   SettingsState({
-    this.darkMode = false,
+    this.themeMode = AppThemeMode.system,
     this.devMode = false,
     this.exportDefault = 'PNG',
     this.cloudAiEnabled = false,
@@ -58,7 +80,7 @@ class SettingsState {
   bool get hasHuggingFaceToken => huggingFaceToken.trim().isNotEmpty;
 
   SettingsState copyWith({
-    bool? darkMode,
+    AppThemeMode? themeMode,
     bool? devMode,
     String? exportDefault,
     bool? cloudAiEnabled,
@@ -68,7 +90,7 @@ class SettingsState {
     String? huggingFaceToken,
   }) {
     return SettingsState(
-      darkMode: darkMode ?? this.darkMode,
+      themeMode: themeMode ?? this.themeMode,
       devMode: devMode ?? this.devMode,
       exportDefault: exportDefault ?? this.exportDefault,
       cloudAiEnabled: cloudAiEnabled ?? this.cloudAiEnabled,
@@ -81,7 +103,13 @@ class SettingsState {
 }
 
 class SettingsNotifier extends StateNotifier<SettingsState> {
-  static const _kDarkMode = 'ui.darkMode';
+  static const _kThemeMode = 'ui.themeMode';
+
+  /// The pre-2.1 boolean key. Read once, on the first launch after upgrading,
+  /// so anyone who had switched the old (inert) toggle on lands in dark rather
+  /// than being silently reset. Never written.
+  static const _kLegacyDarkMode = 'ui.darkMode';
+
   static const _kDevMode = 'ui.devMode';
   static const _kExportDefault = 'ui.exportDefault';
   static const _kCloudAiEnabled = 'ai.cloudEnabled';
@@ -107,7 +135,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     if (!mounted) return;
     final storedExport = prefs.getString(_kExportDefault);
     state = state.copyWith(
-      darkMode: prefs.getBool(_kDarkMode) ?? false,
+      themeMode: _restoreThemeMode(prefs),
       devMode: prefs.getBool(_kDevMode) ?? false,
       exportDefault: exportFormats.contains(storedExport) ? storedExport : 'PNG',
       cloudAiEnabled: prefs.getBool(_kCloudAiEnabled) ?? false,
@@ -121,10 +149,27 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     );
   }
 
-  Future<void> toggleDarkMode(bool value) async {
-    state = state.copyWith(darkMode: value);
+  /// Reads the stored theme mode, falling back to the legacy `ui.darkMode`
+  /// boolean on the first launch after upgrading. An unrecognised stored name
+  /// (an older build's value, or hand-edited prefs) falls back to System rather
+  /// than throwing.
+  static AppThemeMode _restoreThemeMode(SharedPreferences prefs) {
+    final stored = prefs.getString(_kThemeMode);
+    if (stored != null) {
+      return AppThemeMode.values.firstWhere(
+        (v) => v.name == stored,
+        orElse: () => AppThemeMode.system,
+      );
+    }
+    return (prefs.getBool(_kLegacyDarkMode) ?? false)
+        ? AppThemeMode.dark
+        : AppThemeMode.system;
+  }
+
+  Future<void> setThemeMode(AppThemeMode value) async {
+    state = state.copyWith(themeMode: value);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kDarkMode, value);
+    await prefs.setString(_kThemeMode, value.name);
   }
 
   Future<void> toggleDevMode(bool value) async {

@@ -10,7 +10,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/ai_provider.dart';
@@ -133,9 +133,9 @@ class _ErrorState extends ConsumerWidget {
         const SizedBox(height: 12),
         TextButton.icon(
           onPressed: () => ref.read(pageContextProvider(pageKey).notifier).refresh(),
-          icon: const Icon(Icons.refresh, size: 18, color: AppColors.accent),
-          label: const Text('Try again',
-              style: TextStyle(color: AppColors.accent)),
+          icon: Icon(Icons.refresh, size: 18, color: context.ink.accent),
+          label: Text('Try again',
+              style: TextStyle(color: context.ink.accent)),
         ),
       ],
     );
@@ -208,13 +208,13 @@ class _ModelNotReadyState extends ConsumerState<_ModelNotReady> {
             child: LinearProgressIndicator(
               value: (_progress ?? 0) / 100,
               minHeight: 8,
-              color: AppColors.accent,
-              backgroundColor: AppColors.surfaceHighlight,
+              color: context.ink.accent,
+              backgroundColor: context.ink.surfaceHighlight,
             ),
           ),
           const SizedBox(height: 8),
           Text('${_progress ?? 0}%',
-              style: const TextStyle(color: AppColors.textSecondary)),
+              style: TextStyle(color: context.ink.textSecondary)),
         ],
       );
     }
@@ -232,14 +232,14 @@ class _ModelNotReadyState extends ConsumerState<_ModelNotReady> {
           const SizedBox(height: 8),
           Text(_failure!,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppColors.accentRed)),
+              style: TextStyle(fontSize: 13, color: context.ink.accentRed)),
         ],
         const SizedBox(height: 16),
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+          style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
           onPressed: _download,
           child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
-              style: const TextStyle(color: AppColors.textOnAccent)),
+              style: TextStyle(color: context.ink.textOnAccent)),
         ),
       ],
     );
@@ -284,12 +284,12 @@ class _ContextBody extends StatelessWidget {
           ],
           Row(
             children: [
-              const Text('CURRENT TOPIC',
+              Text('CURRENT TOPIC',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.8,
-                    color: AppColors.textMuted,
+                    color: buildContext.ink.textMuted,
                   )),
               const Spacer(),
               if (!refreshing && onReread != null)
@@ -299,18 +299,18 @@ class _ContextBody extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             c.currentTopic.isEmpty ? 'Not sure yet' : c.currentTopic,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: buildContext.ink.textPrimary,
             ),
           ),
           if (c.subtopics.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(c.subtopics.join('  ·  '),
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.textSecondary)),
+                style: TextStyle(
+                    fontSize: 13, color: buildContext.ink.textSecondary)),
           ],
           const SizedBox(height: 14),
           _LevelIndicator(level: c.estimatedLevel, confidence: c.confidence),
@@ -357,28 +357,28 @@ class _RereadingBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
       decoration: BoxDecoration(
-        color: AppColors.accentWash,
+        color: context.ink.accentWash,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Row(
+          Row(
             children: [
               SizedBox(
                 width: 15,
                 height: 15,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.accentStrong),
+                    strokeWidth: 2, color: context.ink.accentStrong),
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text('Re-reading your page with Gemma…',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.accentStrong,
+                      color: context.ink.accentStrong,
                     )),
               ),
             ],
@@ -386,10 +386,10 @@ class _RereadingBanner extends StatelessWidget {
           const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: const LinearProgressIndicator(
+            child: LinearProgressIndicator(
               minHeight: 4,
-              color: AppColors.accentStrong,
-              backgroundColor: AppColors.surfaceHighlight,
+              color: context.ink.accentStrong,
+              backgroundColor: context.ink.surfaceHighlight,
             ),
           ),
         ],
@@ -412,7 +412,7 @@ class _RereadButton extends StatelessWidget {
       icon: const Icon(Icons.refresh, size: 16),
       label: const Text('Re-read'),
       style: TextButton.styleFrom(
-        foregroundColor: AppColors.accent,
+        foregroundColor: context.ink.accent,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         minimumSize: const Size(0, 32),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -462,9 +462,9 @@ class _SuggestionCard extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
       decoration: BoxDecoration(
-        color: AppColors.surfaceWarm,
+        color: context.ink.surfaceWarm,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.ink.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,24 +474,24 @@ class _SuggestionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(s.kind.label.toUpperCase(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.6,
-                      color: AppColors.textMuted,
+                      color: context.ink.textMuted,
                     )),
                 const SizedBox(height: 3),
                 Text(s.message,
-                    style: const TextStyle(
-                        fontSize: 13, height: 1.35, color: AppColors.textPrimary)),
+                    style: TextStyle(
+                        fontSize: 13, height: 1.35, color: context.ink.textPrimary)),
                 if (s.excerpt.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text('“${s.excerpt}”',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         height: 1.3,
                         fontStyle: FontStyle.italic,
-                        color: AppColors.textSecondary,
+                        color: context.ink.textSecondary,
                       )),
                 ],
                 if (s.replacement.isNotEmpty) ...[
@@ -499,14 +499,14 @@ class _SuggestionCard extends StatelessWidget {
                   Text.rich(TextSpan(
                     style: const TextStyle(fontSize: 12, height: 1.3),
                     children: [
-                      const TextSpan(
+                      TextSpan(
                           text: 'Try: ',
                           style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: AppColors.textMuted)),
+                              color: context.ink.textMuted)),
                       TextSpan(
                           text: s.replacement,
-                          style: const TextStyle(color: AppColors.accentStrong)),
+                          style: TextStyle(color: context.ink.accentStrong)),
                     ],
                   )),
                 ],
@@ -518,7 +518,7 @@ class _SuggestionCard extends StatelessWidget {
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             padding: EdgeInsets.zero,
-            icon: const Icon(Icons.close, size: 16, color: AppColors.textMuted),
+            icon: Icon(Icons.close, size: 16, color: context.ink.textMuted),
             onPressed: onDismiss,
           ),
         ],
@@ -536,11 +536,11 @@ class _SectionLabel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 0),
       child: Text(text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
-            color: AppColors.textMuted,
+            color: context.ink.textMuted,
           )),
     );
   }
@@ -567,7 +567,7 @@ class _LevelIndicator extends StatelessWidget {
             child: Container(
               height: 6,
               decoration: BoxDecoration(
-                color: i <= index ? AppColors.accent : AppColors.surfaceHighlight,
+                color: i <= index ? context.ink.accent : context.ink.surfaceHighlight,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -576,10 +576,10 @@ class _LevelIndicator extends StatelessWidget {
         ],
         const SizedBox(width: 10),
         Text(_labels[level]!,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: context.ink.textPrimary,
             )),
       ],
     );
@@ -595,14 +595,14 @@ class _ConceptChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.accentPurpleWash,
+        color: context.ink.accentPurpleWash,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: AppColors.accentPurpleStrong,
+            color: context.ink.accentPurpleStrong,
           )),
     );
   }
@@ -621,29 +621,29 @@ class _GapFlag extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.accentYellowWash,
+        color: context.ink.accentYellowWash,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 1),
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
             child: Icon(Icons.lightbulb_outline,
-                size: 16, color: AppColors.accentYellow),
+                size: 16, color: context.ink.accentYellow),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(text,
-                style: const TextStyle(
-                    fontSize: 13, height: 1.35, color: AppColors.textPrimary)),
+                style: TextStyle(
+                    fontSize: 13, height: 1.35, color: context.ink.textPrimary)),
           ),
           if (onTap != null) ...[
             const SizedBox(width: 6),
-            const Padding(
-              padding: EdgeInsets.only(top: 1),
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
               child: Icon(Icons.school_outlined,
-                  size: 15, color: AppColors.accentYellow),
+                  size: 15, color: context.ink.accentYellow),
             ),
           ],
         ],
@@ -670,15 +670,15 @@ class _DefinitionRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: 10),
       child: Text.rich(
         TextSpan(
-          style: const TextStyle(
-              fontSize: 13, height: 1.4, color: AppColors.textPrimary),
+          style: TextStyle(
+              fontSize: 13, height: 1.4, color: context.ink.textPrimary),
           children: [
             TextSpan(
                 text: '$term — ',
                 style: const TextStyle(fontWeight: FontWeight.w600)),
             TextSpan(
                 text: definition,
-                style: const TextStyle(color: AppColors.textSecondary)),
+                style: TextStyle(color: context.ink.textSecondary)),
           ],
         ),
       ),
@@ -712,23 +712,23 @@ class _CenteredMessage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showSpinner)
-            const CircularProgressIndicator(color: AppColors.accent)
+            CircularProgressIndicator(color: context.ink.accent)
           else
-            Icon(icon, size: 36, color: AppColors.accentSoft),
+            Icon(icon, size: 36, color: context.ink.accentSoft),
           const SizedBox(height: 16),
           Text(title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: context.ink.textPrimary,
               )),
           const SizedBox(height: 6),
           Text(subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 13, height: 1.4, color: AppColors.textSecondary)),
+              style: TextStyle(
+                  fontSize: 13, height: 1.4, color: context.ink.textSecondary)),
         ],
       ),
     );
