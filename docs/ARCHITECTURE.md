@@ -1,9 +1,8 @@
 # InkFlow 2.0 — Architecture & Rebuild Decisions
 
-> Living document. Authored at **Phase 0** of the ground-up rebuild described in
-> `INKFLOW_REBUILD_PROMPT.md`. Captures the audit of the 1.0.2 codebase, the
-> locked architectural decisions, and the persistence/migration contract.
-> App version at start of rebuild: **1.0.2+6**.
+> Living document. Authored at **Phase 0** of the ground-up rebuild. Captures
+> the audit of the 1.0.2 codebase, the locked architectural decisions, and the
+> persistence/migration contract. App version at start of rebuild: **1.0.2+6**.
 
 ---
 
@@ -151,7 +150,7 @@ deletes `.ink` files or clears the old embedded fields (kept as rollback
 source). Removing legacy fields/files is deferred to a later phase once parity
 is confirmed, and is its own STOP-and-ASK.
 
-## 5. Migrator (v1 → v2) — see `docs/MIGRATION_TEST_PLAN.md`
+## 5. Migrator (v1 → v2)
 
 `SceneMigratorV2` (`lib/data/migration/`) runs once on launch when
 `AppMeta.schemaVersion < 2`:
