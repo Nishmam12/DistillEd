@@ -1,8 +1,17 @@
 // Manages the on-device LLM download: free-space check, progress stream,
-// cancellation, delete. Resumability and retry (exponential backoff, resume
-// of partial files) come from flutter_gemma's downloader; downloads over
-// 500 MB automatically run in an Android foreground service so they survive
-// the app being backgrounded.
+// cancellation, delete. Retry (exponential backoff) comes from flutter_gemma's
+// downloader.
+//
+// The download survives the app being backgrounded because
+// [FlutterGemmaInstaller] passes `foreground: true`, which is what actually
+// activates Android's foreground service — the plugin's size-based auto-detect
+// does NOT (see the comment at that call site). It does NOT survive the process
+// being killed: resume is disabled for HuggingFace URLs, so an interrupted
+// transfer restarts from zero.
+//
+// Nothing here is scoped to a screen. The manager is app-lifetime and
+// single-flight, so closing the AI sidebar or leaving the note cannot abort a
+// run in progress; [LlmDownloadNotifier] mirrors it for the UI.
 
 import 'dart:async';
 
@@ -53,6 +62,14 @@ class ModelDownloadManager {
 
   /// Whole-percent (0–100) download progress. Broadcast — safe to re-listen.
   Stream<int> get progress => _progressController.stream;
+
+  /// The most recent percent published, or null when this run hasn't ticked yet.
+  ///
+  /// A broadcast stream replays nothing, so anything that starts listening
+  /// mid-download — the AI sidebar reopened at 60% — would render 0% until the
+  /// next whole-percent tick, which on a 2.4 GB transfer can be tens of seconds
+  /// of looking stalled. Seed from this instead.
+  int? get currentPercent => _lastPercent < 0 ? null : _lastPercent;
 
   /// Publishes [percent] if it is new, forward-moving, and the stream is open.
   /// A cancelled download can deliver one last callback after [dispose], and

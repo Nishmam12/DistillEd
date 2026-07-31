@@ -58,3 +58,4 @@ __pycache__/
 server/ai-gateway/.env
 server/ai-gateway/*.sqlite3
 server/ai-gateway/.pytest_cache/
+graphify-out/

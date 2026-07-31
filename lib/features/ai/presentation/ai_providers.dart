@@ -63,6 +63,7 @@ import 'study_planner_notifier.dart';
 import 'context_engine_notifier.dart';
 import 'explain_notifier.dart';
 import 'flashcard_notifier.dart';
+import 'model_download_notifier.dart';
 import 'notebook_index_notifier.dart';
 import 'quiz_notifier.dart';
 import 'rag_index_scheduler.dart';
@@ -86,6 +87,17 @@ final modelDownloadManagerProvider = Provider<ModelDownloadManager>((ref) {
   ref.onDispose(manager.dispose);
   return manager;
 });
+
+/// The LLM download's state, for any surface that needs to show or start it.
+///
+/// App-lifetime (NOT autoDispose), and more strictly so than the per-feature
+/// notifiers below: closing the AI sidebar, leaving the note for the home
+/// screen, or backgrounding the app must never abort the 2.4 GB download OR
+/// lose sight of it. Reopening the sidebar reads this same instance and lands
+/// straight back on live progress.
+final llmDownloadProvider =
+    StateNotifierProvider<LlmDownloadNotifier, LlmDownloadState>((ref) =>
+        LlmDownloadNotifier(ref.watch(modelDownloadManagerProvider)));
 
 /// Finds and reclaims model files left on disk that no installed model claims
 /// — see [ModelStorageCleaner] for how these arise and why the delete is

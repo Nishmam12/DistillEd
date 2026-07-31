@@ -5,14 +5,11 @@
 // honey-toned flags, never red errors. Shared verbatim by the tablet side
 // panel and the phone bottom sheet ([AiSidebar]).
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/ink_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
-import '../../data/llm/llm_exceptions.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/ai_provenance.dart';
 import '../../domain/ai_provider.dart';
@@ -21,6 +18,8 @@ import '../../domain/features/explainer.dart';
 import '../../domain/features/writing_assistant.dart';
 import '../ai_providers.dart';
 import '../explain_notifier.dart';
+import '../model_download_notifier.dart';
+import '../widgets/model_download_progress.dart';
 
 class AiContextView extends ConsumerWidget {
   final ScenePageKey pageKey;
@@ -146,62 +145,34 @@ class _ErrorState extends ConsumerWidget {
 
 /// The model isn't downloaded yet — offer the one-time download inline, then
 /// re-run analysis for this page when it finishes.
-class _ModelNotReady extends ConsumerStatefulWidget {
+///
+/// Holds no download state of its own. It reads [llmDownloadProvider], which is
+/// app-lifetime, so the download keeps running — and keeps being visible —
+/// when the panel is closed, the note is left, or the app is backgrounded.
+/// Leave and come back mid-download and this renders the live percent, not the
+/// button again.
+class _ModelNotReady extends ConsumerWidget {
   final ScenePageKey pageKey;
   const _ModelNotReady({required this.pageKey});
 
   @override
-  ConsumerState<_ModelNotReady> createState() => _ModelNotReadyState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final download = ref.watch(llmDownloadProvider);
+    final sizeGb = LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024);
 
-class _ModelNotReadyState extends ConsumerState<_ModelNotReady> {
-  StreamSubscription<int>? _progressSub;
-  int? _progress;
-  bool _downloading = false;
-  String? _failure;
-
-  @override
-  void dispose() {
-    _progressSub?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _download() async {
-    final manager = ref.read(modelDownloadManagerProvider);
-    setState(() {
-      _downloading = true;
-      _failure = null;
-      _progress = 0;
+    // Force a re-run when the model lands while this panel is open: the
+    // previous attempt failed on the missing model.
+    //
+    // The finished-while-closed case needs nothing here — pageContextProvider
+    // is autoDispose, so reopening the panel builds a fresh notifier that
+    // re-analyses and finds the model on disk.
+    ref.listen(llmDownloadProvider, (previous, next) {
+      if (next is LlmDownloadInstalled && previous is! LlmDownloadInstalled) {
+        ref.read(pageContextProvider(pageKey).notifier).refresh();
+      }
     });
-    _progressSub?.cancel();
-    _progressSub = manager.progress.listen((p) {
-      if (mounted) setState(() => _progress = p);
-    });
-    try {
-      await manager.download();
-      if (!mounted) return;
-      // Force a re-run: the previous attempt failed on the missing model.
-      await ref.read(pageContextProvider(widget.pageKey).notifier).refresh();
-    } on LlmException catch (e) {
-      // Typed failures already carry a message written for the user — auth,
-      // licence, rate limit, storage. Flattening them into "check your
-      // connection" sent people to fix their wifi over a HuggingFace licence
-      // they had never accepted, with nothing on screen pointing at the real
-      // cause. Settings shows these verbatim; so does this.
-      if (mounted) setState(() => _failure = e.message);
-    } catch (e) {
-      if (mounted) setState(() => _failure = 'Download failed. Check your connection and try again.');
-    } finally {
-      if (mounted) setState(() => _downloading = false);
-    }
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    final sizeGb =
-        LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024);
-
-    if (_downloading) {
+    if (download is LlmDownloadRunning) {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -209,25 +180,21 @@ class _ModelNotReadyState extends ConsumerState<_ModelNotReady> {
             icon: Icons.download_outlined,
             title: 'Setting up AI insights',
             subtitle: '${LlmModelSpec.active.displayName} · '
-                '${sizeGb.toStringAsFixed(1)} GB — one-time download',
+                '${sizeGb.toStringAsFixed(1)} GB — one-time download. '
+                'This keeps going if you leave this page.',
           ),
           const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: (_progress ?? 0) / 100,
-              minHeight: 8,
-              color: context.ink.accent,
-              backgroundColor: context.ink.surfaceHighlight,
-            ),
+          // The shared widget every other AI surface uses — which is also how
+          // this panel finally gets a Cancel button.
+          ModelDownloadProgress(
+            progress: download.percent,
+            onCancel: () => ref.read(llmDownloadProvider.notifier).cancel(),
           ),
-          const SizedBox(height: 8),
-          Text('${_progress ?? 0}%',
-              style: TextStyle(color: context.ink.textSecondary)),
         ],
       );
     }
 
+    final failure = download is LlmDownloadFailed ? download.message : null;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -237,17 +204,20 @@ class _ModelNotReadyState extends ConsumerState<_ModelNotReady> {
           subtitle: 'A one-time ${sizeGb.toStringAsFixed(1)} GB on-device model '
               'reads your notes privately — nothing leaves your device.',
         ),
-        if (_failure != null) ...[
+        if (failure != null) ...[
           const SizedBox(height: 8),
-          Text(_failure!,
+          Text(failure,
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: context.ink.accentRed)),
         ],
         const SizedBox(height: 16),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
-          onPressed: _download,
-          child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
+          onPressed: () => ref.read(llmDownloadProvider.notifier).start(),
+          child: Text(
+              failure != null
+                  ? 'Try again'
+                  : 'Download model (${sizeGb.toStringAsFixed(1)} GB)',
               style: TextStyle(color: context.ink.textOnAccent)),
         ),
       ],

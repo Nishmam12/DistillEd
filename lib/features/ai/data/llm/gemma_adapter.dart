@@ -78,7 +78,33 @@ class FlutterGemmaInstaller implements ModelInstaller {
     var builder = FlutterGemma.installModel(
       modelType: spec.modelType,
       fileType: spec.fileType,
-    ).fromNetwork(spec.downloadUrl, token: authToken ?? spec.authToken);
+    ).fromNetwork(
+      spec.downloadUrl,
+      token: authToken ?? spec.authToken,
+      // EXPLICIT true, not the `null` auto-detect, and the difference is the
+      // whole reason a backgrounded download used to die.
+      //
+      // The plugin gates its notification setup on `foreground == true`
+      // (SmartDownloader.shouldConfigureForegroundNotification), and on Android
+      // background_downloader only calls WorkManager.setForeground() once a
+      // `running` notification is configured. So on the auto path the
+      // `runInForegroundIfFileLargerThan: 500` it sets is a no-op — no
+      // notification, no foreground service, no Doze exemption — and this
+      // ~2.4 GB transfer ran as an ordinary WorkManager task, which Android
+      // kills when the app is backgrounded and hard-fails at the documented
+      // 9-minute background limit either way.
+      //
+      // A kill is not a pause: flutter_gemma disables resume for HuggingFace
+      // URLs (weak ETags — see ModelDownloadManager's `_authToken` doc), so
+      // every interruption costs the entire file and restarts from zero.
+      //
+      // Costs a persistent "Downloading model" notification for the duration
+      // and a runtime POST_NOTIFICATIONS request on first download (the plugin
+      // makes it, best-effort behind a 10s timeout; a denial degrades to the
+      // old behaviour rather than blocking). Android-only — resolves to a
+      // granted no-op on Windows.
+      foreground: true,
+    );
     if (onProgress != null) builder = builder.withProgress(onProgress);
     if (cancelToken != null) builder = builder.withCancelToken(cancelToken);
     await builder.install();

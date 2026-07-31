@@ -8,7 +8,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Android 13+: without a runtime grant of this, the foreground download
-         service does not activate (flutter_gemma requests it at runtime). -->
+         service does not activate — background_downloader bails out of
+         displayNotification() before calling setForeground(), and the 2.4 GB
+         model download is then killed as soon as the app is backgrounded.
+         flutter_gemma makes the runtime request, but ONLY because
+         FlutterGemmaInstaller passes `foreground: true`
+         (features/ai/data/llm/gemma_adapter.dart) — on the plugin's size-based
+         auto path nothing requests it and this declaration alone does nothing. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Android 14+: required together with the SystemForegroundService
          override below for >500 MB foreground downloads (see flutter_gemma
