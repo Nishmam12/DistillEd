@@ -9,13 +9,18 @@ import 'package:inkflow/features/home/presentation/widgets/note_card.dart';
 import 'package:inkflow/features/home/presentation/widgets/note_overlay.dart';
 import 'package:inkflow/features/home/presentation/widgets/note_preview.dart';
 
-NoteCardData _note({String title = 'Workout', int pages = 2}) {
+NoteCardData _note({
+  String title = 'Workout',
+  int pages = 2,
+  String previewText = '',
+}) {
   return NoteCardData(
     id: 3,
     title: title,
     createdAt: DateTime(2020, 8, 14),
     pages: pages,
     type: NoteType.text,
+    previewText: previewText,
   );
 }
 
@@ -25,6 +30,7 @@ Future<void> _pump(
   VoidCallback? onLongPress,
   VoidCallback? onGraphTap,
   Size size = const Size(360, 160),
+  String previewText = '',
 }) {
   return tester.pumpWidget(
     MaterialApp(
@@ -34,7 +40,7 @@ Future<void> _pump(
             width: size.width,
             height: size.height,
             child: NoteCard(
-              note: _note(),
+              note: _note(previewText: previewText),
               onTap: onTap,
               onLongPress: onLongPress,
               onGraphTap: onGraphTap ?? () {},
@@ -144,12 +150,15 @@ void main() {
     });
 
     testWidgets('never covers the preview\'s own text', (tester) async {
-      await _pump(tester);
+      // The preview's text is the first page's recognised content. It used to
+      // be the note title set in caps; that was removed because the details
+      // column beside it already shows the title.
+      await _pump(tester, previewText: 'Admitting fault');
 
-      final title = tester.getRect(find.text('WORKOUT'));
+      final line = tester.getRect(find.text('Admitting fault'));
       final button = tester.getRect(find.byType(KnowledgeGraphButton));
 
-      expect(title.right, lessThanOrEqualTo(button.left));
+      expect(line.right, lessThanOrEqualTo(button.left));
     });
 
     testWidgets('is omitted when the card has no graph action', (tester) async {

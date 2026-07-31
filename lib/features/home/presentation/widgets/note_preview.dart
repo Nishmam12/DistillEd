@@ -12,8 +12,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/ink_colors.dart';
 import '../models/note_card_data.dart';
-import '../notes_palette.dart';
 import 'note_scene_preview.dart';
 
 class NotePreview extends StatelessWidget {
@@ -58,10 +58,15 @@ class NotePreview extends StatelessWidget {
     final image = _resolvedImage;
 
     return DecoratedBox(
-      // The ground behind a preview that does not fill its box. Was a rotating
-      // set of seven pastel tints; the nine-token spec has no tint set, so this
-      // is the neutral subtle surface in both modes.
-      decoration: BoxDecoration(color: c.surfaceSubtle),
+      // The ground behind a preview that does not fill its box. Seven tints
+      // rotate by note id, so a list reads as a shelf of distinct documents
+      // rather than a stack of identical rows — a note keeps the same tint
+      // across rebuilds because the index is derived from its id.
+      //
+      // These come from `context.notes`, NOT the nine-token `context.colors`
+      // set, because THEME_SPEC.md has no tint scale. `NotesInk` carries a
+      // light and a dark set, so they still follow the brightness.
+      decoration: BoxDecoration(color: context.notes.tintFor(note.id)),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -94,15 +99,17 @@ class NotePreview extends StatelessWidget {
           // HOME-07. In dark, the thumbnail is knocked back with a scrim so a
           // bright page photo does not glare out of a near-black card. Painted
           // rather than shipped as a second asset, so one image serves both
-          // modes. Sits UNDER the readability gradient: the gradient must stay
-          // fully opaque over the text column, and a scrim above it would tint
-          // that flat surface.
+          // modes.
+          //
+          // Ordering matters: this sits UNDER the wash, so it dims the PAGE
+          // only. Above the wash it would tint the details column too, and the
+          // blend is meant to look identical in both brightnesses.
           if (isDark)
             DecoratedBox(
               decoration:
                   BoxDecoration(color: c.bgPrimary.withValues(alpha: 0.45)),
             ),
-          // HOME-06 / HOME-17. Readability wash under the overlay's text.
+          // The wash that blends the details column into the page.
           const _ReadabilityGradient(),
         ],
       ),
@@ -110,33 +117,42 @@ class NotePreview extends StatelessWidget {
   }
 }
 
-/// Surface-to-transparent wash so the card's title and meta rows never sit on
-/// top of the thumbnail.
+/// Surface-to-transparent wash that blends the details panel into the preview.
 ///
-/// HOME-06: the stops are built from `context.colors.surface`, so the wash is
-/// white in light and near-black in dark and the card reads as ONE surface that
-/// the image emerges from — not a white panel pasted over a photo.
+/// The stops are built from `context.colors.surface`, so the wash is white in
+/// light and near-black in dark and the card reads as ONE surface the page
+/// emerges from — not a white panel pasted over a photo.
 ///
-/// HOME-17, and the reason the first stop is held rather than immediately
-/// decaying: the wash stays at FULL opacity across the whole overlay width, so
-/// every pixel of text sits on flat `surface`. A thumbnail with a bright patch
-/// under the title would otherwise destroy the contrast guarantee no matter
-/// what colour the text is.
+/// ── Why this is a long ramp and not a hard step ───────────────────────────
+/// An earlier revision held FULL opacity across the entire overlay width and
+/// then dropped away, which guaranteed every glyph sat on flat colour but drew
+/// a visible seam down the card: a solid block, then a picture. The two halves
+/// are meant to read as one surface that fades between them, so the wash now
+/// stays solid only across the left of the details column and then ramps down
+/// gradually, well past the overlay's own edge.
 ///
-///   text column  = [18px, overlayWidth - 12px]        (NoteOverlay's padding)
-///   overlayWidth = overlayWidthFactor * cardWidth     (NoteCard's LayoutBuilder)
-///   opaque to    = overlayWidthFactor * cardWidth     (the second stop below)
+///   0.00 → 0.20   solid `surface`   — the title and meta labels start here
+///   0.20 → 0.44   1.0 → 0.5         — the page begins showing through
+///   0.44 → 0.72   0.5 → 0.0         — clears completely
 ///
-/// so the opaque region exceeds the text's right edge by the overlay's 12px
-/// right padding, at every card width. The stop reads the SAME constant the
-/// overlay's width is computed from, so the two cannot drift apart.
+/// The alpha profile is IDENTICAL in both brightnesses — only the colour tracks
+/// the theme. Do not branch it on `isDark`; the blend is meant to look the same
+/// in both, and only the thumbnail's own scrim differs.
+///
+/// Text bounds, for reference when tuning: the details column occupies
+/// `[18px, overlayWidth - 12px]` where `overlayWidth = overlayWidthFactor *
+/// cardWidth` (0.34), so its right edge lands at ~0.34 — where the wash is
+/// still around 70%. That is deliberate. If a thumbnail ever proves too busy
+/// under the meta rows, lengthen `_solidTo` rather than restoring the step.
 class _ReadabilityGradient extends StatelessWidget {
   const _ReadabilityGradient();
 
-  /// How far past the overlay the wash takes to disappear. Wide enough that the
-  /// hand-off reads as a fade rather than an edge; short enough that it does
-  /// not drain the colour out of the preview, which is what the glance is for.
-  static const _falloff = 0.18;
+  /// Fraction of the card width held at full `surface` before the blend starts.
+  static const _solidTo = 0.20;
+
+  /// Where the wash is half gone, and where it has cleared entirely.
+  static const _midpoint = 0.44;
+  static const _clearedBy = 0.72;
 
   @override
   Widget build(BuildContext context) {
@@ -149,21 +165,27 @@ class _ReadabilityGradient extends StatelessWidget {
           colors: [
             surface,
             surface,
+            surface.withValues(alpha: 0.5),
             surface.withValues(alpha: 0),
           ],
-          stops: const [
-            0.0,
-            NotesPalette.overlayWidthFactor,
-            NotesPalette.overlayWidthFactor + _falloff,
-          ],
+          stops: const [0.0, _solidTo, _midpoint, _clearedBy],
         ),
       ),
     );
   }
 }
 
-/// Fallback preview for notes with no rendered page: the title set large in
-/// editorial caps, with any recognised text listed beside it.
+/// Fallback preview for notes with no rendered page: whatever text has been
+/// recognised on the first page, set small.
+///
+/// The note's own title used to be set large in editorial caps here, filling
+/// the left of the preview area. It was removed deliberately — the title
+/// already appears in the details column immediately to the left, so the card
+/// showed the same string twice, competing at two different sizes. This area is
+/// now only ever the first page's content.
+///
+/// A note with no recognised text renders nothing at all, leaving the tinted
+/// ground. That is intended: an empty page should look empty.
 class _TypographicPreview extends StatelessWidget {
   const _TypographicPreview({
     required this.note,
@@ -178,56 +200,31 @@ class _TypographicPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lines = note.previewLines();
+    if (lines.isEmpty) return const SizedBox.shrink();
+
     final showBullets = note.type == NoteType.checklist;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(overlayInset + 18, 20, trailingInset + 20, 20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: lines.isEmpty ? 1 : 3,
-            child: Text(
-              note.title.toUpperCase(),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 26,
-                height: 1.05,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 1.5,
-                color: context.colors.textPrimary,
+          for (final line in lines)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                showBullets ? '•  $line' : line,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Nunito',
+                  fontSize: 13,
+                  height: 1.3,
+                  color: context.colors.textPrimary,
+                ),
               ),
             ),
-          ),
-          if (lines.isNotEmpty) ...[
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 2,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final line in lines)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        showBullets ? '•  $line' : line,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Nunito',
-                          fontSize: 13,
-                          height: 1.3,
-                          color: context.colors.textPrimary,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );

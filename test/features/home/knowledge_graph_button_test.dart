@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:inkflow/core/theme/app_colors.dart';
 import 'package:inkflow/features/home/presentation/notes_palette.dart';
 import 'package:inkflow/features/home/presentation/widgets/knowledge_graph_button.dart';
@@ -74,7 +73,7 @@ void main() {
   testWidgets('carries a network icon', (tester) async {
     await _pump(tester);
 
-    expect(find.byIcon(PhosphorIconsRegular.asterisk), findsOneWidget);
+    expect(find.byIcon(Icons.hub_rounded), findsOneWidget);
   });
 
   testWidgets('reports itself to screen readers as a button', (tester) async {

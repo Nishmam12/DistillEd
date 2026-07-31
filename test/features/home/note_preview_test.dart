@@ -102,11 +102,14 @@ void main() {
       expect(find.byType(Image), findsNothing);
     });
 
-    testWidgets('an empty page leaves the typographic fallback', (tester) async {
+    testWidgets('an empty page falls back without painting a scene',
+        (tester) async {
       await _pump(tester, _note(title: 'Workout'));
 
       expect(find.byType(NoteScenePreview), findsNothing);
-      expect(find.text('WORKOUT'), findsOneWidget);
+      // The title is NOT echoed into the preview area — it belongs to the
+      // details column beside it. See _TypographicPreview's header.
+      expect(find.text('WORKOUT'), findsNothing);
     });
   });
 
@@ -145,10 +148,14 @@ void main() {
   });
 
   group('typographic previews', () {
-    testWidgets('sets the title in editorial caps', (tester) async {
+    testWidgets('never echoes the note title into the preview area',
+        (tester) async {
+      // The details column to the left already carries the title; repeating it
+      // here showed the same string twice at two different sizes.
       await _pump(tester, _note(title: 'Better Creator'));
 
-      expect(find.text('BETTER CREATOR'), findsOneWidget);
+      expect(find.text('BETTER CREATOR'), findsNothing);
+      expect(find.text('Better Creator'), findsNothing);
     });
 
     testWidgets('lists checklist lines with bullet markers', (tester) async {
@@ -178,21 +185,25 @@ void main() {
       );
     });
 
-    testWidgets('shows only the title when there is no recognised text',
+    testWidgets('renders nothing at all when there is no recognised text',
         (tester) async {
+      // An empty page should look empty — tinted ground and nothing else.
       await _pump(tester, _note(title: 'Workout'));
 
-      expect(find.text('WORKOUT'), findsOneWidget);
-      expect(find.byType(Text), findsOneWidget);
+      expect(find.byType(Text), findsNothing);
     });
 
     testWidgets('keeps its content clear of the overlay', (tester) async {
       const inset = 120.0;
-      await _pump(tester, _note(title: 'Workout'), overlayInset: inset);
+      await _pump(
+        tester,
+        _note(title: 'Workout', previewText: 'Admitting fault'),
+        overlayInset: inset,
+      );
 
-      final titleLeft = tester.getTopLeft(find.text('WORKOUT')).dx;
+      final lineLeft = tester.getTopLeft(find.text('Admitting fault')).dx;
       final previewLeft = tester.getTopLeft(find.byType(NotePreview)).dx;
-      expect(titleLeft - previewLeft, greaterThanOrEqualTo(inset));
+      expect(lineLeft - previewLeft, greaterThanOrEqualTo(inset));
     });
   });
 

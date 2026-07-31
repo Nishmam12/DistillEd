@@ -3,7 +3,6 @@
 // makes it read as hovering above the card rather than printed on it.
 
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../notes_palette.dart';
@@ -75,8 +74,12 @@ class _KnowledgeGraphButtonState extends State<KnowledgeGraphButton> {
                         ),
                       ],
               ),
+              // The original six-node hub. Kept as a Material glyph rather than
+              // swapped to Phosphor with the rest of the screen: Phosphor has no
+              // equivalent that reads as a node graph at this size, and the
+              // nearest match (`asterisk`) lost the meaning.
               child: Icon(
-                PhosphorIconsRegular.asterisk,
+                Icons.hub_rounded,
                 size: widget.radius * 0.85,
                 color: c.accent,
               ),

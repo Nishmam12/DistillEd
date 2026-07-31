@@ -25,22 +25,29 @@ dark mode. The spec deliberately overrides both. The wordmark *does* stay gold.
 - [ ] **Light:** wordmark, title and count all look like the same navy. Same hex
       on purpose — not a bug
 
-## Text over the thumbnail (the highest-risk item)
+## The blend between details and preview (the highest-risk item)
 
-The title and both meta rows must sit on **flat card colour**, never on the
-image. This was proved arithmetically, but the arithmetic assumes the overlay
-geometry — worth one real look.
+The details column on the left and the page preview on the right are meant to
+read as **one surface that fades between them**, not two panels with a seam. The
+wash is solid for the first 20% of the card, half gone by 44%, and fully clear by
+72% — identical in both modes.
 
-- [ ] **Both modes:** the title, the date row and the page-count row sit on flat
-      colour. No part of any glyph overlaps the photo
-- [ ] **Both modes:** there is a visible gap between where the flat colour ends
-      and where the image becomes fully visible — a fade, not a hard seam
+- [ ] **Both modes:** there is **no visible vertical seam** or hard edge where
+      the details column meets the preview. If you can point at a line, the
+      blend is too short
+- [ ] **Both modes:** the page is faintly visible *behind* the right-hand part
+      of the details column — that is intended, it is what "fadedly mixed" means
+- [ ] **Light and dark look the same in how much they blend.** The dark
+      thumbnail is dimmer overall (there is a scrim on the image), but the
+      *fade* should have the same shape and reach in both
 - [ ] **Critical — test with a LIGHT/BRIGHT thumbnail, not the dune image.**
-      Open a note whose first page is mostly white (a blank or lightly-written
-      page). The title must still be perfectly legible. A bright patch bleeding
-      under the text is exactly what this check exists to catch
-- [ ] The flat region does **not** extend so far right that the thumbnail looks
-      cropped or pointless
+      Open a note whose first page is mostly white. The note title must still be
+      clearly legible, and so must the smaller grey date and page-count rows.
+      **The grey meta rows are the first thing that will fail** — they sit
+      furthest right, where the wash is thinnest. If they get hard to read,
+      say so: the fix is a longer solid region, not a different text colour
+- [ ] The wash does not reach so far right that the thumbnail looks washed out
+      or pointless
 
 ## The card
 
@@ -114,16 +121,25 @@ geometry — worth one real look.
 - [ ] No yellow-and-black overflow stripes anywhere
 - [ ] Check in **both** modes
 
-## Preview backgrounds — a deliberate change worth a second opinion
+## Preview tints and the removed duplicate title
 
-Notes with no rendered page used to get one of **seven rotating pastel tints**
-(lavender, sand, mauve, blush, teal, slate, sage), so a list read as a shelf of
-distinct documents. The nine-token spec has no tint set, so they are now all the
-same neutral surface.
+Two things changed here after the first review pass.
 
-- [ ] Make 3–4 notes with no drawn content. They will all share one background
-      colour. **Decide whether that is acceptable** — if the list now reads flat
-      and samey, the spec needs a tint set added back
+- [ ] Make 4+ notes with no drawn content. Their preview areas should show
+      **different background tints** (lavender, sand, mauve, blush, teal, slate,
+      sage — rotating). A list where every preview is the same colour means the
+      tints did not come back
+- [ ] Reopen the list — each note keeps the **same** tint it had before. The
+      tint is derived from the note's id, so it must not shuffle on rebuild
+- [ ] **Dark:** the tints are dark, muted versions — not the pastel light-mode
+      set. If a lavender pastel shows up on a dark card, the dark tint set is
+      not being used
+- [ ] **The note name appears exactly ONCE per card** — in the details column on
+      the left. It must **not** also appear large in caps over the preview area.
+      Check a note with no drawn page, which is where the duplicate used to be
+      most obvious
+- [ ] A note with no drawn page **and** no recognised text shows just the tinted
+      area — no text at all. That is intended
 
 ## Icons
 
@@ -132,9 +148,9 @@ Icons were swapped from Material to Phosphor to match the settings pass.
 - [ ] Every icon rendered — no empty squares. Check: wordmark row overflow (…),
       search glass, clear ×, card calendar, card page, pin marker on a pinned
       note, graph button, bottom-bar sliders, compose button
-- [ ] The graph button's glyph is an **asterisk/starburst**. If it reads as
-      something unrelated, flag it — it replaced a "hub" icon and this was the
-      closest Phosphor equivalent
+- [ ] The graph button shows the original **six-node hub** glyph. It is
+      deliberately the only Material icon left on this screen — Phosphor has no
+      equivalent that reads as a node graph at this size
 - [ ] Pin a note — the pin marker appears above the title and is **accent**
 
 ## Not done in this pass — expect these to look wrong
