@@ -1,6 +1,7 @@
 // Shared lookup tables for the editor toolbar and its tool option panels.
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../domain/model/scene_element.dart';
 import '../../editor/state/editor_tool_controller.dart';
@@ -10,12 +11,12 @@ import '../../editor/state/editor_tool_controller.dart';
 // covers hand) but are kept off this row to match the pared-back design; image
 // import rides at the end as an action, not a tool (see EditorBottomBar).
 const List<(EditorTool, IconData)> kEditorTools = [
-  (EditorTool.select, Icons.near_me_outlined),
-  (EditorTool.pen, Icons.edit),
-  (EditorTool.shape, Icons.category),
-  (EditorTool.eraser, Icons.cleaning_services_outlined),
-  (EditorTool.text, Icons.title),
-  (EditorTool.laser, Icons.flashlight_on_outlined),
+  (EditorTool.select, PhosphorIconsRegular.lasso),
+  (EditorTool.pen, PhosphorIconsRegular.pencilSimple),
+  (EditorTool.shape, PhosphorIconsRegular.shapes),
+  (EditorTool.eraser, PhosphorIconsRegular.eraser),
+  (EditorTool.text, PhosphorIconsRegular.textT),
+  (EditorTool.laser, PhosphorIconsRegular.highlighter),
 ];
 
 // Line and arrow are deliberately not chips here — they're reachable as their

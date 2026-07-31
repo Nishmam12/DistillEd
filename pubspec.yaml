@@ -133,6 +133,7 @@ dependencies:
   #    login inside our app. 6.3.x matches the url_launcher_* platform shims
   #    already resolved transitively via share_plus/printing.
   url_launcher: ^6.3.1
+  phosphor_flutter: ^2.1.0
 
 dev_dependencies:
   flutter_test:

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/settings_provider.dart';
@@ -187,7 +188,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           _RecordButton(notebookId: widget.notebookId, pageId: key.pageId),
           IconButton(
             tooltip: 'Find in notebook',
-            icon: const Icon(Icons.search),
+            icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
             onPressed: _findInNotebook,
           ),
           IconButton(
@@ -999,7 +1000,7 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
     return IconButton(
       tooltip: state.isRecording ? 'Stop recording' : 'Record lecture',
       icon: Icon(
-        state.isRecording ? Icons.stop_circle : Icons.mic_none_outlined,
+        state.isRecording ? Icons.stop_circle : PhosphorIconsRegular.microphone,
         color: state.isRecording ? context.ink.accentRed : null,
       ),
       onPressed: () => state.isRecording

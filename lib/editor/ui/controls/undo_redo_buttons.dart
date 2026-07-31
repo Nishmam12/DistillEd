@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../state/history_controller.dart';
 import '../../state/scene_controller.dart';
@@ -21,13 +22,13 @@ class UndoRedoButtons extends ConsumerWidget {
         IconButton(
           tooltip: 'Undo',
           visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.undo),
+          icon: const Icon(PhosphorIconsRegular.arrowArcLeft),
           onPressed: history.canUndo ? ctl.undo : null,
         ),
         IconButton(
           tooltip: 'Redo',
           visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.redo),
+          icon: const Icon(PhosphorIconsRegular.arrowArcRight),
           onPressed: history.canRedo ? ctl.redo : null,
         ),
       ],

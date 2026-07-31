@@ -6,6 +6,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/constants/editor_constants.dart';
 import '../../../domain/model/scene_element.dart';
@@ -65,7 +66,7 @@ class EditorBottomBar extends ConsumerWidget {
                       if (onImport != null)
                         IconButton(
                           tooltip: 'Import image / PDF',
-                          icon: const Icon(Icons.image_outlined),
+                          icon: const Icon(PhosphorIconsRegular.image),
                           onPressed: onImport,
                         ),
                     ],
@@ -106,8 +107,7 @@ class _ArrowToolButton extends ConsumerWidget {
         child: IconButton(
           isSelected: isActive,
           onPressed: ctl.selectArrowTool,
-          icon:
-              Icon(kArrowheadIcons[state.endArrowhead] ?? Icons.arrow_right_alt),
+          icon: const Icon(PhosphorIconsRegular.arrowRight),
           style: IconButton.styleFrom(
             backgroundColor:
                 isActive ? Theme.of(context).colorScheme.primaryContainer : null,
@@ -173,10 +173,10 @@ class _ArrowToolButton extends ConsumerWidget {
   }
 }
 
-/// A single tool button in the bottom bar. For the eraser it shows a distinct
-/// icon per mode (stroke/element vs pixel) so the current mode is visible —
-/// that mode is chosen in the eraser's options panel, not by tapping this
-/// button, which always just selects the tool.
+/// A single tool button in the bottom bar. The eraser keeps one glyph whatever
+/// its mode (stroke/element vs pixel); the tooltip names the current mode. That
+/// mode is chosen in the eraser's options panel, not by tapping this button,
+/// which always just selects the tool.
 class _ToolIconButton extends StatelessWidget {
   final EditorTool tool;
   final IconData icon;
@@ -195,9 +195,6 @@ class _ToolIconButton extends StatelessWidget {
     final isActive = state.tool == tool;
     final isEraser = tool == EditorTool.eraser;
 
-    final displayIcon = isEraser
-        ? (state.eraserPixel ? Icons.auto_fix_high : Icons.layers_clear)
-        : icon;
     final tooltip = isEraser
         ? (state.eraserPixel ? 'Pixel eraser' : 'Stroke eraser')
         : null;
@@ -206,7 +203,7 @@ class _ToolIconButton extends StatelessWidget {
       tooltip: tooltip,
       isSelected: isActive,
       onPressed: onTap,
-      icon: Icon(displayIcon),
+      icon: Icon(icon),
       style: IconButton.styleFrom(
         backgroundColor:
             isActive ? Theme.of(context).colorScheme.primaryContainer : null,
