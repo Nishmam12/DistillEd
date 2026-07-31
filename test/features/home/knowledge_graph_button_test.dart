@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/theme/ink_palette.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:inkflow/core/theme/app_colors.dart';
 import 'package:inkflow/features/home/presentation/notes_palette.dart';
 import 'package:inkflow/features/home/presentation/widgets/knowledge_graph_button.dart';
 
@@ -40,7 +41,7 @@ void main() {
 
     final decoration = _decoration(tester);
     expect(decoration.shape, BoxShape.circle);
-    expect(decoration.color, InkPalette.light.notes.card);
+    expect(decoration.color, AppColors.light.surface);
     expect(NotesPalette.graphButtonRadius, 26.0);
     expect(
       tester.getSize(find.byType(KnowledgeGraphButton)),
@@ -63,14 +64,17 @@ void main() {
 
     final shadows = _decoration(tester).boxShadow!;
     expect(shadows, isNotEmpty);
-    final cardShadow = InkPalette.light.notes.cardShadow.first;
-    expect(shadows.first.color.a, greaterThan(cardShadow.color.a));
+    // The note card's own resting alpha (see `note_card.dart`). The button
+    // floats ABOVE the card, so it has to cast the heavier shadow of the two or
+    // it reads as printed on the thumbnail rather than hovering over it.
+    const cardRestingAlpha = 0.08;
+    expect(shadows.first.color.a, greaterThan(cardRestingAlpha));
   });
 
   testWidgets('carries a network icon', (tester) async {
     await _pump(tester);
 
-    expect(find.byIcon(Icons.hub_rounded), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsRegular.asterisk), findsOneWidget);
   });
 
   testWidgets('reports itself to screen readers as a button', (tester) async {

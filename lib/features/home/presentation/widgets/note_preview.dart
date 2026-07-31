@@ -11,8 +11,9 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../models/note_card_data.dart';
+import '../notes_palette.dart';
 import 'note_scene_preview.dart';
 
 class NotePreview extends StatelessWidget {
@@ -52,11 +53,15 @@ class NotePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tint = context.notes.tintFor(note.id);
+    final c = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final image = _resolvedImage;
 
     return DecoratedBox(
-      decoration: BoxDecoration(color: tint),
+      // The ground behind a preview that does not fill its box. Was a rotating
+      // set of seven pastel tints; the nine-token spec has no tint set, so this
+      // is the neutral subtle surface in both modes.
+      decoration: BoxDecoration(color: c.surfaceSubtle),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -86,7 +91,18 @@ class NotePreview extends StatelessWidget {
               overlayInset: overlayInset,
               trailingInset: trailingInset,
             ),
-          // Readability wash under the glass overlay.
+          // HOME-07. In dark, the thumbnail is knocked back with a scrim so a
+          // bright page photo does not glare out of a near-black card. Painted
+          // rather than shipped as a second asset, so one image serves both
+          // modes. Sits UNDER the readability gradient: the gradient must stay
+          // fully opaque over the text column, and a scrim above it would tint
+          // that flat surface.
+          if (isDark)
+            DecoratedBox(
+              decoration:
+                  BoxDecoration(color: c.bgPrimary.withValues(alpha: 0.45)),
+            ),
+          // HOME-06 / HOME-17. Readability wash under the overlay's text.
           const _ReadabilityGradient(),
         ],
       ),
@@ -94,28 +110,52 @@ class NotePreview extends StatelessWidget {
   }
 }
 
-/// White-to-transparent wash so the frosted overlay never sits on top of a
-/// busy, dark thumbnail.
+/// Surface-to-transparent wash so the card's title and meta rows never sit on
+/// top of the thumbnail.
 ///
-/// It clears shortly after the overlay's inner edge (~34%): washing further
-/// would drain the colour out of the preview itself, which is the part the
-/// glance is for.
+/// HOME-06: the stops are built from `context.colors.surface`, so the wash is
+/// white in light and near-black in dark and the card reads as ONE surface that
+/// the image emerges from — not a white panel pasted over a photo.
+///
+/// HOME-17, and the reason the first stop is held rather than immediately
+/// decaying: the wash stays at FULL opacity across the whole overlay width, so
+/// every pixel of text sits on flat `surface`. A thumbnail with a bright patch
+/// under the title would otherwise destroy the contrast guarantee no matter
+/// what colour the text is.
+///
+///   text column  = [18px, overlayWidth - 12px]        (NoteOverlay's padding)
+///   overlayWidth = overlayWidthFactor * cardWidth     (NoteCard's LayoutBuilder)
+///   opaque to    = overlayWidthFactor * cardWidth     (the second stop below)
+///
+/// so the opaque region exceeds the text's right edge by the overlay's 12px
+/// right padding, at every card width. The stop reads the SAME constant the
+/// overlay's width is computed from, so the two cannot drift apart.
 class _ReadabilityGradient extends StatelessWidget {
   const _ReadabilityGradient();
 
+  /// How far past the overlay the wash takes to disappear. Wide enough that the
+  /// hand-off reads as a fade rather than an edge; short enough that it does
+  /// not drain the colour out of the preview, which is what the glance is for.
+  static const _falloff = 0.18;
+
   @override
   Widget build(BuildContext context) {
+    final surface = context.colors.surface;
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: [
-            Colors.white,
-            Colors.white.withValues(alpha: 0.80),
-            Colors.white.withValues(alpha: 0.0),
+            surface,
+            surface,
+            surface.withValues(alpha: 0),
           ],
-          stops: const [0.0, 0.26, 0.44],
+          stops: const [
+            0.0,
+            NotesPalette.overlayWidthFactor,
+            NotesPalette.overlayWidthFactor + _falloff,
+          ],
         ),
       ),
     );
@@ -157,7 +197,7 @@ class _TypographicPreview extends StatelessWidget {
                 height: 1.05,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 1.5,
-                color: context.notes.textPrimary,
+                color: context.colors.textPrimary,
               ),
             ),
           ),
@@ -180,7 +220,7 @@ class _TypographicPreview extends StatelessWidget {
                           fontFamily: 'Nunito',
                           fontSize: 13,
                           height: 1.3,
-                          color: context.notes.textPrimary,
+                          color: context.colors.textPrimary,
                         ),
                       ),
                     ),

@@ -5,8 +5,9 @@
 // cream field used everywhere else.
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../notes_palette.dart';
 
 class SearchBarWidget extends StatefulWidget {
@@ -58,10 +59,22 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
 
   @override
   Widget build(BuildContext context) {
-    const radius = BorderRadius.all(Radius.circular(16));
-    const border = OutlineInputBorder(
+    final c = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // HOME-04. Fully rounded pill. The radius is half the bar's height rather
+    // than a magic number, so the ends stay perfectly semicircular if the
+    // height ever changes.
+    const radius =
+        BorderRadius.all(Radius.circular(NotesPalette.searchBarHeight / 2));
+
+    // The one asymmetry: NO outline in light, a 1px `border` hairline in dark.
+    // On the light canvas the fill alone is a strong enough edge; on near-black
+    // a `surfaceSubtle` fill against `bgPrimary` is only a few percent apart and
+    // the field would have no discernible boundary at all.
+    final resting = OutlineInputBorder(
       borderRadius: radius,
-      borderSide: BorderSide.none,
+      borderSide: isDark ? BorderSide(color: c.border) : BorderSide.none,
     );
 
     return SizedBox(
@@ -71,27 +84,29 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
         onChanged: _handleChanged,
         textAlignVertical: TextAlignVertical.center,
         textInputAction: TextInputAction.search,
-        cursorColor: context.notes.accent,
+        cursorColor: c.accent,
         style: TextStyle(
           fontFamily: 'Nunito',
           fontSize: 16,
-          color: context.notes.textPrimary,
+          color: c.textPrimary,
         ),
         decoration: InputDecoration(
           isDense: true,
           filled: true,
-          fillColor: context.notes.field,
+          fillColor: c.surfaceSubtle,
           hintText: widget.hintText,
           hintStyle: TextStyle(
             fontFamily: 'Nunito',
             fontSize: 16,
-            color: context.notes.textSecondary,
+            color: c.textSecondary,
           ),
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          // Single-instance chrome glyph — accent, unlike the clear button,
+          // which is a transient control and stays secondary.
           prefixIcon: Icon(
-            Icons.search_rounded,
+            PhosphorIconsRegular.magnifyingGlass,
             size: 22,
-            color: context.notes.textSecondary,
+            color: c.accent,
           ),
           suffixIcon: IgnorePointer(
             ignoring: !_hasText,
@@ -99,18 +114,18 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
               opacity: _hasText ? 1 : 0,
               duration: const Duration(milliseconds: 160),
               child: IconButton(
-                icon: const Icon(Icons.close_rounded, size: 18),
-                color: context.notes.textSecondary,
+                icon: const Icon(PhosphorIconsRegular.x, size: 18),
+                color: c.textSecondary,
                 tooltip: 'Clear search',
                 onPressed: _clear,
               ),
             ),
           ),
-          border: border,
-          enabledBorder: border,
+          border: resting,
+          enabledBorder: resting,
           focusedBorder: OutlineInputBorder(
             borderRadius: radius,
-            borderSide: BorderSide(color: context.notes.accent, width: 1.4),
+            borderSide: BorderSide(color: c.accent, width: 1.4),
           ),
         ),
       ),

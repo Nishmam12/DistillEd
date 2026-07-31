@@ -7,8 +7,9 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../models/note_card_data.dart';
 import '../notes_palette.dart';
 
@@ -24,10 +25,24 @@ class NoteOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        boxShadow: context.notes.overlayShadow,
+        // Light only. The sideways shadow reads as the glass layer lifting off
+        // the preview; in dark it would be a black smear on a near-black card,
+        // and THEME_SPEC.md rules out carrying BoxShadow into dark regardless.
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: c.accent.withValues(alpha: 0.07),
+                  blurRadius: 16,
+                  offset: const Offset(4, 0),
+                ),
+              ],
       ),
       child: ClipRRect(
         borderRadius: borderRadius,
@@ -37,7 +52,11 @@ class NoteOverlay extends StatelessWidget {
             sigmaY: NotesPalette.overlayBlurSigma,
           ),
           child: Container(
-            color: Colors.white.withValues(alpha: 0.58),
+            // Transparent, not a white wash. The readability gradient in
+            // NotePreview already paints flat `surface` across this whole
+            // width (HOME-17), so anything added here would only tint it — and
+            // a fixed white wash was the one hardcoded colour on this card.
+            color: c.surface.withValues(alpha: 0),
             padding: const EdgeInsets.fromLTRB(18, 16, 12, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,12 +64,16 @@ class NoteOverlay extends StatelessWidget {
               children: [
                 if (note.pinned) ...[
                   Icon(
-                    Icons.push_pin_rounded,
+                    PhosphorIconsRegular.pushPin,
                     size: 16,
-                    color: context.notes.textSecondary,
+                    color: c.accent,
                   ),
                   const SizedBox(height: 8),
                 ],
+                // HOME-08. `textPrimary`, NOT `accent`. The mockup shows a gold
+                // title in dark; THEME_SPEC.md § "Color hierarchy" overrides it
+                // — a list of thirty gold titles is a wall of accent colour in
+                // which nothing reads as emphasized.
                 Flexible(
                   child: Text(
                     note.title,
@@ -62,15 +85,19 @@ class NoteOverlay extends StatelessWidget {
                       height: 1.2,
                       fontWeight: FontWeight.w600,
                       letterSpacing: -0.3,
-                      color: context.notes.textPrimary,
+                      color: c.textPrimary,
                     ),
                   ),
                 ),
                 const SizedBox(height: 10),
-                _MetaRow(icon: Icons.event_rounded, label: note.dateLabel),
+                // HOME-09.
+                _MetaRow(
+                  icon: PhosphorIconsRegular.calendarBlank,
+                  label: note.dateLabel,
+                ),
                 const SizedBox(height: 6),
                 _MetaRow(
-                  icon: Icons.description_outlined,
+                  icon: PhosphorIconsRegular.fileText,
                   label: note.pageLabel,
                 ),
               ],
@@ -90,9 +117,12 @@ class _MetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    // HOME-09. Icon accent, label secondary — the split is the point: the glyph
+    // is single-instance chrome, the text is repeated meta.
     return Row(
       children: [
-        Icon(icon, size: 15, color: context.notes.textSecondary),
+        Icon(icon, size: 15, color: c.accent),
         const SizedBox(width: 6),
         Flexible(
           child: Text(
@@ -103,7 +133,7 @@ class _MetaRow extends StatelessWidget {
               fontFamily: 'Nunito',
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: context.notes.textSecondary,
+              color: c.textSecondary,
             ),
           ),
         ),

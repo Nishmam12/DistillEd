@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/theme/ink_palette.dart';
+import 'package:inkflow/core/theme/app_colors.dart';
 import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
 import 'package:inkflow/features/home/presentation/notes_palette.dart';
 import 'package:inkflow/features/home/presentation/widgets/knowledge_graph_button.dart';
@@ -71,7 +71,7 @@ void main() {
         BorderRadius.circular(NotesPalette.cardRadius),
       );
       expect(NotesPalette.cardRadius, 22.0);
-      expect(_cardDecoration(tester).color, InkPalette.light.notes.card);
+      expect(_cardDecoration(tester).color, AppColors.light.surface);
     });
 
     testWidgets('rests on a soft shadow — blur ~20 at ~10% opacity',

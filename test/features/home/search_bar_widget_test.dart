@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/theme/ink_palette.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:inkflow/core/theme/app_colors.dart';
 import 'package:inkflow/features/home/presentation/notes_palette.dart';
 import 'package:inkflow/features/home/presentation/widgets/search_bar_widget.dart';
 
@@ -28,14 +29,14 @@ Future<void> _pump(
 /// so the finders cannot latch onto framework internals.
 Finder _clearFade() => find
     .ancestor(
-      of: find.byIcon(Icons.close_rounded),
+      of: find.byIcon(PhosphorIconsRegular.x),
       matching: find.byType(AnimatedOpacity),
     )
     .first;
 
 Finder _clearGate() => find
     .ancestor(
-      of: find.byIcon(Icons.close_rounded),
+      of: find.byIcon(PhosphorIconsRegular.x),
       matching: find.byType(IgnorePointer),
     )
     .first;
@@ -52,7 +53,7 @@ void main() {
   testWidgets('leads with a search icon and a hint', (tester) async {
     await _pump(tester);
 
-    expect(find.byIcon(Icons.search_rounded), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsRegular.magnifyingGlass), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);
   });
 
@@ -64,7 +65,7 @@ void main() {
     final border = decoration.enabledBorder! as OutlineInputBorder;
 
     expect(decoration.filled, isTrue);
-    expect(decoration.fillColor, InkPalette.light.notes.field);
+    expect(decoration.fillColor, AppColors.light.surfaceSubtle);
     expect(border.borderRadius.topLeft.x, greaterThan(0));
     expect(border.borderSide.style, BorderStyle.none);
   });
@@ -108,7 +109,7 @@ void main() {
       await tester.enterText(find.byType(TextField), 'workout');
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.x));
       await tester.pumpAndSettle();
 
       expect(controller.text, isEmpty);

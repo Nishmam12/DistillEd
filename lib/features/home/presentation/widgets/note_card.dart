@@ -13,7 +13,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../models/note_card_data.dart';
 import '../notes_palette.dart';
 import 'knowledge_graph_button.dart';
@@ -93,6 +93,19 @@ class _NoteCardState extends State<NoteCard> {
   }
 
   Widget _body() {
+    final c = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // HOME-05. Light lifts on a soft shadow and carries no outline; dark drops
+    // the shadow entirely and draws a 1px hairline instead — a shadow on
+    // near-black is invisible, so a dark card with only a shadow would have no
+    // edge against the scaffold at all.
+    //
+    // THEME_SPEC.md defines no shadow token, so the tint is derived from
+    // `accent` rather than invented. The raised (hover) state deepens the same
+    // colour rather than switching to a different one.
+    final shadowAlpha = _raised ? 0.13 : 0.08;
+
     return GestureDetector(
       onTap: widget.onTap,
       onLongPress: widget.onLongPress,
@@ -100,10 +113,18 @@ class _NoteCardState extends State<NoteCard> {
         duration: NoteCard._motion,
         curve: Curves.easeOut,
         decoration: BoxDecoration(
-          color: context.notes.card,
+          color: c.surface,
           borderRadius: NoteCard.borderRadius,
-          boxShadow:
-              _raised ? context.notes.cardShadowRaised : context.notes.cardShadow,
+          border: isDark ? Border.all(color: c.border) : null,
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: c.accent.withValues(alpha: shadowAlpha),
+                    blurRadius: _raised ? 28 : 20,
+                    offset: Offset(0, _raised ? 12 : 8),
+                  ),
+                ],
         ),
         child: ClipRRect(
           borderRadius: NoteCard.borderRadius,

@@ -9,7 +9,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/ink_colors.dart';
 import '../../../../domain/model/template_type.dart';
 import '../../../../editor/state/scene_image_cache_provider.dart';
@@ -47,7 +49,8 @@ class NotesScreen extends ConsumerWidget {
     final query = ref.watch(notesSearchQueryProvider);
 
     return Scaffold(
-      backgroundColor: context.notes.background,
+      // HOME-01.
+      backgroundColor: context.colors.bgPrimary,
       body: SafeArea(
         bottom: false,
         child: Stack(
@@ -68,11 +71,11 @@ class NotesScreen extends ConsumerWidget {
                   child: cards.when(
                     loading: () => Center(
                       child: CircularProgressIndicator(
-                        color: context.notes.accent,
+                        color: context.colors.accent,
                       ),
                     ),
                     error: (error, _) => _Message(
-                      icon: Icons.error_outline_rounded,
+                      icon: PhosphorIconsRegular.warningCircle,
                       title: 'Could not load your notes',
                       subtitle: '$error',
                     ),
@@ -169,11 +172,15 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 8, 12),
       child: Row(
         children: [
           Expanded(
+            // HOME-02. The wordmark is BRAND, which is tier-1 accent — the one
+            // piece of repeated-looking text that stays gold in dark. There is
+            // exactly one per screen, so it does not compete with anything.
             child: Text(
               'DistillEd',
               style: TextStyle(
@@ -181,14 +188,15 @@ class _Header extends StatelessWidget {
                 fontSize: 38,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -1,
-                color: context.notes.textPrimary,
+                color: c.accent,
               ),
             ),
           ),
+          // HOME-03. Single-instance chrome glyph — accent.
           IconButton(
-            icon: const Icon(Icons.more_horiz_rounded),
+            icon: const Icon(PhosphorIconsRegular.dotsThree),
             iconSize: 26,
-            color: context.notes.accent,
+            color: c.accent,
             tooltip: 'Settings',
             onPressed: () => context.push('/settings'),
           ),
@@ -395,7 +403,7 @@ class _OrganizeFilterRow extends ConsumerWidget {
           for (final folder in folders)
             _FilterChip(
               label: folder.name,
-              icon: Icons.folder_outlined,
+              icon: PhosphorIconsRegular.folder,
               selected: folderFilter == FolderFilter.only(folder.id),
               onTap: () => ref.read(notesFolderFilterProvider.notifier).state =
                   folderFilter == FolderFilter.only(folder.id)
@@ -442,6 +450,13 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    // Deliberately NOT the shared AppChipGroup from the settings pass. That
+    // widget models an exclusive choice over a fixed pair (PNG/PDF); this row
+    // is a MULTI-select over a list that grows with the user's folders and
+    // tags, and its selected state is a wash rather than the spec's filled/
+    // outlined asymmetry. Forcing one widget to do both would mean a `mode`
+    // flag and two layouts inside it.
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: GestureDetector(
@@ -450,26 +465,23 @@ class _FilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? context.ink.accentWash : Colors.transparent,
+            color: selected ? c.accentMuted : c.accentMuted.withValues(alpha: 0),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected ? context.ink.accent : context.ink.border,
-            ),
+            border: Border.all(color: selected ? c.accent : c.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 14, color: context.notes.textSecondary),
+                Icon(icon,
+                    size: 14, color: selected ? c.accent : c.textSecondary),
                 const SizedBox(width: 4),
               ],
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 13,
-                  color: selected
-                      ? context.ink.accent
-                      : context.notes.textSecondary,
+                  color: selected ? c.accent : c.textSecondary,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
@@ -495,6 +507,7 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final c = context.colors;
 
     // Frosted, not opaque: cards sliding under it stay faintly present, the way
     // an iOS toolbar behaves — but blurred enough that its own labels win.
@@ -504,23 +517,21 @@ class _BottomBar extends StatelessWidget {
         child: Container(
           height: NotesScreen.bottomBarHeight + safeBottom,
           padding: EdgeInsets.only(left: 18, right: 18, bottom: safeBottom),
+          // HOME-11.
           decoration: BoxDecoration(
-            color: context.notes.background.withValues(alpha: 0.86),
-            // Themed rather than a fixed black wash: a 8%-black hairline is
-            // invisible against a dark canvas.
-            border: Border(
-              top: BorderSide(
-                color: context.notes.textSecondary.withValues(alpha: 0.15),
-              ),
-            ),
+            color: c.bgPrimary.withValues(alpha: 0.86),
+            border: Border(top: BorderSide(color: c.border)),
           ),
           child: Row(
             children: [
+              // HOME-12. Single-instance chrome glyph — accent.
               _BarButton(
-                icon: Icons.tune_rounded,
+                icon: PhosphorIconsRegular.slidersHorizontal,
                 tooltip: 'Sort notes',
                 onPressed: onFilter,
               ),
+              // HOME-13. `textPrimary`, NOT accent — the mockup shows a gold
+              // count in dark and the spec overrides it. Cream in dark.
               Expanded(
                 child: Text(
                   '$count ${count == 1 ? 'Note' : 'Notes'}',
@@ -529,12 +540,13 @@ class _BottomBar extends StatelessWidget {
                     fontFamily: 'Poppins',
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: context.notes.textSecondary,
+                    color: c.textPrimary,
                   ),
                 ),
               ),
+              // HOME-14.
               _BarButton(
-                icon: Icons.edit_square,
+                icon: PhosphorIconsRegular.notePencil,
                 tooltip: 'New note',
                 onPressed: onCompose,
                 filled: true,
@@ -562,15 +574,19 @@ class _BarButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    // HOME-14. Rounded square, ~14px. Filled: `accent` ground with an
+    // `onAccent` glyph — note the contrast DIRECTION flips between modes. In
+    // light that is a white glyph on navy; in dark it is a near-black glyph on
+    // gold, which is the only way a gold fill stays legible.
+    const radius = BorderRadius.all(Radius.circular(14));
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: filled ? context.notes.accent : Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        color: filled ? c.accent : c.accent.withValues(alpha: 0),
+        shape: const RoundedRectangleBorder(borderRadius: radius),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: radius,
           onTap: onPressed,
           child: Semantics(
             button: true,
@@ -581,7 +597,7 @@ class _BarButton extends StatelessWidget {
               child: Icon(
                 icon,
                 size: 22,
-                color: filled ? Colors.white : context.notes.accent,
+                color: filled ? c.onAccent : c.accent,
               ),
             ),
           ),
@@ -598,15 +614,17 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // HOME-15. Two distinct empty states, because "you have no notes" and "this
+    // search found nothing" want different words and different next actions.
     if (query.trim().isNotEmpty) {
       return _Message(
-        icon: Icons.search_off_rounded,
+        icon: PhosphorIconsRegular.magnifyingGlass,
         title: 'No notes match "${query.trim()}"',
         subtitle: 'Try a different search.',
       );
     }
     return const _Message(
-      icon: Icons.note_add_outlined,
+      icon: PhosphorIconsRegular.notePencil,
       title: 'No notes yet',
       subtitle: 'Tap the compose button to start your first note.',
     );
@@ -626,14 +644,29 @@ class _Message extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    // HOME-15. Derived from the tokens, since the mockup has no empty state:
+    // the glyph sits in a large `surfaceSubtle` disc so the screen has SOME
+    // shape at zero notes rather than three lines floating on a bare scaffold,
+    // and it is `accent` because there is exactly one — the same single-instance
+    // rule the search icon and meta glyphs follow. The heading takes
+    // `textPrimary` and the guidance line `textSecondary`, matching every other
+    // title/description pair in the app.
     return Center(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(32, 0, 32, 96),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: context.notes.textSecondary),
-            const SizedBox(height: 16),
+            Container(
+              width: 96,
+              height: 96,
+              alignment: Alignment.center,
+              decoration:
+                  BoxDecoration(color: c.surfaceSubtle, shape: BoxShape.circle),
+              child: Icon(icon, size: 44, color: c.accent),
+            ),
+            const SizedBox(height: 20),
             Text(
               title,
               textAlign: TextAlign.center,
@@ -641,7 +674,7 @@ class _Message extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: context.notes.textPrimary,
+                color: c.textPrimary,
               ),
             ),
             const SizedBox(height: 6),
@@ -651,7 +684,8 @@ class _Message extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Nunito',
                 fontSize: 14,
-                color: context.notes.textSecondary,
+                height: 1.4,
+                color: c.textSecondary,
               ),
             ),
           ],
@@ -756,9 +790,12 @@ class _TemplateChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
+          // Token-derived transparency rather than a Material constant — the
+          // rest of this dialog is still on the pre-migration palette, deferred
+          // to the straggler sweep, but a hardcoded colour is a defect anywhere.
           color: selected
               ? context.notes.accent.withValues(alpha: 0.08)
-              : Colors.transparent,
+              : context.notes.accent.withValues(alpha: 0),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected

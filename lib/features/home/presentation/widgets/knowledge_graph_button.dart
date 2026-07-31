@@ -3,8 +3,9 @@
 // makes it read as hovering above the card rather than printed on it.
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../notes_palette.dart';
 
 class KnowledgeGraphButton extends StatefulWidget {
@@ -34,6 +35,8 @@ class _KnowledgeGraphButtonState extends State<KnowledgeGraphButton> {
   @override
   Widget build(BuildContext context) {
     final diameter = widget.radius * 2;
+    final c = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Semantics(
       button: true,
@@ -50,18 +53,32 @@ class _KnowledgeGraphButtonState extends State<KnowledgeGraphButton> {
             scale: _pressed ? 0.9 : 1.0,
             duration: const Duration(milliseconds: 140),
             curve: Curves.easeOut,
+            // HOME-10. The asymmetry that makes this button read as floating in
+            // both modes. In LIGHT a soft shadow lifts it off the thumbnail. In
+            // DARK a shadow is invisible against near-black, so the lift is
+            // carried by a 1px `accent` ring instead — the button is sitting on
+            // an image, so it needs an edge of its own either way.
             child: Container(
               width: diameter,
               height: diameter,
               decoration: BoxDecoration(
-                color: context.notes.card,
+                color: c.surface,
                 shape: BoxShape.circle,
-                boxShadow: context.notes.floatShadow,
+                border: isDark ? Border.all(color: c.accent) : null,
+                boxShadow: isDark
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: c.accent.withValues(alpha: 0.16),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
               ),
               child: Icon(
-                Icons.hub_rounded,
+                PhosphorIconsRegular.asterisk,
                 size: widget.radius * 0.85,
-                color: context.notes.accent,
+                color: c.accent,
               ),
             ),
           ),

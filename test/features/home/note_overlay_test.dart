@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/theme/ink_palette.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:inkflow/core/theme/app_colors.dart';
 import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
 import 'package:inkflow/features/home/presentation/notes_palette.dart';
 import 'package:inkflow/features/home/presentation/widgets/note_overlay.dart';
@@ -57,13 +58,13 @@ void main() {
     testWidgets('marks a pinned note', (tester) async {
       await _pump(tester, _note(pinned: true));
 
-      expect(find.byIcon(Icons.push_pin_rounded), findsOneWidget);
+      expect(find.byIcon(PhosphorIconsRegular.pushPin), findsOneWidget);
     });
 
     testWidgets('leaves the pin off an unpinned note', (tester) async {
       await _pump(tester, _note());
 
-      expect(find.byIcon(Icons.push_pin_rounded), findsNothing);
+      expect(find.byIcon(PhosphorIconsRegular.pushPin), findsNothing);
     });
 
     testWidgets('truncates a long title rather than overflowing',
@@ -89,7 +90,7 @@ void main() {
       final style = tester.widget<Text>(find.text('IDs')).style!;
       expect(style.fontSize, 20);
       expect(style.fontWeight, FontWeight.w600);
-      expect(style.color, InkPalette.light.notes.textPrimary);
+      expect(style.color, AppColors.light.textPrimary);
     });
 
     testWidgets('metadata is 14 medium grey', (tester) async {
@@ -99,7 +100,7 @@ void main() {
         final style = tester.widget<Text>(find.text(label)).style!;
         expect(style.fontSize, 14, reason: label);
         expect(style.fontWeight, FontWeight.w500, reason: label);
-        expect(style.color, InkPalette.light.notes.textSecondary, reason: label);
+        expect(style.color, AppColors.light.textSecondary, reason: label);
       }
     });
   });
