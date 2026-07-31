@@ -95,11 +95,16 @@ class SummarizeRequest {
   final String languageCode;
   final bool cloudEnabled;
 
+  /// True when the user picked cloud-first: summarize on the cloud tier
+  /// regardless of whether the note would have fitted on-device.
+  final bool preferCloud;
+
   const SummarizeRequest({
     required this.notebookId,
     required this.resolveScope,
     required this.languageCode,
     required this.cloudEnabled,
+    this.preferCloud = false,
   });
 }
 
@@ -137,6 +142,7 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
         scope: scope,
         languageCode: request.languageCode,
         cloudEnabled: request.cloudEnabled,
+        preferCloud: request.preferCloud,
         onStage: (stage) {
           if (!mounted) return;
           state = switch (stage) {

@@ -61,6 +61,11 @@ class StreamingFakeRuntime implements LlmRuntime {
     sessions.add(session);
     return session;
   }
+
+  int releaseCalls = 0;
+
+  @override
+  Future<void> releaseModel() async => releaseCalls++;
 }
 
 class StreamingFakeSession implements LlmSession {
@@ -126,6 +131,9 @@ class NotReadyRuntime implements LlmRuntime {
   }) async {
     throw LlmNotReadyException();
   }
+
+  @override
+  Future<void> releaseModel() async {}
 }
 
 void main() {

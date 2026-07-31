@@ -61,19 +61,27 @@ class FigureAnalyzer {
   final String localModelId;
   final String cloudModelId;
 
+  /// True when the user chose cloud-first, i.e. the cloud should read the
+  /// figure WITHOUT the local model running at all. Read at call time so
+  /// switching modes takes effect on the next read.
+  final bool Function() _preferCloud;
+
   FigureAnalyzer({
     required ImageTranscriber local,
     ImageTranscriber? cloud,
     Future<bool> Function()? canEscalate,
+    bool Function()? preferCloud,
     FigureQualityBar bar = const FigureQualityBar(),
     this.localModelId = 'local',
     this.cloudModelId = 'cloud',
   })  : _local = local,
         _cloud = cloud,
         _canEscalate = canEscalate ?? _never,
+        _preferCloud = preferCloud ?? _no,
         _bar = bar;
 
   static Future<bool> _never() async => false;
+  static bool _no() => false;
 
   /// Asks for a strict JSON object. Gemma-class models comply far more reliably
   /// when the schema is shown literally and the "no prose" rule is repeated at
@@ -123,7 +131,86 @@ Read the real values, labels and relationships off the image — precision matte
   /// Rethrows [AiModelNotReadyException] from the LOCAL model so the caller can
   /// offer the download — the same contract [GemmaVisionOcrService] follows. A
   /// cloud failure is never fatal: it degrades to the local read.
+  /// One vision call that yields BOTH halves of an image read: the figure
+  /// description and the transcription that comes back in `verbatim_text`.
+  ///
+  /// The two used to be separate calls over the same bytes — the OCR pass and
+  /// this one — which meant every image was prefilled through the vision
+  /// encoder twice at ~2300 patches each, for prompts that both say "read all
+  /// the text off this image". This method exists so the caller can pay for
+  /// that once.
+  ///
+  /// [FigureDescription.verbatimText] is a JSON string field, so it is more
+  /// exposed to truncation than a raw-text OCR reply. The caller is expected to
+  /// judge the returned text and fall back to a dedicated OCR pass when it does
+  /// not hold up — see [PageContentExtractor]. This method does not judge it,
+  /// because the quality bar for a transcription is the OCR gate's business,
+  /// not the figure bar's.
+  /// Note the transcription survives a `{"kind": "none"}` reply. That is the
+  /// COMMON case for a page of plain handwriting, and [analyze] correctly
+  /// returns null for it — but the model still transcribed the page on its way
+  /// to deciding there was no figure, and throwing that away would leave the
+  /// merged read winning nothing on exactly the pages students write most.
+  Future<({String verbatimText, FigureDescription? figure})> analyzeWithText(
+    Uint8List imageBytes,
+  ) async {
+    final String raw;
+    try {
+      raw = await _local.transcribeImage(
+        imageBytes,
+        prompt: _prompt,
+        temperature: 0.0,
+        maxOutputTokens: 1024,
+      );
+    } on AiModelNotReadyException {
+      rethrow;
+    } on AiException {
+      return (verbatimText: '', figure: null);
+    }
+
+    final text = verbatimTextOf(raw);
+    final figure = parseFigureJson(raw, modelId: localModelId);
+    if (_bar.accepts(figure)) return (verbatimText: text, figure: figure);
+
+    // The figure half missed the bar. Escalate only that half — the caller
+    // judges the transcription separately, and re-reading the image in the
+    // cloud to improve a description we may not even keep would spend a
+    // network round-trip on nothing.
+    if (_cloud != null && await _canEscalate()) {
+      final escalated = await _readCloud(imageBytes);
+      if (escalated != null && escalated.isInformative) {
+        return (
+          verbatimText: text.isNotEmpty ? text : escalated.verbatimText.trim(),
+          figure: escalated,
+        );
+      }
+    }
+
+    return (
+      verbatimText: text,
+      figure: (figure != null && figure.isInformative) ? figure : null,
+    );
+  }
+
+  /// The `verbatim_text` field alone, independent of whether the reply
+  /// described a figure. Returns '' when there is none or the reply is
+  /// unparseable — the caller reads that as "fall back to a real OCR pass".
+  static String verbatimTextOf(String raw) {
+    final json = _extractJsonObject(raw);
+    if (json == null) return '';
+    return _str(json['verbatim_text']).trim();
+  }
+
   Future<FigureDescription?> analyze(Uint8List imageBytes) async {
+    // Cloud-first: the point of the mode is that the on-device model does not
+    // run, so this returns without ever calling [_readLocal] when the cloud
+    // gives a usable answer. A cloud miss still falls through to local below —
+    // degrading to a slow read beats reporting the figure as unreadable.
+    if (_cloud != null && _preferCloud() && await _canEscalate()) {
+      final direct = await _readCloud(imageBytes);
+      if (_bar.accepts(direct)) return direct;
+    }
+
     final local = await _readLocal(imageBytes);
     if (_bar.accepts(local)) return local;
 

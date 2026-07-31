@@ -538,14 +538,19 @@ class _SidebarHeader extends StatelessWidget {
 /// this answer poor?" occurs to them, and the answer is often "because it ran
 /// on a 2B model on your phone". Settings is three screens away.
 ///
-/// What it changes, precisely: the stored `cloudAiEnabled` opt-in, which is the
-/// same value Settings writes and the same value `/cloud on` writes. What it
-/// does NOT change is the `cloudPrivacy` confirmation contract — with
+/// What it changes, precisely: it moves `aiMode` between
+/// [AiProcessingMode.onDevice] and [AiProcessingMode.auto] — the same two
+/// states the old `cloudAiEnabled` bool had, and what `/cloud on|off` writes.
+/// It deliberately cannot reach [AiProcessingMode.cloudFirst]: sending every
+/// page to the network is a choice that belongs behind the explicit Settings
+/// control, not a one-tap switch in a panel header.
+///
+/// What it does NOT change is the `cloudPrivacy` confirmation contract — with
 /// `askEachTime` (the default) each individual cloud call is still confirmed
 /// before anything is sent. Turning this on grants permission for the app to
-/// ASK; it is not a blanket "send my notes". The subtitle in the tooltip says
-/// so, because a switch that silently widened a privacy setting would be
-/// exactly the kind of thing this codebase is careful not to ship.
+/// ASK; it is not a blanket "send my notes". The tooltip names the active mode,
+/// because a switch that silently widened a privacy setting would be exactly
+/// the kind of thing this codebase is careful not to ship.
 class CloudModelToggle extends ConsumerWidget {
   const CloudModelToggle({super.key});
 
@@ -556,11 +561,18 @@ class CloudModelToggle extends ConsumerWidget {
     final asksEachTime = settings.cloudPrivacy == CloudPrivacy.askEachTime;
 
     return Tooltip(
-      message: on
-          ? (asksEachTime
-              ? "Cloud AI on — you're still asked before anything is sent"
-              : 'Cloud AI on')
-          : 'Cloud AI off — everything runs on your device',
+      // Says which mode is actually in force. The old copy claimed only
+      // on/off, which is what made "on" look like it should mean "use the
+      // cloud" when it really meant "you may fall back to it".
+      message: switch (settings.aiMode) {
+        AiProcessingMode.onDevice =>
+          'On-device only — everything runs on your device',
+        AiProcessingMode.auto => asksEachTime
+            ? "Auto — on-device first; you're asked before anything is sent"
+            : 'Auto — on-device first, cloud if it fails',
+        AiProcessingMode.cloudFirst =>
+          'Cloud-first — pages are read in the cloud. Change in Settings',
+      },
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: () => ref

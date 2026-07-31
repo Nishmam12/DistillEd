@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
 
 import '../../core/theme/paper_colors.dart';
 import '../../core/providers/settings_provider.dart';
@@ -783,6 +783,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           resolveScope: resolveScope,
           languageCode: settings.recognitionLanguage,
           cloudEnabled: settings.cloudAiEnabled,
+          preferCloud: settings.aiMode.prefersCloud,
         ));
     showSummarySheet(context);
   }

@@ -8,7 +8,7 @@ publish_to: 'none'
 # Bump the semantic <major>.<minor>.<patch> by hand (and add a CHANGELOG.md
 # entry) when a change warrants it. The running app reads this via
 # package_info_plus, so the "About" screen always shows what's installed.
-version: 4.0.0+29
+version: 5.0.0+30
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -133,7 +133,11 @@ dependencies:
   #    login inside our app. 6.3.x matches the url_launcher_* platform shims
   #    already resolved transitively via share_plus/printing.
   url_launcher: ^6.3.1
-  phosphor_flutter: ^2.1.0
+  # phosphor_flutter removed: 2.1.0 (latest) declares
+  # `class PhosphorIconData extends IconData`, which cannot compile against
+  # Flutter 3.44+ where IconData became a final class. Upstream fix PRs
+  # (phosphor-icons/flutter #62/#63) are unmerged. The Regular style we use is
+  # vendored as plain IconData constants in lib/core/icons/.
 
 dev_dependencies:
   flutter_test:
@@ -164,6 +168,10 @@ flutter:
           weight: 600
         - asset: assets/fonts/Poppins-Bold.ttf
           weight: 700
+    - family: PhosphorRegular
+      fonts:
+        - asset: assets/fonts/Phosphor.ttf
+          weight: 400
     - family: Nunito
       fonts:
         - asset: assets/fonts/Nunito-Variable.ttf

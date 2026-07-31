@@ -65,6 +65,17 @@ class GemmaVisionOcrService {
         _gate = gate,
         _seedSource = seedSource ?? _makeSeedSource();
 
+  /// Whether [text] is a transcription worth keeping, by the SAME gate this
+  /// service applies to its own attempts.
+  ///
+  /// Exposed so a transcription obtained elsewhere — the merged figure read,
+  /// which returns `verbatim_text` from one shared vision call — is held to an
+  /// identical standard before it is accepted in place of a dedicated pass.
+  /// Sharing the gate is the point: two different bars would mean the cheaper
+  /// path could quietly keep text this service would have rejected.
+  bool accepts(String text) =>
+      text.trim().isNotEmpty && _gate.evaluate(text).passed;
+
   /// A closure over its own counter, so successive calls never collide even
   /// within the same microsecond.
   static int Function() _makeSeedSource() {

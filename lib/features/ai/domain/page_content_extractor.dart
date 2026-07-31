@@ -195,14 +195,35 @@ class PageContentExtractor {
       if (e is! ImageElement) continue;
 
       final bytes = await _imageBytesOf(e);
-      final text = await _readImageElement(e, bytes, vision, varyVision);
-      if (text.isNotEmpty) imageTexts.add(text);
 
-      // A pasted graph is the case that motivated this whole pass: it usually
-      // OCRs to a handful of axis labels, so text alone never described it.
-      final figure = bytes == null
-          ? null
-          : await _analyzeFigure(figureAnalyzer, bytes);
+      // ONE vision call for both halves when both are wanted. Previously this
+      // read the same bytes twice — an OCR pass and a figure pass — and each
+      // one prefills the vision encoder at ~2300 patches (a tablet page read
+      // measured 19 such passes). Both prompts already ask the model to read
+      // every piece of text off the image, so the second call was re-deriving
+      // what the first had produced.
+      String text;
+      FigureDescription? figure;
+      if (bytes != null && figureAnalyzer != null && vision != null) {
+        final merged = await _analyzeWithText(figureAnalyzer, bytes);
+        figure = merged.figure;
+        // `verbatim_text` arrives as a JSON string field, so it is far more
+        // exposed to truncation than a raw-text OCR reply. Hold it to the same
+        // gate a dedicated read would face, and pay for the second call only
+        // when it does not clear it — so a dense page is never transcribed
+        // from a clipped field, and the worst case is what this cost before.
+        text = vision.accepts(merged.verbatimText)
+            ? merged.verbatimText
+            : await _readImageElement(e, bytes, vision, varyVision);
+      } else {
+        text = await _readImageElement(e, bytes, vision, varyVision);
+        // A pasted graph is the case that motivated this whole pass: it usually
+        // OCRs to a handful of axis labels, so text alone never described it.
+        figure = bytes == null
+            ? null
+            : await _analyzeFigure(figureAnalyzer, bytes);
+      }
+      if (text.isNotEmpty) imageTexts.add(text);
       if (figure != null) figures.add(figure);
 
       sources.add(PageContentSource(
@@ -257,6 +278,21 @@ class PageContentExtractor {
 
   /// Runs the figure pass, swallowing everything except a missing local model —
   /// a figure is an enhancement, and a page must still summarize without one.
+  /// The merged read, with the same exception contract as [_analyzeFigure]: a
+  /// missing model reaches the caller so it can offer the download; any other
+  /// failure degrades to "nothing read", which sends the caller to the OCR
+  /// fallback rather than losing the page.
+  Future<({String verbatimText, FigureDescription? figure})> _analyzeWithText(
+      FigureAnalyzer analyzer, Uint8List bytes) async {
+    try {
+      return await analyzer.analyzeWithText(bytes);
+    } on AiModelNotReadyException {
+      rethrow;
+    } on AiException {
+      return (verbatimText: '', figure: null);
+    }
+  }
+
   Future<FigureDescription?> _analyzeFigure(
       FigureAnalyzer? analyzer, Uint8List bytes) async {
     if (analyzer == null) return null;

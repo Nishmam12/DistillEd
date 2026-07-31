@@ -130,9 +130,35 @@ abstract class LlmRuntime {
     bool supportImage = false,
     int maxNumImages = 1,
   });
+
+  /// Unloads the resident model, freeing its weights and accelerator context.
+  ///
+  /// [LlmSession.close] deliberately does NOT do this — the plugin keeps ONE
+  /// model instance cached and hands it to every session, so closing it per
+  /// call forced a full multi-second rebuild on the next one. The caller owns
+  /// the residency window instead (see [LocalGemmaProvider]'s idle release).
+  ///
+  /// Safe to call when nothing is loaded.
+  Future<void> releaseModel();
 }
 
 class FlutterGemmaRuntime implements LlmRuntime {
+  /// The construction parameters of the model instance the plugin currently
+  /// has cached, or null when nothing is loaded.
+  ///
+  /// Tracked here because the ANDROID plugin's cache check compares only the
+  /// model's name — unlike the desktop one, which also compares `supportImage`,
+  /// `supportAudio` and `maxTokens`. So a request with different parameters
+  /// silently receives the previously-built instance.
+  ///
+  /// That was harmless while every call closed the model afterwards. Once the
+  /// model started surviving between calls, it became a correctness bug: a
+  /// text-only first call (Summarize) would cache a model with NO vision
+  /// encoder, and every page read after it would then be handed that model.
+  /// Whoever called first would decide whether images worked for the rest of
+  /// the process.
+  ({bool supportImage, int? maxNumImages, int maxTokens})? _loadedWith;
+
   @override
   Future<LlmSession> open({
     required LlmModelSpec spec,
@@ -152,6 +178,18 @@ class FlutterGemmaRuntime implements LlmRuntime {
       throw LlmNotReadyException();
     }
 
+    final wanted = (
+      supportImage: supportImage,
+      maxNumImages: supportImage ? maxNumImages : null,
+      maxTokens: spec.maxTokens,
+    );
+    // Drop the cached instance ourselves when the parameters differ, since the
+    // plugin will not. Same-parameter calls — the overwhelmingly common case,
+    // and the whole point of keeping it loaded — still reuse it.
+    if (_loadedWith != null && _loadedWith != wanted) {
+      await releaseModel();
+    }
+
     final InferenceModel model;
     try {
       model = await FlutterGemma.getActiveModel(
@@ -165,6 +203,7 @@ class FlutterGemmaRuntime implements LlmRuntime {
     } on StateError {
       throw LlmNotReadyException();
     }
+    _loadedWith = wanted;
 
     try {
       final session = await model.createSession(
@@ -178,19 +217,26 @@ class FlutterGemmaRuntime implements LlmRuntime {
         // build even if no image is ever sent.
         enableVisionModality: supportImage ? true : null,
       );
-      return _GemmaSession(model, session);
+      return _GemmaSession(session);
     } catch (e) {
       // Session creation failed — don't leak the loaded model.
       await model.close();
       throw LlmGenerationException('Could not start the model session.', e);
     }
   }
+
+  @override
+  Future<void> releaseModel() async {
+    // The plugin owns a single cached instance; closing it fires the internal
+    // close-listener that clears the cache, so the next open() rebuilds.
+    _loadedWith = null;
+    await FlutterGemmaPlugin.instance.initializedModel?.close();
+  }
 }
 
 class _GemmaSession implements LlmSession {
-  final InferenceModel _model;
   final InferenceModelSession _session;
-  _GemmaSession(this._model, this._session);
+  _GemmaSession(this._session);
 
   @override
   Future<void> addTurn(String text, {required bool isUser}) =>
@@ -215,12 +261,13 @@ class _GemmaSession implements LlmSession {
     return _session.getResponse();
   }
 
+  /// Closes the conversation ONLY — the model stays loaded.
+  ///
+  /// Each call still gets a fresh session, so no prompt or reply ever leaks
+  /// between calls; only the (stateless) weights and accelerator context are
+  /// reused. Unloading the model belongs to [LlmRuntime.releaseModel], which
+  /// [LocalGemmaProvider] drives off an idle timer — closing it here rebuilt
+  /// the whole model on every call (seconds each, 12+ times per page read).
   @override
-  Future<void> close() async {
-    try {
-      await _session.close();
-    } finally {
-      await _model.close();
-    }
-  }
+  Future<void> close() => _session.close();
 }

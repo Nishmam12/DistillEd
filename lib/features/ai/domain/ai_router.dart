@@ -110,9 +110,18 @@ class AiRouter {
   Future<RoutingDecision> decide({
     required int inputWordCount,
     required bool cloudEnabled,
+    bool preferCloud = false,
   }) async {
     final online = await _reachability.isOnline();
     final tooLong = inputWordCount > localInputWordBudget;
+
+    // Cloud-first: the user asked for the cloud to do the work, so length is
+    // irrelevant. Still gated on [cloudEnabled] (belt and braces — the mode
+    // that sets this also permits cloud) and on actually being online: offline
+    // falls through to the local path below rather than failing the call.
+    if (online && cloudEnabled && preferCloud) {
+      return const RoutingDecision(AiRoute.cloud);
+    }
 
     // Privacy default: cloud only when online, explicitly enabled, AND the
     // note doesn't fit the local budget.

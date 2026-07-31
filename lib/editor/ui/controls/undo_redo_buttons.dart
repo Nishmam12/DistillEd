@@ -3,7 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
 
 import '../../state/history_controller.dart';
 import '../../state/scene_controller.dart';

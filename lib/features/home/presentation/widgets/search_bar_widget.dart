@@ -5,7 +5,7 @@
 // cream field used everywhere else.
 
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../notes_palette.dart';

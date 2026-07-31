@@ -2,11 +2,18 @@
 //
 // Bridges the two halves of the AI stack: the provider-agnostic platform
 // contract (`features/ai/domain/ai_provider.dart`, Loop 0.1) and the proven
-// local runtime seams (`gemma_adapter.dart`, ported from main). It preserves
-// the runtime's memory invariant — every call loads the model, runs ONE
-// generation, and unloads it in a finally block, serialized by a mutex so at
-// most one model is ever resident — while adding the streaming shape the
-// platform requires (`session.respondStream` → incremental token chunks).
+// local runtime seams (`gemma_adapter.dart`, ported from main), while adding
+// the streaming shape the platform requires (`session.respondStream` →
+// incremental token chunks).
+//
+// MEMORY: at most one model is ever resident, serialized by a mutex so two
+// loads can never overlap. Residency is now scoped to a burst of work rather
+// than a single call: every call opens and closes its OWN session, but the
+// model stays loaded and is released [idleUnloadDelay] after the last one
+// finishes. The per-call unload it replaces was correct but pathological for
+// the page-analysis path, which makes 12+ calls back to back and paid a full
+// multi-second model rebuild for each (measured 3.6s–17.2s per rebuild on a
+// Xiaomi Pad 7). Nothing stays resident once the app goes quiet.
 //
 // Failures surface as typed [AiException]s so the router/UI can branch on the
 // kind (offer the model download, route elsewhere) without string-matching.
@@ -48,8 +55,43 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
         _embedder = embedder;
 
   /// Mutex: chain of futures; each call awaits the previous one. Held for the
-  /// whole stream so the load→generate→unload lifecycle never overlaps.
+  /// whole stream so the load→generate lifecycle never overlaps.
   Future<void> _lock = Future.value();
+
+  /// How long the model stays loaded after the last call finishes.
+  ///
+  /// Long enough to cover the gaps inside one page analysis (its calls run
+  /// back to back), short enough that an idle app is not sitting on gigabytes.
+  static const Duration idleUnloadDelay = Duration(seconds: 30);
+
+  Timer? _idleUnload;
+
+  /// Cancels a pending unload — a new call is about to use the model.
+  void _cancelIdleUnload() {
+    _idleUnload?.cancel();
+    _idleUnload = null;
+  }
+
+  /// Arms the unload. Called after a session closes, while the mutex is still
+  /// held, so it can never race a call that is already running.
+  void _armIdleUnload() {
+    _idleUnload?.cancel();
+    _idleUnload = Timer(idleUnloadDelay, () {
+      _idleUnload = null;
+      // Fire-and-forget: an unload failure is not something a caller can act
+      // on, and the next open() rebuilds regardless.
+      unawaited(_runtime.releaseModel().catchError((Object _) {}));
+    });
+  }
+
+  /// Unloads the model now, without waiting for the idle timer.
+  ///
+  /// For callers that know no further generation is coming (app backgrounded,
+  /// AI surfaces disposed) and want the memory back immediately.
+  Future<void> releaseModel() async {
+    _cancelIdleUnload();
+    await _runtime.releaseModel();
+  }
 
   @override
   AiCapabilities get capabilities => AiCapabilities(
@@ -78,6 +120,7 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
     final gate = Completer<void>();
     _lock = gate.future;
     await previous;
+    _cancelIdleUnload();
     try {
       yield* _generate(
         prompt: prompt,
@@ -86,6 +129,7 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
         opts: opts,
       );
     } finally {
+      _armIdleUnload();
       gate.complete();
     }
   }
@@ -106,10 +150,12 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
     final gate = Completer<void>();
     _lock = gate.future;
     await previous;
+    _cancelIdleUnload();
     try {
       return await _transcribe(
           imageBytes, prompt, temperature, maxOutputTokens, randomSeed);
     } finally {
+      _armIdleUnload();
       gate.complete();
     }
   }
@@ -160,7 +206,8 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
       throw AiGenerationException('Local vision model failed to read the image.',
           cause: e);
     } finally {
-      // Unload no matter what — nothing stays resident after a call.
+      // Close the conversation no matter what. The MODEL stays loaded for
+      // [idleUnloadDelay] so a burst of calls does not rebuild it each time.
       await session.close();
     }
   }
@@ -224,7 +271,8 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
         yield* _applyStopSequences(chunks, opts.stopSequences);
       }
     } finally {
-      // Unload no matter what — nothing stays resident after a call.
+      // Close the conversation no matter what. The MODEL stays loaded for
+      // [idleUnloadDelay] so a burst of calls does not rebuild it each time.
       await session.close();
     }
   }

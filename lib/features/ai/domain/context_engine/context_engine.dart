@@ -11,6 +11,7 @@
 
 import 'dart:convert';
 
+import '../ai_provenance.dart';
 import '../ai_provider.dart';
 import '../ai_router.dart';
 import '../meaningfulness_gate.dart';
@@ -102,10 +103,25 @@ $kMathMarkup''';
     final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
     final prompt = _buildPrompt(truncateToWords(text, budget), previousContext);
 
-    var json = tryExtractJsonObject(await _completeGuarded(prompt));
-    json ??= tryExtractJsonObject(await _complete('$prompt\n\n$_retryNudge'));
-    return json == null ? PageContext.empty : PageContext.fromJson(json);
+    final guarded = await _completeGuarded(prompt);
+    var json = tryExtractJsonObject(guarded.text);
+    var ranOn = guarded.ranOn;
+
+    if (json == null) {
+      // The local retry, which never escalates — so it runs wherever the
+      // configured provider runs, not wherever the guarded attempt ended up.
+      json = tryExtractJsonObject(await _complete('$prompt\n\n$_retryNudge'));
+      ranOn = _providerRanOn;
+    }
+
+    if (json == null) return PageContext.empty;
+    return PageContext.fromJson(json).withRanOn(ranOn);
   }
+
+  /// Where [_provider] runs, for calls that bypass the guard.
+  AiRanOn get _providerRanOn => _provider.capabilities.isLocal
+      ? AiRanOn.onDevice
+      : AiRanOn.cloudPreferred;
 
   static String _buildPrompt(String noteText, PageContext? previous) {
     final continuity = previous != null && previous.currentTopic.isNotEmpty
@@ -127,15 +143,27 @@ $kMathMarkup''';
   /// Only the first: the retry exists to fix malformed JSON from a model that
   /// is otherwise working, and running the fail-safe twice per page on the
   /// passive analysis loop would double its cost for no extra signal.
-  Future<String> _completeGuarded(String prompt) async {
+  Future<({String text, AiRanOn ranOn})> _completeGuarded(String prompt) async {
     final guard = _guard;
-    if (guard == null) return _complete(prompt);
+    if (guard == null) {
+      return (text: await _complete(prompt), ranOn: _providerRanOn);
+    }
     final result = await guard.run(
       prompt: prompt,
       systemPrompt: schemaInstruction,
       options: extractOptions,
     );
-    return result.text;
+    // The guard's tier is the ONLY honest source for this: it alone knows
+    // whether the escalation actually fired. Inferring from settings would
+    // report "cloud" for a page the on-device model read perfectly well —
+    // exactly the confusion the indicator exists to remove.
+    return (
+      text: result.text,
+      ranOn: switch (result.tier) {
+        AnswerTier.cloudVerified => AiRanOn.cloudEscalated,
+        AnswerTier.local || AnswerTier.localLowConfidence => _providerRanOn,
+      },
+    );
   }
 
   Future<String> _complete(String prompt) async {

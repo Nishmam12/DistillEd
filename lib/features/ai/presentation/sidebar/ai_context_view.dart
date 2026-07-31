@@ -14,6 +14,7 @@ import '../../../../core/theme/ink_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../data/llm/llm_exceptions.dart';
 import '../../data/llm/llm_model_spec.dart';
+import '../../domain/ai_provenance.dart';
 import '../../domain/ai_provider.dart';
 import '../../domain/context_engine/page_context.dart';
 import '../../domain/features/explainer.dart';
@@ -320,6 +321,11 @@ class _ContextBody extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 13, color: buildContext.ink.textSecondary)),
           ],
+          // Its own line rather than the header row: the panel is ~300px wide
+          // on a tablet split view, where the label and the Re-read button
+          // already fill it.
+          const SizedBox(height: 8),
+          _RanOnBadge(ranOn: c.ranOn),
           const SizedBox(height: 14),
           _LevelIndicator(level: c.estimatedLevel, confidence: c.confidence),
           if (c.keyConcepts.isNotEmpty) ...[
@@ -409,6 +415,60 @@ class _RereadingBanner extends StatelessWidget {
 /// "Read this page again" — forces a fresh, differently-sampled Gemma-vision
 /// transcription. A real Material button (not a bare InkWell) so the tap target
 /// and ripple are guaranteed, with a comfortable hit area in the topic row.
+/// Says where THIS analysis ran — not what the settings allow.
+///
+/// The distinction is the whole point. The sidebar's cloud switch shows a
+/// permission, and with it on a page is still usually read entirely on-device,
+/// so the switch could never answer "did my note leave this device?". This
+/// badge is stamped by the engine from the provider that actually served the
+/// call, so it can differ from the setting and be right.
+///
+/// Muted for on-device (the quiet, expected case) and accent-coloured only when
+/// content actually left the device, so the eye-catching state is the one worth
+/// noticing.
+class _RanOnBadge extends StatelessWidget {
+  final AiRanOn ranOn;
+  const _RanOnBadge({required this.ranOn});
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = context.ink;
+    final left = ranOn.leftDevice;
+    final fg = left ? ink.accent : ink.textMuted;
+
+    return Tooltip(
+      message: ranOn.explanation,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: fg.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              left ? Icons.cloud_outlined : Icons.phone_android_outlined,
+              size: 11,
+              color: fg,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              ranOn.label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+                color: fg,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _RereadButton extends StatelessWidget {
   final VoidCallback onTap;
   const _RereadButton({required this.onTap});

@@ -256,6 +256,7 @@ class SummarizationService {
     required List<int> pageIds,
     required String languageCode,
     required bool cloudEnabled,
+    bool preferCloud = false,
     void Function(SummarizeStage stage)? onStage,
   }) {
     return summarizeScope(
@@ -263,6 +264,7 @@ class SummarizationService {
       scope: NotebookScope(pageIds),
       languageCode: languageCode,
       cloudEnabled: cloudEnabled,
+      preferCloud: preferCloud,
       onStage: onStage,
     );
   }
@@ -284,6 +286,7 @@ class SummarizationService {
     required SummarizeScope scope,
     required String languageCode,
     required bool cloudEnabled,
+    bool preferCloud = false,
     void Function(SummarizeStage stage)? onStage,
   }) async {
     onStage?.call(SummarizeStage.recognizing);
@@ -312,6 +315,7 @@ class SummarizationService {
     final decision = await _router.decide(
       inputWordCount: countWords(text),
       cloudEnabled: cloudEnabled,
+      preferCloud: preferCloud,
     );
 
     String summary;

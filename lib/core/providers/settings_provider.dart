@@ -9,6 +9,45 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// type rather than the reverse.
 enum CloudPrivacy { localOnly, askEachTime, allowCloudForNonSensitive }
 
+/// WHERE the AI runs — distinct from [CloudPrivacy], which governs whether the
+/// user is asked before a cloud call happens.
+///
+/// [onDevice] is the DEFAULT, preserving the privacy stance of the
+/// `cloudAiEnabled = false` bool this replaces: nothing leaves the device until
+/// the user opts in. [auto] is the historical opted-in behaviour — on-device
+/// first, cloud only when it fails or the note overflows the local context
+/// window. [cloudFirst] is for someone who would rather wait on the network
+/// than on a 2B model: it skips the local model entirely, so a page read costs
+/// one cloud round-trip instead of a multi-second model load plus several
+/// on-device passes.
+///
+/// Persisted by NAME, not index, so reordering this enum cannot silently
+/// reinterpret a stored preference.
+enum AiProcessingMode {
+  /// Nothing ever leaves the device, whatever [CloudPrivacy] says.
+  onDevice,
+
+  /// On-device first; escalate to cloud on failure or overflow.
+  auto,
+
+  /// Cloud reads the page directly; the local model is not loaded.
+  cloudFirst;
+
+  /// True when this mode permits a cloud call at all — the successor to the
+  /// old `cloudAiEnabled` bool, and what escalation predicates should ask.
+  bool get allowsCloud => this != AiProcessingMode.onDevice;
+
+  /// True when the cloud should be tried BEFORE the on-device model.
+  bool get prefersCloud => this == AiProcessingMode.cloudFirst;
+
+  static AiProcessingMode byName(String? name) => switch (name) {
+        'onDevice' => AiProcessingMode.onDevice,
+        'cloudFirst' => AiProcessingMode.cloudFirst,
+        'auto' => AiProcessingMode.auto,
+        _ => AiProcessingMode.auto,
+      };
+}
+
 /// App theme preference. `system` follows the OS setting (the Android
 /// convention, and the default); `light` / `dark` pin one regardless.
 ///
@@ -35,10 +74,13 @@ class SettingsState {
   final bool devMode;
   final String exportDefault;
 
-  /// Privacy default OFF: note content never leaves the device unless the
-  /// user explicitly enables cloud AI. Drives the pre-Phase-3 cloud path
-  /// (Summarize's existing `AiRouter`) — unchanged by [cloudPrivacy] below.
-  final bool cloudAiEnabled;
+  /// Where the AI runs. Default [AiProcessingMode.onDevice] — the same privacy
+  /// default as the `cloudAiEnabled = false` bool it supersedes, so note
+  /// content still never leaves the device until the user opts in.
+  ///
+  /// `cloudAiEnabled` survives as a derived getter so existing call sites keep
+  /// working unchanged.
+  final AiProcessingMode aiMode;
 
   /// The Phase 3 Intelligent Router's privacy gate. Default `askEachTime`
   /// (spec-mandated) — additive alongside [cloudAiEnabled], not a replacement:
@@ -79,7 +121,7 @@ class SettingsState {
     this.themeMode = AppThemeMode.system,
     this.devMode = false,
     this.exportDefault = 'PNG',
-    this.cloudAiEnabled = false,
+    this.aiMode = AiProcessingMode.onDevice,
     this.cloudPrivacy = CloudPrivacy.askEachTime,
     this.hasSeenFirstCloudCall = false,
     this.recognitionLanguage = 'en',
@@ -90,11 +132,19 @@ class SettingsState {
   /// True when gated model downloads can be attempted.
   bool get hasHuggingFaceToken => huggingFaceToken.trim().isNotEmpty;
 
+  /// Whether a cloud call is permitted at all.
+  ///
+  /// Kept as the name every escalation predicate already asks for. It is now
+  /// DERIVED from [aiMode] rather than stored: `onDevice` forbids the cloud,
+  /// `auto` and `cloudFirst` both permit it — they differ only in whether the
+  /// local model is tried first, which is [AiProcessingMode.prefersCloud].
+  bool get cloudAiEnabled => aiMode.allowsCloud;
+
   SettingsState copyWith({
     AppThemeMode? themeMode,
     bool? devMode,
     String? exportDefault,
-    bool? cloudAiEnabled,
+    AiProcessingMode? aiMode,
     CloudPrivacy? cloudPrivacy,
     bool? hasSeenFirstCloudCall,
     String? recognitionLanguage,
@@ -105,7 +155,7 @@ class SettingsState {
       themeMode: themeMode ?? this.themeMode,
       devMode: devMode ?? this.devMode,
       exportDefault: exportDefault ?? this.exportDefault,
-      cloudAiEnabled: cloudAiEnabled ?? this.cloudAiEnabled,
+      aiMode: aiMode ?? this.aiMode,
       cloudPrivacy: cloudPrivacy ?? this.cloudPrivacy,
       hasSeenFirstCloudCall: hasSeenFirstCloudCall ?? this.hasSeenFirstCloudCall,
       recognitionLanguage: recognitionLanguage ?? this.recognitionLanguage,
@@ -125,7 +175,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
   static const _kDevMode = 'ui.devMode';
   static const _kExportDefault = 'ui.exportDefault';
-  static const _kCloudAiEnabled = 'ai.cloudEnabled';
+  static const _kAiMode = 'ai.mode';
+
+  /// The pre-4.5 boolean key. Read once, on the first launch after upgrading,
+  /// so an existing opt-in is not silently revoked. Never written.
+  static const _kLegacyCloudAiEnabled = 'ai.cloudEnabled';
   static const _kCloudPrivacy = 'ai.cloudPrivacy';
   static const _kHasSeenFirstCloudCall = 'ai.hasSeenFirstCloudCall';
   static const _kRecognitionLanguage = 'ai.recognitionLanguage';
@@ -151,7 +205,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       themeMode: _restoreThemeMode(prefs),
       devMode: prefs.getBool(_kDevMode) ?? false,
       exportDefault: exportFormats.contains(storedExport) ? storedExport : 'PNG',
-      cloudAiEnabled: prefs.getBool(_kCloudAiEnabled) ?? false,
+      aiMode: _restoreAiMode(prefs),
       cloudPrivacy: CloudPrivacy.values.firstWhere(
         (v) => v.name == prefs.getString(_kCloudPrivacy),
         orElse: () => CloudPrivacy.askEachTime,
@@ -180,6 +234,22 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
         : AppThemeMode.system;
   }
 
+  /// Reads the stored AI mode, falling back to the legacy `ai.cloudEnabled`
+  /// boolean on the first launch after upgrading.
+  ///
+  /// The legacy mapping is deliberately conservative in BOTH directions: `true`
+  /// becomes [AiProcessingMode.auto] (the behaviour that bool actually bought —
+  /// escalate on failure), never `cloudFirst`, because nobody consented to
+  /// cloud-first by ticking it. `false`, or no stored value at all, becomes
+  /// [AiProcessingMode.onDevice], so upgrading cannot widen anyone's privacy.
+  static AiProcessingMode _restoreAiMode(SharedPreferences prefs) {
+    final stored = prefs.getString(_kAiMode);
+    if (stored != null) return AiProcessingMode.byName(stored);
+    return (prefs.getBool(_kLegacyCloudAiEnabled) ?? false)
+        ? AiProcessingMode.auto
+        : AiProcessingMode.onDevice;
+  }
+
   Future<void> setThemeMode(AppThemeMode value) async {
     state = state.copyWith(themeMode: value);
     final prefs = await SharedPreferences.getInstance();
@@ -199,11 +269,20 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     await prefs.setString(_kExportDefault, value);
   }
 
-  Future<void> setCloudAiEnabled(bool value) async {
-    state = state.copyWith(cloudAiEnabled: value);
+  Future<void> setAiMode(AiProcessingMode value) async {
+    state = state.copyWith(aiMode: value);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kCloudAiEnabled, value);
+    await prefs.setString(_kAiMode, value.name);
   }
+
+  /// Back-compat shim for the two-state callers (`/cloud on|off`, the sidebar
+  /// switch). Turning cloud ON lands on [AiProcessingMode.auto], never
+  /// `cloudFirst` — the stronger mode is only reachable by choosing it
+  /// explicitly in Settings, so a one-tap switch can never send every page to
+  /// the network. OFF returns to [AiProcessingMode.onDevice].
+  Future<void> setCloudAiEnabled(bool value) => setAiMode(
+        value ? AiProcessingMode.auto : AiProcessingMode.onDevice,
+      );
 
   Future<void> setCloudPrivacy(CloudPrivacy value) async {
     state = state.copyWith(cloudPrivacy: value);

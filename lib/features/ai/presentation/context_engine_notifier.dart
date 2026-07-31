@@ -196,6 +196,11 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       _visionReadDone = true;
       final context =
           await _engine.analyze(content, previousContext: cached?.context);
+      // Answers "did this page go to the cloud?" from `adb logcat` alone.
+      // Deliberately not debug-gated: this is a privacy fact about the user's
+      // own notes, and a release build should be able to demonstrate it.
+      debugPrint('[AiProvenance] page=$_pageId analysis ranOn=${context.ranOn.name} '
+          'leftDevice=${context.ranOn.leftDevice}');
       _cache.save(_pageId, signature, context);
       if (mounted) state = AsyncValue.data(context);
       // Durable concept exposure (Phase 2 Learning Memory) — only for a real

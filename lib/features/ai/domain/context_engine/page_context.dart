@@ -4,6 +4,7 @@
 
 import 'package:flutter/foundation.dart' show immutable;
 
+import '../ai_provenance.dart';
 import '../knowledge_graph/concept_relation.dart';
 
 /// The writer's apparent grasp of the page's topic.
@@ -38,6 +39,12 @@ class PageContext {
   /// 0.0–1.0 — the engine's confidence in this read.
   final double confidence;
 
+  /// Which tier actually produced this analysis, so the panel can show it.
+  ///
+  /// NOT parsed from the model's JSON — the engine stamps it from the provider
+  /// it used, because a model cannot be trusted to report where it ran.
+  final AiRanOn ranOn;
+
   const PageContext({
     required this.currentTopic,
     this.subtopics = const [],
@@ -48,7 +55,22 @@ class PageContext {
     this.relatedConcepts = const [],
     this.estimatedLevel = KnowledgeLevel.beginner,
     this.confidence = 0.0,
+    this.ranOn = AiRanOn.onDevice,
   });
+
+  /// Same context, restamped with where it ran.
+  PageContext withRanOn(AiRanOn value) => PageContext(
+        currentTopic: currentTopic,
+        subtopics: subtopics,
+        keyConcepts: keyConcepts,
+        namedEntities: namedEntities,
+        definitions: definitions,
+        knowledgeGaps: knowledgeGaps,
+        relatedConcepts: relatedConcepts,
+        estimatedLevel: estimatedLevel,
+        confidence: confidence,
+        ranOn: value,
+      );
 
   /// The "engine has nothing to say" value — too little content, or the model
   /// produced nothing usable. Never null so consumers don't branch on null.

@@ -51,6 +51,7 @@ import '../domain/rag/bulk_indexer.dart';
 import '../domain/rag/rag_indexer.dart';
 import '../domain/rag/rag_retriever.dart';
 import '../domain/rag/text_embedder.dart';
+import '../domain/routing/cloud_first_transcriber.dart';
 import '../domain/routing/intelligent_router.dart';
 import '../domain/study_planner/study_plan.dart';
 import '../domain/tools/calculator_tool.dart';
@@ -289,10 +290,26 @@ final imageTextRecognitionServiceProvider =
 final imageTranscriberProvider = Provider<ImageTranscriber>(
     (ref) => ref.watch(localAiProvider) as ImageTranscriber);
 
-/// Gemma-vision OCR — the PRIMARY recogniser for deep page reads (handwriting
-/// and imported images). ML Kit (above) is its last-resort fallback.
+/// The transcriber page reads actually use — on-device, or the cloud gateway
+/// when the user picked [AiProcessingMode.cloudFirst].
+///
+/// Separate from [imageTranscriberProvider] (which must stay the raw local
+/// instance for its mutex) so that only the READ path is routed. The mode is
+/// read at call time, so switching it takes effect on the next read.
+final routedImageTranscriberProvider = Provider<ImageTranscriber>((ref) {
+  final cloud = ref.watch(cloudGatewayMidProvider);
+  return CloudFirstTranscriber(
+    local: ref.watch(imageTranscriberProvider),
+    cloud: cloud,
+    preferCloud: () => ref.read(settingsProvider).aiMode.prefersCloud,
+  );
+});
+
+/// Vision OCR — the PRIMARY recogniser for deep page reads (handwriting and
+/// imported images). ML Kit (above) is its last-resort fallback.
 final gemmaVisionOcrServiceProvider = Provider<GemmaVisionOcrService>((ref) =>
-    GemmaVisionOcrService(transcriber: ref.watch(imageTranscriberProvider)));
+    GemmaVisionOcrService(
+        transcriber: ref.watch(routedImageTranscriberProvider)));
 
 /// Reads charts and diagrams as structured figures — on-device first, cloud
 /// only when the on-device read misses the quality bar.
@@ -309,6 +326,7 @@ final figureAnalyzerProvider = Provider<FigureAnalyzer>((ref) {
     local: local,
     cloud: cloud,
     canEscalate: () async => ref.read(settingsProvider).cloudAiEnabled,
+    preferCloud: () => ref.read(settingsProvider).aiMode.prefersCloud,
     localModelId: ref.watch(localAiProvider).capabilities.modelId,
     cloudModelId: cloud.capabilities.modelId,
   );
@@ -355,13 +373,28 @@ Future<Uint8List?> _readFileBytes(String absolutePath) async {
 final pageContextCacheProvider =
     Provider<PageContextCache>((ref) => PageContextCache());
 
-final contextEngineProvider = Provider<ContextEngine>((ref) => ContextEngine(
-      provider: ref.watch(localAiProvider),
-      // The accuracy fail-safe: an extraction the on-device model returned
-      // empty or looping is re-run on the cloud tier when the user's privacy
-      // setting allows it, instead of silently reading as "this page is blank".
-      guard: ref.watch(aiQualityGuardProvider),
-    ));
+/// Page analysis. Runs on the cloud tier directly under
+/// [AiProcessingMode.cloudFirst], on-device otherwise.
+///
+/// Watched (not read) so switching modes rebuilds the engine — the provider
+/// also supplies the input word budget, and cloud's context window is far
+/// larger than the local one, so the two cannot share a cached engine.
+///
+/// Unlike the vision path, a cloud failure here is NOT swallowed into a local
+/// retry: it surfaces as an error the panel can show. Analysis that silently
+/// degraded is what made a failed read indistinguishable from a blank page.
+final contextEngineProvider = Provider<ContextEngine>((ref) {
+  final preferCloud = ref.watch(settingsProvider).aiMode.prefersCloud;
+  return ContextEngine(
+    provider: preferCloud
+        ? ref.watch(cloudGatewayMidProvider)
+        : ref.watch(localAiProvider),
+    // The accuracy fail-safe: an extraction the on-device model returned
+    // empty or looping is re-run on the cloud tier when the user's privacy
+    // setting allows it, instead of silently reading as "this page is blank".
+    guard: ref.watch(aiQualityGuardProvider),
+  );
+});
 
 /// The Phase 3 cloud gateway's base URL — the Render deployment
 /// (`server/ai-gateway`, built from the repo-root `render.yaml`). Free plan,

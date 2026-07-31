@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/providers/settings_provider.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -106,17 +106,12 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionHeader('AI'),
           _SettingsCard(
             children: [
-              // SET-12. Presentation only — `setCloudAiEnabled` is untouched.
-              _SettingsRow(
-                icon: PhosphorIconsRegular.cloud,
-                title: 'Cloud AI',
-                subtitle:
-                    'Allow very long notes to be summarized in the cloud. '
-                    'When off, notes never leave this device.',
-                trailing: _AccentSwitch(
-                  value: settings.cloudAiEnabled,
-                  onChanged: notifier.setCloudAiEnabled,
-                ),
+              // SET-12. Three-way, because the old switch could not express the
+              // difference students actually asked about: "on" never meant
+              // "use the cloud", only "you may fall back to it".
+              _AiModeRow(
+                value: settings.aiMode,
+                onChanged: notifier.setAiMode,
               ),
               // SET-13.
               _SettingsRow(
@@ -608,6 +603,65 @@ class _ThemeModeRow extends StatelessWidget {
                 value: AppThemeMode.dark,
                 label: 'Dark',
                 icon: PhosphorIconsRegular.moon,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Where the AI runs. Mirrors [_ThemeModeRow]: a labelling row, then the
+/// segmented control that actually carries the state.
+///
+/// The subtitles state the privacy consequence of each mode in the mode's own
+/// terms, because "Cloud AI: on" told the student nothing about whether their
+/// notes were being sent anywhere — the complaint this control exists to fix.
+class _AiModeRow extends StatelessWidget {
+  final AiProcessingMode value;
+  final ValueChanged<AiProcessingMode> onChanged;
+
+  const _AiModeRow({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _SettingsRow(
+          icon: PhosphorIconsRegular.cloud,
+          title: 'AI processing',
+          subtitle: switch (value) {
+            AiProcessingMode.onDevice =>
+              'Everything runs on this device. Notes never leave it.',
+            AiProcessingMode.auto =>
+              'On-device first; the cloud only when it fails or the note is '
+                  'too long.',
+            AiProcessingMode.cloudFirst =>
+              'The cloud reads your notes directly — faster, but pages are '
+                  'sent off this device.',
+          },
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          child: AppSegmentedControl<AiProcessingMode>(
+            value: value,
+            onChanged: onChanged,
+            segments: const [
+              AppSegment(
+                value: AiProcessingMode.onDevice,
+                label: 'On-device',
+                icon: PhosphorIconsRegular.deviceMobile,
+              ),
+              AppSegment(
+                value: AiProcessingMode.auto,
+                label: 'Auto',
+                icon: PhosphorIconsRegular.sparkle,
+              ),
+              AppSegment(
+                value: AiProcessingMode.cloudFirst,
+                label: 'Cloud',
+                icon: PhosphorIconsRegular.cloud,
               ),
             ],
           ),
