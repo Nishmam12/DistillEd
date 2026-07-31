@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../../core/providers/settings_provider.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/ink_colors.dart';
 import '../../../../core/utils/external_links.dart';
+import '../../../../widgets/app_chip_group.dart';
+import '../../../../widgets/app_segmented_control.dart';
 import '../../../ai/data/embeddings/embedder_spec.dart';
 import '../../../ai/data/llm/hf_token_check.dart';
 import '../../../ai/data/llm/llm_exceptions.dart';
@@ -21,12 +25,37 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final c = context.colors;
 
     return Scaffold(
+      // SET-01. The app bar is set explicitly rather than left to the theme,
+      // because the app-wide ThemeData is still the pre-migration warm skin —
+      // this screen is the first one on the navy/gold tokens.
       appBar: AppBar(
         title: const Text('Settings'),
+        backgroundColor: c.bgPrimary,
+        foregroundColor: c.accent,
+        surfaceTintColor: c.bgPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleTextStyle: TextStyle(
+          fontFamily: 'Poppins',
+          color: c.accent,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.2,
+        ),
+        // Same behaviour as the automatic back button (`maybePop`), drawn with
+        // the Phosphor arrow so the chrome matches the row glyphs.
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: const Icon(PhosphorIconsRegular.arrowLeft),
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                onPressed: () => Navigator.of(context).maybePop(),
+              )
+            : null,
       ),
-      backgroundColor: context.ink.background,
+      backgroundColor: c.bgPrimary,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
@@ -42,13 +71,15 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionHeader('Notes'),
           _SettingsCard(
             children: [
+              // SET-10. Navigation unchanged.
               _SettingsRow(
-                icon: Icons.delete_outline,
+                icon: PhosphorIconsRegular.trash,
                 title: 'Trash',
                 subtitle: 'Restore deleted notes for '
                     '${NoteRepository.trashRetention.inDays} days',
                 trailing: IconButton(
-                  icon: const Icon(Icons.chevron_right),
+                  icon: Icon(PhosphorIconsRegular.caretRight,
+                      color: c.textSecondary),
                   onPressed: () => context.push('/trash'),
                 ),
               ),
@@ -57,11 +88,12 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionHeader('Export Defaults'),
           _SettingsCard(
             children: [
+              // SET-11.
               _SettingsRow(
-                icon: Icons.image_outlined,
+                icon: PhosphorIconsRegular.image,
                 title: 'Format',
                 subtitle: 'Default format when exporting notebooks',
-                trailing: _PillToggle<String>(
+                trailing: AppChipGroup<String>(
                   value: settings.exportDefault,
                   options: [
                     for (final f in SettingsNotifier.exportFormats) (f, f),
@@ -74,40 +106,55 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionHeader('AI'),
           _SettingsCard(
             children: [
+              // SET-12. Presentation only — `setCloudAiEnabled` is untouched.
               _SettingsRow(
-                icon: Icons.cloud_outlined,
+                icon: PhosphorIconsRegular.cloud,
                 title: 'Cloud AI',
                 subtitle:
                     'Allow very long notes to be summarized in the cloud. '
                     'When off, notes never leave this device.',
-                trailing: Switch(
+                trailing: _AccentSwitch(
                   value: settings.cloudAiEnabled,
                   onChanged: notifier.setCloudAiEnabled,
                 ),
               ),
+              // SET-13.
               _SettingsRow(
-                icon: Icons.translate,
+                icon: PhosphorIconsRegular.translate,
                 title: 'Handwriting Language',
                 subtitle: 'Language used to read your notes',
-                trailing: _PillToggle<String>(
+                trailing: AppChipGroup<String>(
                   value: settings.recognitionLanguage,
                   options: const [('en', 'English'), ('bn', 'বাংলা')],
                   onChanged: notifier.setRecognitionLanguage,
                 ),
               ),
+              // SET-14. Presentation only — token storage and verification are
+              // untouched; only the button's colour and the chevron are new.
               _SettingsRow(
-                icon: Icons.key_outlined,
+                icon: PhosphorIconsRegular.key,
                 title: 'HuggingFace Token',
                 subtitle: settings.hasHuggingFaceToken
                     ? 'Added — gated models can be downloaded'
                     : 'Needed for gated models like EmbeddingGemma. Your own '
                         'token, kept on this device.',
-                trailing: TextButton(
-                  onPressed: () => _editHuggingFaceToken(context, ref),
-                  child: Text(
-                    settings.hasHuggingFaceToken ? 'Change' : 'Add',
-                    style: TextStyle(color: context.ink.accentStrong),
-                  ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      onPressed: () => _editHuggingFaceToken(context, ref),
+                      child: Text(
+                        settings.hasHuggingFaceToken ? 'Change' : 'Add',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                          color: c.accent,
+                        ),
+                      ),
+                    ),
+                    Icon(PhosphorIconsRegular.caretRight,
+                        size: 18, color: c.textSecondary),
+                  ],
                 ),
               ),
             ],
@@ -118,22 +165,22 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsCard(
             children: [
               _SettingsRow(
-                icon: Icons.terminal,
+                icon: PhosphorIconsRegular.terminalWindow,
                 title: 'Developer Mode',
                 subtitle: 'Show performance metrics overlay',
-                trailing: Switch(
+                trailing: _AccentSwitch(
                   value: settings.devMode,
                   onChanged: notifier.toggleDevMode,
                 ),
               ),
               if (settings.devMode)
                 _SettingsRow(
-                  icon: Icons.brush_outlined,
+                  icon: PhosphorIconsRegular.paintBrush,
                   title: 'Canvas 2.0 (dev)',
                   subtitle: 'Preview the rebuilt drawing canvas',
                   trailing: Icon(
-                    Icons.chevron_right,
-                    color: context.ink.textMuted,
+                    PhosphorIconsRegular.caretRight,
+                    color: c.textSecondary,
                   ),
                   onTap: () => context.push('/canvas-demo'),
                 ),
@@ -143,11 +190,11 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsCard(
             children: [
               _SettingsRow(
-                icon: Icons.info_outline,
+                icon: PhosphorIconsRegular.info,
                 title: 'About DistillEd',
                 trailing: Icon(
-                  Icons.chevron_right,
-                  color: context.ink.textMuted,
+                  PhosphorIconsRegular.caretRight,
+                  color: c.textSecondary,
                 ),
                 onTap: () => context.push('/about'),
               ),
@@ -332,11 +379,14 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 20, 8, 8),
+      // SET-02. Section headers are tier-1 accent: there are a handful per
+      // screen and each labels a group, so they do not compete the way a
+      // repeated row title would.
       child: Text(
         title.toUpperCase(),
         style: TextStyle(
           fontFamily: 'Poppins',
-          color: context.ink.accent,
+          color: context.colors.accent,
           fontWeight: FontWeight.w700,
           fontSize: 12,
           letterSpacing: 1.4,
@@ -352,21 +402,47 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final rows = <Widget>[];
     for (var i = 0; i < children.length; i++) {
       if (i > 0) {
-        rows.add(const Divider(height: 1, indent: 64));
+        // SET-15. Inset to the text column, not full-bleed: 16 padding +
+        // 36 icon tile + 12 gap = 64, so the rule starts under the title and
+        // the icon column reads as one continuous strip.
+        rows.add(Divider(height: 1, indent: 64, color: c.border));
       }
       rows.add(children[i]);
     }
 
-    final ink = context.ink;
+    // SET-03 / SET-16. Light lifts on a soft shadow with no outline; dark drops
+    // the shadow entirely and draws a 1px hairline instead. A shadow on
+    // near-black is invisible, so carrying it over would leave dark-mode cards
+    // with no edge at all.
+    //
+    // THEME_SPEC.md defines no shadow token, so the tint is derived from
+    // `accent` rather than invented: navy at 6%/4% in light. See the report's
+    // spec-gap note.
     return Container(
       decoration: BoxDecoration(
-        color: ink.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: ink.border),
-        boxShadow: ink.shadowCard,
+        color: c.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: isDark ? Border.all(color: c.border) : null,
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: c.accent.withValues(alpha: 0.06),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: c.accent.withValues(alpha: 0.04),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: rows),
@@ -391,34 +467,42 @@ class _SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = context.ink;
+    final c = context.colors;
     return InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
+            // SET-04. Icon tiles are single-instance chrome — one per row, each
+            // labelling a different setting — so they keep the accent without
+            // the wall-of-gold problem that repeated titles would have.
             Container(
               width: 36,
               height: 36,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: ink.accentWash,
-                borderRadius: BorderRadius.circular(10),
+                color: c.surfaceSubtle,
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, size: 20, color: ink.accent),
+              child: Icon(icon, size: 20, color: c.accent),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // SET-05. `textPrimary`, NOT `accent`. In dark this is cream
+                  // (#E6E2DB) over a grey description. The mockup shows gold
+                  // titles here; THEME_SPEC.md § "Color hierarchy" overrides it
+                  // — thirty gold titles in a list signal nothing.
                   Text(
                     title,
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: ink.textPrimary,
+                      color: c.textPrimary,
                     ),
                   ),
                   if (subtitle != null) ...[
@@ -427,7 +511,7 @@ class _SettingsRow extends StatelessWidget {
                       subtitle!,
                       style: TextStyle(
                         fontSize: 13,
-                        color: ink.textSecondary,
+                        color: c.textSecondary,
                         height: 1.35,
                       ),
                     ),
@@ -446,56 +530,31 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
-/// The screen's one pill-selector. Language, export format and anything else
-/// that picks one of a short list share it, so a token change lands everywhere
-/// at once instead of in three near-identical copies.
-class _PillToggle<T> extends StatelessWidget {
-  final T value;
-  final List<(T, String)> options;
-  final ValueChanged<T> onChanged;
+/// SET-12. A [Switch] on the spec's tokens.
+///
+/// THEME_SPEC.md § asymmetries, "Toggle (Cloud AI), on": `accent` track with a
+/// WHITE thumb in light and a DARK thumb in dark. That is exactly what
+/// `onAccent` means — the colour that sits on a filled accent surface — so the
+/// thumb reads the token rather than branching on brightness.
+class _AccentSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
 
-  const _PillToggle({
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
+  const _AccentSwitch({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    final ink = context.ink;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final (option, label) in options)
-          Padding(
-            padding: const EdgeInsets.only(left: 6),
-            child: GestureDetector(
-              onTap: () => onChanged(option),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: value == option ? ink.accentWash : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: value == option ? ink.accent : ink.border,
-                    width: 1.5,
-                  ),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: value == option ? ink.accent : ink.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
+    final c = context.colors;
+    return Switch(
+      value: value,
+      onChanged: onChanged,
+      activeThumbColor: c.onAccent,
+      activeTrackColor: c.accent,
+      inactiveThumbColor: c.textSecondary,
+      inactiveTrackColor: c.surfaceSubtle,
+      trackOutlineColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? c.accent : c.border,
+      ),
     );
   }
 }
@@ -513,45 +572,44 @@ class _ThemeModeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // SET-08. The moon is fixed rather than tracking the current mode: it
+        // labels the SETTING ("theme"), and the segmented control below already
+        // shows which mode is active. A glyph that changed with the value said
+        // the same thing twice and read as a state indicator you could not tap.
         _SettingsRow(
-          icon: switch (value) {
-            AppThemeMode.system => Icons.brightness_auto_outlined,
-            AppThemeMode.light => Icons.light_mode_outlined,
-            AppThemeMode.dark => Icons.dark_mode_outlined,
-          },
+          icon: PhosphorIconsRegular.moon,
           title: 'Theme',
           subtitle: switch (value) {
-            AppThemeMode.system => 'Following your device setting',
+            AppThemeMode.system => 'Follow system',
             AppThemeMode.light => 'Always light',
             AppThemeMode.dark => 'Always dark',
           },
         ),
+        // SET-09. Wired straight to `SettingsNotifier.setThemeMode`, which
+        // updates state and persists to SharedPreferences in one call — so the
+        // app re-themes live and the choice survives a restart.
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-          child: SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<AppThemeMode>(
-              segments: const [
-                ButtonSegment(
-                  value: AppThemeMode.system,
-                  label: Text('System'),
-                  icon: Icon(Icons.brightness_auto_outlined, size: 18),
-                ),
-                ButtonSegment(
-                  value: AppThemeMode.light,
-                  label: Text('Light'),
-                  icon: Icon(Icons.light_mode_outlined, size: 18),
-                ),
-                ButtonSegment(
-                  value: AppThemeMode.dark,
-                  label: Text('Dark'),
-                  icon: Icon(Icons.dark_mode_outlined, size: 18),
-                ),
-              ],
-              selected: {value},
-              showSelectedIcon: false,
-              onSelectionChanged: (selection) => onChanged(selection.first),
-            ),
+          child: AppSegmentedControl<AppThemeMode>(
+            value: value,
+            onChanged: onChanged,
+            segments: const [
+              AppSegment(
+                value: AppThemeMode.system,
+                label: 'System',
+                icon: PhosphorIconsRegular.gear,
+              ),
+              AppSegment(
+                value: AppThemeMode.light,
+                label: 'Light',
+                icon: PhosphorIconsRegular.sun,
+              ),
+              AppSegment(
+                value: AppThemeMode.dark,
+                label: 'Dark',
+                icon: PhosphorIconsRegular.moon,
+              ),
+            ],
           ),
         ),
       ],
@@ -583,7 +641,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
       children: [
         _modelRow(
           key: ValueKey('llm-$_refresh'),
-          icon: Icons.psychology_outlined,
+          icon: PhosphorIconsRegular.brain,
           title: '${LlmModelSpec.active.displayName} (summarization)',
           sizeLabel: '${sizeGb.toStringAsFixed(1)} GB',
           isInstalled: downloads.isInstalled,
@@ -596,7 +654,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
         ),
         _modelRow(
           key: ValueKey('en-$_refresh'),
-          icon: Icons.draw_outlined,
+          icon: PhosphorIconsRegular.pencilSimple,
           title: 'English handwriting model',
           sizeLabel: '~20 MB',
           isInstalled: () => recognition.isModelDownloaded('en'),
@@ -604,7 +662,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
         ),
         _modelRow(
           key: ValueKey('bn-$_refresh'),
-          icon: Icons.draw_outlined,
+          icon: PhosphorIconsRegular.pencilSimple,
           title: 'Bangla handwriting model',
           sizeLabel: '~20 MB',
           isInstalled: () => recognition.isModelDownloaded('bn'),
@@ -643,8 +701,8 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
                   : 'Not downloaded — fetched on first use',
           trailing: installed
               ? IconButton(
-                  icon: Icon(Icons.delete_outline,
-                      color: context.ink.textSecondary),
+                  icon: Icon(PhosphorIconsRegular.trash,
+                      color: context.colors.textSecondary),
                   tooltip: 'Delete model',
                   onPressed: () => _delete(onDelete, confirmDelete, title),
                 )
@@ -848,7 +906,7 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
 
     if (_progress != null) {
       return _SettingsRow(
-        icon: Icons.travel_explore_outlined,
+        icon: PhosphorIconsRegular.magnifyingGlass,
         title: '${_spec.displayName} (search)',
         subtitle: 'Downloading… $_progress%',
         trailing: SizedBox(
@@ -897,13 +955,13 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
         }
 
         return _SettingsRow(
-          icon: Icons.travel_explore_outlined,
+          icon: PhosphorIconsRegular.magnifyingGlass,
           title: '${_spec.displayName} (search)',
           subtitle: subtitle,
           trailing: installed
               ? IconButton(
-                  icon: Icon(Icons.delete_outline,
-                      color: context.ink.textSecondary),
+                  icon: Icon(PhosphorIconsRegular.trash,
+                      color: context.colors.textSecondary),
                   tooltip: 'Delete model',
                   onPressed: _delete,
                 )
@@ -915,8 +973,8 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
                     // gets a delete.
                     if (partial && !checking)
                       IconButton(
-                        icon: Icon(Icons.delete_outline,
-                            color: context.ink.textSecondary),
+                        icon: Icon(PhosphorIconsRegular.trash,
+                            color: context.colors.textSecondary),
                         tooltip: 'Delete partial download',
                         onPressed: _delete,
                       ),
@@ -930,7 +988,7 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
                           _failure is ModelTokenScopeException
                               ? 'Fix token'
                               : 'Accept licence',
-                          style: TextStyle(color: context.ink.accent),
+                          style: TextStyle(color: context.colors.accent),
                         ),
                       ),
                     TextButton(
@@ -939,7 +997,16 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
                       onPressed:
                           (hasToken && settingsLoaded) ? _download : null,
                       child: Text(
-                          (_failure != null || partial) ? 'Retry' : 'Download'),
+                        (_failure != null || partial) ? 'Retry' : 'Download',
+                        style: TextStyle(
+                          // Disabled must read as disabled in BOTH modes: the
+                          // enabled accent against `textSecondary` at 40%.
+                          color: (hasToken && settingsLoaded)
+                              ? context.colors.accent
+                              : context.colors.textSecondary
+                                  .withValues(alpha: 0.4),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -1043,7 +1110,7 @@ class _ReclaimSpaceRowState extends ConsumerState<_ReclaimSpaceRow> {
 
         final freed = orphans.fold<int>(0, (sum, o) => sum + o.sizeBytes);
         return _SettingsRow(
-          icon: Icons.cleaning_services_outlined,
+          icon: PhosphorIconsRegular.broom,
           title: 'Leftover download files',
           subtitle: _error ??
               '${_formatBytes(freed)} from downloads that did not finish',
