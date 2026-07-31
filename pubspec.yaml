@@ -8,7 +8,7 @@ publish_to: 'none'
 # Bump the semantic <major>.<minor>.<patch> by hand (and add a CHANGELOG.md
 # entry) when a change warrants it. The running app reads this via
 # package_info_plus, so the "About" screen always shows what's installed.
-version: 2.0.4+28
+version: 4.0.0+29
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -104,6 +104,22 @@ dependencies:
   #    resolving without touching google_mlkit_commons.
   record: ^5.1.2
   just_audio: ^0.9.42
+
+  # ── Rendering the maths the tutor writes ─────────────────
+  #    The models are instructed to emit LaTeX in $…$ / $$…$$ delimiters
+  #    (features/ai/domain/tutor_voice.dart, kMathMarkup); without a renderer
+  #    every derivative and fraction reached the student as raw \frac{}{}.
+  #    flutter_math_fork, not flutter_math: the original was last published in
+  #    2021 and does not build against a current Flutter, while the fork tracks
+  #    it (this is the standard, actively-maintained continuation, not a random
+  #    fork). Pure Dart — it ships the KaTeX font metrics as assets and adds no
+  #    native code, so it cannot collide with the pinned ML Kit plugins above;
+  #    `pub get` resolves it without moving any existing package (its one new
+  #    transitive dependency is `tuple`).
+  #    Failure mode is contained by design: MathText falls back to showing the
+  #    raw LaTeX as plain text when a formula won't parse, so a malformed
+  #    expression from a small model costs its own formula, never the answer.
+  flutter_math_fork: ^0.7.3
 
   # ── Opening HuggingFace in the user's browser ────────────
   #    EmbeddingGemma is a GATED model, and HuggingFace only accepts a licence

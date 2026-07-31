@@ -32,6 +32,10 @@ final summarizationServiceProvider = Provider<SummarizationService>((ref) {
     router: ref.watch(aiRouterProvider),
     local: ref.watch(localAiProvider),
     cloud: ref.watch(cloudLlmClientProvider),
+    // The accuracy fail-safe: a summary the on-device model mangled is
+    // re-run on the cloud tier when the user's privacy setting allows it,
+    // and labelled low-confidence when it doesn't.
+    guard: ref.watch(aiQualityGuardProvider),
     store: IsarSummaryStore(),
   );
 });

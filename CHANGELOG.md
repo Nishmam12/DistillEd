@@ -119,6 +119,42 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   make the on-device model talk about the prompt itself instead of teaching
   the concept. Reworded the instructions so it stays focused on the subject.
 
+## [4.0.0] - 2026-07-31
+### Fixed
+- **The AI could only ever read the page you had open.** Importing a PDF and
+  asking a question about it returned "I couldn't find that in your notes" for
+  every page you hadn't manually flipped to — the indexer only ran on the page
+  in front of you. A whole import is now read and indexed as soon as it lands,
+  and there is an **Index all pages** action in the notebook's ⋮ menu for
+  notebooks you imported before this build.
+
+### Added
+- **Choose what the AI reads.** Ask, Summarize and the Knowledge graph now let
+  you pick *this page*, *the whole PDF*, or *the whole notebook*. The "whole
+  PDF" option appears whenever the page you're on came from an import, and the
+  Ask box shows which one it is searching so a "not found" is never ambiguous.
+- **Maths is typeset.** Formulas in explanations, answers and summaries render
+  properly instead of arriving as raw `\frac{}{}`.
+- **A confidence check on every on-device answer.** When the small on-device
+  model produces something broken — empty, looping, or an answer that ignores
+  the passages it found — the app says so instead of presenting it as settled
+  fact, and offers to re-check it with the cloud model. Nothing is sent without
+  you asking: with the default privacy setting the cloud call only happens when
+  you press the button.
+- **A cloud switch in the AI panel**, so you no longer have to go to Settings
+  mid-question. You can also type `/cloud on` or `/cloud off` straight into the
+  Ask box.
+
+### Changed
+- **The tutor sounds like a tutor.** Explanations, answers and summaries share
+  one rewritten voice with the AI-assistant habits stripped out — no "Certainly!",
+  no "Let's break this down step by step", no padded lists of three, no
+  "Furthermore". Varied sentences, direct address, and examples taken from your
+  own notes. The rules about never inventing facts, and refusing when your notes
+  don't cover something, are unchanged.
+- The Knowledge graph can now be built for one page or one imported document,
+  not just for a whole notebook.
+
 ## [2.0.0] - 2026-07-17
 ### Added
 - **On-device AI study tools (private, offline).** A new AI sidebar in the

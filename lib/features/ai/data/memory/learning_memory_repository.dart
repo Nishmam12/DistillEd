@@ -48,6 +48,22 @@ abstract class LearningMemoryRepository {
   /// edges.
   Future<List<ConceptRelation>> relationsForNotebook(int notebookId);
 
+  /// The concepts last seen on one of [pageIds] — the Knowledge Graph narrowed
+  /// to a page or to a single imported PDF (see `domain/ai_scope.dart`).
+  ///
+  /// A concept with no page attribution (recorded before pages were tracked, or
+  /// first met in a quiz) is NOT included: an unattributed concept cannot be
+  /// claimed to belong to the page the user asked about, and a graph that
+  /// quietly widened its own scope would be worse than one that admits it is
+  /// sparse.
+  Future<List<ConceptMastery>> conceptsForPages(
+      int notebookId, Set<int> pageIds);
+
+  /// The relationships last produced by one of [pageIds]. Same attribution rule
+  /// as [conceptsForPages].
+  Future<List<ConceptRelation>> relationsForPages(
+      int notebookId, Set<int> pageIds);
+
   /// Concepts the learner is measurably struggling with, weakest first.
   Future<List<ConceptMastery>> weakConcepts(int notebookId);
 
@@ -126,7 +142,7 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
           r,
           notebookId: notebookId,
           at: seenAt,
-        );
+        )..lastPageId = pageId;
         if (existing != null) record.id = existing.id;
         await _relations.put(record);
       }
@@ -157,6 +173,34 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
     final rows =
         await _relations.filter().notebookIdEqualTo(notebookId).findAll();
     return [for (final r in rows) r.toDomain()];
+  }
+
+  // Both page-scoped queries load the notebook's rows and filter in Dart, for
+  // the same reason the class header gives for weak/mastered/due: a notebook's
+  // concept set is small, and one definition of the filter beats an Isar query
+  // per scope.
+  @override
+  Future<List<ConceptMastery>> conceptsForPages(
+      int notebookId, Set<int> pageIds) async {
+    if (pageIds.isEmpty) return const [];
+    final rows =
+        await _concepts.filter().notebookIdEqualTo(notebookId).findAll();
+    return [
+      for (final r in rows)
+        if (r.lastPageId != null && pageIds.contains(r.lastPageId)) r.toDomain()
+    ];
+  }
+
+  @override
+  Future<List<ConceptRelation>> relationsForPages(
+      int notebookId, Set<int> pageIds) async {
+    if (pageIds.isEmpty) return const [];
+    final rows =
+        await _relations.filter().notebookIdEqualTo(notebookId).findAll();
+    return [
+      for (final r in rows)
+        if (r.lastPageId != null && pageIds.contains(r.lastPageId)) r.toDomain()
+    ];
   }
 
   @override

@@ -13,19 +13,26 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/ink_colors.dart';
+import '../../../../editor/state/scene_controller.dart';
 import '../../data/embeddings/embedder_spec.dart';
 import '../../data/llm/llm_model_spec.dart';
+import '../../domain/ai_scope.dart';
+import '../../domain/quality/ai_quality_guard.dart';
 import '../../domain/rag/rag_retriever.dart';
 import '../ai_providers.dart';
 import '../ask_notes_notifier.dart';
+import '../widgets/ai_scope_picker.dart';
+import '../widgets/answer_tier_banner.dart';
+import '../widgets/math_text.dart';
 import '../widgets/model_download_progress.dart';
 
 class AiAskView extends ConsumerStatefulWidget {
   /// Hands an answer to the editor's text-insertion path ("insert as note").
   final ValueChanged<String> onInsertNote;
 
-  /// The notebook whose notes are searched.
-  final int notebookId;
+  /// The page the question is being asked from — its notebook is what gets
+  /// searched, and its import group is what "Whole PDF" resolves to.
+  final ScenePageKey pageKey;
 
   /// Jumps to a source passage's page. Optional: when the editor hasn't wired
   /// navigation, source cards still show but aren't tappable.
@@ -34,9 +41,11 @@ class AiAskView extends ConsumerStatefulWidget {
   const AiAskView({
     super.key,
     required this.onInsertNote,
-    required this.notebookId,
+    required this.pageKey,
     this.onJumpToSource,
   });
+
+  int get notebookId => pageKey.notebookId;
 
   @override
   ConsumerState<AiAskView> createState() => _AiAskViewState();
@@ -45,6 +54,21 @@ class AiAskView extends ConsumerStatefulWidget {
 class _AiAskViewState extends ConsumerState<AiAskView> {
   final _controller = TextEditingController();
   final _focus = FocusNode();
+
+  /// What the next question may read.
+  ///
+  /// Defaults to the whole notebook, and to the whole PDF when this page came
+  /// from one. Asking your notes a question is normally a "somewhere in here"
+  /// question — unlike Explain or Summarize, which act on what is in front of
+  /// you — so scoping down to a single page by default would turn most useful
+  /// questions into a "not found". An imported document is the tighter, more
+  /// obviously-intended unit when the student is sitting inside one, so it wins
+  /// where it applies; both narrower scopes stay one tap away.
+  AiScopeKind? _chosenKind;
+
+  AiScopeKind _kindFor(ScopePage? group) =>
+      _chosenKind ??
+      (group == null ? AiScopeKind.notebook : AiScopeKind.importGroup);
 
   @override
   void initState() {
@@ -60,12 +84,23 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final q = _controller.text.trim();
     if (q.isEmpty) return;
+
+    final group = ref.read(pageImportGroupProvider(widget.pageKey)).valueOrNull;
+    // Resolved to concrete page ids ONCE, here, and carried with the question:
+    // re-deriving it later could widen what an in-flight answer was allowed to
+    // read (see domain/ai_scope.dart).
+    final scope = await ref.read(aiScopeResolverProvider).resolve(
+          kind: _kindFor(group),
+          notebookId: widget.pageKey.notebookId,
+          pageId: widget.pageKey.pageId,
+        );
+    if (!mounted) return;
     ref
         .read(askNotesNotifierProvider.notifier)
-        .ask(q, notebookId: widget.notebookId);
+        .ask(q, notebookId: widget.notebookId, scope: scope);
   }
 
   @override
@@ -85,6 +120,17 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
         // noise next to a progress bar.
         if (state is! AskNotesDownloadingModel) ...[
           _queryBox(enabled: !busy),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: AiScopePicker(
+              pageKey: widget.pageKey,
+              value: _kindFor(
+                  ref.watch(pageImportGroupProvider(widget.pageKey)).valueOrNull),
+              enabled: !busy,
+              onChanged: (kind) => setState(() => _chosenKind = kind),
+            ),
+          ),
           const SizedBox(height: 12),
         ],
         Flexible(child: _body(state)),
@@ -153,6 +199,10 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
   Widget _body(AskNotesState state) {
     return switch (state) {
       AskNotesComposing() || AskNotesIdle() => const _Hint(),
+      AskNotesNotice(:final message) => _Centered(
+          icon: Icons.check_circle_outline,
+          title: message,
+        ),
       AskNotesSearching() => const _Centered(
           icon: Icons.travel_explore_outlined,
           title: 'Searching your notes…',
@@ -165,12 +215,27 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           onInsertNote: widget.onInsertNote,
           onJumpToSource: widget.onJumpToSource,
         ),
-      AskNotesAnswered(:final text, :final sources) => _Answer(
+      AskNotesAnswered(
+        :final text,
+        :final sources,
+        :final tier,
+        :final canRetryOnCloud
+      ) =>
+        _Answer(
           text: text,
           sources: sources,
           streaming: false,
           onInsertNote: widget.onInsertNote,
           onJumpToSource: widget.onJumpToSource,
+          tier: tier,
+          // Offered only when the guard said a cloud run is both possible and
+          // permitted — under `askEachTime` this button IS the user's consent,
+          // and nothing reaches the network until it is pressed.
+          onVerifyWithCloud: canRetryOnCloud
+              ? () => ref
+                  .read(askNotesNotifierProvider.notifier)
+                  .verifyWithCloud()
+              : null,
         ),
       AskNotesNotFound() => const _Centered(
           icon: Icons.search_off_outlined,
@@ -209,12 +274,19 @@ class _Answer extends StatelessWidget {
   final ValueChanged<String> onInsertNote;
   final void Function(int pageId)? onJumpToSource;
 
+  /// Which model produced this — drives the cloud badge / low-confidence
+  /// warning above the answer.
+  final AnswerTier tier;
+  final VoidCallback? onVerifyWithCloud;
+
   const _Answer({
     required this.text,
     required this.sources,
     required this.streaming,
     required this.onInsertNote,
     required this.onJumpToSource,
+    this.tier = AnswerTier.local,
+    this.onVerifyWithCloud,
   });
 
   @override
@@ -229,7 +301,21 @@ class _Answer extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SelectableText(
+                // Above the answer, not below it: a warning a student reads
+                // after they have already taken the answer in has done half
+                // its job.
+                if (tier != AnswerTier.local) ...[
+                  AnswerTierBanner(
+                    tier: tier,
+                    onVerifyWithCloud: onVerifyWithCloud,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                // Formulas render as maths rather than as raw LaTeX — a note
+                // about the quadratic formula is exactly the kind of thing
+                // someone asks their notes about. Prose is unaffected (see
+                // math_text.dart).
+                MathText(
                   trimmed.isEmpty ? 'Thinking…' : trimmed,
                   style: TextStyle(
                     fontSize: 14,
@@ -374,9 +460,11 @@ class _SourceCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(snippet,
+                // The source snippet is the student's own note text, which may
+                // itself hold a formula the extractor read as LaTeX.
+                child: MathLabel(snippet,
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.start,
                     style: TextStyle(
                         fontSize: 12,
                         height: 1.4,

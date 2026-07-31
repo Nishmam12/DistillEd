@@ -7,6 +7,8 @@
 // Reachable from Home when "Canvas 2.0" is enabled in Settings; the legacy
 // editor stays intact and is removed only in a later, separately-approved phase.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +20,9 @@ import '../../core/theme/ink_colors.dart';
 import '../../domain/commands/scene_command.dart';
 import '../../domain/geometry/element_bounds.dart';
 import '../../domain/model/scene_element.dart';
+import '../../features/ai/domain/ai_scope.dart';
+import '../../features/ai/presentation/ai_providers.dart';
+import '../../features/ai/presentation/notebook_index_notifier.dart';
 import '../../features/ai/presentation/sidebar/ai_sidebar.dart';
 import '../../domain/model/template_type.dart';
 import '../../features/import/pdf_service.dart' show ImportException;
@@ -205,7 +210,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           IconButton(
             tooltip: 'Knowledge graph',
             icon: const Icon(Icons.hub_outlined),
-            onPressed: () => context.push('/note2/${widget.notebookId}/graph'),
+            onPressed: () => context.push(
+                '/note2/${widget.notebookId}/graph?pageId=${key.pageId}'),
           ),
           IconButton(
             tooltip: 'Book view',
@@ -217,6 +223,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             onChangeBackground: _notebook == null ? null : _showBackgroundSheet,
             onSummarize: () =>
                 _summarizeScope(key, SummarizeScopeChoice.notebook),
+            onIndexNotebook:
+                _notebook == null ? null : () => unawaited(_indexWholeNotebook()),
           ),
         ],
       ),
@@ -542,11 +550,76 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       return;
     }
 
+    // One id for the whole document, stamped on every page it becomes. This is
+    // what later lets "the whole PDF" be a scope the AI features can name —
+    // without it, a 40-page import is just 40 loose pages (see
+    // features/ai/domain/ai_scope.dart).
+    final groupId = SceneImportService.newImportGroupId();
+    final sourceName = SceneImportService.importSourceNameOf(path);
+    final repository = ref.read(pageRepositoryProvider);
+    final createdPageIds = <int>[];
+
     for (final page in pages) {
-      await _addImageOnNewPage(page);
+      final pageId = await _addImageOnNewPage(page);
+      if (!mounted) return;
+      if (pageId == null) continue;
+      await repository.tagImport(
+        pageId,
+        importGroupId: groupId,
+        importSourceName: sourceName,
+      );
+      createdPageIds.add(pageId);
       if (!mounted) return;
     }
     _toast('Imported ${pages.length} page${pages.length == 1 ? '' : 's'}.');
+
+    // Read and embed the whole document NOW, rather than waiting for the user
+    // to open each page. The live RagIndexScheduler is driven by the Context
+    // Engine's per-page edit hook, so a page nobody opens is never indexed —
+    // which used to make an imported PDF invisible to "Ask your notes" beyond
+    // whichever single page happened to be on screen.
+    _indexPages(createdPageIds, announce: false);
+  }
+
+  /// Kicks off a background bulk index of [pageIds] and reports the outcome.
+  ///
+  /// Fire-and-forget: reading 40 pages with the vision model takes far longer
+  /// than anyone will hold an import dialog open for, and a page that fails to
+  /// index costs only its own searchability. [announce] is off for the
+  /// automatic post-import run (the import toast already fired) and on for the
+  /// explicit "Index all pages" action, where silence would look like nothing
+  /// happened.
+  void _indexPages(List<int> pageIds, {required bool announce}) {
+    if (pageIds.isEmpty) return;
+    final notifier =
+        ref.read(notebookIndexProvider(widget.notebookId).notifier);
+    if (notifier.isRunning) {
+      if (announce) _toast('Already indexing…');
+      return;
+    }
+    if (announce) {
+      _toast('Reading ${pageIds.length} page'
+          '${pageIds.length == 1 ? '' : 's'} for search…');
+    }
+    unawaited(notifier.run(notebookId: widget.notebookId, pageIds: pageIds).then(
+      (report) {
+        if (!mounted || report == null) return;
+        // The automatic run stays quiet unless something actually needs saying.
+        if (!announce && report.isComplete && report.indexed == 0) return;
+        _toast(NotebookIndexDone(report).message);
+      },
+    ));
+  }
+
+  /// Re-reads and embeds every page of the notebook — the retroactive path for
+  /// notebooks imported before eager indexing existed, whose pages would
+  /// otherwise stay permanently unsearchable.
+  Future<void> _indexWholeNotebook() async {
+    final pages = await ref
+        .read(pageRepositoryProvider)
+        .getPagesForNotebook(widget.notebookId);
+    if (!mounted) return;
+    _indexPages([for (final p in pages) p.id], announce: true);
   }
 
   /// Drops [imported] onto the current page, sized against what's on screen and
@@ -591,31 +664,33 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   }
 
   /// Appends a page and fills it with [imported], aspect-fitted to the sheet.
+  /// Returns the new page's id (null when no page could be made), so the PDF
+  /// import can tag it with its import group.
   ///
   /// The new page is claimed and loaded before anything is added to it: a
   /// freshly built page triggers [_ensureLoaded], and [SceneController.load]
   /// *replaces* the scene with whatever the store holds — so adding first and
   /// loading second would discard the image.
-  Future<void> _addImageOnNewPage(ImportedImage imported) async {
+  Future<int?> _addImageOnNewPage(ImportedImage imported) async {
     final sheet = _pageSheet;
-    if (sheet == null || sheet.isEmpty) return;
+    if (sheet == null || sheet.isEmpty) return null;
 
     await ref.read(pageProvider(widget.notebookId).notifier).insertPage();
-    if (!mounted) return;
+    if (!mounted) return null;
 
     final pages = ref.read(pageProvider(widget.notebookId)).pages;
-    if (pages.isEmpty) return;
+    if (pages.isEmpty) return null;
     final key = (notebookId: widget.notebookId, pageId: pages.last.id);
 
     _loadedPages.add(key.pageId);
     await ref.read(sceneControllerProvider(key).notifier).load();
-    if (!mounted) return;
+    if (!mounted) return null;
 
     // A size we couldn't measure fills the sheet rather than failing the import.
     final source =
         imported.pixelSize.isEmpty ? sheet : imported.pixelSize;
     final box = fitCentred(source, Offset.zero & sheet);
-    if (box.isEmpty) return;
+    if (box.isEmpty) return null;
 
     ref.read(historyProvider(key).notifier).push(AddElementsCommand([
           _imageElement(
@@ -629,6 +704,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             locked: false,
           ),
         ]));
+    return key.pageId;
   }
 
   ImageElement _imageElement(
@@ -667,12 +743,31 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     final pages = ref.read(pageRepositoryProvider);
     final selection = ref.read(selectionProvider);
 
+    // Page sets come from the shared resolver, so "this PDF" and "the whole
+    // notebook" mean exactly what they mean on the Ask surface. "This page"
+    // stays hard-wired to the page on screen rather than going through the
+    // resolver — there is nothing to resolve, and it must never pull a
+    // neighbour in.
+    final resolver = ref.read(aiScopeResolverProvider);
+
     Future<SummarizeScope> resolveScope() async {
       switch (choice) {
         case SummarizeScopeChoice.selection:
           return SelectionScope(pageId: key.pageId, elementIds: selection);
         case SummarizeScopeChoice.page:
           return PageScope(key.pageId);
+        case SummarizeScopeChoice.importGroup:
+          final scope = await resolver.resolve(
+            kind: AiScopeKind.importGroup,
+            notebookId: widget.notebookId,
+            pageId: key.pageId,
+          );
+          // A page with no import group resolves back to itself — summarizing
+          // "the whole PDF" of a hand-written page is the one page it is on.
+          final groupId = scope.importGroupId;
+          return groupId == null
+              ? PageScope(key.pageId)
+              : ImportGroupScope(scope.pageIds, importGroupId: groupId);
         case SummarizeScopeChoice.notebook:
           return NotebookScope([
             for (final page

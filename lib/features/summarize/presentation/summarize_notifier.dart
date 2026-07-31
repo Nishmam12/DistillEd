@@ -11,6 +11,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../ai/data/llm/llm_exceptions.dart';
+import '../../ai/domain/quality/ai_quality_guard.dart';
 import '../../ai/data/llm/model_download_manager.dart';
 import '../../ai/data/handwriting/handwriting_recognition_service.dart';
 import '../domain/services/summarization_service.dart';
@@ -19,7 +20,12 @@ import 'summarize_providers.dart';
 // The scope types are part of this notifier's request API (SummarizeRequest),
 // so callers get them without importing the service directly.
 export '../domain/services/summarization_service.dart'
-    show SummarizeScope, SelectionScope, PageScope, NotebookScope;
+    show
+        SummarizeScope,
+        SelectionScope,
+        PageScope,
+        ImportGroupScope,
+        NotebookScope;
 
 sealed class SummarizeState {
   const SummarizeState();
@@ -51,12 +57,17 @@ class SummarizeSuccess extends SummarizeState {
   /// (chunk-and-reduce) — the whole note was read, not truncated.
   final bool chunked;
   final String modelUsed;
+
+  /// Which tier produced this — the sheet warns on
+  /// [AnswerTier.localLowConfidence] and badges [AnswerTier.cloudVerified].
+  final AnswerTier tier;
   const SummarizeSuccess({
     required this.summary,
     required this.recognizedText,
     required this.fromCache,
     required this.chunked,
     required this.modelUsed,
+    this.tier = AnswerTier.local,
   });
 }
 
@@ -142,6 +153,7 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
         fromCache: result.fromCache,
         chunked: result.chunked,
         modelUsed: result.modelUsed,
+        tier: result.tier,
       );
     } catch (e) {
       if (!mounted) return;

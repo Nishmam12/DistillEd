@@ -42,10 +42,11 @@ NoteChunk chunk(
   List<double> embedding, {
   String modelId = 'fake-v1',
   int ordinal = 0,
+  int pageId = 7,
 }) =>
     NoteChunk(
       notebookId: 1,
-      pageId: 7,
+      pageId: pageId,
       ordinal: ordinal,
       text: text,
       embedding: embedding,
@@ -147,5 +148,68 @@ void main() {
     expect(await retriever.search(query: 'q', notebookId: 1), isEmpty);
     expect(embedder.queries, isEmpty,
         reason: 'nothing is comparable, so the query need not be embedded');
+  });
+
+  group('scoping to pages (domain/ai_scope.dart)', () {
+    // The notebook holds a hand-written page (1) and a 3-page PDF (2, 3, 4).
+    List<NoteChunk> notebook() => [
+          chunk('handwritten revision note', [1.0, 0.0, 0.0], pageId: 1),
+          chunk('pdf slide one', [1.0, 0.0, 0.0], pageId: 2, ordinal: 1),
+          chunk('pdf slide two', [1.0, 0.0, 0.0], pageId: 3, ordinal: 2),
+          chunk('pdf slide three', [1.0, 0.0, 0.0], pageId: 4, ordinal: 3),
+        ];
+
+    test('no page filter searches the whole notebook, as before', () async {
+      final hits = await build(_FakeEmbedder(), notebook())
+          .search(query: 'q', notebookId: 1, minScore: 0.0);
+      expect(hits, hasLength(4));
+    });
+
+    test('a single-page scope returns only that page', () async {
+      final hits = await build(_FakeEmbedder(), notebook()).search(
+          query: 'q', notebookId: 1, pageIds: {3}, minScore: 0.0);
+
+      expect([for (final h in hits) h.chunk.pageId], [3]);
+    });
+
+    test('a PDF scope returns that PDF and not the hand-written page',
+        () async {
+      final hits = await build(_FakeEmbedder(), notebook()).search(
+          query: 'q', notebookId: 1, pageIds: {2, 3, 4}, minScore: 0.0);
+
+      expect([for (final h in hits) h.chunk.pageId]..sort(), [2, 3, 4]);
+    });
+
+    test('an empty page set finds nothing rather than widening to the notebook',
+        () async {
+      // A scope that resolved to no pages must produce a grounded "not found".
+      // Falling back to the notebook would answer from pages the student
+      // explicitly scoped out.
+      final embedder = _FakeEmbedder();
+      final hits = await build(embedder, notebook()).search(
+          query: 'q', notebookId: 1, pageIds: const {}, minScore: 0.0);
+
+      expect(hits, isEmpty);
+      expect(embedder.queries, isEmpty, reason: 'no model load for no pages');
+    });
+
+    test('a scope whose pages hold nothing indexed embeds nothing', () async {
+      final embedder = _FakeEmbedder();
+      final hits = await build(embedder, notebook()).search(
+          query: 'q', notebookId: 1, pageIds: {99}, minScore: 0.0);
+
+      expect(hits, isEmpty);
+      expect(embedder.queries, isEmpty);
+    });
+
+    test('the model-id filter still applies inside a scope', () async {
+      final hits = await build(_FakeEmbedder(modelId: 'fake-v2'), [
+        chunk('stale', [1.0, 0.0, 0.0], pageId: 3, modelId: 'fake-v1'),
+        chunk('current', [1.0, 0.0, 0.0],
+            pageId: 3, modelId: 'fake-v2', ordinal: 1),
+      ]).search(query: 'q', notebookId: 1, pageIds: {3}, minScore: 0.0);
+
+      expect([for (final h in hits) h.chunk.text], ['current']);
+    });
   });
 }

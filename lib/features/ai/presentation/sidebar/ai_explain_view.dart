@@ -10,9 +10,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/ink_colors.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/features/explainer.dart';
+import '../../domain/quality/ai_quality_guard.dart';
 import '../../domain/routing/intelligent_router.dart' show CloudTier;
 import '../ai_providers.dart';
 import '../explain_notifier.dart';
+import '../widgets/answer_tier_banner.dart';
+import '../widgets/math_text.dart';
 import '../widgets/model_download_progress.dart';
 
 class AiExplainView extends ConsumerWidget {
@@ -43,13 +46,25 @@ class AiExplainView extends ConsumerWidget {
             onInsertNote: onInsertNote,
           ),
         ),
-      ExplainReady(:final text, :final mode, :final fromCloud) => _Header(
+      ExplainReady(
+        :final text,
+        :final mode,
+        :final fromCloud,
+        :final tier,
+        :final canRetryOnCloud
+      ) =>
+        _Header(
           mode: mode,
           fromCloud: fromCloud,
           child: _Body(
             text: text,
             streaming: false,
             onInsertNote: onInsertNote,
+            tier: tier,
+            onVerifyWithCloud: canRetryOnCloud
+                ? () =>
+                    ref.read(explainNotifierProvider.notifier).verifyWithCloud()
+                : null,
           ),
         ),
       ExplainConfirmCloud() =>
@@ -168,10 +183,18 @@ class _Body extends StatelessWidget {
   final String text;
   final bool streaming;
   final ValueChanged<String> onInsertNote;
+
+  /// Which model produced this — drives the cloud badge / low-confidence
+  /// warning above the explanation.
+  final AnswerTier tier;
+  final VoidCallback? onVerifyWithCloud;
+
   const _Body({
     required this.text,
     required this.streaming,
     required this.onInsertNote,
+    this.tier = AnswerTier.local,
+    this.onVerifyWithCloud,
   });
 
   @override
@@ -181,9 +204,19 @@ class _Body extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (tier != AnswerTier.local) ...[
+          AnswerTierBanner(tier: tier, onVerifyWithCloud: onVerifyWithCloud),
+          const SizedBox(height: 12),
+        ],
         Flexible(
           child: SingleChildScrollView(
-            child: SelectableText(
+            // MathText, not SelectableText: an explanation in Mathematical
+            // mode is mostly formulas, and raw rac{}{} is unreadable. Prose
+            // still renders as plain text (see math_text.dart), so a
+            // formula-free explanation looks exactly as it did. Selection is
+            // the cost — a formula is a widget, not glyphs — and the Copy
+            // button below covers what selection was for.
+            child: MathText(
               trimmed.isEmpty ? 'Thinking…' : trimmed,
               style: TextStyle(
                 fontSize: 14,

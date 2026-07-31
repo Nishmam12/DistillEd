@@ -21,6 +21,7 @@ import '../data/llm/llm_exceptions.dart';
 import '../data/llm/model_download_manager.dart';
 import '../domain/ai_provider.dart';
 import '../domain/features/explainer.dart';
+import '../domain/quality/ai_quality_guard.dart';
 import '../domain/routing/intelligent_router.dart' show CloudRouteDecision, CloudTier;
 
 sealed class ExplainState {
@@ -50,7 +51,24 @@ class ExplainReady extends ExplainState {
   final String text;
   final ExplainMode mode;
   final bool fromCloud;
-  const ExplainReady(this.text, this.mode, {this.fromCloud = false});
+
+  /// Which tier the student is actually reading, per the accuracy fail-safe.
+  /// [AnswerTier.localLowConfidence] means the on-device model produced
+  /// something the quality check rejected and no cloud run was permitted — the
+  /// view must warn rather than present it as settled teaching.
+  final AnswerTier tier;
+
+  /// The local explanation failed its check and the cloud could re-run it, but
+  /// the user's `askEachTime` setting means they have to say so first.
+  final bool canRetryOnCloud;
+
+  const ExplainReady(
+    this.text,
+    this.mode, {
+    this.fromCloud = false,
+    this.tier = AnswerTier.local,
+    this.canRetryOnCloud = false,
+  });
 }
 
 class ExplainDownloadingModel extends ExplainState {
@@ -100,14 +118,24 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
   final bool Function() _hasSeenFirstCloudCall;
   final Future<void> Function() _markFirstCloudCallSeen;
 
+  /// The accuracy fail-safe. Optional, so a caller that hasn't wired it keeps
+  /// the plain local stream.
+  ///
+  /// Skipped entirely when the request is already going to the cloud: routing
+  /// there means the cloud tier IS the generator, and re-checking its output in
+  /// order to escalate it to itself would be pointless.
+  final AiQualityGuard? _guard;
+
   ExplainNotifier({
     required Explainer explainer,
     required ModelDownloadManager downloads,
     Future<CloudRouteDecision?> Function(String content)? evaluateCloudRoute,
     bool Function()? hasSeenFirstCloudCall,
     Future<void> Function()? markFirstCloudCallSeen,
+    AiQualityGuard? guard,
   })  : _explainer = explainer,
         _downloads = downloads,
+        _guard = guard,
         _evaluateCloudRoute = evaluateCloudRoute,
         _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
         _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
@@ -148,24 +176,115 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
         }
       }
 
-      final buffer = StringBuffer();
       state = ExplainStreaming('', request.mode, fromCloud: fromCloud);
-      await for (final chunk
-          in _explainer.explain(ExplainInput(content: content, mode: request.mode))) {
-        if (!mounted) return;
-        buffer.write(chunk);
-        state = ExplainStreaming(buffer.toString(), request.mode, fromCloud: fromCloud);
-      }
+      final result =
+          await _generate(content, request.mode, fromCloud: fromCloud);
 
       if (!mounted) return;
-      final text = buffer.toString().trim();
+      final text = result.text.trim();
       state = text.isEmpty
           ? const ExplainError("The model didn't return an explanation. "
               'Try again.')
-          : ExplainReady(text, request.mode, fromCloud: fromCloud);
+          : ExplainReady(
+              text,
+              request.mode,
+              fromCloud: fromCloud || result.tier == AnswerTier.cloudVerified,
+              tier: result.tier,
+              canRetryOnCloud: result.canRetryOnCloud,
+            );
     } catch (e) {
       if (!mounted) return;
       state = _mapError(e);
+    } finally {
+      _running = false;
+    }
+  }
+
+  /// Streams one explanation, through the quality guard when there is one.
+  ///
+  /// [fromCloud] means the Phase-3 router already chose the cloud tier for this
+  /// request, in which case the guard is bypassed — see [_guard].
+  ///
+  /// The explanation is checked as UNGROUNDED output ([QualityContext.ungrounded]):
+  /// Explain is allowed to bring in widely-known background, so an answer that
+  /// shares little vocabulary with a two-word selected term is correct, not
+  /// unsourced. Only the broken-output checks (empty, looping, degenerate)
+  /// apply here.
+  Future<GuardedResult> _generate(
+    String content,
+    ExplainMode mode, {
+    required bool fromCloud,
+  }) async {
+    void onPartial(String partial) {
+      if (mounted) {
+        state = ExplainStreaming(partial, mode, fromCloud: fromCloud);
+      }
+    }
+
+    final guard = _guard;
+    if (guard != null && !fromCloud) {
+      return guard.run(
+        prompt: Explainer.promptFor(content),
+        systemPrompt: Explainer.systemPromptFor(mode),
+        options: Explainer.explainOptions,
+        onPartial: onPartial,
+      );
+    }
+
+    final buffer = StringBuffer();
+    await for (final chunk
+        in _explainer.explain(ExplainInput(content: content, mode: mode))) {
+      if (!mounted) break;
+      buffer.write(chunk);
+      onPartial(buffer.toString());
+    }
+    return GuardedResult(text: buffer.toString(), tier: AnswerTier.local);
+  }
+
+  /// Re-runs the current explanation on the cloud tier, on an explicit user tap.
+  ///
+  /// The `askEachTime` half of the privacy contract: [AiQualityGuard] refuses to
+  /// escalate on its own under that setting, so this is what the button behind
+  /// [ExplainReady.canRetryOnCloud] calls. Nothing reaches the network until it
+  /// is pressed.
+  Future<void> verifyWithCloud() async {
+    final current = state;
+    final guard = _guard;
+    if (guard == null || _running || current is! ExplainReady) return;
+    if (!current.canRetryOnCloud) return;
+
+    final last = _last;
+    if (last == null) return;
+
+    _running = true;
+    try {
+      // The passage is re-resolved rather than cached: the same rule the retry
+      // and mode-change paths follow, so a cloud check always reads what is on
+      // the page now.
+      final content = await last.resolveContent();
+      if (content.trim().isEmpty || !mounted) return;
+
+      final result = await guard.retryOnCloud(
+        prompt: Explainer.promptFor(content),
+        systemPrompt: Explainer.systemPromptFor(current.mode),
+        options: Explainer.explainOptions,
+        onPartial: (partial) {
+          if (mounted) {
+            state = ExplainStreaming(partial, current.mode, fromCloud: true);
+          }
+        },
+        localText: current.text,
+      );
+      if (!mounted) return;
+      final text = result.text.trim();
+      state = ExplainReady(
+        text.isEmpty ? current.text : text,
+        current.mode,
+        fromCloud: result.tier == AnswerTier.cloudVerified,
+        tier: result.tier,
+      );
+    } catch (e) {
+      if (mounted) state = _mapError(e);
     } finally {
       _running = false;
     }

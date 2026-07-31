@@ -43,6 +43,16 @@ class _FakeMemory implements LearningMemoryRepository {
       const [];
 
   @override
+  Future<List<ConceptMastery>> conceptsForPages(
+          int notebookId, Set<int> pageIds) async =>
+      const [];
+
+  @override
+  Future<List<ConceptRelation>> relationsForPages(
+          int notebookId, Set<int> pageIds) async =>
+      const [];
+
+  @override
   Future<List<ConceptMastery>> allConcepts(int notebookId) async => const [];
   @override
   Future<List<ConceptMastery>> weakConcepts(int notebookId) async => const [];

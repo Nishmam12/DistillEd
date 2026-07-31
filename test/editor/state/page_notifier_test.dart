@@ -26,6 +26,28 @@ class FakePageRepository implements PageRepository {
   }
 
   @override
+  Future<void> tagImport(
+    int pageId, {
+    required String importGroupId,
+    required String importSourceName,
+  }) async {
+    for (final p in pages) {
+      if (p.id == pageId) {
+        p.importGroupId = importGroupId;
+        p.importSourceName = importSourceName;
+      }
+    }
+  }
+
+  @override
+  Future<List<NotePage>> pagesInImportGroup(
+          int notebookId, String importGroupId) async =>
+      [
+        for (final p in pages)
+          if (p.notebookId == notebookId && p.importGroupId == importGroupId) p
+      ];
+
+  @override
   Future<NotePage> createPage(int notebookId) async {
     final page = NotePage()
       ..id = _nextId++

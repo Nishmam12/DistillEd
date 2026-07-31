@@ -169,6 +169,39 @@ class PageRepository {
         .findFirst();
   }
 
+  /// Marks [pageId] as having arrived from one import.
+  ///
+  /// Written as its own small transaction after the page exists, rather than as
+  /// an argument to [createPage]: the import flow creates a page, loads its
+  /// scene, and only then drops the rendered image on it, so there is no single
+  /// point where "a page from lecture.pdf" is created in one go. Tagging
+  /// afterwards keeps [createPage] the one plain way to add a page.
+  Future<void> tagImport(
+    int pageId, {
+    required String importGroupId,
+    required String importSourceName,
+  }) async {
+    await _isar.writeTxn(() async {
+      final page = await _isar.notePages.get(pageId);
+      if (page == null) return;
+      page.importGroupId = importGroupId;
+      page.importSourceName = importSourceName;
+      await _isar.notePages.put(page);
+    });
+  }
+
+  /// Every page of one import, in page order.
+  Future<List<NotePage>> pagesInImportGroup(
+      int notebookId, String importGroupId) async {
+    return await _isar.notePages
+        .filter()
+        .notebookIdEqualTo(notebookId)
+        .and()
+        .importGroupIdEqualTo(importGroupId)
+        .sortByPageIndex()
+        .findAll();
+  }
+
   /// Returns all pages for [notebookId] sorted by pageIndex ascending.
   Future<List<NotePage>> getPagesForNotebook(int notebookId) async {
     return await _isar.notePages

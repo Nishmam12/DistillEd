@@ -17,6 +17,7 @@ import '../../../../editor/state/selection_controller.dart';
 import '../../domain/context_engine/page_context.dart';
 import '../../domain/features/explainer.dart';
 import '../../domain/features/quiz_generator.dart';
+import '../../domain/ai_scope.dart';
 import '../ai_providers.dart';
 import '../ask_notes_notifier.dart';
 import '../explain_notifier.dart';
@@ -25,6 +26,7 @@ import '../flashcards/flashcard_sheet.dart';
 import '../quiz_notifier.dart';
 import '../quiz/quiz_sheet.dart';
 import '../research_notifier.dart';
+import '../widgets/ai_scope_picker.dart';
 import 'ai_ask_view.dart';
 import 'ai_context_view.dart';
 import 'ai_explain_view.dart';
@@ -42,7 +44,11 @@ const double kAiSidebarBreakpoint = 720;
 /// editor — which owns both the AI platform and the summarize feature — turns
 /// it into a request. This keeps `features/ai` free of a dependency on the
 /// consumer `features/summarize`.
-enum SummarizeScopeChoice { selection, page, notebook }
+///
+/// One-to-one with [AiScopeKind] (`domain/ai_scope.dart`), which is what the
+/// editor resolves each choice through — the two lists must not drift, or
+/// Summarize and Ask would mean different things by "this PDF".
+enum SummarizeScopeChoice { selection, page, importGroup, notebook }
 
 /// Docked side panel (wide screens). The editor puts this in a [Row] next to
 /// the canvas and controls its visibility.
@@ -162,7 +168,7 @@ class _SidebarBody extends ConsumerWidget {
     if (ref.watch(askNotesNotifierProvider) is! AskNotesIdle) {
       return AiAskView(
         onInsertNote: onInsertNote,
-        notebookId: pageKey.notebookId,
+        pageKey: pageKey,
         onJumpToSource: onJumpToSource,
       );
     }
@@ -202,7 +208,7 @@ class _SidebarFooter extends ConsumerWidget {
             children: [
               _AskBar(),
               _ResearchBar(),
-              _SummarizeBar(onSummarize: onSummarize),
+              _SummarizeBar(pageKey: pageKey, onSummarize: onSummarize),
               _ExplainBar(pageKey: pageKey),
               _QuizBar(pageKey: pageKey),
               _FlashcardBar(pageKey: pageKey),
@@ -255,12 +261,17 @@ class _ResearchBar extends ConsumerWidget {
 /// selection ([selectionProvider], read-only). The actual run is delegated to
 /// the editor via [onSummarize].
 class _SummarizeBar extends ConsumerWidget {
+  final ScenePageKey pageKey;
   final ValueChanged<SummarizeScopeChoice> onSummarize;
-  const _SummarizeBar({required this.onSummarize});
+  const _SummarizeBar({required this.pageKey, required this.onSummarize});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasSelection = ref.watch(selectionProvider).isNotEmpty;
+    // "Whole PDF" appears only when this page came from an import — the same
+    // rule the Ask surface's scope picker uses, so the two never disagree about
+    // whether there is a PDF to summarize.
+    final group = ref.watch(pageImportGroupProvider(pageKey)).valueOrNull;
     return PopupMenuButton<SummarizeScopeChoice>(
       tooltip: 'Summarize',
       position: PopupMenuPosition.under,
@@ -275,6 +286,12 @@ class _SummarizeBar extends ConsumerWidget {
           value: SummarizeScopeChoice.page,
           child: Text('This page'),
         ),
+        if (group != null)
+          PopupMenuItem(
+            value: SummarizeScopeChoice.importGroup,
+            child: Text(scopeChoiceLabel(AiScopeKind.importGroup,
+                sourceName: group.importSourceName)),
+          ),
         const PopupMenuItem(
           value: SummarizeScopeChoice.notebook,
           child: Text('Whole notebook'),
@@ -492,20 +509,88 @@ class _SidebarHeader extends StatelessWidget {
         children: [
           Icon(Icons.auto_awesome, size: 18, color: context.ink.accent),
           const SizedBox(width: 8),
-          Text('AI insights',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: context.ink.textPrimary,
-              )),
+          Flexible(
+            child: Text('AI insights',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: context.ink.textPrimary,
+                )),
+          ),
           const Spacer(),
+          const CloudModelToggle(),
           IconButton(
             tooltip: 'Close',
             icon: Icon(Icons.close, size: 20, color: context.ink.textSecondary),
             onPressed: onClose,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The cloud-model switch, at the top of the AI panel.
+///
+/// It lives here because this is where the student is when the question "why is
+/// this answer poor?" occurs to them, and the answer is often "because it ran
+/// on a 2B model on your phone". Settings is three screens away.
+///
+/// What it changes, precisely: the stored `cloudAiEnabled` opt-in, which is the
+/// same value Settings writes and the same value `/cloud on` writes. What it
+/// does NOT change is the `cloudPrivacy` confirmation contract — with
+/// `askEachTime` (the default) each individual cloud call is still confirmed
+/// before anything is sent. Turning this on grants permission for the app to
+/// ASK; it is not a blanket "send my notes". The subtitle in the tooltip says
+/// so, because a switch that silently widened a privacy setting would be
+/// exactly the kind of thing this codebase is careful not to ship.
+class CloudModelToggle extends ConsumerWidget {
+  const CloudModelToggle({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider);
+    final on = settings.cloudAiEnabled;
+    final asksEachTime = settings.cloudPrivacy == CloudPrivacy.askEachTime;
+
+    return Tooltip(
+      message: on
+          ? (asksEachTime
+              ? "Cloud AI on — you're still asked before anything is sent"
+              : 'Cloud AI on')
+          : 'Cloud AI off — everything runs on your device',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => ref
+            .read(settingsProvider.notifier)
+            .setCloudAiEnabled(!on),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                on ? Icons.cloud_outlined : Icons.cloud_off_outlined,
+                size: 17,
+                color: on ? context.ink.accent : context.ink.textMuted,
+              ),
+              const SizedBox(width: 4),
+              // A real Switch, scaled down: the affordance has to read as a
+              // setting the student controls, not as a status light.
+              Transform.scale(
+                scale: 0.7,
+                child: Switch(
+                  value: on,
+                  onChanged: (value) => ref
+                      .read(settingsProvider.notifier)
+                      .setCloudAiEnabled(value),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -36,6 +36,18 @@ class ConceptRelationRecord {
   late double confidence;
   late DateTime lastSeenAt;
 
+  /// The page whose analysis last produced this edge. Null for edges stored
+  /// before page attribution existed.
+  ///
+  /// Mirrors [ConceptMastery.lastPageId], and for the same reason: the
+  /// Knowledge Graph can now be built for one page or one imported PDF rather
+  /// than only for a whole notebook (see `features/ai/domain/ai_scope.dart`),
+  /// and an edge with no page cannot be placed in either. "Last" rather than
+  /// "every" is deliberate — one page per edge keeps the natural key
+  /// (notebookId, fromKey, toKey) intact, and a relationship the notes draw on
+  /// several pages is the same relationship wherever it is drawn.
+  int? lastPageId;
+
   ConceptRelation toDomain() => ConceptRelation(
         fromName: fromName,
         toName: toName,

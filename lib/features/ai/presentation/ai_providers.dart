@@ -14,6 +14,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../dev/dev_secrets.dart';
 import '../../../editor/render/scene_exporter.dart';
 import '../../../editor/render/scene_image_cache.dart';
+import '../../../editor/state/page_notifier.dart' show pageRepositoryProvider;
 import '../../../editor/state/scene_controller.dart';
 import '../data/embeddings/embedder_download_manager.dart';
 import '../data/embeddings/local_text_embedder.dart';
@@ -31,6 +32,7 @@ import '../data/providers/local_gemma_provider.dart';
 import '../data/rag/note_chunk_store.dart';
 import '../data/study_planner/study_plan_store.dart';
 import '../domain/ai_provider.dart';
+import '../domain/ai_scope.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
 import '../domain/features/explainer.dart';
@@ -42,7 +44,10 @@ import '../domain/features/writing_assistant.dart';
 import '../domain/figure_analyzer.dart';
 import '../domain/image_transcriber.dart';
 import '../domain/knowledge_graph/knowledge_graph.dart';
+import '../domain/ai_router.dart' show Reachability;
 import '../domain/page_content_extractor.dart';
+import '../domain/quality/ai_quality_guard.dart';
+import '../domain/rag/bulk_indexer.dart';
 import '../domain/rag/rag_indexer.dart';
 import '../domain/rag/rag_retriever.dart';
 import '../domain/rag/text_embedder.dart';
@@ -57,6 +62,7 @@ import 'study_planner_notifier.dart';
 import 'context_engine_notifier.dart';
 import 'explain_notifier.dart';
 import 'flashcard_notifier.dart';
+import 'notebook_index_notifier.dart';
 import 'quiz_notifier.dart';
 import 'rag_index_scheduler.dart';
 import 'research_notifier.dart';
@@ -159,11 +165,78 @@ final ragIndexSchedulerProvider = Provider<RagIndexScheduler>((ref) {
   return scheduler;
 });
 
+/// Indexes pages nobody has opened — the eager path after a PDF import and the
+/// explicit "Index all pages" action. See `domain/rag/bulk_indexer.dart` for
+/// why the live scheduler above cannot cover those.
+///
+/// Reads pages with vision ON: an imported PDF page is a picture, and the light
+/// ML Kit path turns a slide into a handful of stray labels. This is a
+/// user-initiated, one-off batch, so it can afford the deep read that the
+/// passive per-keystroke loop deliberately cannot.
+final bulkRagIndexerProvider = Provider<BulkRagIndexer>((ref) {
+  final extractor = ref.watch(pageContentExtractorProvider);
+  return BulkRagIndexer(
+    indexer: ref.watch(ragIndexerProvider),
+    readPage: (pageId) async {
+      final content = await extractor.extractPage(
+        pageId,
+        languageCode: ref.read(settingsProvider).recognitionLanguage,
+        useVision: true,
+      );
+      // Figures are indexed alongside the words, exactly as the live path does
+      // — "what did the graph on slide 12 show" must be able to retrieve.
+      return content.combinedTextWithFigures;
+    },
+  );
+});
+
+/// Drives a bulk indexing run for one notebook. Family-scoped so two open
+/// notebooks keep separate progress; session-scoped (not autoDispose) so a run
+/// survives the sheet that started it being closed.
+final notebookIndexProvider = StateNotifierProvider.family<
+    NotebookIndexNotifier, NotebookIndexState, int>((ref, notebookId) {
+  return NotebookIndexNotifier(indexer: ref.watch(bulkRagIndexerProvider));
+});
+
+/// Resolves "this page / this PDF / the whole notebook" to concrete page ids.
+/// The single definition every AI feature scopes by — see `domain/ai_scope.dart`.
+final aiScopeResolverProvider = Provider<AiScopeResolver>((ref) {
+  final pages = ref.watch(pageRepositoryProvider);
+  return AiScopeResolver(
+    pagesOf: (notebookId) async => [
+      for (final p in await pages.getPagesForNotebook(notebookId))
+        ScopePage(
+          pageId: p.id,
+          importGroupId: p.importGroupId,
+          importSourceName: p.importSourceName,
+        ),
+    ],
+  );
+});
+
 /// Semantic search over a notebook, feeding "Ask your notes".
 final ragRetrieverProvider = Provider<RagRetriever>((ref) => RagRetriever(
       embedder: ref.watch(textEmbedderProvider),
       loadChunks: ref.watch(noteChunkStoreProvider).forNotebook,
     ));
+
+/// The accuracy fail-safe shared by Explain, Ask, Summarize and the Context
+/// Engine: generate locally, check the output, escalate to the cloud when the
+/// user's privacy setting allows it and flag low confidence when it doesn't.
+///
+/// Every input it needs is read at CALL time through a callback, never captured:
+/// a student who toggles cloud AI (from Settings, the sidebar switch, or
+/// `/cloud on` in the Ask box) must see the change take effect on their next
+/// question, not after a restart.
+final aiQualityGuardProvider = Provider<AiQualityGuard>((ref) {
+  return AiQualityGuard(
+    local: ref.watch(localAiProvider),
+    cloud: ref.watch(cloudGatewayMidProvider),
+    cloudEnabled: () => ref.read(settingsProvider).cloudAiEnabled,
+    privacy: () => ref.read(settingsProvider).cloudPrivacy,
+    isOnline: () => const Reachability().isOnline(),
+  );
+});
 
 /// "Ask your notes": grounded QA over a notebook (retrieve → answer from those
 /// passages only).
@@ -181,6 +254,14 @@ final askNotesNotifierProvider =
     qa: ref.watch(notesQaProvider),
     llmDownloads: ref.watch(modelDownloadManagerProvider),
     embedderDownloads: ref.watch(embedderDownloadManagerProvider),
+    guard: ref.watch(aiQualityGuardProvider),
+    // The `/cloud on|off` command and the sidebar switch write the same stored
+    // setting, so neither can drift from the other.
+    cloudEnabled: () => ref.read(settingsProvider).cloudAiEnabled,
+    setCloudEnabled: (enabled) =>
+        ref.read(settingsProvider.notifier).setCloudAiEnabled(enabled),
+    privacyAsksEachTime: () =>
+        ref.read(settingsProvider).cloudPrivacy == CloudPrivacy.askEachTime,
   );
 });
 
@@ -274,8 +355,13 @@ Future<Uint8List?> _readFileBytes(String absolutePath) async {
 final pageContextCacheProvider =
     Provider<PageContextCache>((ref) => PageContextCache());
 
-final contextEngineProvider = Provider<ContextEngine>(
-    (ref) => ContextEngine(provider: ref.watch(localAiProvider)));
+final contextEngineProvider = Provider<ContextEngine>((ref) => ContextEngine(
+      provider: ref.watch(localAiProvider),
+      // The accuracy fail-safe: an extraction the on-device model returned
+      // empty or looping is re-run on the cloud tier when the user's privacy
+      // setting allows it, instead of silently reading as "this page is blank".
+      guard: ref.watch(aiQualityGuardProvider),
+    ));
 
 /// The Phase 3 cloud gateway's base URL — the Render deployment
 /// (`server/ai-gateway`, built from the repo-root `render.yaml`). Free plan,
@@ -395,16 +481,58 @@ final flashcardNotifierProvider =
 final learningMemoryProvider =
     Provider<LearningMemoryRepository>((ref) => IsarLearningMemoryRepository());
 
-/// The notebook's concept map: mastery-tagged nodes + Context-Engine edges,
-/// assembled from Learning Memory. A FutureProvider.family so the graph screen
-/// can show loading/empty/error states per notebook. Not cached across the app
-/// beyond Riverpod's own lifecycle — cheap to rebuild from Isar.
+/// Which slice of a notebook a graph should be built from — the family key for
+/// [knowledgeGraphProvider].
+///
+/// A record rather than a bare notebookId because the graph is no longer only
+/// notebook-wide: it can be built for this page, this imported PDF, or the
+/// whole notebook, using the same concepts and relations the Context Engine
+/// already recorded (see `domain/ai_scope.dart`). [pageId] is what
+/// [AiScopeKind.page] and [AiScopeKind.importGroup] resolve against, and is
+/// unused for [AiScopeKind.notebook].
+typedef KnowledgeGraphRequest = ({
+  int notebookId,
+  AiScopeKind kind,
+  int? pageId,
+});
+
+/// A notebook-wide request, for callers with no page in hand.
+KnowledgeGraphRequest wholeNotebookGraph(int notebookId) =>
+    (notebookId: notebookId, kind: AiScopeKind.notebook, pageId: null);
+
+/// A concept map: mastery-tagged nodes + Context-Engine edges, assembled from
+/// Learning Memory and narrowed to [request]'s scope. A FutureProvider.family
+/// so the graph screen can show loading/empty/error states per scope. Not
+/// cached across the app beyond Riverpod's own lifecycle — cheap to rebuild
+/// from Isar.
+///
+/// A scoped graph reads the SAME extraction path as the notebook-wide one: the
+/// Context Engine's per-page analysis is what produces every concept and edge,
+/// so narrowing is a filter over what it already recorded rather than a second,
+/// differently-behaved pipeline.
 final knowledgeGraphProvider =
-    FutureProvider.family<KnowledgeGraph, int>((ref, notebookId) async {
+    FutureProvider.family<KnowledgeGraph, KnowledgeGraphRequest>(
+        (ref, request) async {
   final memory = ref.watch(learningMemoryProvider);
-  final concepts = await memory.allConcepts(notebookId);
-  final relations = await memory.relationsForNotebook(notebookId);
-  return KnowledgeGraph.build(concepts: concepts, relations: relations);
+  final notebookId = request.notebookId;
+
+  if (request.kind == AiScopeKind.notebook || request.pageId == null) {
+    return KnowledgeGraph.build(
+      concepts: await memory.allConcepts(notebookId),
+      relations: await memory.relationsForNotebook(notebookId),
+    );
+  }
+
+  final scope = await ref.watch(aiScopeResolverProvider).resolve(
+        kind: request.kind,
+        notebookId: notebookId,
+        pageId: request.pageId!,
+      );
+  final pageIds = scope.pageIdSet;
+  return KnowledgeGraph.build(
+    concepts: await memory.conceptsForPages(notebookId, pageIds),
+    relations: await memory.relationsForPages(notebookId, pageIds),
+  );
 });
 
 /// Durable store of generated study plans (Isar), one per notebook.
@@ -452,6 +580,7 @@ final explainNotifierProvider =
     hasSeenFirstCloudCall: () => ref.read(settingsProvider).hasSeenFirstCloudCall,
     markFirstCloudCallSeen: () =>
         ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
+    guard: ref.watch(aiQualityGuardProvider),
   );
 });
 

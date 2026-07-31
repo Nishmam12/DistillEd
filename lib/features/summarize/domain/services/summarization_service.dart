@@ -17,16 +17,25 @@ import '../../../ai/domain/ai_router.dart';
 import '../../../ai/domain/meaningfulness_gate.dart';
 import '../../../ai/domain/page_content.dart';
 import '../../../ai/domain/page_content_extractor.dart';
+import '../../../ai/domain/quality/ai_quality_guard.dart';
 import '../../../ai/domain/text_budget.dart' as text_budget;
+import '../../../ai/domain/tutor_voice.dart';
 import '../../data/cache/summary_cache.dart';
 import '../../data/cache/summary_store.dart';
 
 enum SummarizeStage { recognizing, summarizing }
 
 /// What a summarize request covers. Selection reads only the chosen elements on
-/// one page; page reads one page; notebook reads every page in order. Scope
-/// only changes what text is gathered — the gate, routing, chunk-and-reduce and
-/// generation downstream are identical.
+/// one page; page reads one page; an import group reads every page of one
+/// imported document; notebook reads every page in order. Scope only changes
+/// what text is gathered — the gate, routing, chunk-and-reduce and generation
+/// downstream are identical.
+///
+/// These mirror [AiScopeKind] (features/ai/domain/ai_scope.dart), which is the
+/// shared definition every AI surface scopes by. They stay a separate sealed
+/// type here because a summarize scope also carries the SELECTION, which is an
+/// editor concept the AI platform has no business knowing about — the editor
+/// resolves an [AiScope] to page ids and hands them over below.
 sealed class SummarizeScope {
   const SummarizeScope();
 }
@@ -43,6 +52,21 @@ class SelectionScope extends SummarizeScope {
 class PageScope extends SummarizeScope {
   final int pageId;
   const PageScope(this.pageId);
+}
+
+/// Every page of one imported document — [pageIds] in page order.
+///
+/// Distinct from [NotebookScope] even though both are "a list of pages": a
+/// notebook summary is cached (one per notebook) and a PDF summary is not, and
+/// the two must never share that cache entry or a student who summarized their
+/// lecture PDF would be shown it again as the summary of the whole notebook.
+class ImportGroupScope extends SummarizeScope {
+  final List<int> pageIds;
+
+  /// The import these pages came from — carried for the cache key discussion
+  /// above and so the UI can name the document.
+  final String importGroupId;
+  const ImportGroupScope(this.pageIds, {required this.importGroupId});
 }
 
 /// The whole notebook — [pageIds] in page order.
@@ -64,6 +88,12 @@ class SummarizationResult {
   /// The cloud route failed and the local model produced the summary instead.
   final bool cloudFellBack;
 
+  /// Which tier the student is reading, per the accuracy fail-safe.
+  /// [AnswerTier.localLowConfidence] means the on-device model produced
+  /// something the quality check rejected and no cloud run was permitted; the
+  /// sheet must warn rather than present it as a reliable recap.
+  final AnswerTier tier;
+
   const SummarizationResult({
     required this.summary,
     required this.recognizedText,
@@ -71,6 +101,7 @@ class SummarizationResult {
     this.fromCache = false,
     this.chunked = false,
     this.cloudFellBack = false,
+    this.tier = AnswerTier.local,
   });
 }
 
@@ -116,18 +147,20 @@ class SummarizationService {
   /// establishes for explanations.
   static const String _voice =
       'You are a tutor recapping a student\'s handwritten notes with them, out '
-      'loud, the way you would at the end of a session. Speak about the '
-      'material itself, not about the note as a document — say "photosynthesis '
-      'converts light into sugar", never "the note explains that '
-      'photosynthesis…" or "the student writes about…". Start straight in on '
-      'the content: no preamble, no greeting, no "here is a summary", no '
-      'heading, no closing offer of further help or follow-up question. Use '
-      'plain, warm, direct prose in flowing sentences — no bullet points, no '
-      'bold labels, no emoji, and no phrases like "certainly", "it is '
-      'important to note", "delve", or "in conclusion". Address the student as '
-      '"you" only when the note is about something they did.';
+      'loud, the way you would at the end of a session.\n\n'
+      '$kTutorVoiceWithMath\n\n'
+      'Two things specific to a recap: speak about the material itself, not '
+      'about the note as a document — say "photosynthesis converts light into '
+      'sugar", never "the note explains that photosynthesis…" or "the student '
+      'writes about…". And start straight in on the content: no "here is a '
+      'summary", no title, no heading. A recap is not the place to check '
+      'understanding with a question; just tell them what the material said.';
 
-  static const String _instruction = '$_voice\n\n'
+  /// The single-pass instruction. Public for the same reason [NotesQa.systemPrompt]
+  /// and [Explainer.systemPromptFor] are: a prompt is behaviour, and the tests
+  /// that pin the tutor voice and the faithfulness rules have to be able to
+  /// read it.
+  static const String noteInstruction = '$_voice\n\n'
       'Recap the note below in 3 to 6 sentences, keeping what a student would '
       'need for revision: the key ideas, and the names, dates and numbers that '
       'carry them. Use only information present in the note — never invent '
@@ -151,7 +184,7 @@ class SummarizationService {
 
   /// Per-chunk pass of chunk-and-reduce: condense one section of a long note
   /// without losing the specifics later passes rely on.
-  static const String _sectionInstruction = '$_voice\n\n'
+  static const String sectionInstruction = '$_voice\n\n'
       'The text below is one section of a longer note. Recap just this section, '
       'compactly, keeping its key facts, names, and numbers — later passes '
       'depend on those specifics surviving. Use only what this section says — '
@@ -160,7 +193,7 @@ class SummarizationService {
   /// Final reduce pass: fold the section summaries into one summary. The input
   /// is already summarized text, so it must not be summarized any further than
   /// the note itself would be.
-  static const String _reduceInstruction = '$_voice\n\n'
+  static const String reduceInstruction = '$_voice\n\n'
       'The text below is section-by-section recaps of a single note, in order. '
       'Draw them together into one recap of the whole note in 3 to 6 '
       'sentences, and do not mention that it came in sections. Use only '
@@ -179,6 +212,15 @@ class SummarizationService {
   final SummaryStore _store;
   final String _localModelLabel;
 
+  /// The accuracy fail-safe, applied to the FINAL summary pass.
+  ///
+  /// Only the final pass, deliberately. Chunk-and-reduce's intermediate section
+  /// summaries are never shown to anyone — escalating one of those to the cloud
+  /// would spend a network call on text that exists only to be summarized again,
+  /// while a broken section still shows up as a broken final summary and gets
+  /// caught there. Null keeps the pre-guard behaviour exactly.
+  final AiQualityGuard? _guard;
+
   /// Whether pages are read with the VLM (charts and diagrams understood) or on
   /// the light ML Kit path. On by default — a summary that silently drops the
   /// graph on the page is the bug this exists to fix. Off is an escape hatch
@@ -195,7 +237,9 @@ class SummarizationService {
     MeaningfulnessGate gate = const MeaningfulnessGate(),
     String localModelLabel = 'gemma4-e2b-local',
     bool visionEnabled = true,
-  })  : _extractor = extractor,
+    AiQualityGuard? guard,
+  })  : _guard = guard,
+        _extractor = extractor,
         _gate = gate,
         _router = router,
         _local = local,
@@ -274,6 +318,7 @@ class SummarizationService {
     String modelUsed;
     var chunked = false;
     var cloudFellBack = false;
+    var tier = AnswerTier.local;
 
     switch (decision.route) {
       case AiRoute.errorOfflineNoModel:
@@ -286,24 +331,27 @@ class SummarizationService {
         onStage?.call(SummarizeStage.summarizing);
         try {
           summary = await _cloud.chatCompletion(messages: [
-            const ChatMessage.system(_instruction),
+            const ChatMessage.system(noteInstruction),
             ChatMessage.user('NOTE:\n$text'),
           ]);
           modelUsed = 'cloud';
         } on CloudUnavailableException {
           // Cloud tier is a stub / unreachable — degrade to local.
-          (summary, chunked) = await _generateLocally(text);
+          (summary, chunked, tier) = await _generateLocally(text);
           modelUsed = _localModelLabel;
           cloudFellBack = true;
         }
 
       case AiRoute.local:
         onStage?.call(SummarizeStage.summarizing);
-        (summary, chunked) = await _generateLocally(text);
-        modelUsed = _localModelLabel;
+        (summary, chunked, tier) = await _generateLocally(text);
+        modelUsed = tier == AnswerTier.cloudVerified ? 'cloud' : _localModelLabel;
     }
 
-    if (cacheable) {
+    // A low-confidence summary is deliberately NOT cached: caching it would
+    // pin the bad recap to the notebook until its text changed, and the student
+    // would see it again on every open with no way to ask for another try.
+    if (cacheable && tier != AnswerTier.localLowConfidence) {
       await _store.save(SummaryCache()
         ..notebookId = notebookId
         ..textHash = hash
@@ -318,6 +366,7 @@ class SummarizationService {
       modelUsed: modelUsed,
       chunked: chunked,
       cloudFellBack: cloudFellBack,
+      tier: tier,
     );
   }
 
@@ -336,20 +385,10 @@ class SummarizationService {
     final vision = _visionEnabled;
     switch (scope) {
       case NotebookScope(:final pageIds):
-        final pages = <PageContent>[];
-        for (final pageId in pageIds) {
-          pages.add(await _extractor.extractPage(pageId,
-              languageCode: languageCode, useVision: vision));
-        }
-        final text = pages
-            .map((p) => p.combinedTextWithFigures)
-            .where((t) => t.isNotEmpty)
-            .join('\n\n');
-        final scores = [
-          for (final p in pages)
-            if (p.inkTopScore != null) p.inkTopScore!,
-        ];
-        return (text, scores);
+        return _gatherPages(pageIds, languageCode, vision);
+
+      case ImportGroupScope(:final pageIds):
+        return _gatherPages(pageIds, languageCode, vision);
 
       case PageScope(:final pageId):
         final page = await _extractor.extractPage(pageId,
@@ -361,6 +400,30 @@ class SummarizationService {
             languageCode: languageCode, useVision: vision);
         return _single(page);
     }
+  }
+
+  /// Reads several pages in order and joins them into one body of text.
+  /// Shared by the notebook and import-group scopes, which differ only in which
+  /// pages they name.
+  Future<(String, List<double>)> _gatherPages(
+    List<int> pageIds,
+    String languageCode,
+    bool vision,
+  ) async {
+    final pages = <PageContent>[];
+    for (final pageId in pageIds) {
+      pages.add(await _extractor.extractPage(pageId,
+          languageCode: languageCode, useVision: vision));
+    }
+    final text = pages
+        .map((p) => p.combinedTextWithFigures)
+        .where((t) => t.isNotEmpty)
+        .join('\n\n');
+    final scores = [
+      for (final p in pages)
+        if (p.inkTopScore != null) p.inkTopScore!,
+    ];
+    return (text, scores);
   }
 
   /// Figures are included in the gated/summarized text — a page whose only
@@ -375,57 +438,92 @@ class SummarizationService {
   /// Summarizes [text] locally. When it fits the local budget this is one
   /// faithful pass; when it exceeds the local context window it is
   /// chunk-and-reduced. Returns the summary and whether reduction ran.
-  Future<(String, bool)> _generateLocally(String text) async {
+  Future<(String, bool, AnswerTier)> _generateLocally(String text) async {
     if (countWords(text) <= _router.localInputWordBudget) {
-      return (await _summarizeOnce(text, _instruction), false);
+      final result = await _guarded(text, noteInstruction);
+      return (result.text.trim(), false, result.tier);
     }
-    return (
-      await _chunkAndReduce(text, _router.localInputWordBudget),
-      true,
-    );
+    // The reduce pass IS the final pass, so the guard runs there (see [_guard]).
+    final result = await _chunkAndReduce(text, _router.localInputWordBudget);
+    return (result.text.trim(), true, result.tier);
+  }
+
+  /// One pass through the accuracy fail-safe, or a plain local pass when no
+  /// guard is wired.
+  ///
+  /// A summary is checked as UNGROUNDED output: it is a recap of the note it
+  /// was given, not an answer assembled from retrieved passages, so only the
+  /// broken-output checks (empty, looping, degenerate) apply. Requiring
+  /// vocabulary overlap with the source would punish exactly the paraphrasing a
+  /// good recap does.
+  Future<GuardedResult> _guarded(String text, String instruction) async {
+    final guard = _guard;
+    if (guard == null) {
+      return GuardedResult(
+        text: await _summarizeOnce(text, instruction),
+        tier: AnswerTier.local,
+      );
+    }
+    try {
+      return await guard.run(
+        prompt: 'NOTE:\n$text',
+        systemPrompt: instruction,
+        options: _summarizeOptions,
+      );
+    } on AiModelNotReadyException {
+      throw LocalModelRequiredException(offline: false);
+    } on AiException catch (e) {
+      throw SummarizeException(e.message);
+    }
   }
 
   /// Summarizes over-budget [text] in passes: summarize each section that fits
   /// [budget], then summarize the joined section summaries — recursing while
   /// even the summaries overflow, with a hard pass cap so it always terminates.
-  Future<String> _chunkAndReduce(String text, int budget, {int pass = 0}) async {
+  Future<GuardedResult> _chunkAndReduce(String text, int budget,
+      {int pass = 0}) async {
     final sections = text_budget.chunkByWords(text, budget);
     if (sections.length <= 1) {
-      return _summarizeOnce(sections.isEmpty ? text : sections.first,
-          _reduceInstruction);
+      return _guarded(
+          sections.isEmpty ? text : sections.first, reduceInstruction);
     }
 
     final partials = <String>[];
     for (final section in sections) {
-      partials.add(await _summarizeOnce(section, _sectionInstruction));
+      // Intermediate passes stay unguarded — see [_guard].
+      partials.add(await _summarizeOnce(section, sectionInstruction));
     }
     final combined = partials.join('\n\n');
 
     if (countWords(combined) <= budget) {
-      return _summarizeOnce(combined, _reduceInstruction);
+      return _guarded(combined, reduceInstruction);
     }
     if (pass + 1 >= _maxReducePasses) {
       // Safety net for a tiny context window: stop recursing and reduce the
       // (necessarily truncated) combined summaries in one final pass.
-      return _summarizeOnce(
-          text_budget.truncateToWords(combined, budget), _reduceInstruction);
+      return _guarded(
+          text_budget.truncateToWords(combined, budget), reduceInstruction);
     }
     return _chunkAndReduce(combined, budget, pass: pass + 1);
   }
 
   /// One local generation pass (defaults tuned for faithful summarization, not
   /// creative chat), translating platform failures into summarize-level ones.
+  /// Sampling for a summarization pass — a constant so the guard's cloud re-run
+  /// asks for the same thing the local pass was asked for.
+  static const AiGenerationOptions _summarizeOptions = AiGenerationOptions(
+    temperature: 0.2,
+    topP: 0.95,
+    maxTokens: 512,
+  );
+
   Future<String> _summarizeOnce(String text, String instruction) async {
     try {
       final chunks = await _local
           .generate(
             prompt: 'NOTE:\n$text',
             systemPrompt: instruction,
-            options: const AiGenerationOptions(
-              temperature: 0.2,
-              topP: 0.95,
-              maxTokens: 512,
-            ),
+            options: _summarizeOptions,
           )
           .toList();
       return chunks.join().trim();

@@ -15,11 +15,20 @@ import '../ai_provider.dart';
 import '../ai_router.dart';
 import '../meaningfulness_gate.dart';
 import '../page_content.dart';
+import '../quality/ai_quality_guard.dart';
 import '../text_budget.dart';
+import '../tutor_voice.dart';
 import 'page_context.dart';
 
 class ContextEngine {
-  static const String _schemaInstruction = '''
+  /// The extraction contract.
+  ///
+  /// This one speaks JSON rather than prose, so [kTutorVoice] does not apply —
+  /// there is no reader to sound natural for. [kMathMarkup] DOES apply: a
+  /// definition the note gives may itself be a formula, and it has to arrive in
+  /// the same notation the views know how to render, or the knowledge graph and
+  /// the flashcards built from it show raw backslashes.
+  static const String schemaInstruction = '''
 You analyze one page of a student's notes. Reply with ONLY a single JSON object — no markdown, no code fences, no text before or after it — in exactly this shape:
 
 {"currentTopic": "short phrase naming the main topic",
@@ -40,7 +49,9 @@ Rules:
 - "relatedConcepts" captures how the concepts connect, as directed pairs. "relation" is a short label such as "is-a", "part-of", "leads-to", "causes", or "related-to". Only include a pair when the note itself implies the link; both ends should be concepts you listed.
 - "estimatedLevel" is the writer's apparent understanding: "beginner", "intermediate", or "advanced".
 - "confidence" is 0.0 to 1.0 — how sure you are of the topic read; very little text deserves a low value.
-- Keep each list to at most 8 short items. Use [] or {} when there is nothing to report.''';
+- Keep each list to at most 8 short items. Use [] or {} when there is nothing to report.
+
+$kMathMarkup''';
 
   static const String _retryNudge =
       'Reply with ONLY one valid JSON object in the required shape. '
@@ -49,11 +60,27 @@ Rules:
   final AiProvider _provider;
   final MeaningfulnessGate _gate;
 
+  /// The accuracy fail-safe, applied to the FIRST extraction attempt.
+  ///
+  /// Structured extraction already had half of one: unusable JSON is retried
+  /// once with a stricter nudge, then degrades to [PageContext.empty]. What it
+  /// had no answer for is the model returning nothing, or looping — which
+  /// produce an empty analysis that looks exactly like "this page has no
+  /// content", and quietly leave the page out of the knowledge graph and the
+  /// flashcards. The guard escalates those to the cloud tier when the user's
+  /// privacy setting allows, before the local retry.
+  ///
+  /// Null keeps the previous behaviour exactly, which is what every existing
+  /// test and the passive live loop rely on.
+  final AiQualityGuard? _guard;
+
   ContextEngine({
     required AiProvider provider,
     MeaningfulnessGate gate = const MeaningfulnessGate(),
+    AiQualityGuard? guard,
   })  : _provider = provider,
-        _gate = gate;
+        _gate = gate,
+        _guard = guard;
 
   /// Analyzes [content]. Returns [PageContext.empty] when the page doesn't
   /// carry enough readable text (gate) or the model's output is unusable
@@ -75,7 +102,7 @@ Rules:
     final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
     final prompt = _buildPrompt(truncateToWords(text, budget), previousContext);
 
-    var json = tryExtractJsonObject(await _complete(prompt));
+    var json = tryExtractJsonObject(await _completeGuarded(prompt));
     json ??= tryExtractJsonObject(await _complete('$prompt\n\n$_retryNudge'));
     return json == null ? PageContext.empty : PageContext.fromJson(json);
   }
@@ -89,14 +116,34 @@ Rules:
     return 'NOTE:\n$noteText$continuity';
   }
 
+  /// Greedy decoding: structured extraction wants determinism, and small models
+  /// emit valid JSON far more reliably without sampling. A constant so the
+  /// guard's cloud re-run asks for the same thing.
+  static const AiGenerationOptions extractOptions =
+      AiGenerationOptions(temperature: 0.0, maxTokens: 512);
+
+  /// The first attempt, through the quality guard when one is wired.
+  ///
+  /// Only the first: the retry exists to fix malformed JSON from a model that
+  /// is otherwise working, and running the fail-safe twice per page on the
+  /// passive analysis loop would double its cost for no extra signal.
+  Future<String> _completeGuarded(String prompt) async {
+    final guard = _guard;
+    if (guard == null) return _complete(prompt);
+    final result = await guard.run(
+      prompt: prompt,
+      systemPrompt: schemaInstruction,
+      options: extractOptions,
+    );
+    return result.text;
+  }
+
   Future<String> _complete(String prompt) async {
     final chunks = await _provider
         .generate(
           prompt: prompt,
-          systemPrompt: _schemaInstruction,
-          // Greedy decoding: structured extraction wants determinism, and
-          // small models emit valid JSON far more reliably without sampling.
-          options: const AiGenerationOptions(temperature: 0.0, maxTokens: 512),
+          systemPrompt: schemaInstruction,
+          options: extractOptions,
         )
         .toList();
     return chunks.join();

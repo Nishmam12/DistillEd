@@ -40,7 +40,13 @@ final GoRouter appRouter = GoRouter(
           path: 'graph',
           builder: (context, state) {
             final id = int.parse(state.pathParameters['id']!);
-            return KnowledgeGraphScreen(notebookId: id);
+            // `pageId` is optional: the editor passes the page the graph was
+            // opened from so the screen can offer "this page" / "this PDF"
+            // scopes. Reached without it (a deep link), the graph is
+            // notebook-wide and the scope menu is hidden.
+            final pageId = int.tryParse(
+                state.uri.queryParameters['pageId'] ?? '');
+            return KnowledgeGraphScreen(notebookId: id, pageId: pageId);
           },
         ),
         GoRoute(

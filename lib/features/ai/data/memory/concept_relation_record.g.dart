@@ -33,28 +33,33 @@ const ConceptRelationRecordSchema = CollectionSchema(
       name: r'fromName',
       type: IsarType.string,
     ),
-    r'lastSeenAt': PropertySchema(
+    r'lastPageId': PropertySchema(
       id: 3,
+      name: r'lastPageId',
+      type: IsarType.long,
+    ),
+    r'lastSeenAt': PropertySchema(
+      id: 4,
       name: r'lastSeenAt',
       type: IsarType.dateTime,
     ),
     r'notebookId': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'notebookId',
       type: IsarType.long,
     ),
     r'relation': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'relation',
       type: IsarType.string,
     ),
     r'toKey': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'toKey',
       type: IsarType.string,
     ),
     r'toName': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'toName',
       type: IsarType.string,
     )
@@ -123,11 +128,12 @@ void _conceptRelationRecordSerialize(
   writer.writeDouble(offsets[0], object.confidence);
   writer.writeString(offsets[1], object.fromKey);
   writer.writeString(offsets[2], object.fromName);
-  writer.writeDateTime(offsets[3], object.lastSeenAt);
-  writer.writeLong(offsets[4], object.notebookId);
-  writer.writeString(offsets[5], object.relation);
-  writer.writeString(offsets[6], object.toKey);
-  writer.writeString(offsets[7], object.toName);
+  writer.writeLong(offsets[3], object.lastPageId);
+  writer.writeDateTime(offsets[4], object.lastSeenAt);
+  writer.writeLong(offsets[5], object.notebookId);
+  writer.writeString(offsets[6], object.relation);
+  writer.writeString(offsets[7], object.toKey);
+  writer.writeString(offsets[8], object.toName);
 }
 
 ConceptRelationRecord _conceptRelationRecordDeserialize(
@@ -141,11 +147,12 @@ ConceptRelationRecord _conceptRelationRecordDeserialize(
   object.fromKey = reader.readString(offsets[1]);
   object.fromName = reader.readString(offsets[2]);
   object.id = id;
-  object.lastSeenAt = reader.readDateTime(offsets[3]);
-  object.notebookId = reader.readLong(offsets[4]);
-  object.relation = reader.readString(offsets[5]);
-  object.toKey = reader.readString(offsets[6]);
-  object.toName = reader.readString(offsets[7]);
+  object.lastPageId = reader.readLongOrNull(offsets[3]);
+  object.lastSeenAt = reader.readDateTime(offsets[4]);
+  object.notebookId = reader.readLong(offsets[5]);
+  object.relation = reader.readString(offsets[6]);
+  object.toKey = reader.readString(offsets[7]);
+  object.toName = reader.readString(offsets[8]);
   return object;
 }
 
@@ -163,14 +170,16 @@ P _conceptRelationRecordDeserializeProp<P>(
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 4:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 5:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 6:
       return (reader.readString(offset)) as P;
     case 7:
+      return (reader.readString(offset)) as P;
+    case 8:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -820,6 +829,80 @@ extension ConceptRelationRecordQueryFilter on QueryBuilder<
   }
 
   QueryBuilder<ConceptRelationRecord, ConceptRelationRecord,
+      QAfterFilterCondition> lastPageIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'lastPageId',
+      ));
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord,
+      QAfterFilterCondition> lastPageIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'lastPageId',
+      ));
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord,
+      QAfterFilterCondition> lastPageIdEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'lastPageId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord,
+      QAfterFilterCondition> lastPageIdGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'lastPageId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord,
+      QAfterFilterCondition> lastPageIdLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'lastPageId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord,
+      QAfterFilterCondition> lastPageIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'lastPageId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord,
       QAfterFilterCondition> lastSeenAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -1397,6 +1480,20 @@ extension ConceptRelationRecordQuerySortBy
   }
 
   QueryBuilder<ConceptRelationRecord, ConceptRelationRecord, QAfterSortBy>
+      sortByLastPageId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastPageId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord, QAfterSortBy>
+      sortByLastPageIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastPageId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord, QAfterSortBy>
       sortByLastSeenAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastSeenAt', Sort.asc);
@@ -1526,6 +1623,20 @@ extension ConceptRelationRecordQuerySortThenBy
   }
 
   QueryBuilder<ConceptRelationRecord, ConceptRelationRecord, QAfterSortBy>
+      thenByLastPageId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastPageId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord, QAfterSortBy>
+      thenByLastPageIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastPageId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord, QAfterSortBy>
       thenByLastSeenAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastSeenAt', Sort.asc);
@@ -1620,6 +1731,13 @@ extension ConceptRelationRecordQueryWhereDistinct
   }
 
   QueryBuilder<ConceptRelationRecord, ConceptRelationRecord, QDistinct>
+      distinctByLastPageId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lastPageId');
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, ConceptRelationRecord, QDistinct>
       distinctByLastSeenAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'lastSeenAt');
@@ -1681,6 +1799,13 @@ extension ConceptRelationRecordQueryProperty on QueryBuilder<
       fromNameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'fromName');
+    });
+  }
+
+  QueryBuilder<ConceptRelationRecord, int?, QQueryOperations>
+      lastPageIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lastPageId');
     });
   }
 

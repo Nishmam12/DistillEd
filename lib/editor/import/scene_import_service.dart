@@ -65,6 +65,23 @@ class SceneImportService {
     return result?.files.single.path;
   }
 
+  /// A fresh identifier for one import, stamped onto every page it produces
+  /// ([NotePage.importGroupId]).
+  ///
+  /// Minted per CALL rather than derived from the file, deliberately: importing
+  /// the same lecture twice is two separate documents in the notebook, and the
+  /// student asking about "this PDF" means the one they are looking at, not
+  /// both copies interleaved.
+  static String newImportGroupId() =>
+      'import-${DateTime.now().microsecondsSinceEpoch.toRadixString(16)}';
+
+  /// The file's own name (`lecture.pdf`) from a full [filePath] — the label a
+  /// scope menu shows for a "whole PDF" choice.
+  static String importSourceNameOf(String filePath) {
+    final parts = filePath.split(RegExp(r'[/\\]'));
+    return parts.isEmpty ? filePath : parts.last;
+  }
+
   /// Renders every page of the PDF at [filePath], one [ImportedImage] per page
   /// in document order.
   ///

@@ -30,11 +30,21 @@ class EditorAppBarActions extends ConsumerWidget {
   final ScenePageKey pageKey;
   final VoidCallback? onChangeBackground;
   final VoidCallback? onSummarize;
+
+  /// Re-reads and embeds every page of the notebook for "Ask your notes".
+  ///
+  /// A manual action because it is the retroactive half of eager indexing: a
+  /// PDF imported from now on indexes itself, but a notebook filled before that
+  /// existed holds pages nobody has opened, and those are invisible to search
+  /// until something reads them. Optional for the same reason as the two above
+  /// — the dev playground has no notebook to index.
+  final VoidCallback? onIndexNotebook;
   const EditorAppBarActions({
     super.key,
     required this.pageKey,
     this.onChangeBackground,
     this.onSummarize,
+    this.onIndexNotebook,
   });
 
   @override
@@ -48,6 +58,8 @@ class EditorAppBarActions extends ConsumerWidget {
             onChangeBackground?.call();
           case 'summarize':
             onSummarize?.call();
+          case 'index':
+            onIndexNotebook?.call();
           case 'paste':
             _paste(ref);
           case 'library':
@@ -77,6 +89,16 @@ class EditorAppBarActions extends ConsumerWidget {
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.auto_awesome_outlined),
               title: Text('Summarize'),
+            ),
+          ),
+        if (onIndexNotebook != null)
+          const PopupMenuItem(
+            value: 'index',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.manage_search_outlined),
+              title: Text('Index all pages'),
+              subtitle: Text('Makes every page searchable by AI'),
             ),
           ),
         if (onChangeBackground != null || onSummarize != null)

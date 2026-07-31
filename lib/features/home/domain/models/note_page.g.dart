@@ -22,29 +22,39 @@ const NotePageSchema = CollectionSchema(
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
-    r'importedContents': PropertySchema(
+    r'importGroupId': PropertySchema(
       id: 1,
+      name: r'importGroupId',
+      type: IsarType.string,
+    ),
+    r'importSourceName': PropertySchema(
+      id: 2,
+      name: r'importSourceName',
+      type: IsarType.string,
+    ),
+    r'importedContents': PropertySchema(
+      id: 3,
       name: r'importedContents',
       type: IsarType.objectList,
       target: r'ImportedContent',
     ),
     r'modifiedAt': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'modifiedAt',
       type: IsarType.dateTime,
     ),
     r'notebookId': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'notebookId',
       type: IsarType.long,
     ),
     r'pageIndex': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'pageIndex',
       type: IsarType.long,
     ),
     r'shapes': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'shapes',
       type: IsarType.objectList,
       target: r'ShapeElement',
@@ -68,6 +78,19 @@ const NotePageSchema = CollectionSchema(
           caseSensitive: false,
         )
       ],
+    ),
+    r'importGroupId': IndexSchema(
+      id: 5197486995016734919,
+      name: r'importGroupId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'importGroupId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
     )
   },
   links: {},
@@ -87,6 +110,18 @@ int _notePageEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.importGroupId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.importSourceName;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.importedContents.length * 3;
   {
     final offsets = allOffsets[ImportedContent]!;
@@ -114,17 +149,19 @@ void _notePageSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDateTime(offsets[0], object.createdAt);
+  writer.writeString(offsets[1], object.importGroupId);
+  writer.writeString(offsets[2], object.importSourceName);
   writer.writeObjectList<ImportedContent>(
-    offsets[1],
+    offsets[3],
     allOffsets,
     ImportedContentSchema.serialize,
     object.importedContents,
   );
-  writer.writeDateTime(offsets[2], object.modifiedAt);
-  writer.writeLong(offsets[3], object.notebookId);
-  writer.writeLong(offsets[4], object.pageIndex);
+  writer.writeDateTime(offsets[4], object.modifiedAt);
+  writer.writeLong(offsets[5], object.notebookId);
+  writer.writeLong(offsets[6], object.pageIndex);
   writer.writeObjectList<ShapeElement>(
-    offsets[5],
+    offsets[7],
     allOffsets,
     ShapeElementSchema.serialize,
     object.shapes,
@@ -140,18 +177,20 @@ NotePage _notePageDeserialize(
   final object = NotePage();
   object.createdAt = reader.readDateTime(offsets[0]);
   object.id = id;
+  object.importGroupId = reader.readStringOrNull(offsets[1]);
+  object.importSourceName = reader.readStringOrNull(offsets[2]);
   object.importedContents = reader.readObjectList<ImportedContent>(
-        offsets[1],
+        offsets[3],
         ImportedContentSchema.deserialize,
         allOffsets,
         ImportedContent(),
       ) ??
       [];
-  object.modifiedAt = reader.readDateTime(offsets[2]);
-  object.notebookId = reader.readLong(offsets[3]);
-  object.pageIndex = reader.readLong(offsets[4]);
+  object.modifiedAt = reader.readDateTime(offsets[4]);
+  object.notebookId = reader.readLong(offsets[5]);
+  object.pageIndex = reader.readLong(offsets[6]);
   object.shapes = reader.readObjectList<ShapeElement>(
-        offsets[5],
+        offsets[7],
         ShapeElementSchema.deserialize,
         allOffsets,
         ShapeElement(),
@@ -170,6 +209,10 @@ P _notePageDeserializeProp<P>(
     case 0:
       return (reader.readDateTime(offset)) as P;
     case 1:
+      return (reader.readStringOrNull(offset)) as P;
+    case 2:
+      return (reader.readStringOrNull(offset)) as P;
+    case 3:
       return (reader.readObjectList<ImportedContent>(
             offset,
             ImportedContentSchema.deserialize,
@@ -177,13 +220,13 @@ P _notePageDeserializeProp<P>(
             ImportedContent(),
           ) ??
           []) as P;
-    case 2:
-      return (reader.readDateTime(offset)) as P;
-    case 3:
-      return (reader.readLong(offset)) as P;
     case 4:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 5:
+      return (reader.readLong(offset)) as P;
+    case 6:
+      return (reader.readLong(offset)) as P;
+    case 7:
       return (reader.readObjectList<ShapeElement>(
             offset,
             ShapeElementSchema.deserialize,
@@ -379,6 +422,71 @@ extension NotePageQueryWhere on QueryBuilder<NotePage, NotePage, QWhereClause> {
       ));
     });
   }
+
+  QueryBuilder<NotePage, NotePage, QAfterWhereClause> importGroupIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'importGroupId',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterWhereClause> importGroupIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'importGroupId',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterWhereClause> importGroupIdEqualTo(
+      String? importGroupId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'importGroupId',
+        value: [importGroupId],
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterWhereClause> importGroupIdNotEqualTo(
+      String? importGroupId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'importGroupId',
+              lower: [],
+              upper: [importGroupId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'importGroupId',
+              lower: [importGroupId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'importGroupId',
+              lower: [importGroupId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'importGroupId',
+              lower: [],
+              upper: [importGroupId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
 }
 
 extension NotePageQueryFilter
@@ -484,6 +592,312 @@ extension NotePageQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importGroupIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'importGroupId',
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importGroupIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'importGroupId',
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> importGroupIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'importGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importGroupIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'importGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> importGroupIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'importGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> importGroupIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'importGroupId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importGroupIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'importGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> importGroupIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'importGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> importGroupIdContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'importGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> importGroupIdMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'importGroupId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importGroupIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'importGroupId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importGroupIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'importGroupId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'importSourceName',
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'importSourceName',
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'importSourceName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'importSourceName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'importSourceName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'importSourceName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'importSourceName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'importSourceName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'importSourceName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'importSourceName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'importSourceName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+      importSourceNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'importSourceName',
+        value: '',
       ));
     });
   }
@@ -855,6 +1269,30 @@ extension NotePageQuerySortBy on QueryBuilder<NotePage, NotePage, QSortBy> {
     });
   }
 
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByImportGroupId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'importGroupId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByImportGroupIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'importGroupId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByImportSourceName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'importSourceName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByImportSourceNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'importSourceName', Sort.desc);
+    });
+  }
+
   QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByModifiedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'modifiedAt', Sort.asc);
@@ -918,6 +1356,30 @@ extension NotePageQuerySortThenBy
     });
   }
 
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByImportGroupId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'importGroupId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByImportGroupIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'importGroupId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByImportSourceName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'importSourceName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByImportSourceNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'importSourceName', Sort.desc);
+    });
+  }
+
   QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByModifiedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'modifiedAt', Sort.asc);
@@ -963,6 +1425,22 @@ extension NotePageQueryWhereDistinct
     });
   }
 
+  QueryBuilder<NotePage, NotePage, QDistinct> distinctByImportGroupId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'importGroupId',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QDistinct> distinctByImportSourceName(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'importSourceName',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<NotePage, NotePage, QDistinct> distinctByModifiedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'modifiedAt');
@@ -993,6 +1471,18 @@ extension NotePageQueryProperty
   QueryBuilder<NotePage, DateTime, QQueryOperations> createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
+    });
+  }
+
+  QueryBuilder<NotePage, String?, QQueryOperations> importGroupIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'importGroupId');
+    });
+  }
+
+  QueryBuilder<NotePage, String?, QQueryOperations> importSourceNameProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'importSourceName');
     });
   }
 

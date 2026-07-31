@@ -46,15 +46,25 @@ class RagRetriever {
 
   /// The passages in [notebookId] most relevant to [query], best first.
   ///
-  /// Returns empty — rather than throwing — when the notebook has nothing
-  /// searchable, so a caller can always ask.
+  /// [pageIds] narrows the sweep to those pages — this is how a scoped request
+  /// ("this page", "this PDF"; see `domain/ai_scope.dart`) stays inside what
+  /// the user asked for. Null means the whole notebook, which is what every
+  /// caller did before scopes existed. An EMPTY set means "no pages", and
+  /// returns nothing rather than silently widening to the notebook: a scope
+  /// that resolved to nothing must produce a grounded "not found", never an
+  /// answer drawn from pages outside it.
+  ///
+  /// Returns empty — rather than throwing — when there is nothing searchable,
+  /// so a caller can always ask.
   Future<List<RetrievedChunk>> search({
     required String query,
     required int notebookId,
+    Set<int>? pageIds,
     int topK = kRetrievalTopK,
     double minScore = kMinRelevance,
   }) async {
     if (query.trim().isEmpty) return const [];
+    if (pageIds != null && pageIds.isEmpty) return const [];
 
     // Debug-only: real device numbers for the open STOP CONDITION (tune
     // kMinRelevance / decide on a heavier vector store) don't exist yet.
@@ -70,7 +80,9 @@ class RagRetriever {
     // seen — never silently ranked.
     final searchable = [
       for (final chunk in chunks)
-        if (chunk.embeddingModelId == _embedder.modelId) chunk
+        if (chunk.embeddingModelId == _embedder.modelId &&
+            (pageIds == null || pageIds.contains(chunk.pageId)))
+          chunk
     ];
     // Before embedding: an empty or fully-stale notebook must not pay a model
     // load just to compare the query against nothing.

@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/ink_colors.dart';
 import '../../../ai/data/llm/llm_model_spec.dart';
+import '../../../ai/domain/quality/ai_quality_guard.dart';
+import '../../../ai/presentation/widgets/answer_tier_banner.dart';
+import '../../../ai/presentation/widgets/math_text.dart';
 import '../summarize_notifier.dart';
 
 /// Opens the summary sheet. Call after kicking off [SummarizeNotifier.run].
@@ -158,7 +161,13 @@ class _SuccessView extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
+          if (state.tier != AnswerTier.local) ...[
+            AnswerTierBanner(tier: state.tier),
+            const SizedBox(height: 12),
+          ],
+          // A recap of a maths note is full of formulas; MathText draws them
+          // and leaves ordinary prose exactly as plain Text did.
+          MathText(
             state.summary,
             style: TextStyle(
               fontSize: 15,

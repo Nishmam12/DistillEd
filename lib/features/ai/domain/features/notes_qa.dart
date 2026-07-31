@@ -15,8 +15,11 @@
 
 import '../ai_provider.dart';
 import '../ai_router.dart';
+import '../ai_scope.dart';
+import '../quality/output_quality.dart';
 import '../rag/rag_retriever.dart';
 import '../text_budget.dart';
+import '../tutor_voice.dart';
 
 class NotesQa {
   final AiProvider _provider;
@@ -35,7 +38,14 @@ class NotesQa {
   /// default, a small on-device model answers like a chatbot — a "Certainly!"
   /// preamble, a recap of the question, a closing offer of more help. The
   /// student asked their own notes a question, so the answer should sound like
-  /// the tutor who read those notes with them. Same voice [Explainer] uses.
+  /// the tutor who read those notes with them. That register is [kTutorVoice],
+  /// shared with [Explainer] and Summarize.
+  ///
+  /// The grounding half is unconditional and is stated FIRST, before the voice,
+  /// so that nothing in the style instructions can read as licence to fill a
+  /// gap: "state it plainly and confidently" applies to what the passages
+  /// support, and to nothing else. When they support nothing, the only correct
+  /// output is [notFoundReply].
   static const String systemPrompt =
       'You are a tutor answering a student\'s question about their own notes, '
       'using ONLY the passages from those notes given below. These passages are '
@@ -43,16 +53,13 @@ class NotesQa {
       'If they do not contain enough to answer, reply exactly: '
       '"I couldn\'t find the answer to that in your notes." and stop — do NOT '
       'fall back on outside knowledge, and do NOT guess. Never invent facts, '
-      'numbers, names, dates, or quotes that are not in the passages. Answer in '
-      'a few clear sentences, and refer to the passages by their number (e.g. '
-      '[1]) when you use them. '
-      'Answer the way a tutor would say it out loud: go straight to the answer '
-      'with no preamble, no greeting, no restating of the question, and no '
-      'closing offer of further help. Talk about the material rather than the '
-      'passages as documents — "the reaction needs a catalyst [2]", not "the '
-      'passages indicate that…". Plain, warm, direct prose; no bullet points, '
-      'no bold labels, no emoji, and no filler like "certainly" or "it is '
-      'important to note".';
+      'numbers, names, dates, or quotes that are not in the passages. '
+      'Answer in a few clear sentences, and refer to the passages by their '
+      'number (e.g. [1]) when you use them. Talk about the material rather '
+      'than about the passages as documents: "the reaction needs a catalyst '
+      '[2]", not "the passages indicate that…". Go straight to the answer, '
+      'with no restating of the question.\n\n'
+      '$kTutorVoiceWithMath';
 
   /// The exact refusal the model is told to emit — surfaced so the UI can
   /// recognise a grounded "not found" and present it plainly (no source chips,
@@ -62,20 +69,38 @@ class NotesQa {
 
   /// Retrieves the passages most relevant to [question] within [notebookId].
   ///
+  /// [scope] narrows the search to one page or one imported PDF; omitting it
+  /// searches the whole notebook, which is what this did before scopes existed.
+  /// Scoping happens HERE, at retrieval, rather than by filtering an answer
+  /// afterwards — the grounding contract is that the model only ever sees
+  /// passages from inside the scope, so a passage outside it must never reach
+  /// the prompt in the first place.
+  ///
   /// Empty means "ask anyway produced nothing" — an empty/unindexed notebook,
   /// a model not downloaded, or simply a question the notes don't touch. The
   /// caller must treat empty as a grounded "not found" and NOT call [answer].
   Future<List<RetrievedChunk>> findSources({
     required String question,
     required int notebookId,
+    AiScope? scope,
     int topK = kRetrievalTopK,
   }) {
     return _retriever.search(
       query: question,
       notebookId: notebookId,
+      pageIds: scope?.kind == AiScopeKind.notebook ? null : scope?.pageIdSet,
       topK: topK,
     );
   }
+
+  /// Sampling for a grounded answer. Low temperature: this is grounded
+  /// extraction, not creative writing. A constant so the quality guard's cloud
+  /// re-run asks the cloud tier for the same thing the local tier was asked.
+  static const AiGenerationOptions answerOptions = AiGenerationOptions(
+    temperature: 0.2,
+    topP: 0.9,
+    maxTokens: 512,
+  );
 
   /// Streams an answer to [question] grounded in [sources].
   ///
@@ -87,24 +112,54 @@ class NotesQa {
     required String question,
     required List<RetrievedChunk> sources,
   }) {
-    assert(sources.isNotEmpty,
-        'answer() needs sources; call findSources first and handle empty.');
-
-    final passages = _formatPassages(sources);
-    final prompt = 'PASSAGES FROM YOUR NOTES:\n$passages\n\n'
-        'QUESTION: ${question.trim()}';
+    // Refusing, rather than the assert this used to carry.
+    //
+    // An assert is debug-only, and this is the one place where a caller bug
+    // becomes a BROKEN PROMISE rather than a crash: with no passages the prompt
+    // reduces to a bare question under a system prompt that says "use only the
+    // passages below", and a model shown no passages answers from world
+    // knowledge while the UI presents it as coming from the student's notes.
+    // A release build must not do that, so the guard is real code — and being
+    // real code, it is also testable, which an assert is not.
+    //
+    // Callers should still retrieve first and handle empty themselves (the
+    // notifier does, and reports a grounded "not found" without paying for a
+    // model load); this is the backstop, not the intended path.
+    if (sources.isEmpty) return Stream.value(notFoundReply);
 
     return _provider.generate(
-      prompt: prompt,
+      prompt: promptFor(question: question, sources: sources),
       systemPrompt: systemPrompt,
-      options: const AiGenerationOptions(
-        // Low temperature: this is grounded extraction, not creative writing.
-        temperature: 0.2,
-        topP: 0.9,
-        maxTokens: 512,
-      ),
+      options: answerOptions,
     );
   }
+
+  /// The exact user-side prompt for a grounded answer.
+  ///
+  /// Exposed so [AiQualityGuard] can re-run the SAME question against the cloud
+  /// tier when the local answer fails its quality check. Building it here rather
+  /// than in the guard keeps one definition of what the model is shown — a
+  /// cloud re-run that saw different passages would not be a check on anything.
+  String promptFor({
+    required String question,
+    required List<RetrievedChunk> sources,
+  }) =>
+      'PASSAGES FROM YOUR NOTES:\n${_formatPassages(sources)}\n\n'
+      'QUESTION: ${question.trim()}';
+
+  /// What the answer must be grounded in, for the quality check.
+  ///
+  /// Carries [notFoundReply] as the permitted refusal: a correct refusal is
+  /// short and shares no vocabulary with the passages, which is exactly what the
+  /// "ignored its sources" heuristic looks for. Without this the app would
+  /// escalate every honest "not in your notes" to the cloud and have it answered
+  /// from world knowledge — the precise failure the whole feature exists to
+  /// prevent.
+  static QualityContext qualityContextFor(List<RetrievedChunk> sources) =>
+      QualityContext(
+        sourcePassages: [for (final s in sources) s.chunk.text],
+        allowedRefusal: notFoundReply,
+      );
 
   /// Numbers the passages ([1], [2], …) so the model can reference them and the
   /// numbers line up with the source chips the UI shows in the same order.

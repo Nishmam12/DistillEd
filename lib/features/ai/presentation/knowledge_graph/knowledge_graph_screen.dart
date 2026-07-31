@@ -10,10 +10,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/ink_colors.dart';
+import '../../../../editor/state/scene_controller.dart';
+import '../../domain/ai_scope.dart';
 import '../../domain/knowledge_graph/graph_layout.dart';
 import '../../domain/knowledge_graph/knowledge_graph.dart';
+import '../../domain/math_markup.dart';
 import '../../domain/memory/concept_mastery.dart';
 import '../ai_providers.dart';
+import '../widgets/ai_scope_picker.dart';
 
 /// Mastery → colour. A clear progression the legend explains: not-studied grey,
 /// learning honey, practiced coral, mastered green.
@@ -27,23 +31,49 @@ Color masteryColor(InkPalette ink, MasteryLevel level) => switch (level) {
       MasteryLevel.mastered => ink.accentGreen,
     };
 
-class KnowledgeGraphScreen extends ConsumerWidget {
+class KnowledgeGraphScreen extends ConsumerStatefulWidget {
   final int notebookId;
-  const KnowledgeGraphScreen({super.key, required this.notebookId});
+
+  /// The page the graph was opened from, when there is one. Null when the
+  /// screen is reached without a page in hand (a deep link), in which case only
+  /// the notebook-wide graph is available — there is no page to narrow to.
+  final int? pageId;
+
+  const KnowledgeGraphScreen({
+    super.key,
+    required this.notebookId,
+    this.pageId,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final graphAsync = ref.watch(knowledgeGraphProvider(notebookId));
+  ConsumerState<KnowledgeGraphScreen> createState() =>
+      _KnowledgeGraphScreenState();
+}
+
+class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen> {
+  /// Defaults to the whole notebook: the graph's value is showing how concepts
+  /// across a body of work connect, and a one-page graph is usually a handful
+  /// of disconnected dots. The narrower scopes are for when a student wants to
+  /// see the shape of just this lecture.
+  AiScopeKind _kind = AiScopeKind.notebook;
+
+  KnowledgeGraphRequest get _request =>
+      (notebookId: widget.notebookId, kind: _kind, pageId: widget.pageId);
+
+  @override
+  Widget build(BuildContext context) {
+    final graphAsync = ref.watch(knowledgeGraphProvider(_request));
 
     return Scaffold(
       backgroundColor: context.ink.background,
       appBar: AppBar(
         title: const Text('Knowledge graph'),
         actions: [
+          if (widget.pageId != null) _scopeMenu(context),
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(knowledgeGraphProvider(notebookId)),
+            onPressed: () => ref.invalidate(knowledgeGraphProvider(_request)),
           ),
         ],
       ),
@@ -55,15 +85,59 @@ class KnowledgeGraphScreen extends ConsumerWidget {
           subtitle: '$e',
         ),
         data: (graph) => graph.isEmpty
-            ? const _Message(
+            ? _Message(
                 icon: Icons.hub_outlined,
                 title: 'No concepts yet',
-                subtitle: 'As the AI reads your notes it learns the concepts '
-                    'and how they connect. Write and open the AI sidebar on a '
-                    'few pages, then come back.',
+                subtitle: _kind == AiScopeKind.notebook
+                    ? 'As the AI reads your notes it learns the concepts '
+                        'and how they connect. Write and open the AI sidebar '
+                        'on a few pages, then come back.'
+                    : 'Nothing has been analysed in this scope yet. Open the '
+                        'AI sidebar on these pages, or widen the scope to the '
+                        'whole notebook.',
               )
             : _GraphView(graph: graph),
       ),
+    );
+  }
+
+  /// Scope picker, shown only when a page is in hand. Uses the same choice list
+  /// and wording as the sidebar's picker, so "Whole PDF" appears here under
+  /// exactly the condition it appears there.
+  Widget _scopeMenu(BuildContext context) {
+    final ScenePageKey key =
+        (notebookId: widget.notebookId, pageId: widget.pageId!);
+    final group = ref.watch(pageImportGroupProvider(key)).valueOrNull;
+    final choices = scopeChoicesFor(hasImportGroup: group != null);
+
+    return PopupMenuButton<AiScopeKind>(
+      tooltip: 'What to graph',
+      icon: const Icon(Icons.filter_alt_outlined),
+      onSelected: (kind) => setState(() => _kind = kind),
+      itemBuilder: (_) => [
+        for (final kind in choices)
+          PopupMenuItem(
+            value: kind,
+            child: Row(
+              children: [
+                Icon(
+                  kind == _kind
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  size: 16,
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    scopeChoiceLabel(kind,
+                        sourceName: group?.importSourceName),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
@@ -217,7 +291,12 @@ class _GraphPainter extends CustomPainter {
     canvas.drawLine(to, base - normal * (size * 0.6), paint);
   }
 
-  void _drawLabel(Canvas canvas, String text, Offset center, double r) {
+  /// A node caption. A concept name can carry the LaTeX the models are told to
+  /// emit, and this is painted rather than laid out as a widget, so the formula
+  /// is spelled as readable text instead of typeset — see [mathAsPlainText] for
+  /// why the graph is the one surface that makes that trade.
+  void _drawLabel(Canvas canvas, String rawText, Offset center, double r) {
+    final text = mathAsPlainText(rawText);
     final tp = TextPainter(
       text: TextSpan(
         text: text.length > 22 ? '${text.substring(0, 22)}…' : text,
