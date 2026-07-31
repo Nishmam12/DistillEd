@@ -10,7 +10,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/core/constants/app_colors.dart';
+import 'package:inkflow/core/theme/paper_colors.dart';
 import 'package:inkflow/core/theme/app_theme.dart';
 import 'package:inkflow/core/theme/ink_colors.dart';
 
@@ -180,15 +180,15 @@ void main() {
       // They are plain constants with no dark counterpart, deliberately: a
       // page set to Cream stays Cream with the lights off. If this ever needs
       // a `context`, the decision in app_colors.dart's header changed.
-      expect(AppColors.paperWhite, const Color(0xFFFFFFFF));
-      expect(AppColors.paperCream, const Color(0xFFFAF4EA));
-      expect(AppColors.paperBlush, const Color(0xFFFBEFEA));
+      expect(PaperColors.paperWhite, const Color(0xFFFFFFFF));
+      expect(PaperColors.paperCream, const Color(0xFFFAF4EA));
+      expect(PaperColors.paperBlush, const Color(0xFFFBEFEA));
     });
 
     test('the ink palette is not part of the theme', () {
       final darkExt = AppTheme.dark().extension<InkColors>()!;
 
-      for (final ink in AppColors.penPalette) {
+      for (final ink in PaperColors.penPalette) {
         expect(darkExt.palette.background, isNot(ink));
       }
     });

@@ -15,7 +15,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import '../../core/constants/app_colors.dart';
+import '../../core/theme/paper_colors.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../core/theme/ink_colors.dart';
 import '../../domain/commands/scene_command.dart';
@@ -864,9 +864,9 @@ class _BackgroundSheet extends StatefulWidget {
 
 class _BackgroundSheetState extends State<_BackgroundSheet> {
   static const _papers = <Color>[
-    AppColors.paperWhite,
-    AppColors.paperCream,
-    AppColors.paperBlush,
+    PaperColors.paperWhite,
+    PaperColors.paperCream,
+    PaperColors.paperBlush,
   ];
 
   late TemplateType _template = widget.template;

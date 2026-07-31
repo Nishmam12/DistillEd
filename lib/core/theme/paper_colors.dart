@@ -1,10 +1,16 @@
 // Content colours — ink and paper.
 //
-// This file used to hold the whole app's design tokens as `static const Color`.
-// Those were chrome, and a `const` cannot vary by [Brightness], so every widget
-// that read one bypassed the theme and stayed light no matter what ThemeData
-// was supplied. They now live in `core/theme/ink_palette.dart` and are reached
-// through `context.ink`.
+// This file used to be `core/constants/app_colors.dart`, holding the whole
+// app's design tokens as `static const Color`. Those were chrome, and a `const`
+// cannot vary by [Brightness], so every widget that read one bypassed the theme
+// and stayed light no matter what ThemeData was supplied. They now live in
+// `core/theme/ink_palette.dart` (the warm skin) and `core/theme/app_colors.dart`
+// (the navy/gold skin), reached through `context.ink` and `context.colors`.
+//
+// The class was renamed `AppColors` -> `PaperColors` when the navy/gold token
+// layer claimed the `AppColors` name for the nine-token [ThemeExtension] the
+// theme spec calls for. The name it carries now is also more honest about what
+// is left in it.
 //
 // What remains is deliberately still `const`, because it is *not* chrome:
 //
@@ -27,8 +33,8 @@
 
 import 'package:flutter/material.dart';
 
-class AppColors {
-  AppColors._();
+class PaperColors {
+  PaperColors._();
 
   /// The canonical ink set: identical in both brightnesses, by design.
   ///

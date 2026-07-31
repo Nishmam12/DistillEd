@@ -11,6 +11,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'app_colors.dart';
 import 'ink_colors.dart'; // re-exports ink_palette.dart
 
 class AppTheme {
@@ -39,7 +40,18 @@ class AppTheme {
       splashFactory: InkSparkle.splashFactory,
       // The palette itself travels on the theme, so `context.ink` can reach any
       // role without the widget knowing which brightness is active.
-      extensions: [InkColors(p)],
+      //
+      // [AppColors] rides along beside it so `context.colors` already resolves
+      // while screens are migrated to the navy/gold spec one at a time. It is
+      // additive and changes nothing on its own: an extension nobody reads
+      // paints no pixels, and every colour this theme actually applies still
+      // comes from the coral [InkPalette] above. The switch to the navy/gold
+      // base theme happens in `distill_theme.dart`, wired from `app/app.dart`
+      // once there is a migrated screen to look at.
+      extensions: [
+        InkColors(p),
+        brightness == Brightness.dark ? AppColors.dark : AppColors.light,
+      ],
       colorScheme: ColorScheme(
         brightness: brightness,
         primary: p.accent,
