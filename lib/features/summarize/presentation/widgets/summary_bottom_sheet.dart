@@ -63,7 +63,7 @@ class _SheetTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: 'Poppins',
         fontSize: 17,
         fontWeight: FontWeight.w600,
@@ -84,10 +84,10 @@ class _Progress extends StatelessWidget {
       children: [
         const _SheetTitle('Summary'),
         const SizedBox(height: 28),
-        const CircularProgressIndicator(color: AppColors.accent),
+        CircularProgressIndicator(color: AppColors.accent),
         const SizedBox(height: 16),
         Text(label,
-            style: const TextStyle(color: AppColors.textSecondary)),
+            style: TextStyle(color: AppColors.textSecondary)),
         const SizedBox(height: 12),
       ],
     );
@@ -110,7 +110,7 @@ class _DownloadProgress extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           '${LlmModelSpec.active.displayName} · ${sizeGb.toStringAsFixed(1)} GB — one-time download',
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 20),
         ClipRRect(
@@ -124,12 +124,12 @@ class _DownloadProgress extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text('$progress%',
-            style: const TextStyle(color: AppColors.textSecondary)),
+            style: TextStyle(color: AppColors.textSecondary)),
         const SizedBox(height: 16),
         TextButton(
           onPressed: () =>
               ref.read(summarizeNotifierProvider.notifier).cancelModelDownload(),
-          child: const Text('Cancel',
+          child: Text('Cancel',
               style: TextStyle(color: AppColors.textSecondary)),
         ),
       ],
@@ -160,7 +160,7 @@ class _SuccessView extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             state.summary,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               height: 1.5,
               color: AppColors.textPrimary,
@@ -171,7 +171,7 @@ class _SuccessView extends StatelessWidget {
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
-              title: const Text(
+              title: Text(
                 'Recognized text',
                 style: TextStyle(
                   fontSize: 14,
@@ -190,7 +190,7 @@ class _SuccessView extends StatelessWidget {
                   ),
                   child: Text(
                     state.recognizedText,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       height: 1.45,
                       color: AppColors.textSecondary,
@@ -220,7 +220,7 @@ class _Badge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: AppColors.accentStrong,
@@ -241,12 +241,12 @@ class _ErrorView extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.error_outline, color: AppColors.accentRed, size: 40),
+        Icon(Icons.error_outline, color: AppColors.accentRed, size: 40),
         const SizedBox(height: 12),
         Text(
           state.message,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
         ),
         const SizedBox(height: 20),
         if (state.offerModelDownload)
@@ -256,19 +256,19 @@ class _ErrorView extends StatelessWidget {
             child: Text(
               'Download model '
               '(${(LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB)',
-              style: const TextStyle(color: AppColors.textOnAccent),
+              style: TextStyle(color: AppColors.textOnAccent),
             ),
           )
         else if (state.retryable)
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
             onPressed: notifier.retry,
-            child: const Text('Retry',
+            child: Text('Retry',
                 style: TextStyle(color: AppColors.textOnAccent)),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close',
+          child: Text('Close',
               style: TextStyle(color: AppColors.textSecondary)),
         ),
       ],

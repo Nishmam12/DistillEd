@@ -11,6 +11,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/editor_constants.dart';
+import '../../../core/theme/app_motion.dart';
+import '../../../core/widgets/bouncy_tap.dart';
+import '../../../core/widgets/fluid_segmented_control.dart';
 import '../../../domain/model/scene_element.dart';
 import '../../state/editor_tool_controller.dart';
 
@@ -54,11 +57,11 @@ class EditorToolOptionsOverlay extends ConsumerWidget {
       // panel would still steal the first tap meant for the canvas beneath it.
       ignoring: !open,
       child: AnimatedSlide(
-        duration: const Duration(milliseconds: 240),
-        curve: open ? Curves.easeOutCubic : Curves.easeInCubic,
+        duration: AppMotion.smooth,
+        curve: open ? AppMotion.emphasized : AppMotion.exit,
         offset: open ? Offset.zero : closedOffset,
         child: AnimatedOpacity(
-          duration: Duration(milliseconds: open ? 200 : 150),
+          duration: open ? AppMotion.standard : AppMotion.fast,
           opacity: open ? 1 : 0,
           child: Container(
             key: const ValueKey('editorToolOptionsPanelSurface'),
@@ -72,7 +75,7 @@ class EditorToolOptionsOverlay extends ConsumerWidget {
               // floating dropdown menus.
               shape: ContinuousRectangleBorder(
                 borderRadius: BorderRadius.circular(28),
-                side: const BorderSide(color: AppColors.border),
+                side: BorderSide(color: AppColors.border),
               ),
             ),
             child: content,
@@ -215,17 +218,23 @@ class _EraserPanel extends StatelessWidget {
           spacing: 8,
           runSpacing: 4,
           children: [
-            ChoiceChip(
-              showCheckmark: false,
-              label: const Text('Pixel eraser'),
-              selected: state.eraserPixel,
-              onSelected: (_) => ctl.setEraserPixel(true),
+            BouncyTap(
+              scaleDown: 0.94,
+              child: ChoiceChip(
+                showCheckmark: false,
+                label: const Text('Pixel eraser'),
+                selected: state.eraserPixel,
+                onSelected: (_) => ctl.setEraserPixel(true),
+              ),
             ),
-            ChoiceChip(
-              showCheckmark: false,
-              label: const Text('Stroke eraser'),
-              selected: !state.eraserPixel,
-              onSelected: (_) => ctl.setEraserPixel(false),
+            BouncyTap(
+              scaleDown: 0.94,
+              child: ChoiceChip(
+                showCheckmark: false,
+                label: const Text('Stroke eraser'),
+                selected: !state.eraserPixel,
+                onSelected: (_) => ctl.setEraserPixel(false),
+              ),
             ),
           ],
         ),
@@ -263,11 +272,14 @@ class _ShapePanel extends StatelessWidget {
           spacing: 4,
           children: [
             for (final (type, icon) in kEditorShapes)
-              ChoiceChip(
-                showCheckmark: false,
-                label: Icon(icon, size: 18),
-                selected: state.shapeType == type,
-                onSelected: (_) => ctl.setShapeType(type),
+              BouncyTap(
+                scaleDown: 0.92,
+                child: ChoiceChip(
+                  showCheckmark: false,
+                  label: Icon(icon, size: 18),
+                  selected: state.shapeType == type,
+                  onSelected: (_) => ctl.setShapeType(type),
+                ),
               ),
           ],
         ),
@@ -289,27 +301,31 @@ class _ShapePanel extends StatelessWidget {
         ),
         _panelRow(
           Icons.line_style,
-          SegmentedButton<StrokeStyle>(
-            showSelectedIcon: false,
+          FluidSegmentedControl<StrokeStyle>(
+            height: 36,
+            segmentWidth: 80,
+            padding: const EdgeInsets.all(3),
             segments: const [
-              ButtonSegment(value: StrokeStyle.solid, label: Text('Solid')),
-              ButtonSegment(value: StrokeStyle.dashed, label: Text('Dashed')),
-              ButtonSegment(value: StrokeStyle.dotted, label: Text('Dotted')),
+              FluidSegment(value: StrokeStyle.solid, label: 'Solid'),
+              FluidSegment(value: StrokeStyle.dashed, label: 'Dashed'),
+              FluidSegment(value: StrokeStyle.dotted, label: 'Dotted'),
             ],
-            selected: {state.strokeStyle},
-            onSelectionChanged: (s) => ctl.setStrokeStyle(s.first),
+            selected: state.strokeStyle,
+            onChanged: ctl.setStrokeStyle,
           ),
         ),
         _panelRow(
           Icons.rounded_corner,
-          SegmentedButton<EdgeStyle>(
-            showSelectedIcon: false,
+          FluidSegmentedControl<EdgeStyle>(
+            height: 36,
+            segmentWidth: 80,
+            padding: const EdgeInsets.all(3),
             segments: const [
-              ButtonSegment(value: EdgeStyle.sharp, label: Text('Sharp')),
-              ButtonSegment(value: EdgeStyle.round, label: Text('Round')),
+              FluidSegment(value: EdgeStyle.sharp, label: 'Sharp'),
+              FluidSegment(value: EdgeStyle.round, label: 'Round'),
             ],
-            selected: {state.edges},
-            onSelectionChanged: (s) => ctl.setEdges(s.first),
+            selected: state.edges,
+            onChanged: ctl.setEdges,
           ),
         ),
         Row(
@@ -325,34 +341,20 @@ class _ShapePanel extends StatelessWidget {
         if (state.hasFill)
           Padding(
             padding: const EdgeInsets.only(bottom: 2),
-            // Compact style (shrunk padding/font/tap target) rather than the
-            // default segmented-button size — at default size "Hachure" /
-            // "Cross" / "Solid" together ran past the edge of this (now
-            // fixed-width) floating panel; shrinking the pill itself, not
-            // just giving it its own row, is what actually keeps it inside
-            // the panel's own rounded boundary instead of overflowing or
-            // relying on a hidden horizontal scroll. The scroll view is a
-            // safety net only — under normal text scaling it never needs to
-            // scroll.
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: SegmentedButton<FillStyle>(
-                showSelectedIcon: false,
-                style: SegmentedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  textStyle: const TextStyle(fontSize: 11),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+              child: FluidSegmentedControl<FillStyle>(
+                height: 32,
+                segmentWidth: 72,
+                fontSize: 11,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 segments: const [
-                  ButtonSegment(
-                      value: FillStyle.hachure, label: Text('Hachure')),
-                  ButtonSegment(
-                      value: FillStyle.crossHatch, label: Text('Cross')),
-                  ButtonSegment(value: FillStyle.solid, label: Text('Solid')),
+                  FluidSegment(value: FillStyle.hachure, label: 'Hachure'),
+                  FluidSegment(value: FillStyle.crossHatch, label: 'Cross'),
+                  FluidSegment(value: FillStyle.solid, label: 'Solid'),
                 ],
-                selected: {state.fillStyle},
-                onSelectionChanged: (s) => ctl.setFillStyle(s.first),
+                selected: state.fillStyle,
+                onChanged: ctl.setFillStyle,
               ),
             ),
           ),

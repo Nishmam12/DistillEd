@@ -75,7 +75,7 @@ void main() {
     testWidgets('leads with a large bold Notes title', (tester) async {
       await _pump(tester);
 
-      final title = tester.widget<Text>(find.text('Notes'));
+      final title = tester.widget<Text>(find.text('DistillEd'));
       expect(title.style!.fontSize, 38);
       expect(title.style!.fontWeight, FontWeight.w700);
     });

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/settings_provider.dart';
+import '../../../../core/widgets/bouncy_tap.dart';
+import '../../../../core/widgets/fluid_segmented_control.dart';
 import '../../../ai/data/embeddings/embedder_adapter.dart';
 import '../../../ai/data/embeddings/embedder_spec.dart';
 import '../../../ai/data/llm/llm_exceptions.dart';
@@ -84,11 +86,14 @@ class SettingsScreen extends ConsumerWidget {
                     ? 'Added — gated models can be downloaded'
                     : 'Needed for gated models like EmbeddingGemma. Your own '
                         'token, kept on this device.',
-                trailing: TextButton(
-                  onPressed: () => _editHuggingFaceToken(context, ref),
-                  child: Text(
-                    settings.hasHuggingFaceToken ? 'Change' : 'Add',
-                    style: const TextStyle(color: AppColors.accentStrong),
+                trailing: BouncyTap(
+                  scaleDown: 0.92,
+                  child: TextButton(
+                    onPressed: () => _editHuggingFaceToken(context, ref),
+                    child: Text(
+                      settings.hasHuggingFaceToken ? 'Change' : 'Add',
+                      style: TextStyle(color: AppColors.accentStrong),
+                    ),
                   ),
                 ),
               ),
@@ -113,7 +118,7 @@ class SettingsScreen extends ConsumerWidget {
                   icon: Icons.brush_outlined,
                   title: 'Canvas 2.0 (dev)',
                   subtitle: 'Preview the rebuilt drawing canvas',
-                  trailing: const Icon(
+                  trailing: Icon(
                     Icons.chevron_right,
                     color: AppColors.textMuted,
                   ),
@@ -127,7 +132,7 @@ class SettingsScreen extends ConsumerWidget {
               _SettingsRow(
                 icon: Icons.info_outline,
                 title: 'About DistillEd',
-                trailing: const Icon(
+                trailing: Icon(
                   Icons.chevron_right,
                   color: AppColors.textMuted,
                 ),
@@ -185,7 +190,7 @@ class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Some models — like EmbeddingGemma, which powers searching your '
             'notes — are gated: HuggingFace asks you to accept the licence '
             'first.\n\n'
@@ -219,21 +224,30 @@ class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
       ),
       actions: [
         if (widget.initial.isNotEmpty)
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(''),
-            child: const Text('Remove',
-                style: TextStyle(color: AppColors.accentRed)),
+          BouncyTap(
+            scaleDown: 0.94,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(''),
+              child: Text('Remove',
+                  style: TextStyle(color: AppColors.accentRed)),
+            ),
           ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel',
-              style: TextStyle(color: AppColors.textSecondary)),
+        BouncyTap(
+          scaleDown: 0.94,
+          child: TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
         ),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
-          onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('Save',
-              style: TextStyle(color: AppColors.textOnAccent)),
+        BouncyTap(
+          scaleDown: 0.94,
+          child: FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+            onPressed: () => Navigator.of(context).pop(_controller.text),
+            child: Text('Save',
+                style: TextStyle(color: AppColors.textOnAccent)),
+          ),
         ),
       ],
     );
@@ -250,7 +264,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 20, 8, 8),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Poppins',
           color: AppColors.accent,
           fontWeight: FontWeight.w700,
@@ -306,57 +320,64 @@ class _SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.accentWash,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 20, color: AppColors.accent),
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.accentWash,
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child: Icon(icon, size: 20, color: AppColors.accent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    title,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                    subtitle!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      height: 1.35,
                     ),
                   ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
-            if (trailing != null) ...[
-              const SizedBox(width: 12),
-              trailing!,
-            ],
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: 12),
+            trailing!,
           ],
-        ),
+        ],
       ),
     );
+
+    if (onTap != null) {
+      return BouncyTap(
+        scaleDown: 0.98,
+        onTap: onTap,
+        child: row,
+      );
+    }
+
+    return row;
   }
 }
 
@@ -370,39 +391,20 @@ class _LanguageToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: _options.map((option) {
-        final (code, label) = option;
-        final selected = value == code;
-        return Padding(
-          padding: const EdgeInsets.only(left: 6),
-          child: GestureDetector(
-            onTap: () => onChanged(code),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 140),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.accentWash : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: selected ? AppColors.accent : AppColors.border,
-                  width: 1.5,
-                ),
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? AppColors.accent : AppColors.textSecondary,
-                ),
-              ),
+    return SizedBox(
+      width: 170,
+      child: FluidSegmentedControl<String>(
+        selected: value,
+        onChanged: onChanged,
+        height: 34,
+        segments: [
+          for (final (code, label) in _options)
+            FluidSegment(
+              value: code,
+              label: label,
             ),
-          ),
-        );
-      }).toList(),
+        ],
+      ),
     );
   }
 }
@@ -486,11 +488,13 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
                   ? '$sizeLabel · Downloaded'
                   : 'Not downloaded — fetched on first use',
           trailing: installed
-              ? IconButton(
-                  icon: const Icon(Icons.delete_outline,
-                      color: AppColors.textSecondary),
-                  tooltip: 'Delete model',
-                  onPressed: () => _delete(onDelete, confirmDelete, title),
+              ? BouncyTap(
+                  child: IconButton(
+                    icon: Icon(Icons.delete_outline,
+                        color: AppColors.textSecondary),
+                    tooltip: 'Delete model',
+                    onPressed: () => _delete(onDelete, confirmDelete, title),
+                  ),
                 )
               : null,
         );
@@ -515,7 +519,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete',
+              child: Text('Delete',
                   style: TextStyle(color: AppColors.accentRed)),
             ),
           ],
@@ -632,15 +636,20 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow> {
           title: '${_spec.displayName} (search)',
           subtitle: subtitle,
           trailing: installed
-              ? IconButton(
-                  icon: const Icon(Icons.delete_outline,
-                      color: AppColors.textSecondary),
-                  tooltip: 'Delete model',
-                  onPressed: _delete,
+              ? BouncyTap(
+                  child: IconButton(
+                    icon: Icon(Icons.delete_outline,
+                        color: AppColors.textSecondary),
+                    tooltip: 'Delete model',
+                    onPressed: _delete,
+                  ),
                 )
-              : TextButton(
-                  onPressed: hasToken ? _download : null,
-                  child: const Text('Download'),
+              : BouncyTap(
+                  scaleDown: 0.94,
+                  child: TextButton(
+                    onPressed: hasToken ? _download : null,
+                    child: const Text('Download'),
+                  ),
                 ),
         );
       },
@@ -656,38 +665,17 @@ class _FormatToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: ['PNG', 'PDF'].map((f) {
-        final selected = value == f;
-        return Padding(
-          padding: const EdgeInsets.only(left: 6),
-          child: GestureDetector(
-            onTap: () => onChanged(f),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 140),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected ? AppColors.accentWash : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: selected ? AppColors.accent : AppColors.border,
-                  width: 1.5,
-                ),
-              ),
-              child: Text(
-                f,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? AppColors.accent : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+    return SizedBox(
+      width: 140,
+      child: FluidSegmentedControl<String>(
+        selected: value,
+        onChanged: onChanged,
+        height: 34,
+        segments: const [
+          FluidSegment(value: 'PNG', label: 'PNG'),
+          FluidSegment(value: 'PDF', label: 'PDF'),
+        ],
+      ),
     );
   }
 }

@@ -79,9 +79,9 @@ class _Header extends ConsumerWidget {
       children: [
         Row(
           children: [
-            const Icon(Icons.school_outlined, size: 18, color: AppColors.accent),
+            Icon(Icons.school_outlined, size: 18, color: AppColors.accent),
             const SizedBox(width: 8),
-            const Expanded(
+            Expanded(
               child: Text('Explain',
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -98,7 +98,7 @@ class _Header extends ConsumerWidget {
               visualDensity: VisualDensity.compact,
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               padding: EdgeInsets.zero,
-              icon: const Icon(Icons.close,
+              icon: Icon(Icons.close,
                   size: 18, color: AppColors.textSecondary),
               onPressed: () =>
                   ref.read(explainNotifierProvider.notifier).reset(),
@@ -150,12 +150,12 @@ class _ModeSelector extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(mode.label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.accentStrong,
                 )),
-            const Icon(Icons.arrow_drop_down,
+            Icon(Icons.arrow_drop_down,
                 size: 18, color: AppColors.accentStrong),
           ],
         ),
@@ -185,7 +185,7 @@ class _Body extends StatelessWidget {
           child: SingleChildScrollView(
             child: SelectableText(
               trimmed.isEmpty ? 'Thinking…' : trimmed,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.5,
                 color: AppColors.textPrimary,
@@ -197,8 +197,8 @@ class _Body extends StatelessWidget {
         Row(
           children: [
             if (streaming)
-              const Padding(
-                padding: EdgeInsets.only(left: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -208,7 +208,7 @@ class _Body extends StatelessWidget {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: AppColors.accentSoft),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Text('Writing…',
                         style: TextStyle(
                             fontSize: 12, color: AppColors.textSecondary)),
@@ -229,7 +229,7 @@ class _Body extends StatelessWidget {
                               duration: Duration(seconds: 1)),
                         );
                       },
-                icon: const Icon(Icons.copy_outlined,
+                icon: Icon(Icons.copy_outlined,
                     size: 18, color: AppColors.textSecondary),
               ),
             const Spacer(),
@@ -240,9 +240,9 @@ class _Body extends StatelessWidget {
                 onPressed: (streaming || trimmed.isEmpty)
                     ? null
                     : () => onInsertNote(trimmed),
-                icon: const Icon(Icons.note_add_outlined,
+                icon: Icon(Icons.note_add_outlined,
                     size: 18, color: AppColors.textOnAccent),
-                label: const Text('Insert as note',
+                label: Text('Insert as note',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: AppColors.textOnAccent)),
               ),
@@ -270,11 +270,11 @@ class _CloudBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.accentSoft),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.cloud_outlined, size: 13, color: AppColors.accentStrong),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           Text('Cloud',
               style: TextStyle(
                 fontSize: 11,
@@ -321,14 +321,14 @@ class _ConfirmCloudBody extends ConsumerWidget {
           children: [
             TextButton(
               onPressed: notifier.cancelCloud,
-              child: const Text('Cancel',
+              child: Text('Cancel',
                   style: TextStyle(color: AppColors.textSecondary)),
             ),
             const SizedBox(width: 8),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
               onPressed: notifier.confirmCloudAndRun,
-              child: const Text('Send',
+              child: Text('Send',
                   style: TextStyle(color: AppColors.textOnAccent)),
             ),
           ],
@@ -364,13 +364,13 @@ class _ErrorBody extends ConsumerWidget {
             style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
-                style: const TextStyle(color: AppColors.textOnAccent)),
+                style: TextStyle(color: AppColors.textOnAccent)),
           )
         else if (state.retryable)
           TextButton.icon(
             onPressed: notifier.retry,
-            icon: const Icon(Icons.refresh, size: 18, color: AppColors.accent),
-            label: const Text('Try again',
+            icon: Icon(Icons.refresh, size: 18, color: AppColors.accent),
+            label: Text('Try again',
                 style: TextStyle(color: AppColors.accent)),
           ),
       ],
@@ -425,13 +425,13 @@ class _Centered extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showSpinner)
-            const CircularProgressIndicator(color: AppColors.accent)
+            CircularProgressIndicator(color: AppColors.accent)
           else
             Icon(icon, size: 34, color: AppColors.accentSoft),
           const SizedBox(height: 14),
           Text(title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -441,7 +441,7 @@ class _Centered extends StatelessWidget {
             const SizedBox(height: 6),
             Text(subtitle!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13, height: 1.4, color: AppColors.textSecondary)),
           ],
         ],

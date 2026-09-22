@@ -35,16 +35,16 @@ class _AboutScreenState extends State<AboutScreen> {
                 color: AppColors.accent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.draw,
                 size: 64,
                 color: AppColors.accent,
               ),
             ),
             const SizedBox(height: 24),
-            const Text.rich(
+            Text.rich(
               TextSpan(
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 32,
                   fontWeight: FontWeight.w700,
@@ -72,7 +72,7 @@ class _AboutScreenState extends State<AboutScreen> {
                     : 'Version ${info.version} (build ${info.buildNumber})';
                 return Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     color: AppColors.textSecondary,
                   ),
@@ -80,8 +80,8 @@ class _AboutScreenState extends State<AboutScreen> {
               },
             ),
             const SizedBox(height: 32),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 48.0),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 48.0),
               child: Text(
                 'A beautifully simple, infinite-canvas note-taking app with no artificial limitations.',
                 textAlign: TextAlign.center,

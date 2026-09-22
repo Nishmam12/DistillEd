@@ -14,6 +14,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/settings_provider.dart';
+import '../../core/theme/app_motion.dart';
+import '../../core/widgets/bouncy_tap.dart';
+import '../../core/widgets/fluid_segmented_control.dart';
 import '../../domain/commands/scene_command.dart';
 import '../../domain/geometry/element_bounds.dart';
 import '../../domain/model/scene_element.dart';
@@ -279,16 +282,24 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           ),
           // Docked AI panel beside the canvas on wide screens; phones use the
           // bottom sheet from _toggleAiPanel instead.
-          if (_aiPanelOpen &&
-              MediaQuery.of(context).size.width >= kAiSidebarBreakpoint)
-            AiSidebar(
-              pageKey: key,
-              onClose: () => setState(() => _aiPanelOpen = false),
-              onSummarize: (choice) => _summarizeScope(key, choice),
-              onInsertNote: (text) => _insertNote(key, text),
-              // Docked beside the canvas: jumping just switches the page behind
-              // the panel, which stays open.
-              onJumpToSource: _jumpToSource,
+          if (MediaQuery.of(context).size.width >= kAiSidebarBreakpoint)
+            AnimatedSize(
+              duration: AppMotion.smooth,
+              curve: AppMotion.emphasized,
+              alignment: Alignment.centerRight,
+              child: _aiPanelOpen
+                  ? ClipRect(
+                      child: AiSidebar(
+                        pageKey: key,
+                        onClose: () => setState(() => _aiPanelOpen = false),
+                        onSummarize: (choice) => _summarizeScope(key, choice),
+                        onInsertNote: (text) => _insertNote(key, text),
+                        // Docked beside the canvas: jumping just switches the page behind
+                        // the panel, which stays open.
+                        onJumpToSource: _jumpToSource,
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
         ],
       ),
@@ -734,10 +745,14 @@ class _BackgroundSheet extends StatefulWidget {
 }
 
 class _BackgroundSheetState extends State<_BackgroundSheet> {
+  // Page backgrounds are persisted note data, so these stay fixed values
+  // rather than following the light/dark palette; `paperSlate` is the
+  // dark-page option for dark-mode users.
   static const _papers = <Color>[
     AppColors.paperWhite,
     AppColors.paperCream,
     AppColors.paperBlush,
+    AppColors.paperSlate,
   ];
 
   late TemplateType _template = widget.template;
@@ -756,24 +771,23 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
           children: [
             Text('Layout', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
-            SegmentedButton<bool>(
-              showSelectedIcon: false,
+            FluidSegmentedControl<bool>(
               segments: const [
-                ButtonSegment(
+                FluidSegment(
                   value: false,
-                  icon: Icon(Icons.all_out),
-                  label: Text('Infinite'),
+                  icon: Icons.all_out,
+                  label: 'Infinite',
                 ),
-                ButtonSegment(
+                FluidSegment(
                   value: true,
-                  icon: Icon(Icons.insert_drive_file_outlined),
-                  label: Text('Single page'),
+                  icon: Icons.insert_drive_file_outlined,
+                  label: 'Single page',
                 ),
               ],
-              selected: {_pageMode},
-              onSelectionChanged: (s) {
-                setState(() => _pageMode = s.first);
-                widget.onPageMode(s.first);
+              selected: _pageMode,
+              onChanged: (val) {
+                setState(() => _pageMode = val);
+                widget.onPageMode(val);
               },
             ),
             const SizedBox(height: 20),
@@ -784,14 +798,17 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
               runSpacing: 8,
               children: [
                 for (final t in TemplateType.values)
-                  ChoiceChip(
-                    avatar: Icon(t.iconData, size: 18),
-                    label: Text(t.displayName),
-                    selected: _template == t,
-                    onSelected: (_) {
-                      setState(() => _template = t);
-                      widget.onTemplate(t);
-                    },
+                  BouncyTap(
+                    scaleDown: 0.94,
+                    child: ChoiceChip(
+                      avatar: Icon(t.iconData, size: 18),
+                      label: Text(t.displayName),
+                      selected: _template == t,
+                      onSelected: (_) {
+                        setState(() => _template = t);
+                        widget.onTemplate(t);
+                      },
+                    ),
                   ),
               ],
             ),
@@ -801,12 +818,15 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
             Row(
               children: [
                 for (final c in _papers)
-                  GestureDetector(
+                  BouncyTap(
+                    scaleDown: 0.90,
                     onTap: () {
                       setState(() => _color = c);
                       widget.onColor(c);
                     },
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: AppMotion.fast,
+                      curve: AppMotion.spring,
                       width: 40,
                       height: 40,
                       margin: const EdgeInsets.only(right: 16),
@@ -819,6 +839,15 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
                               : theme.dividerColor,
                           width: _color.toARGB32() == c.toARGB32() ? 3 : 1,
                         ),
+                        boxShadow: _color.toARGB32() == c.toARGB32()
+                            ? [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                )
+                              ]
+                            : null,
                       ),
                     ),
                   ),
@@ -855,22 +884,48 @@ class _PageNavBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            IconButton(
-              tooltip: 'Previous page',
-              icon: const Icon(Icons.chevron_left),
-              onPressed: onPrev,
+            BouncyTap(
+              scaleDown: 0.90,
+              child: IconButton(
+                tooltip: 'Previous page',
+                icon: const Icon(Icons.chevron_left),
+                onPressed: onPrev,
+              ),
             ),
-            Text('Page ${index + 1} / $count'),
-            IconButton(
-              tooltip: 'Next page',
-              icon: const Icon(Icons.chevron_right),
-              onPressed: onNext,
+            AnimatedSwitcher(
+              duration: AppMotion.fast,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.2),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              ),
+              child: Text(
+                'Page ${index + 1} / $count',
+                key: ValueKey(index),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            BouncyTap(
+              scaleDown: 0.90,
+              child: IconButton(
+                tooltip: 'Next page',
+                icon: const Icon(Icons.chevron_right),
+                onPressed: onNext,
+              ),
             ),
             const SizedBox(width: 8),
-            IconButton(
-              tooltip: 'Add page',
-              icon: const Icon(Icons.add),
-              onPressed: onAdd,
+            BouncyTap(
+              scaleDown: 0.90,
+              child: IconButton(
+                tooltip: 'Add page',
+                icon: const Icon(Icons.add),
+                onPressed: onAdd,
+              ),
             ),
           ],
         ),

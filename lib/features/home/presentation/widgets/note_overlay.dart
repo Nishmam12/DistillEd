@@ -36,14 +36,14 @@ class NoteOverlay extends StatelessWidget {
             sigmaY: NotesPalette.overlayBlurSigma,
           ),
           child: Container(
-            color: Colors.white.withValues(alpha: 0.58),
+            color: NotesPalette.scrim.withValues(alpha: 0.58),
             padding: const EdgeInsets.fromLTRB(18, 16, 12, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (note.pinned) ...[
-                  const Icon(
+                  Icon(
                     Icons.push_pin_rounded,
                     size: 16,
                     color: NotesPalette.textSecondary,
@@ -55,7 +55,7 @@ class NoteOverlay extends StatelessWidget {
                     note.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 20,
                       height: 1.2,
@@ -98,7 +98,7 @@ class _MetaRow extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Nunito',
               fontSize: 14,
               fontWeight: FontWeight.w500,

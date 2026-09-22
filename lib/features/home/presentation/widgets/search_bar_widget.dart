@@ -71,7 +71,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
         textAlignVertical: TextAlignVertical.center,
         textInputAction: TextInputAction.search,
         cursorColor: NotesPalette.accent,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Nunito',
           fontSize: 16,
           color: NotesPalette.textPrimary,
@@ -81,13 +81,13 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
           filled: true,
           fillColor: NotesPalette.field,
           hintText: widget.hintText,
-          hintStyle: const TextStyle(
+          hintStyle: TextStyle(
             fontFamily: 'Nunito',
             fontSize: 16,
             color: NotesPalette.textSecondary,
           ),
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
-          prefixIcon: const Icon(
+          prefixIcon: Icon(
             Icons.search_rounded,
             size: 22,
             color: NotesPalette.textSecondary,
@@ -107,7 +107,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
           ),
           border: border,
           enabledBorder: border,
-          focusedBorder: const OutlineInputBorder(
+          focusedBorder: OutlineInputBorder(
             borderRadius: radius,
             borderSide: BorderSide(color: NotesPalette.accent, width: 1.4),
           ),

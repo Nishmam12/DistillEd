@@ -12,6 +12,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/settings_provider.dart';
+import '../../../../core/theme/app_motion.dart';
+import '../../../../core/widgets/bouncy_tap.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../../../editor/state/selection_controller.dart';
 import '../../domain/context_engine/page_context.dart';
@@ -73,7 +75,7 @@ class AiSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: kAiSidebarWidth,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(left: BorderSide(color: AppColors.border)),
       ),
@@ -82,7 +84,7 @@ class AiSidebar extends StatelessWidget {
         child: Column(
           children: [
             _SidebarHeader(onClose: onClose),
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: AppColors.border),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
@@ -159,20 +161,51 @@ class _SidebarBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    Widget body;
     if (ref.watch(askNotesNotifierProvider) is! AskNotesIdle) {
-      return AiAskView(
-        onInsertNote: onInsertNote,
-        notebookId: pageKey.notebookId,
-        onJumpToSource: onJumpToSource,
+      body = KeyedSubtree(
+        key: const ValueKey('ask'),
+        child: AiAskView(
+          onInsertNote: onInsertNote,
+          notebookId: pageKey.notebookId,
+          onJumpToSource: onJumpToSource,
+        ),
+      );
+    } else if (ref.watch(researchNotifierProvider) is! ResearchIdle) {
+      body = KeyedSubtree(
+        key: const ValueKey('research'),
+        child: AiResearchView(onInsertNote: onInsertNote),
+      );
+    } else if (ref.watch(explainNotifierProvider) is! ExplainIdle) {
+      body = KeyedSubtree(
+        key: const ValueKey('explain'),
+        child: AiExplainView(onInsertNote: onInsertNote),
+      );
+    } else {
+      body = KeyedSubtree(
+        key: const ValueKey('context'),
+        child: AiContextView(pageKey: pageKey),
       );
     }
-    if (ref.watch(researchNotifierProvider) is! ResearchIdle) {
-      return AiResearchView(onInsertNote: onInsertNote);
-    }
-    if (ref.watch(explainNotifierProvider) is! ExplainIdle) {
-      return AiExplainView(onInsertNote: onInsertNote);
-    }
-    return AiContextView(pageKey: pageKey);
+
+    return AnimatedSwitcher(
+      duration: AppMotion.smooth,
+      switchInCurve: AppMotion.emphasized,
+      switchOutCurve: AppMotion.emphasized.flipped,
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.03),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: body,
+    );
   }
 }
 
@@ -189,27 +222,33 @@ class _SidebarFooter extends ConsumerWidget {
     final asking = ref.watch(askNotesNotifierProvider) is! AskNotesIdle;
     final researching = ref.watch(researchNotifierProvider) is! ResearchIdle;
     final explaining = ref.watch(explainNotifierProvider) is! ExplainIdle;
-    if (asking || researching || explaining) return const SizedBox.shrink();
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Divider(height: 1, color: AppColors.border),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _AskBar(),
-              _ResearchBar(),
-              _SummarizeBar(onSummarize: onSummarize),
-              _ExplainBar(pageKey: pageKey),
-              _QuizBar(pageKey: pageKey),
-              _FlashcardBar(pageKey: pageKey),
-            ],
-          ),
-        ),
-      ],
+    final isHidden = asking || researching || explaining;
+    return AnimatedSize(
+      duration: AppMotion.smooth,
+      curve: AppMotion.emphasized,
+      child: isHidden
+          ? const SizedBox.shrink()
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Divider(height: 1, color: AppColors.border),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _AskBar(),
+                      _ResearchBar(),
+                      _SummarizeBar(onSummarize: onSummarize),
+                      _ExplainBar(pageKey: pageKey),
+                      _QuizBar(pageKey: pageKey),
+                      _FlashcardBar(pageKey: pageKey),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -454,7 +493,7 @@ class _ActionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fg = enabled ? AppColors.accentStrong : AppColors.textMuted;
-    return Container(
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       decoration: BoxDecoration(
         color: enabled ? AppColors.accentWash : AppColors.surfaceHighlight,
@@ -473,6 +512,12 @@ class _ActionChip extends StatelessWidget {
         ],
       ),
     );
+
+    if (!enabled) return chip;
+    return BouncyTap(
+      scaleDown: 0.94,
+      child: chip,
+    );
   }
 }
 
@@ -486,9 +531,9 @@ class _SidebarHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 8, 12),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome, size: 18, color: AppColors.accent),
+          Icon(Icons.auto_awesome, size: 18, color: AppColors.accent),
           const SizedBox(width: 8),
-          const Text('AI insights',
+          Text('AI insights',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 16,
@@ -496,10 +541,12 @@ class _SidebarHeader extends StatelessWidget {
                 color: AppColors.textPrimary,
               )),
           const Spacer(),
-          IconButton(
-            tooltip: 'Close',
-            icon: const Icon(Icons.close, size: 20, color: AppColors.textSecondary),
-            onPressed: onClose,
+          BouncyTap(
+            child: IconButton(
+              tooltip: 'Close',
+              icon: Icon(Icons.close, size: 20, color: AppColors.textSecondary),
+              onPressed: onClose,
+            ),
           ),
         ],
       ),

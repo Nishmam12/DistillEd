@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/widgets/bouncy_tap.dart';
 import '../state/viewport_controller.dart';
 
 class ZoomPill extends ConsumerWidget {
@@ -18,22 +19,25 @@ class ZoomPill extends ConsumerWidget {
 
     return Tooltip(
       message: 'Reset view',
-      child: Material(
-        color: scheme.surface.withValues(alpha: 0.92),
-        elevation: 2,
-        shape: StadiumBorder(
-          side: BorderSide(color: scheme.outlineVariant),
-        ),
-        child: InkWell(
-          customBorder: const StadiumBorder(),
-          onTap: () => ref.read(viewportProvider.notifier).reset(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Text(
-              '${(zoom * 100).round()}%',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: scheme.onSurface,
+      child: BouncyTap(
+        scaleDown: 0.94,
+        child: Material(
+          color: scheme.surface.withValues(alpha: 0.92),
+          elevation: 2,
+          shape: StadiumBorder(
+            side: BorderSide(color: scheme.outlineVariant),
+          ),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: () => ref.read(viewportProvider.notifier).reset(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: Text(
+                '${(zoom * 100).round()}%',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurface,
+                ),
               ),
             ),
           ),

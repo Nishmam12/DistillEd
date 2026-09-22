@@ -3,6 +3,11 @@
 // Warm & friendly direction: cream surfaces, white cards that lift on soft
 // warm-tinted shadows, fully-rounded coral pill buttons, and a Poppins
 // (display/labels) + Nunito (body) type pairing.
+//
+// Light and dark share this one builder: it reads `AppColors`, which resolves
+// to whichever palette is installed, so dark mode is the same theme in warm
+// charcoal rather than a second hand-maintained copy. Nothing here can be
+// `const` for that reason — the token values are only known at call time.
 
 import 'package:flutter/material.dart';
 
@@ -14,18 +19,26 @@ class AppTheme {
   static const String _displayFont = 'Poppins';
   static const String _bodyFont = 'Nunito';
 
-  /// The warm, paper-light theme. (Kept under the old `darkTheme` getter name
-  /// too so existing call sites continue to compile.)
-  static ThemeData get warmTheme {
+  /// The warm, paper-light theme.
+  static ThemeData get warmTheme => themeFor(Brightness.light);
+
+  /// The warm *dark* theme — same design language, charcoal surfaces.
+  static ThemeData get darkTheme => themeFor(Brightness.dark);
+
+  /// Builds the theme for [brightness], installing the matching palette first
+  /// so every `AppColors` token below resolves to the right value.
+  static ThemeData themeFor(Brightness brightness) {
+    AppColors.install(brightness);
     final base = ThemeData(
-      brightness: Brightness.light,
+      brightness: brightness,
       useMaterial3: true,
       scaffoldBackgroundColor: AppColors.background,
       canvasColor: AppColors.surface,
       primaryColor: AppColors.accent,
       fontFamily: _bodyFont,
       splashFactory: InkSparkle.splashFactory,
-      colorScheme: const ColorScheme.light(
+      colorScheme: ColorScheme(
+        brightness: brightness,
         primary: AppColors.accent,
         onPrimary: AppColors.textOnAccent,
         secondary: AppColors.accentPurple,
@@ -36,7 +49,7 @@ class AppTheme {
         onError: AppColors.textOnAccent,
         surfaceTint: Colors.transparent,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         surfaceTintColor: Colors.transparent,
@@ -51,13 +64,13 @@ class AppTheme {
           letterSpacing: -0.2,
         ),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.accent,
         foregroundColor: AppColors.textOnAccent,
         elevation: 4,
         focusElevation: 6,
         highlightElevation: 2,
-        shape: StadiumBorder(),
+        shape: const StadiumBorder(),
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,
@@ -65,15 +78,15 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: AppColors.border),
         ),
       ),
-      dividerTheme: const DividerThemeData(
+      dividerTheme: DividerThemeData(
         color: AppColors.border,
         thickness: 1,
         space: 1,
       ),
-      iconTheme: const IconThemeData(
+      iconTheme: IconThemeData(
         color: AppColors.textSecondary,
       ),
       dialogTheme: DialogThemeData(
@@ -83,24 +96,24 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
         ),
-        titleTextStyle: const TextStyle(
+        titleTextStyle: TextStyle(
           fontFamily: _displayFont,
           color: AppColors.textPrimary,
           fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
-        contentTextStyle: const TextStyle(
+        contentTextStyle: TextStyle(
           fontFamily: _bodyFont,
           color: AppColors.textSecondary,
           fontSize: 15,
           height: 1.45,
         ),
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
+      bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
       ),
@@ -134,7 +147,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.accent,
-          side: const BorderSide(color: AppColors.accentSoft, width: 1.5),
+          side: BorderSide(color: AppColors.accentSoft, width: 1.5),
           minimumSize: const Size(0, 46),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: const StadiumBorder(),
@@ -150,18 +163,18 @@ class AppTheme {
         fillColor: AppColors.surfaceWarm,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        hintStyle: const TextStyle(color: AppColors.textMuted),
+        hintStyle: TextStyle(color: AppColors.textMuted),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+          borderSide: BorderSide(color: AppColors.accent, width: 1.5),
         ),
       ),
       switchTheme: SwitchThemeData(
@@ -180,15 +193,15 @@ class AppTheme {
           return AppColors.borderStrong;
         }),
       ),
-      sliderTheme: const SliderThemeData(
+      sliderTheme: SliderThemeData(
         activeTrackColor: AppColors.accent,
         inactiveTrackColor: AppColors.border,
         thumbColor: AppColors.accent,
-        overlayColor: Color(0x33D9654E),
+        overlayColor: AppColors.accent.withValues(alpha: 0.2),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.textPrimary,
-        contentTextStyle: const TextStyle(
+        contentTextStyle: TextStyle(
           fontFamily: _bodyFont,
           color: AppColors.surface,
         ),
@@ -203,9 +216,6 @@ class AppTheme {
       textTheme: _buildTextTheme(base.textTheme),
     );
   }
-
-  /// Back-compat alias — `app.dart` historically referenced `darkTheme`.
-  static ThemeData get darkTheme => warmTheme;
 
   static TextTheme _buildTextTheme(TextTheme base) {
     TextStyle display(double size, FontWeight w, {double tracking = -0.5}) =>
@@ -226,51 +236,51 @@ class AppTheme {
       headlineMedium: display(24, FontWeight.w600, tracking: -0.3),
       headlineSmall: display(20, FontWeight.w600, tracking: -0.2),
       titleLarge: display(20, FontWeight.w600, tracking: -0.2),
-      titleMedium: const TextStyle(
+      titleMedium: TextStyle(
         fontFamily: _displayFont,
         color: AppColors.textPrimary,
         fontSize: 16,
         fontWeight: FontWeight.w600,
       ),
-      titleSmall: const TextStyle(
+      titleSmall: TextStyle(
         fontFamily: _displayFont,
         color: AppColors.textPrimary,
         fontSize: 14,
         fontWeight: FontWeight.w600,
       ),
       // Body / long-form → Nunito
-      bodyLarge: const TextStyle(
+      bodyLarge: TextStyle(
         fontFamily: _bodyFont,
         color: AppColors.textPrimary,
         fontSize: 15,
         height: 1.55,
       ),
-      bodyMedium: const TextStyle(
+      bodyMedium: TextStyle(
         fontFamily: _bodyFont,
         color: AppColors.textSecondary,
         fontSize: 14,
         height: 1.5,
       ),
-      bodySmall: const TextStyle(
+      bodySmall: TextStyle(
         fontFamily: _bodyFont,
         color: AppColors.textMuted,
         fontSize: 13,
       ),
       // Labels / CTAs → Poppins
-      labelLarge: const TextStyle(
+      labelLarge: TextStyle(
         fontFamily: _displayFont,
         color: AppColors.textPrimary,
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.3,
       ),
-      labelMedium: const TextStyle(
+      labelMedium: TextStyle(
         fontFamily: _displayFont,
         color: AppColors.textSecondary,
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
-      labelSmall: const TextStyle(
+      labelSmall: TextStyle(
         fontFamily: _displayFont,
         color: AppColors.textMuted,
         fontSize: 11,

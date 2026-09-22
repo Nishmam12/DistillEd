@@ -13,6 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
+import '../../../../core/widgets/bouncy_tap.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/features/quiz_generator.dart';
 import '../../domain/memory/concept_mastery.dart';
@@ -22,7 +24,8 @@ import '../quiz_notifier.dart';
 import '../widgets/model_download_progress.dart';
 
 const Color _correct = Color(0xFF2E7D32);
-const Color _wrong = AppColors.accentRed;
+// Resolved per build — `AppColors` follows the installed light/dark palette.
+Color get _wrong => AppColors.accentRed;
 
 /// Opens the quiz sheet. Call after kicking off [QuizNotifier.generate].
 void showQuizSheet(BuildContext context) {
@@ -84,9 +87,9 @@ class _Status extends StatelessWidget {
       children: [
         const _SheetTitle('Quiz'),
         const SizedBox(height: 28),
-        const CircularProgressIndicator(color: AppColors.accent),
+        CircularProgressIndicator(color: AppColors.accent),
         const SizedBox(height: 16),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        Text(label, style: TextStyle(color: AppColors.textSecondary)),
         const SizedBox(height: 12),
       ],
     );
@@ -108,7 +111,7 @@ class _Downloading extends ConsumerWidget {
         Text(
           '${LlmModelSpec.active.displayName} · '
           '${sizeGb.toStringAsFixed(1)} GB — one-time download',
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 20),
         ModelDownloadProgress(
@@ -134,29 +137,29 @@ class _ErrorView extends ConsumerWidget {
       children: [
         const _SheetTitle('Quiz'),
         const SizedBox(height: 20),
-        const Icon(Icons.error_outline, color: _wrong, size: 40),
+        Icon(Icons.error_outline, color: _wrong, size: 40),
         const SizedBox(height: 12),
         Text(state.message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+            style: TextStyle(fontSize: 14, color: AppColors.textPrimary)),
         const SizedBox(height: 20),
         if (state.offerModelDownload)
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
-                style: const TextStyle(color: AppColors.textOnAccent)),
+                style: TextStyle(color: AppColors.textOnAccent)),
           )
         else if (state.retryable)
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
             onPressed: notifier.retry,
-            child: const Text('Try again',
+            child: Text('Try again',
                 style: TextStyle(color: AppColors.textOnAccent)),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close',
+          child: Text('Close',
               style: TextStyle(color: AppColors.textSecondary)),
         ),
       ],
@@ -277,23 +280,30 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
           children: [
             const Expanded(child: _SheetTitle('Quiz')),
             if (_checked)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.accentWash,
-                  borderRadius: BorderRadius.circular(999),
+              AnimatedScale(
+                scale: 1.0,
+                duration: AppMotion.fast,
+                curve: AppMotion.spring,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentWash,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text('$_score / $total',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.accentStrong)),
                 ),
-                child: Text('$_score / $total',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.accentStrong)),
               ),
-            IconButton(
-              tooltip: 'Close',
-              icon: const Icon(Icons.close,
-                  size: 20, color: AppColors.textSecondary),
-              onPressed: () => Navigator.of(context).pop(),
+            BouncyTap(
+              child: IconButton(
+                tooltip: 'Close',
+                icon: Icon(Icons.close,
+                    size: 20, color: AppColors.textSecondary),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             ),
           ],
         ),
@@ -324,30 +334,42 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
         ),
         const SizedBox(height: 12),
         if (!_checked)
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
-            onPressed: _check,
-            child: const Text('Check answers',
-                style: TextStyle(color: AppColors.textOnAccent)),
+          BouncyTap(
+            scaleDown: 0.96,
+            child: FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+              onPressed: () {
+                AppMotion.mediumImpact();
+                _check();
+              },
+              child: Text('Check answers',
+                  style: TextStyle(color: AppColors.textOnAccent)),
+            ),
           )
         else
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
-                  onPressed: _reset,
-                  child: const Text('Retake',
-                      style: TextStyle(color: AppColors.accent)),
+                child: BouncyTap(
+                  scaleDown: 0.96,
+                  child: OutlinedButton(
+                    onPressed: _reset,
+                    child: Text('Retake',
+                        style: TextStyle(color: AppColors.accent)),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: FilledButton(
-                  style:
-                      FilledButton.styleFrom(backgroundColor: AppColors.accent),
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Done',
-                      style: TextStyle(color: AppColors.textOnAccent)),
+                child: BouncyTap(
+                  scaleDown: 0.96,
+                  child: FilledButton(
+                    style:
+                        FilledButton.styleFrom(backgroundColor: AppColors.accent),
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('Done',
+                        style: TextStyle(color: AppColors.textOnAccent)),
+                  ),
                 ),
               ),
             ],
@@ -393,7 +415,7 @@ class _QuestionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Q${index + 1} · ${q.type.label}'.toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.6,
@@ -401,7 +423,7 @@ class _QuestionCard extends StatelessWidget {
               )),
           const SizedBox(height: 6),
           Text(q.prompt,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 15, height: 1.35, color: AppColors.textPrimary)),
           const SizedBox(height: 10),
           if (q.isChoice)
@@ -459,36 +481,61 @@ class _OptionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (border, icon, iconColor) = switch (state) {
-      _OptionState.correct => (_correct, Icons.check_circle, _correct),
-      _OptionState.wrong => (_wrong, Icons.cancel, _wrong),
+    final (border, icon, iconColor, bg) = switch (state) {
+      _OptionState.correct => (
+          _correct,
+          Icons.check_circle,
+          _correct,
+          _correct.withValues(alpha: 0.08),
+        ),
+      _OptionState.wrong => (
+          _wrong,
+          Icons.cancel,
+          _wrong,
+          _wrong.withValues(alpha: 0.08),
+        ),
       _OptionState.neutral => (
           selected ? AppColors.accent : AppColors.border,
           selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
           selected ? AppColors.accent : AppColors.textMuted,
+          selected ? AppColors.accentWash : Colors.transparent,
         ),
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: border),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: iconColor),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(text,
-                    style: const TextStyle(
-                        fontSize: 14, color: AppColors.textPrimary)),
+      child: BouncyTap(
+        scaleDown: 0.98,
+        child: InkWell(
+          onTap: onTap != null
+              ? () {
+                  AppMotion.selectionClick();
+                  onTap!();
+                }
+              : null,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: AppMotion.fast,
+            curve: AppMotion.emphasized,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: border,
+                width: selected || state != _OptionState.neutral ? 1.5 : 1.0,
               ),
-            ],
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: iconColor),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(text,
+                      style: TextStyle(
+                          fontSize: 14, color: AppColors.textPrimary)),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -518,32 +565,38 @@ class _Result extends StatelessWidget {
             children: [
               TextSpan(
                   text: q.isSelfAssessed ? 'Reference: ' : 'Answer: ',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.w700, color: AppColors.textMuted)),
               TextSpan(
                   text: q.correctAnswer,
-                  style: const TextStyle(color: AppColors.textPrimary)),
+                  style: TextStyle(color: AppColors.textPrimary)),
             ],
           )),
         if (q.explanation.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(q.explanation,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13, height: 1.35, color: AppColors.textSecondary)),
         ],
         if (q.isSelfAssessed) ...[
           const SizedBox(height: 4),
-          InkWell(
-            onTap: () => onSelfMark(!selfMarked),
-            child: Row(
-              children: [
-                Icon(selfMarked ? Icons.check_box : Icons.check_box_outline_blank,
-                    size: 18,
-                    color: selfMarked ? _correct : AppColors.textMuted),
-                const SizedBox(width: 8),
-                const Text('I got this right',
-                    style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
-              ],
+          BouncyTap(
+            scaleDown: 0.96,
+            child: InkWell(
+              onTap: () {
+                AppMotion.selectionClick();
+                onSelfMark(!selfMarked);
+              },
+              child: Row(
+                children: [
+                  Icon(selfMarked ? Icons.check_box : Icons.check_box_outline_blank,
+                      size: 18,
+                      color: selfMarked ? _correct : AppColors.textMuted),
+                  const SizedBox(width: 8),
+                  Text('I got this right',
+                      style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                ],
+              ),
             ),
           ),
         ],
@@ -559,7 +612,7 @@ class _SheetTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Poppins',
           fontSize: 17,
           fontWeight: FontWeight.w600,

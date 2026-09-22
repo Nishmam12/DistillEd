@@ -95,9 +95,9 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
   Widget _header(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.travel_explore, size: 18, color: AppColors.accent),
+        Icon(Icons.travel_explore, size: 18, color: AppColors.accent),
         const SizedBox(width: 8),
-        const Expanded(
+        Expanded(
           child: Text('Ask your notes',
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -112,7 +112,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           visualDensity: VisualDensity.compact,
           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
           padding: EdgeInsets.zero,
-          icon: const Icon(Icons.close, size: 18, color: AppColors.textSecondary),
+          icon: Icon(Icons.close, size: 18, color: AppColors.textSecondary),
           onPressed: () => ref.read(askNotesNotifierProvider.notifier).reset(),
         ),
       ],
@@ -128,10 +128,10 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
       onSubmitted: (_) => _submit(),
       minLines: 1,
       maxLines: 3,
-      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+      style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
       decoration: InputDecoration(
         hintText: 'e.g. What did I write about mitosis?',
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 13),
         filled: true,
         fillColor: AppColors.surfaceHighlight,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -231,7 +231,7 @@ class _Answer extends StatelessWidget {
               children: [
                 SelectableText(
                   trimmed.isEmpty ? 'Thinking…' : trimmed,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     height: 1.5,
                     color: AppColors.textPrimary,
@@ -239,7 +239,7 @@ class _Answer extends StatelessWidget {
                 ),
                 if (sources.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  const Text('SOURCES',
+                  Text('SOURCES',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -269,8 +269,8 @@ class _Answer extends StatelessWidget {
     return Row(
       children: [
         if (streaming)
-          const Padding(
-            padding: EdgeInsets.only(left: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -280,7 +280,7 @@ class _Answer extends StatelessWidget {
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: AppColors.accentSoft),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text('Writing…',
                     style: TextStyle(
                         fontSize: 12, color: AppColors.textSecondary)),
@@ -301,7 +301,7 @@ class _Answer extends StatelessWidget {
                           duration: Duration(seconds: 1)),
                     );
                   },
-            icon: const Icon(Icons.copy_outlined,
+            icon: Icon(Icons.copy_outlined,
                 size: 18, color: AppColors.textSecondary),
           ),
         const Spacer(),
@@ -311,9 +311,9 @@ class _Answer extends StatelessWidget {
             onPressed: (streaming || trimmed.isEmpty)
                 ? null
                 : () => onInsertNote(trimmed),
-            icon: const Icon(Icons.note_add_outlined,
+            icon: Icon(Icons.note_add_outlined,
                 size: 18, color: AppColors.textOnAccent),
-            label: const Text('Insert as note',
+            label: Text('Insert as note',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: AppColors.textOnAccent)),
           ),
@@ -361,12 +361,12 @@ class _SourceCard extends StatelessWidget {
                 width: 22,
                 height: 22,
                 alignment: Alignment.center,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.accentWash,
                   shape: BoxShape.circle,
                 ),
                 child: Text('$index',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: AppColors.accentStrong,
@@ -377,14 +377,14 @@ class _SourceCard extends StatelessWidget {
                 child: Text(snippet,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
                         height: 1.4,
                         color: AppColors.textSecondary)),
               ),
               if (jump != null)
-                const Padding(
-                  padding: EdgeInsets.only(left: 6, top: 2),
+                Padding(
+                  padding: const EdgeInsets.only(left: 6, top: 2),
                   child: Icon(Icons.north_east,
                       size: 14, color: AppColors.textMuted),
                 ),
@@ -477,13 +477,13 @@ class _ErrorBody extends ConsumerWidget {
             style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text(downloadLabel,
-                style: const TextStyle(color: AppColors.textOnAccent)),
+                style: TextStyle(color: AppColors.textOnAccent)),
           )
         else if (state.retryable)
           TextButton.icon(
             onPressed: notifier.retry,
-            icon: const Icon(Icons.refresh, size: 18, color: AppColors.accent),
-            label: const Text('Try again',
+            icon: Icon(Icons.refresh, size: 18, color: AppColors.accent),
+            label: Text('Try again',
                 style: TextStyle(color: AppColors.accent)),
           ),
       ],
@@ -511,13 +511,13 @@ class _Centered extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showSpinner)
-            const CircularProgressIndicator(color: AppColors.accent)
+            CircularProgressIndicator(color: AppColors.accent)
           else
             Icon(icon, size: 34, color: AppColors.accentSoft),
           const SizedBox(height: 14),
           Text(title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -527,7 +527,7 @@ class _Centered extends StatelessWidget {
             const SizedBox(height: 6),
             Text(subtitle!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13, height: 1.4, color: AppColors.textSecondary)),
           ],
         ],

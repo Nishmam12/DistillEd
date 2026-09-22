@@ -81,6 +81,7 @@ class SettingsState {
 }
 
 class SettingsNotifier extends StateNotifier<SettingsState> {
+  static const _kDarkMode = 'ui.darkMode';
   static const _kCloudAiEnabled = 'ai.cloudEnabled';
   static const _kCloudPrivacy = 'ai.cloudPrivacy';
   static const _kHasSeenFirstCloudCall = 'ai.hasSeenFirstCloudCall';
@@ -92,11 +93,13 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   }
 
   /// The AI settings are persisted (the cloud opt-in especially must survive
-  /// restarts); the pre-existing settings keep their in-memory behavior.
+  /// restarts), as is the theme choice; the remaining settings keep their
+  /// in-memory behavior.
   Future<void> _restoreAiSettings() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     state = state.copyWith(
+      darkMode: prefs.getBool(_kDarkMode) ?? false,
       cloudAiEnabled: prefs.getBool(_kCloudAiEnabled) ?? false,
       cloudPrivacy: CloudPrivacy.values.firstWhere(
         (v) => v.name == prefs.getString(_kCloudPrivacy),
@@ -108,8 +111,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     );
   }
 
-  void toggleDarkMode(bool value) {
+  Future<void> toggleDarkMode(bool value) async {
+    if (state.darkMode == value) return;
     state = state.copyWith(darkMode: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kDarkMode, value);
   }
 
   void toggleDevMode(bool value) {

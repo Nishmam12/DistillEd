@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
+import '../../../../core/widgets/bouncy_tap.dart';
 import '../../../export/export_share_service.dart';
 import '../../data/flashcards/flashcard_apkg.dart';
 import '../../data/flashcards/flashcard_csv.dart';
@@ -74,9 +76,9 @@ class _Status extends StatelessWidget {
       children: [
         const _SheetTitle('Flashcards'),
         const SizedBox(height: 28),
-        const CircularProgressIndicator(color: AppColors.accent),
+        CircularProgressIndicator(color: AppColors.accent),
         const SizedBox(height: 16),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        Text(label, style: TextStyle(color: AppColors.textSecondary)),
         const SizedBox(height: 12),
       ],
     );
@@ -98,7 +100,7 @@ class _Downloading extends ConsumerWidget {
         Text(
           '${LlmModelSpec.active.displayName} · '
           '${sizeGb.toStringAsFixed(1)} GB — one-time download',
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 20),
         ModelDownloadProgress(
@@ -125,29 +127,29 @@ class _ErrorView extends ConsumerWidget {
       children: [
         const _SheetTitle('Flashcards'),
         const SizedBox(height: 20),
-        const Icon(Icons.error_outline, color: AppColors.accentRed, size: 40),
+        Icon(Icons.error_outline, color: AppColors.accentRed, size: 40),
         const SizedBox(height: 12),
         Text(state.message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+            style: TextStyle(fontSize: 14, color: AppColors.textPrimary)),
         const SizedBox(height: 20),
         if (state.offerModelDownload)
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
-                style: const TextStyle(color: AppColors.textOnAccent)),
+                style: TextStyle(color: AppColors.textOnAccent)),
           )
         else if (state.retryable)
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
             onPressed: notifier.retry,
-            child: const Text('Try again',
+            child: Text('Try again',
                 style: TextStyle(color: AppColors.textOnAccent)),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close',
+          child: Text('Close',
               style: TextStyle(color: AppColors.textSecondary)),
         ),
       ],
@@ -246,17 +248,19 @@ class _DeckState extends State<_Deck> {
         // height here.
         Row(
           children: [
-            IconButton(
-              tooltip: 'Close',
-              icon: const Icon(Icons.close,
-                  size: 20, color: AppColors.textSecondary),
-              onPressed: () => Navigator.of(context).pop(),
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
+            BouncyTap(
+              child: IconButton(
+                tooltip: 'Close',
+                icon: Icon(Icons.close,
+                    size: 20, color: AppColors.textSecondary),
+                onPressed: () => Navigator.of(context).pop(),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+              ),
             ),
             const Spacer(),
             Text('${_index + 1} / $total',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textMuted)),
@@ -283,45 +287,54 @@ class _DeckState extends State<_Deck> {
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: !flipped
-                ? _toggleFlip
-                : (onLastCard ? _toggleFlip : _nextCard),
-            icon: Icon(!flipped
-                ? Icons.sync
-                : (onLastCard ? Icons.arrow_back : Icons.arrow_forward)),
-            label: Text(!flipped
-                ? 'Flip to answer'
-                : (onLastCard ? 'Back to prompt' : 'Next card')),
+          child: BouncyTap(
+            scaleDown: 0.96,
+            child: OutlinedButton.icon(
+              onPressed: !flipped
+                  ? _toggleFlip
+                  : (onLastCard ? _toggleFlip : _nextCard),
+              icon: Icon(!flipped
+                  ? Icons.sync
+                  : (onLastCard ? Icons.arrow_back : Icons.arrow_forward)),
+              label: Text(!flipped
+                  ? 'Flip to answer'
+                  : (onLastCard ? 'Back to prompt' : 'Next card')),
+            ),
           ),
         ),
         const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+              child: BouncyTap(
+                scaleDown: 0.96,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: _exporting ? null : () => _export(apkg: true),
+                  icon: _exporting
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppColors.textOnAccent))
+                      : Icon(Icons.style_outlined,
+                          size: 16, color: AppColors.textOnAccent),
+                  label: Text('Export to Anki (.apkg)',
+                      style:
+                          TextStyle(fontSize: 13, color: AppColors.textOnAccent)),
                 ),
-                onPressed: _exporting ? null : () => _export(apkg: true),
-                icon: _exporting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.textOnAccent))
-                    : const Icon(Icons.style_outlined,
-                        size: 16, color: AppColors.textOnAccent),
-                label: const Text('Export to Anki (.apkg)',
-                    style:
-                        TextStyle(fontSize: 13, color: AppColors.textOnAccent)),
               ),
             ),
-            TextButton(
-              onPressed: _exporting ? null : () => _export(apkg: false),
-              child: const Text('Export as CSV',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            BouncyTap(
+              scaleDown: 0.94,
+              child: TextButton(
+                onPressed: _exporting ? null : () => _export(apkg: false),
+                child: Text('Export as CSV',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              ),
             ),
           ],
         ),
@@ -350,18 +363,36 @@ class _CardFace extends StatelessWidget {
     final labelBg = showBack ? AppColors.accentStrong : AppColors.surface;
     final labelFg = showBack ? AppColors.textOnAccent : AppColors.textSecondary;
 
-    return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(28),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return BouncyTap(
+      scaleDown: 0.98,
+      onTap: () {
+        AppMotion.lightImpact();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        curve: AppMotion.emphasized,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: showBack
+              ? [
+                  BoxShadow(
+                    color: AppColors.accent.withValues(alpha: 0.28),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : AppColors.shadowCard,
+        ),
+        clipBehavior: Clip.antiAlias,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
+              AnimatedContainer(
+                duration: AppMotion.fast,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
@@ -380,8 +411,9 @@ class _CardFace extends StatelessWidget {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: SingleChildScrollView(
-                    child: Text(
-                      showBack ? card.back : card.front,
+                    child: AnimatedDefaultTextStyle(
+                      duration: AppMotion.fast,
+                      curve: AppMotion.emphasized,
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: showBack ? 20 : 26,
@@ -391,6 +423,7 @@ class _CardFace extends StatelessWidget {
                             showBack ? FontWeight.w500 : FontWeight.w700,
                         color: fg,
                       ),
+                      child: Text(showBack ? card.back : card.front),
                     ),
                   ),
                 ),
@@ -410,7 +443,7 @@ class _SheetTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Poppins',
           fontSize: 17,
           fontWeight: FontWeight.w600,

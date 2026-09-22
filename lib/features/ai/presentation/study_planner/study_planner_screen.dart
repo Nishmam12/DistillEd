@@ -100,10 +100,10 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
       padding: const EdgeInsets.all(20),
       children: [
         const SizedBox(height: 8),
-        const Icon(Icons.event_note_outlined,
+        Icon(Icons.event_note_outlined,
             size: 40, color: AppColors.accentSoft),
         const SizedBox(height: 12),
-        const Text('Plan your study',
+        Text('Plan your study',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'Poppins',
@@ -112,7 +112,7 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
               color: AppColors.textPrimary,
             )),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'A day-by-day plan built from what you\'re struggling with, what\'s '
           'due for review, and concepts your notes mention but don\'t explain '
           'yet. Everything on-device.',
@@ -143,7 +143,7 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           onPressed: _canGenerate ? _generate : null,
-          child: const Text('Generate plan',
+          child: Text('Generate plan',
               style: TextStyle(color: AppColors.textOnAccent, fontSize: 15)),
         ),
       ],
@@ -249,7 +249,7 @@ class _PlanHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
@@ -257,7 +257,7 @@ class _PlanHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('${plan.horizonKind.label} plan · ${plan.conceptCount} concepts',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
@@ -274,7 +274,7 @@ class _PlanHeader extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text('$pct% complete',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12, color: AppColors.textSecondary)),
         ],
       ),
@@ -309,14 +309,14 @@ class _DayCard extends StatelessWidget {
             Row(
               children: [
                 Text('Day ${index + 1}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     )),
                 const SizedBox(width: 8),
                 Text(_formatDate(day.date),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12, color: AppColors.textMuted)),
                 const Spacer(),
                 if (!day.isRest)
@@ -330,8 +330,8 @@ class _DayCard extends StatelessWidget {
               ],
             ),
             if (day.isRest)
-              const Padding(
-                padding: EdgeInsets.only(top: 2, bottom: 2),
+              Padding(
+                padding: const EdgeInsets.only(top: 2, bottom: 2),
                 child: Text('Rest / catch-up day',
                     style: TextStyle(
                         fontSize: 13,
@@ -370,10 +370,10 @@ class _TaskRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(task.label,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14, color: AppColors.textPrimary)),
                 Text(task.kind.reason,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),
@@ -406,7 +406,7 @@ class _Centered extends StatelessWidget {
             const SizedBox(height: 16),
             Text(title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -415,7 +415,7 @@ class _Centered extends StatelessWidget {
             const SizedBox(height: 8),
             Text(subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14, height: 1.5, color: AppColors.textSecondary)),
           ],
         ),

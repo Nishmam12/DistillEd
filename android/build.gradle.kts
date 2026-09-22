@@ -23,6 +23,16 @@ subprojects {
 
 subprojects {
     val configureProject = {
+        val manifestFile = file("${project.projectDir}/src/main/AndroidManifest.xml")
+        if (manifestFile.exists()) {
+            try {
+                val content = manifestFile.readText()
+                if (content.contains("package=")) {
+                    val newContent = content.replace(Regex("""package="[^"]*""""), "")
+                    manifestFile.writeText(newContent)
+                }
+            } catch (e: Exception) {}
+        }
         val androidExtension = extensions.findByName("android")
         if (androidExtension != null) {
             try {
@@ -30,7 +40,11 @@ subprojects {
                 val setNamespace = androidExtension.javaClass.getMethod("setNamespace", String::class.java)
                 val currentNamespace = getNamespace.invoke(androidExtension)
                 if (currentNamespace == null) {
-                    val ns = "com.inkflow.${project.name.replace("_", ".").replace("-", ".")}"
+                    val ns = if (project.name == "isar_flutter_libs") {
+                        "dev.isar.isar_flutter_libs"
+                    } else {
+                        "com.inkflow.${project.name.replace("_", ".").replace("-", ".")}"
+                    }
                     setNamespace.invoke(androidExtension, ns)
                     println("Dynamically set namespace for subproject ${project.name} to $ns")
                 }

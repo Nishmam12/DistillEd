@@ -10,6 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/editor_constants.dart';
+import '../../core/theme/app_motion.dart';
+import '../../core/widgets/bouncy_tap.dart';
 import '../state/editor_tool_controller.dart';
 
 class UniversalColorPalette extends ConsumerStatefulWidget {
@@ -41,11 +43,11 @@ class _UniversalColorPaletteState extends ConsumerState<UniversalColorPalette> {
           key: const ValueKey('universalColorPaletteIgnorePointer'),
           ignoring: !_open,
           child: AnimatedSlide(
-            duration: const Duration(milliseconds: 220),
-            curve: _open ? Curves.easeOutCubic : Curves.easeInCubic,
+            duration: AppMotion.smooth,
+            curve: _open ? AppMotion.emphasized : AppMotion.exit,
             offset: _open ? Offset.zero : const Offset(0, -1.1),
             child: AnimatedOpacity(
-              duration: Duration(milliseconds: _open ? 180 : 140),
+              duration: _open ? AppMotion.standard : AppMotion.fast,
               opacity: _open ? 1 : 0,
               child: Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -58,7 +60,7 @@ class _UniversalColorPaletteState extends ConsumerState<UniversalColorPalette> {
                     shadows: AppColors.shadowFloat,
                     shape: ContinuousRectangleBorder(
                       borderRadius: BorderRadius.circular(22),
-                      side: const BorderSide(color: AppColors.border),
+                      side: BorderSide(color: AppColors.border),
                     ),
                   ),
                   child: Wrap(
@@ -99,34 +101,42 @@ class _Trigger extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: 'Colour',
-      child: Material(
-        color: AppColors.surface,
-        elevation: 2,
-        shape: const StadiumBorder(side: BorderSide(color: AppColors.border)),
-        child: InkWell(
-          customBorder: const StadiumBorder(),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: Color(color),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border, width: 1.5),
+      child: BouncyTap(
+        scaleDown: 0.94,
+        child: Material(
+          color: AppColors.surface,
+          elevation: 2,
+          shape: StadiumBorder(side: BorderSide(color: AppColors.border)),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: Color(color),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.border, width: 1.5),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  open ? Icons.expand_less : Icons.expand_more,
-                  size: 16,
-                  color: AppColors.textSecondary,
-                ),
-              ],
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    duration: AppMotion.fast,
+                    curve: AppMotion.spring,
+                    turns: open ? 0.5 : 0.0,
+                    child: Icon(
+                      Icons.expand_more,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -145,9 +155,12 @@ class _Swatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return BouncyTap(
+      scaleDown: 0.88,
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        curve: AppMotion.spring,
         width: 26,
         height: 26,
         decoration: BoxDecoration(
@@ -157,6 +170,15 @@ class _Swatch extends StatelessWidget {
             color: selected ? Theme.of(context).colorScheme.primary : Colors.black26,
             width: selected ? 3 : 1,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: Color(color).withValues(alpha: 0.4),
+                    blurRadius: 6,
+                    spreadRadius: 1,
+                  )
+                ]
+              : null,
         ),
       ),
     );

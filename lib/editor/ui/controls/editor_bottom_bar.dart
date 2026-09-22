@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/editor_constants.dart';
+import '../../../core/widgets/bouncy_tap.dart';
 import '../../../domain/model/scene_element.dart';
 import '../../state/editor_tool_controller.dart';
 import '../../state/scene_controller.dart';
@@ -63,10 +64,13 @@ class EditorBottomBar extends ConsumerWidget {
                       // Image import is an action, not a selectable tool, so
                       // it sits at the very end of the row.
                       if (onImport != null)
-                        IconButton(
-                          tooltip: 'Import image / PDF',
-                          icon: const Icon(Icons.image_outlined),
-                          onPressed: onImport,
+                        BouncyTap(
+                          scaleDown: 0.90,
+                          child: IconButton(
+                            tooltip: 'Import image / PDF',
+                            icon: const Icon(Icons.image_outlined),
+                            onPressed: onImport,
+                          ),
                         ),
                     ],
                   ),
@@ -103,14 +107,17 @@ class _ArrowToolButton extends ConsumerWidget {
       child: GestureDetector(
         onLongPressStart: (details) =>
             _openStyleMenu(context, ref, details.globalPosition),
-        child: IconButton(
-          isSelected: isActive,
-          onPressed: ctl.selectArrowTool,
-          icon:
-              Icon(kArrowheadIcons[state.endArrowhead] ?? Icons.arrow_right_alt),
-          style: IconButton.styleFrom(
-            backgroundColor:
-                isActive ? Theme.of(context).colorScheme.primaryContainer : null,
+        child: BouncyTap(
+          scaleDown: 0.90,
+          child: IconButton(
+            isSelected: isActive,
+            onPressed: ctl.selectArrowTool,
+            icon:
+                Icon(kArrowheadIcons[state.endArrowhead] ?? Icons.arrow_right_alt),
+            style: IconButton.styleFrom(
+              backgroundColor:
+                  isActive ? Theme.of(context).colorScheme.primaryContainer : null,
+            ),
           ),
         ),
       ),
@@ -202,14 +209,17 @@ class _ToolIconButton extends StatelessWidget {
         ? (state.eraserPixel ? 'Pixel eraser' : 'Stroke eraser')
         : null;
 
-    return IconButton(
-      tooltip: tooltip,
-      isSelected: isActive,
-      onPressed: onTap,
-      icon: Icon(displayIcon),
-      style: IconButton.styleFrom(
-        backgroundColor:
-            isActive ? Theme.of(context).colorScheme.primaryContainer : null,
+    return BouncyTap(
+      scaleDown: 0.90,
+      child: IconButton(
+        tooltip: tooltip,
+        isSelected: isActive,
+        onPressed: onTap,
+        icon: Icon(displayIcon),
+        style: IconButton.styleFrom(
+          backgroundColor:
+              isActive ? Theme.of(context).colorScheme.primaryContainer : null,
+        ),
       ),
     );
   }

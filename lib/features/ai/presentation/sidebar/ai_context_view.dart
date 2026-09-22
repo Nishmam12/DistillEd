@@ -133,8 +133,8 @@ class _ErrorState extends ConsumerWidget {
         const SizedBox(height: 12),
         TextButton.icon(
           onPressed: () => ref.read(pageContextProvider(pageKey).notifier).refresh(),
-          icon: const Icon(Icons.refresh, size: 18, color: AppColors.accent),
-          label: const Text('Try again',
+          icon: Icon(Icons.refresh, size: 18, color: AppColors.accent),
+          label: Text('Try again',
               style: TextStyle(color: AppColors.accent)),
         ),
       ],
@@ -214,7 +214,7 @@ class _ModelNotReadyState extends ConsumerState<_ModelNotReady> {
           ),
           const SizedBox(height: 8),
           Text('${_progress ?? 0}%',
-              style: const TextStyle(color: AppColors.textSecondary)),
+              style: TextStyle(color: AppColors.textSecondary)),
         ],
       );
     }
@@ -232,14 +232,14 @@ class _ModelNotReadyState extends ConsumerState<_ModelNotReady> {
           const SizedBox(height: 8),
           Text(_failure!,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppColors.accentRed)),
+              style: TextStyle(fontSize: 13, color: AppColors.accentRed)),
         ],
         const SizedBox(height: 16),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
           onPressed: _download,
           child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
-              style: const TextStyle(color: AppColors.textOnAccent)),
+              style: TextStyle(color: AppColors.textOnAccent)),
         ),
       ],
     );
@@ -284,7 +284,7 @@ class _ContextBody extends StatelessWidget {
           ],
           Row(
             children: [
-              const Text('CURRENT TOPIC',
+              Text('CURRENT TOPIC',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -299,7 +299,7 @@ class _ContextBody extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             c.currentTopic.isEmpty ? 'Not sure yet' : c.currentTopic,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Poppins',
               fontSize: 20,
               fontWeight: FontWeight.w600,
@@ -309,7 +309,7 @@ class _ContextBody extends StatelessWidget {
           if (c.subtopics.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(c.subtopics.join('  ·  '),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13, color: AppColors.textSecondary)),
           ],
           const SizedBox(height: 14),
@@ -364,7 +364,7 @@ class _RereadingBanner extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Row(
+          Row(
             children: [
               SizedBox(
                 width: 15,
@@ -372,7 +372,7 @@ class _RereadingBanner extends StatelessWidget {
                 child: CircularProgressIndicator(
                     strokeWidth: 2, color: AppColors.accentStrong),
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text('Re-reading your page with Gemma…',
                     style: TextStyle(
@@ -386,7 +386,7 @@ class _RereadingBanner extends StatelessWidget {
           const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: const LinearProgressIndicator(
+            child: LinearProgressIndicator(
               minHeight: 4,
               color: AppColors.accentStrong,
               backgroundColor: AppColors.surfaceHighlight,
@@ -474,7 +474,7 @@ class _SuggestionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(s.kind.label.toUpperCase(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.6,
@@ -482,12 +482,12 @@ class _SuggestionCard extends StatelessWidget {
                     )),
                 const SizedBox(height: 3),
                 Text(s.message,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13, height: 1.35, color: AppColors.textPrimary)),
                 if (s.excerpt.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text('“${s.excerpt}”',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         height: 1.3,
                         fontStyle: FontStyle.italic,
@@ -499,14 +499,14 @@ class _SuggestionCard extends StatelessWidget {
                   Text.rich(TextSpan(
                     style: const TextStyle(fontSize: 12, height: 1.3),
                     children: [
-                      const TextSpan(
+                      TextSpan(
                           text: 'Try: ',
                           style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: AppColors.textMuted)),
                       TextSpan(
                           text: s.replacement,
-                          style: const TextStyle(color: AppColors.accentStrong)),
+                          style: TextStyle(color: AppColors.accentStrong)),
                     ],
                   )),
                 ],
@@ -518,7 +518,7 @@ class _SuggestionCard extends StatelessWidget {
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             padding: EdgeInsets.zero,
-            icon: const Icon(Icons.close, size: 16, color: AppColors.textMuted),
+            icon: Icon(Icons.close, size: 16, color: AppColors.textMuted),
             onPressed: onDismiss,
           ),
         ],
@@ -536,7 +536,7 @@ class _SectionLabel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 0),
       child: Text(text.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
@@ -576,7 +576,7 @@ class _LevelIndicator extends StatelessWidget {
         ],
         const SizedBox(width: 10),
         Text(_labels[level]!,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -599,7 +599,7 @@ class _ConceptChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
             color: AppColors.accentPurpleStrong,
@@ -627,21 +627,21 @@ class _GapFlag extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 1),
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
             child: Icon(Icons.lightbulb_outline,
                 size: 16, color: AppColors.accentYellow),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(text,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13, height: 1.35, color: AppColors.textPrimary)),
           ),
           if (onTap != null) ...[
             const SizedBox(width: 6),
-            const Padding(
-              padding: EdgeInsets.only(top: 1),
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
               child: Icon(Icons.school_outlined,
                   size: 15, color: AppColors.accentYellow),
             ),
@@ -670,7 +670,7 @@ class _DefinitionRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: 10),
       child: Text.rich(
         TextSpan(
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 13, height: 1.4, color: AppColors.textPrimary),
           children: [
             TextSpan(
@@ -678,7 +678,7 @@ class _DefinitionRow extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w600)),
             TextSpan(
                 text: definition,
-                style: const TextStyle(color: AppColors.textSecondary)),
+                style: TextStyle(color: AppColors.textSecondary)),
           ],
         ),
       ),
@@ -712,13 +712,13 @@ class _CenteredMessage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showSpinner)
-            const CircularProgressIndicator(color: AppColors.accent)
+            CircularProgressIndicator(color: AppColors.accent)
           else
             Icon(icon, size: 36, color: AppColors.accentSoft),
           const SizedBox(height: 16),
           Text(title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -727,7 +727,7 @@ class _CenteredMessage extends StatelessWidget {
           const SizedBox(height: 6),
           Text(subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13, height: 1.4, color: AppColors.textSecondary)),
         ],
       ),

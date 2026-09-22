@@ -61,9 +61,9 @@ void main() async {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: AppColors.accentRed, size: 48),
+              Icon(Icons.error_outline, color: AppColors.accentRed, size: 48),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Something went wrong',
                 style: TextStyle(
                   fontSize: 18,
@@ -75,7 +75,7 @@ void main() async {
               Text(
                 kDebugMode ? details.exception.toString() : 'An unexpected error occurred. The app will try to recover.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(color: AppColors.textSecondary),
               ),
             ],
           ),

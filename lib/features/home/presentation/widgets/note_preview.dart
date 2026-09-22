@@ -111,9 +111,9 @@ class _ReadabilityGradient extends StatelessWidget {
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: [
-            Colors.white,
-            Colors.white.withValues(alpha: 0.80),
-            Colors.white.withValues(alpha: 0.0),
+            NotesPalette.scrim,
+            NotesPalette.scrim.withValues(alpha: 0.80),
+            NotesPalette.scrim.withValues(alpha: 0.0),
           ],
           stops: const [0.0, 0.26, 0.44],
         ),
@@ -151,7 +151,7 @@ class _TypographicPreview extends StatelessWidget {
               note.title.toUpperCase(),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 26,
                 height: 1.05,
@@ -176,7 +176,7 @@ class _TypographicPreview extends StatelessWidget {
                         showBullets ? '•  $line' : line,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Nunito',
                           fontSize: 13,
                           height: 1.3,

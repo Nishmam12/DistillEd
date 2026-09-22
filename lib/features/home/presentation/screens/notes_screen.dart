@@ -64,7 +64,7 @@ class NotesScreen extends ConsumerWidget {
                 ),
                 Expanded(
                   child: cards.when(
-                    loading: () => const Center(
+                    loading: () => Center(
                       child: CircularProgressIndicator(
                         color: NotesPalette.accent,
                       ),
@@ -137,7 +137,7 @@ class NotesScreen extends ConsumerWidget {
               ListTile(
                 title: Text(
                   sort.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
@@ -145,7 +145,7 @@ class NotesScreen extends ConsumerWidget {
                   ),
                 ),
                 trailing: sort == current
-                    ? const Icon(Icons.check_rounded,
+                    ? Icon(Icons.check_rounded,
                         color: NotesPalette.accent)
                     : null,
                 onTap: () => Navigator.of(context).pop(sort),
@@ -171,7 +171,7 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 12, 8, 12),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               'DistillEd',
               style: TextStyle(
@@ -356,7 +356,7 @@ class _BottomBar extends StatelessWidget {
                 child: Text(
                   '$count ${count == 1 ? 'Note' : 'Notes'}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -412,7 +412,8 @@ class _BarButton extends StatelessWidget {
               child: Icon(
                 icon,
                 size: 22,
-                color: filled ? Colors.white : NotesPalette.accent,
+                color:
+                    filled ? NotesPalette.textOnAccent : NotesPalette.accent,
               ),
             ),
           ),
@@ -468,7 +469,7 @@ class _Message extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -479,7 +480,7 @@ class _Message extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Nunito',
                 fontSize: 14,
                 color: NotesPalette.textSecondary,
@@ -532,7 +533,7 @@ class _CreateNotebookDialogState extends State<_CreateNotebookDialog> {
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Page style',
             style: TextStyle(
               color: NotesPalette.textSecondary,

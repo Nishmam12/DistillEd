@@ -13,6 +13,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_motion.dart';
 import '../models/note_card_data.dart';
 import '../notes_palette.dart';
 import 'knowledge_graph_button.dart';
@@ -57,10 +58,16 @@ class NoteCard extends StatefulWidget {
 
 class _NoteCardState extends State<NoteCard> {
   bool _raised = false;
+  bool _pressed = false;
 
   void _setRaised(bool value) {
     if (_raised == value) return;
     setState(() => _raised = value);
+  }
+
+  void _setPressed(bool value) {
+    if (_pressed == value) return;
+    setState(() => _pressed = value);
   }
 
   @override
@@ -68,11 +75,14 @@ class _NoteCardState extends State<NoteCard> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => _setRaised(true),
-      onExit: (_) => _setRaised(false),
+      onExit: (_) {
+        _setRaised(false);
+        _setPressed(false);
+      },
       child: AnimatedScale(
-        scale: _raised ? 1.01 : 1.0,
-        duration: NoteCard._motion,
-        curve: Curves.easeOut,
+        scale: _pressed ? 0.985 : (_raised ? 1.01 : 1.0),
+        duration: _pressed ? AppMotion.fast : NoteCard._motion,
+        curve: _pressed ? AppMotion.spring : Curves.easeOut,
         child: Stack(
           children: [
             Positioned.fill(child: _body()),
@@ -92,54 +102,62 @@ class _NoteCardState extends State<NoteCard> {
   }
 
   Widget _body() {
-    return GestureDetector(
-      onTap: widget.onTap,
-      onLongPress: widget.onLongPress,
-      child: AnimatedContainer(
-        duration: NoteCard._motion,
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          color: NotesPalette.card,
-          borderRadius: NoteCard.borderRadius,
-          boxShadow:
-              _raised ? NotesPalette.cardShadowRaised : NotesPalette.cardShadow,
-        ),
-        child: ClipRRect(
-          borderRadius: NoteCard.borderRadius,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final overlayWidth =
-                  constraints.maxWidth * NotesPalette.overlayWidthFactor;
-              return Stack(
-                children: [
-                  // The preview runs edge to edge and continues underneath the
-                  // overlay — the two are one surface, not two panels.
-                  Positioned.fill(
-                    child: Hero(
-                      tag: 'note-preview-${widget.note.id}',
-                      child: NotePreview(
-                        note: widget.note,
-                        overlayInset: overlayWidth,
-                        trailingInset: widget.onGraphTap == null
-                            ? 0
-                            : NotesPalette.graphButtonRadius * 2 +
-                                NoteCard.graphButtonMargin,
-                        imageProvider: widget.imageProvider,
-                        sceneImageResolver: widget.sceneImageResolver,
-                        sceneRepaint: widget.sceneRepaint,
+    return Listener(
+      onPointerDown: (_) {
+        _setPressed(true);
+        AppMotion.lightImpact();
+      },
+      onPointerUp: (_) => _setPressed(false),
+      onPointerCancel: (_) => _setPressed(false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
+        child: AnimatedContainer(
+          duration: NoteCard._motion,
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: NotesPalette.card,
+            borderRadius: NoteCard.borderRadius,
+            boxShadow:
+                _raised ? NotesPalette.cardShadowRaised : NotesPalette.cardShadow,
+          ),
+          child: ClipRRect(
+            borderRadius: NoteCard.borderRadius,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final overlayWidth =
+                    constraints.maxWidth * NotesPalette.overlayWidthFactor;
+                return Stack(
+                  children: [
+                    // The preview runs edge to edge and continues underneath the
+                    // overlay — the two are one surface, not two panels.
+                    Positioned.fill(
+                      child: Hero(
+                        tag: 'note-preview-${widget.note.id}',
+                        child: NotePreview(
+                          note: widget.note,
+                          overlayInset: overlayWidth,
+                          trailingInset: widget.onGraphTap == null
+                              ? 0
+                              : NotesPalette.graphButtonRadius * 2 +
+                                  NoteCard.graphButtonMargin,
+                          imageProvider: widget.imageProvider,
+                          sceneImageResolver: widget.sceneImageResolver,
+                          sceneRepaint: widget.sceneRepaint,
+                        ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: overlayWidth,
-                    child: NoteOverlay(note: widget.note),
-                  ),
-                ],
-              );
-            },
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: overlayWidth,
+                      child: NoteOverlay(note: widget.note),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

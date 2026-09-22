@@ -213,7 +213,7 @@ class _GraphPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
         text: text.length > 22 ? '${text.substring(0, 22)}…' : text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           height: 1.1,
           color: AppColors.textPrimary,
@@ -240,7 +240,7 @@ class _Legend extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
@@ -296,7 +296,7 @@ class _Swatch extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text(label,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 12, color: AppColors.textSecondary)),
       ],
     );
@@ -325,7 +325,7 @@ class _Message extends StatelessWidget {
             const SizedBox(height: 16),
             Text(title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -334,7 +334,7 @@ class _Message extends StatelessWidget {
             const SizedBox(height: 8),
             Text(subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 14, height: 1.5, color: AppColors.textSecondary)),
           ],
         ),

@@ -32,10 +32,10 @@ class ModelDownloadProgress extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text('$progress%',
-            style: const TextStyle(color: AppColors.textSecondary)),
+            style: TextStyle(color: AppColors.textSecondary)),
         TextButton(
           onPressed: onCancel,
-          child: const Text('Cancel',
+          child: Text('Cancel',
               style: TextStyle(color: AppColors.textSecondary)),
         ),
       ],

@@ -24,6 +24,7 @@ import '../../state/library_controller.dart';
 import '../../state/scene_controller.dart';
 import '../../state/scene_image_cache_provider.dart';
 import '../../state/selection_controller.dart';
+import '../../../core/widgets/bouncy_tap.dart';
 import '../text_input_dialog.dart';
 import 'editor_controls_shared.dart';
 
@@ -44,7 +45,7 @@ class SelectionBar extends ConsumerWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          IconButton(
+          _barBtn(
             tooltip: 'Delete',
             icon: const Icon(Icons.delete_outline),
             onPressed: () {
@@ -52,7 +53,7 @@ class SelectionBar extends ConsumerWidget {
               sel.clear();
             },
           ),
-          IconButton(
+          _barBtn(
             tooltip: 'Duplicate',
             icon: const Icon(Icons.copy_all_outlined),
             onPressed: () {
@@ -62,7 +63,7 @@ class SelectionBar extends ConsumerWidget {
               sel.selectMany(copies.map((e) => e.id));
             },
           ),
-          IconButton(
+          _barBtn(
             tooltip: 'Copy',
             icon: const Icon(Icons.content_copy),
             onPressed: () => ClipboardService.copy(_sel(ref)),
@@ -70,24 +71,24 @@ class SelectionBar extends ConsumerWidget {
           // Only offered for a single text element: editing is inherently about
           // one element's words, and a locked one is not up for changing.
           if (_editableText(ids, all) case final TextElement t)
-            IconButton(
+            _barBtn(
               tooltip: 'Edit text',
               icon: const Icon(Icons.edit_outlined),
               onPressed: () => _editText(context, ref, t),
             ),
           // Turns an imported page or photo into editable text sitting over it.
           if (_singleImage(ids, all) case final ImageElement im)
-            IconButton(
+            _barBtn(
               tooltip: 'Extract text',
               icon: const Icon(Icons.document_scanner_outlined),
               onPressed: () => _extractText(context, ref, im),
             ),
-          IconButton(
+          _barBtn(
             tooltip: 'Save to library',
             icon: const Icon(Icons.bookmark_add_outlined),
             onPressed: () => _saveToLibrary(context, ref),
           ),
-          IconButton(
+          _barBtn(
             tooltip: 'Group',
             icon: const Icon(Icons.join_full),
             onPressed: () {
@@ -101,7 +102,7 @@ class SelectionBar extends ConsumerWidget {
               ));
             },
           ),
-          IconButton(
+          _barBtn(
             tooltip: 'Ungroup',
             icon: const Icon(Icons.join_inner),
             onPressed: () {
@@ -122,7 +123,7 @@ class SelectionBar extends ConsumerWidget {
             // what made a locked import unreachable in the first place, since
             // nothing else can re-select a locked element except tapping it.
             final allLocked = before.isNotEmpty && before.every((e) => e.isLocked);
-            return IconButton(
+            return _barBtn(
               tooltip: allLocked ? 'Unlock' : 'Lock',
               icon: Icon(allLocked ? Icons.lock_open_outlined : Icons.lock_outline),
               onPressed: () {
@@ -137,35 +138,35 @@ class SelectionBar extends ConsumerWidget {
             );
           }),
           const VerticalDivider(width: 12),
-          IconButton(
+          _barBtn(
             tooltip: 'Bring to front',
             icon: const Icon(Icons.flip_to_front),
             onPressed: () => history.push(ReplaceAllCommand(
                 before: all, after: ZOrderService.bringToFront(all, ids))),
           ),
-          IconButton(
+          _barBtn(
             tooltip: 'Send to back',
             icon: const Icon(Icons.flip_to_back),
             onPressed: () => history.push(ReplaceAllCommand(
                 before: all, after: ZOrderService.sendToBack(all, ids))),
           ),
           const VerticalDivider(width: 12),
-          IconButton(
+          _barBtn(
             tooltip: 'Align left',
             icon: const Icon(Icons.align_horizontal_left),
             onPressed: () => _align(ref, history, AlignEdge.left),
           ),
-          IconButton(
+          _barBtn(
             tooltip: 'Align centre',
             icon: const Icon(Icons.align_horizontal_center),
             onPressed: () => _align(ref, history, AlignEdge.centerH),
           ),
-          IconButton(
+          _barBtn(
             tooltip: 'Align top',
             icon: const Icon(Icons.align_vertical_top),
             onPressed: () => _align(ref, history, AlignEdge.top),
           ),
-          IconButton(
+          _barBtn(
             tooltip: 'Distribute horizontally',
             icon: const Icon(Icons.horizontal_distribute),
             onPressed: () {
@@ -178,6 +179,21 @@ class SelectionBar extends ConsumerWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _barBtn({
+    required String tooltip,
+    required Widget icon,
+    required VoidCallback onPressed,
+  }) {
+    return BouncyTap(
+      scaleDown: 0.90,
+      child: IconButton(
+        tooltip: tooltip,
+        icon: icon,
+        onPressed: onPressed,
       ),
     );
   }
