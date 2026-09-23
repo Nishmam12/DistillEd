@@ -76,7 +76,7 @@ class _KnowledgeGraphButtonState extends State<KnowledgeGraphButton> {
                       ],
               ),
               child: Icon(
-                PhosphorIconsRegular.asterisk,
+                PhosphorIconsRegular.graph,
                 size: widget.radius * 0.85,
                 color: c.accent,
               ),
