@@ -61,7 +61,7 @@ Low risk. Most are a few lines behind existing seams.
 
 Pass `enableSpeculativeDecoding: true` to `getActiveModel()`, but only when `activeBackend` reports GPU. Google reports about 1.6× faster decoding for Gemma 4 E2B. Articles on this advise against it on CPU, where running the drafter adds overhead. Answer quality stays the same; only speed changes.
 
-Check first that the `.litertlm` file you download includes the MTP drafter. If it doesn't, this is a no-op until you switch to a file that does.
+Check first that the `.litertlm` file you download includes the MTP drafter. If it doesn't, this is a no-op until you switch to a file that does. The drafter also costs memory (LiteRT-LM maintainers suggest skipping its signature when you aren't using it), so measure peak memory with it on and off before keeping it.
 
 - **Where:** `gemma_adapter.dart` → `FlutterGemmaRuntime.open`
 - **Impact:** faster streamed answers
@@ -79,7 +79,9 @@ After loading, read `InferenceModel.activeBackend`. Log it, and store it so the 
 
 Start loading the model in the background when the AI sidebar opens, or when the Ask box gets focus. The mutex and idle-unload timer already exist, so this is a single `warmUp()` call that loads and arms the timer. It hides most of the 3.6–17 s cold start behind the user's own reading and typing time.
 
-- **Where:** `local_gemma_provider.dart`, `ai_sidebar.dart`, `ai_ask_view.dart`
+Make repeat loads cheaper too. LiteRT-LM writes a load cache to a `cacheDir` ("can improve 2nd load time"), including an XNNPACK weight cache of hundreds of MB that's keyed to the model file's modification time and size. Check that `flutter_gemma` points it at a persistent app directory. Never touch the model file after download, since changing it forces a rebuild. Add the cache to the free-space check, which today only counts the download.
+
+- **Where:** `local_gemma_provider.dart`, `ai_sidebar.dart`, `ai_ask_view.dart`, `model_download_manager.dart`
 - **Impact:** the largest perceived-latency win
 - **Effort:** S
 
@@ -167,7 +169,7 @@ Route imports, bulk indexing and deep reads through a single prioritized queue: 
 
 ### 13. Respect heat, battery and device class
 
-Read Android's thermal status and headroom (`PowerManager`) over a small platform channel, and pause background jobs when the device is hot or low on battery. At first launch, read total RAM and whether the GPU backend loads, and pick a profile: full local, local-lite (CPU, shorter outputs, no figure pass), or cloud-assisted. Sustained inference on a tablet throttles, and a page read that takes 2 s cold can take much longer after ten minutes of indexing.
+Read Android's thermal status and headroom (`PowerManager`) over a small platform channel, and pause background jobs when the device is hot or low on battery. At first launch, read total RAM and whether the GPU backend loads, and pick a profile: full local, local-lite (CPU, shorter outputs, no figure pass), or cloud-assisted. A reasonable starting rule: about 7 GB or more reported and GPU loads → full; 5–7 GB → lite with a smaller context; under 5 GB → cloud. An "8 GB" phone usually reports a little under 8 GB of total RAM, so don't set the full-profile bar at 8. Sustained inference on a tablet throttles, and a page read that takes 2 s cold can take much longer after ten minutes of indexing.
 
 - **Where:** new platform channel, `ai_router.dart`, `settings_provider.dart`
 - **Impact:** steady performance and fewer crashes on weaker phones
@@ -264,7 +266,7 @@ Android and the app itself typically use 3–4 GB, leaving about 2–3 GB for mo
 
 | Model | Role | Runtime memory | Can run alongside |
 |---|---|---|---|
-| Gemma 4 E2B | LLM, vision, audio | ~0.7 GB GPU · ~1.7 GB CPU\* | Embedder, ML Kit |
+| Gemma 4 E2B | LLM, vision, audio | 0.7–2.6 GB GPU† · ~1.7 GB CPU\* | Embedder, ML Kit |
 | PaddleOCR-VL-1.6 | Scanned documents (spike) | ~1.8 GB peak\* | Embedder, ML Kit. Never with Gemma. |
 | Whisper / Moonshine | Lecture audio | measure | Queued, never with Gemma |
 | EmbeddingGemma 300M | RAG vectors | ~0.2 GB | Anything |
@@ -272,6 +274,8 @@ Android and the app itself typically use 3–4 GB, leaving about 2–3 GB for mo
 | ML Kit Text Rec. · Entity · Language ID · Doc Scanner | Utility | small | Anything |
 
 \* Figures published for a Galaxy S26 Ultra (Gemma) and a Galaxy S26 GPU (PaddleOCR-VL). Measure on the Pad 7 before relying on them.
+
+† Google's benchmark reports 676 MB. A LiteRT-LM bug report (issue #3507) measured 2.6 GB resident for Gemma 4 E2B on an Android GPU (8K context), because Android copies weights into GPU memory where iOS memory-maps them. Plan for the high end until you've measured.
 
 ---
 
@@ -287,9 +291,27 @@ Every change above should move a number. Add a debug-only performance panel and 
 | Time to page text | Sidebar open → first text shown, and → refined text | Items 8–11 |
 | Handwriting accuracy (CER) | 20 handwritten pages with typed ground truth | Items 9, 18, 20 |
 | Retrieval hit@5, answer faithfulness | 30 questions with a known source page | Items 5, 6, 14 |
+| Memory after 5 load/unload cycles | Peak memory after each idle unload and reload | Idle-unload design; a GPU engine leak is reported in another LiteRT-LM wrapper |
 | Thermal status over 10 minutes | `PowerManager` thermal status during bulk indexing | Items 12, 13 |
 
 **Suggested order:** 20 → 1–7 → 8–11 → 19 → 12–13 → 14–18 → 21–22. Items 20 and 21 are small but unblock later work, and 19 must come before 14.
+
+---
+
+## What we took from the earlier research summary
+
+The team's Executive Summary on lightweight Android models targets about 3 GB of RAM and covers vision CNNs and 2023–24-era LLMs. Its deployment advice holds up. Most of its model picks don't fit DistillEd.
+
+| From the summary | How it's used here |
+|---|---|
+| Cache GPU delegate binaries to avoid slow startups | Folded into item 3 as LiteRT-LM's `cacheDir` and weight cache |
+| Tiered fallback by RAM and GPU (≥7 GB / 5–7 GB / <5 GB) | Adopted as the starting rule in item 13 |
+| Cap sequence length to control memory for past tokens | Matches item 22: measure before raising `maxTokens` |
+| Benchmark on real mid-range devices; report time to first token and tokens/s | Matches the measurement table |
+| NNAPI is deprecated in Android 15 | Confirms staying on LiteRT's GPU path, with NPU only where tested |
+| Use already-quantized community models instead of quantizing your own | Already the case: the `litert-community` builds are pre-quantized |
+
+**Set aside:** MobileNet and EfficientNet-Lite (the app has no camera classification or detection task), DistilBERT and MobileBERT (EmbeddingGemma covers that role), and Gemma 2B, Falcon-1B, StableLM-3B and GPT-2 (superseded by Gemma 4 E2B). The summary's MediaPipe LLM Inference API is now in maintenance-only mode, and Google points to LiteRT-LM, which `flutter_gemma` already uses. Its Gemma licence note no longer applies to Gemma 4, which is Apache 2.0. Its citation markers (for example 【3†L242-L250】) don't point to retrievable sources, so check the figures against primary sources before reusing them in a report.
 
 ---
 
@@ -312,3 +334,8 @@ Every change above should move a number. Add a debug-only performance panel and 
 - [Gemma 4 under Apache 2.0](https://opensource.googleblog.com/2026/03/gemma-4-expanding-the-gemmaverse-with-apache-20.html)
 - [Gemma Terms of Use](https://ai.google.dev/gemma/terms)
 - [Android Thermal API](https://developer.android.com/games/optimize/adpf/thermal)
+- [LiteRT-LM on Android (`cacheDir`)](https://developers.google.com/edge/litert-lm/android)
+- [LiteRT-LM #3507: Android GPU weight memory](https://github.com/google-ai-edge/LiteRT-LM/issues/3507)
+- [LiteRT-LM #3772: weight cache rebuilds](https://github.com/google-ai-edge/LiteRT-LM/issues/3772)
+- [litert-lm-native #59: GPU engine memory not released](https://github.com/leehack/litert-lm-native/issues/59)
+- [MediaPipe LLM Inference (maintenance-only notice)](https://developers.google.com/edge/mediapipe/solutions/genai/llm_inference/android)
