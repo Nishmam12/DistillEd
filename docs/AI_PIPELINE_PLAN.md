@@ -21,6 +21,7 @@ Found by reading the AI code paths. The numbers in the first two items come from
 |---|---|---|
 | Every Gemma load costs 3.6–17.2 s | The 30-second idle residency helped, but the first call after opening the sidebar still pays the full load while the user waits. | `local_gemma_provider.dart` |
 | A deep page read made ~19 vision passes at ~2,300 patches each | The merged OCR+figure call cut some of this, but ink, every image and the drawn layer each still get their own vision call, at full resolution. | `page_content_extractor.dart` |
+| Switching between text and vision calls reloads the whole model | Text calls open Gemma without the vision encoder and image calls open it with one. `FlutterGemmaRuntime.open` tears the engine down whenever that changes, so a deep page read (image reads, then a text analysis) pays the 3.6–17 s load at least twice. | `gemma_adapter.dart`, `local_gemma_provider.dart` |
 | Imported PDFs are always rasterized and OCR'd | Most lecture slides and papers already contain real text. The app throws it away, then spends a model call trying to read it back. | `features/import/pdf_service.dart` |
 | Vision results are only cached for the session | `_visionReadDone` and `PageContextCache` reset on restart, so reopening a notebook repeats the heavy reads for pages that haven't changed. | `context_engine_notifier.dart` |
 | The embedder loads and unloads on every call, including every question | Each "Ask your notes" query pays a model load before it can search. | `local_text_embedder.dart` |
@@ -59,7 +60,7 @@ Low risk. Most are a few lines behind existing seams.
 
 ### 1. Turn on multi-token prediction when running on GPU
 
-Pass `enableSpeculativeDecoding: true` to `getActiveModel()`, but only when `activeBackend` reports GPU. Google reports about 1.6× faster decoding for Gemma 4 E2B. Articles on this advise against it on CPU, where running the drafter adds overhead. Answer quality stays the same; only speed changes.
+The app doesn't pass `enableSpeculativeDecoding`, so the plugin leaves it to the model file's default and you can't tell whether it's on. Pass `true` when `activeBackend` reports GPU and `false` on CPU. Google reports about 1.6× faster decoding for Gemma 4 E2B. Articles on this advise against it on CPU, where running the drafter adds overhead. Answer quality stays the same; only speed changes.
 
 Check first that the `.litertlm` file you download includes the MTP drafter. If it doesn't, this is a no-op until you switch to a file that does. The drafter also costs memory (LiteRT-LM maintainers suggest skipping its signature when you aren't using it), so measure peak memory with it on and off before keeping it.
 
@@ -79,7 +80,9 @@ After loading, read `InferenceModel.activeBackend`. Log it, and store it so the 
 
 Start loading the model in the background when the AI sidebar opens, or when the Ask box gets focus. The mutex and idle-unload timer already exist, so this is a single `warmUp()` call that loads and arms the timer. It hides most of the 3.6–17 s cold start behind the user's own reading and typing time.
 
-Make repeat loads cheaper too. LiteRT-LM writes a load cache to a `cacheDir` ("can improve 2nd load time"), including an XNNPACK weight cache of hundreds of MB that's keyed to the model file's modification time and size. Check that `flutter_gemma` points it at a persistent app directory. Never touch the model file after download, since changing it forces a rebuild. Add the cache to the free-space check, which today only counts the download.
+Load one configuration for everything. Open every session with `supportImage: true` and a fixed `maxNumImages`, so text and vision calls share the same resident engine instead of forcing a reload each time they alternate. Text sessions simply send no image. Measure the extra memory the resident vision encoder costs on the Pad 7.
+
+Repeat loads are already helped by LiteRT-LM's load cache: `flutter_gemma` 1.3.0 sets `cacheDir` to the app support directory for you. The cache (including an XNNPACK weight cache of hundreds of MB) is keyed to the model file's modification time and size, so never touch the file after download. Add the cache to the free-space check, which today only counts the download.
 
 - **Where:** `local_gemma_provider.dart`, `ai_sidebar.dart`, `ai_ask_view.dart`, `model_download_manager.dart`
 - **Impact:** the largest perceived-latency win
@@ -87,7 +90,7 @@ Make repeat loads cheaper too. LiteRT-LM writes a load cache to a `cacheDir` ("c
 
 ### 4. Keep the embedder loaded during a burst of work
 
-Give `LocalTextEmbedder` the same idle-unload pattern as the LLM (for example 60 s). At about 200 MB it's cheap to hold, and it removes a model load from every question and from each page in a bulk index. Also measure CPU against GPU for the embedder: loading GPU kernels can cost more than a 300M model saves.
+Give `LocalTextEmbedder` the same idle-unload pattern as the LLM (for example 60 s). At about 200 MB it's cheap to hold, and it removes a model load from every question and from each page in a bulk index. The embedder always runs on CPU: `flutter_gemma_embeddings` 1.0.2 ignores the GPU request because its GPU path returned all-zero vectors. That's fine, since it keeps the GPU free for Gemma, but fix the "falls back internally" comment in `embedder_adapter.dart` so nobody assumes otherwise.
 
 - **Where:** `local_text_embedder.dart`, `embedder_adapter.dart`
 - **Impact:** faster Ask and bulk indexing
