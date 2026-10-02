@@ -62,10 +62,11 @@ void main() {
       // The literals above stay `const`; this proves they are still the value
       // the spec describes ("accent @ 12%" / "@ 16%") rather than a hex that
       // drifted away from `accent` when someone edited one and not the other.
+      // Compared as stored (8-bit alpha): 12% is 0x1F, not exactly 0.12.
       expect(AppColors.light.accentMuted,
-          AppColors.light.accent.withValues(alpha: 0.12));
+          AppColors.light.accent.withAlpha((0.12 * 255).round()));
       expect(AppColors.dark.accentMuted,
-          AppColors.dark.accent.withValues(alpha: 0.16));
+          AppColors.dark.accent.withAlpha((0.16 * 255).round()));
     });
   });
 

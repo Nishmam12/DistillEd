@@ -74,7 +74,7 @@ void main() {
   testWidgets('carries a network icon', (tester) async {
     await _pump(tester);
 
-    expect(find.byIcon(PhosphorIconsRegular.asterisk), findsOneWidget);
+    expect(find.byIcon(PhosphorIconsRegular.graph), findsOneWidget);
   });
 
   testWidgets('reports itself to screen readers as a button', (tester) async {

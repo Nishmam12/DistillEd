@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
 import 'package:inkflow/data/persistence/scene_element_store.dart';
 import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/editor/state/editor_tool_controller.dart';
@@ -41,19 +42,19 @@ void main() {
         (tester) async {
       await pumpBar(tester, onImport: () {});
 
-      expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.edit), findsOneWidget);
-      expect(find.byIcon(Icons.category), findsOneWidget);
-      expect(find.byIcon(Icons.title), findsOneWidget);
-      expect(find.byIcon(Icons.layers_clear), findsOneWidget);
-      expect(find.byIcon(Icons.flashlight_on_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.image_outlined), findsOneWidget);
+      expect(find.byIcon(PhosphorIconsRegular.lasso), findsOneWidget);
+      expect(find.byIcon(PhosphorIconsRegular.pencilSimple), findsOneWidget);
+      expect(find.byIcon(PhosphorIconsRegular.shapes), findsOneWidget);
+      expect(find.byIcon(PhosphorIconsRegular.textT), findsOneWidget);
+      expect(find.byIcon(PhosphorIconsRegular.eraser), findsOneWidget);
+      expect(find.byIcon(PhosphorIconsRegular.highlighter), findsOneWidget);
+      expect(find.byIcon(PhosphorIconsRegular.image), findsOneWidget);
     });
 
     testWidgets('the import button is omitted when no import handler is given',
         (tester) async {
       await pumpBar(tester);
-      expect(find.byIcon(Icons.image_outlined), findsNothing);
+      expect(find.byIcon(PhosphorIconsRegular.image), findsNothing);
     });
 
     testWidgets('tapping a tool makes it the active tool (highlight source)',
@@ -61,23 +62,23 @@ void main() {
       final container = await pumpBar(tester, onImport: () {});
       expect(container.read(editorToolProvider).tool, EditorTool.pen);
 
-      await tester.tap(find.byIcon(Icons.near_me_outlined));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.lasso));
       await tester.pump();
       expect(container.read(editorToolProvider).tool, EditorTool.select);
 
-      await tester.tap(find.byIcon(Icons.title));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.textT));
       await tester.pump();
       expect(container.read(editorToolProvider).tool, EditorTool.text);
     });
 
     testWidgets('the active tool button is visibly selected', (tester) async {
       await pumpBar(tester, onImport: () {});
-      await tester.tap(find.byIcon(Icons.near_me_outlined));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.lasso));
       await tester.pump();
 
       final selectBtn = tester.widget<IconButton>(
         find.ancestor(
-          of: find.byIcon(Icons.near_me_outlined),
+          of: find.byIcon(PhosphorIconsRegular.lasso),
           matching: find.byType(IconButton),
         ),
       );
@@ -88,22 +89,22 @@ void main() {
         (tester) async {
       final container = await pumpBar(tester, onImport: () {});
 
-      await tester.tap(find.byIcon(Icons.layers_clear));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.eraser));
       await tester.pump();
       expect(container.read(editorToolProvider).tool, EditorTool.eraser);
       expect(container.read(editorToolProvider).eraserPixel, isFalse);
 
-      await tester.tap(find.byIcon(Icons.layers_clear));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.eraser));
       await tester.pump();
       expect(container.read(editorToolProvider).eraserPixel, isFalse);
-      expect(find.byIcon(Icons.layers_clear), findsOneWidget);
+      expect(find.byIcon(PhosphorIconsRegular.eraser), findsOneWidget);
     });
 
     testWidgets('the import handler fires when the import button is tapped',
         (tester) async {
       var imported = 0;
       await pumpBar(tester, onImport: () => imported++);
-      await tester.tap(find.byIcon(Icons.image_outlined));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.image));
       await tester.pump();
       expect(imported, 1);
     });
@@ -115,7 +116,7 @@ void main() {
       final container = await pumpBar(tester, onImport: () {});
       expect(container.read(editorToolProvider).tool, EditorTool.pen);
 
-      await tester.tap(find.byIcon(Icons.arrow_right_alt));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.arrowRight));
       await tester.pump();
 
       expect(container.read(editorToolProvider).tool, EditorTool.shape);
@@ -125,23 +126,23 @@ void main() {
     testWidgets('the arrow button is visibly selected once active',
         (tester) async {
       final container = await pumpBar(tester, onImport: () {});
-      await tester.tap(find.byIcon(Icons.arrow_right_alt));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.arrowRight));
       await tester.pump();
 
       final btn = tester.widget<IconButton>(
         find.ancestor(
-          of: find.byIcon(Icons.arrow_right_alt),
+          of: find.byIcon(PhosphorIconsRegular.arrowRight),
           matching: find.byType(IconButton),
         ),
       );
       expect(btn.isSelected, isTrue);
 
       // Switching to an unrelated tool clears the highlight again.
-      await tester.tap(find.byIcon(Icons.near_me_outlined));
+      await tester.tap(find.byIcon(PhosphorIconsRegular.lasso));
       await tester.pump();
       final btnAfter = tester.widget<IconButton>(
         find.ancestor(
-          of: find.byIcon(Icons.arrow_right_alt),
+          of: find.byIcon(PhosphorIconsRegular.arrowRight),
           matching: find.byType(IconButton),
         ),
       );
@@ -151,25 +152,24 @@ void main() {
 
     testWidgets('long-pressing opens the arrowhead style menu', (tester) async {
       final container = await pumpBar(tester, onImport: () {});
-      await tester.longPress(find.byIcon(Icons.arrow_right_alt));
+      await tester.longPress(find.byIcon(PhosphorIconsRegular.arrowRight));
       await tester.pumpAndSettle();
 
       expect(find.text('Elbow arrow'), findsOneWidget);
 
-      // Picking the "no arrowhead" style (a plain line) updates the tool
-      // state and is reflected by the button's own icon afterwards.
+      // Picking the "no arrowhead" style (a plain line) updates the tool state.
       await tester.tap(find.byIcon(Icons.remove).last);
       await tester.pump();
       expect(container.read(editorToolProvider).endArrowhead, Arrowhead.none);
 
       await tester.tapAt(const Offset(5, 5)); // dismiss the popup
       await tester.pumpAndSettle();
-      expect(find.byIcon(Icons.remove), findsOneWidget); // now the tool icon
+      expect(find.byIcon(Icons.remove), findsNothing); // menu closed
     });
 
     testWidgets('long-press does not change the active tool', (tester) async {
       final container = await pumpBar(tester, onImport: () {});
-      await tester.longPress(find.byIcon(Icons.arrow_right_alt));
+      await tester.longPress(find.byIcon(PhosphorIconsRegular.arrowRight));
       await tester.pumpAndSettle();
       expect(container.read(editorToolProvider).tool, EditorTool.pen);
     });
@@ -182,13 +182,13 @@ void main() {
 
       final undo = tester.widget<IconButton>(
         find.ancestor(
-          of: find.byIcon(Icons.undo),
+          of: find.byIcon(PhosphorIconsRegular.arrowArcLeft),
           matching: find.byType(IconButton),
         ),
       );
       final redo = tester.widget<IconButton>(
         find.ancestor(
-          of: find.byIcon(Icons.redo),
+          of: find.byIcon(PhosphorIconsRegular.arrowArcRight),
           matching: find.byType(IconButton),
         ),
       );

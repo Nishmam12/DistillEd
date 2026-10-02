@@ -37,7 +37,7 @@ void main() {
   final pcm = Uint8List(64);
 
   group('what counts as installed', () {
-    final spec = SpeechModelSpec.whisperBase;
+    const spec = SpeechModelSpec.whisperBase;
 
     Future<bool> installedWith(Set<String> files) => FlutterGemmaSpeechInstaller(
           isFileInstalled: (name) async => files.contains(name),

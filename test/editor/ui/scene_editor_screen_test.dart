@@ -7,6 +7,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
 import 'package:inkflow/editor/ui/controls/editor_tool_options_overlay.dart';
 import 'package:inkflow/editor/ui/scene_canvas.dart';
 import 'package:inkflow/editor/ui/scene_editor_screen.dart';
@@ -52,7 +53,7 @@ void main() {
 
     // Pick the eraser (a different tool → opens its panel). Its button shows
     // the stroke-eraser icon by default (see _ToolIconButton).
-    await tester.tap(find.byIcon(Icons.layers_clear));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.eraser));
     await tester.pump();
     expect(find.byType(Slider), findsOneWidget); // eraser: size only
 
@@ -67,7 +68,7 @@ void main() {
     expect(ignoreAfterDraw.ignoring, isTrue);
 
     // Tapping the still-active eraser tool again brings the panel back.
-    await tester.tap(find.byIcon(Icons.layers_clear));
+    await tester.tap(find.byIcon(PhosphorIconsRegular.eraser));
     await tester.pump();
     final ignoreAfterRetap = tester.widget<IgnorePointer>(
       find.byKey(const ValueKey('editorToolOptionsIgnorePointer')),
