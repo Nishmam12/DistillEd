@@ -160,6 +160,62 @@ class FigureDescription {
     return lines.join('\n');
   }
 
+  /// The figure as plain JSON, for the read cache. [fromJson] is its inverse.
+  Map<String, dynamic> toJson() => {
+        'kind': kind.name,
+        'title': title,
+        'summary': summary,
+        'axes': axes,
+        'series': [
+          for (final s in series) {'label': s.label, 'detail': s.detail},
+        ],
+        'insight': insight,
+        'verbatimText': verbatimText,
+        'confidence': confidence,
+        'modelId': modelId,
+      };
+
+  /// Reads a figure back from [toJson]'s output, or null when [json] is not a
+  /// usable figure — a cache entry must never be able to take a page read down
+  /// with it, so damage reads as "nothing cached" rather than throwing.
+  static FigureDescription? fromJson(Map<String, dynamic> json) {
+    final summary = json['summary'];
+    if (summary is! String || summary.trim().isEmpty) return null;
+
+    List<String> strings(Object? v) =>
+        v is List ? [for (final e in v) if (e is String) e] : const [];
+
+    final series = <FigureSeries>[];
+    final rawSeries = json['series'];
+    if (rawSeries is List) {
+      for (final entry in rawSeries) {
+        if (entry is Map && entry['label'] is String) {
+          series.add(FigureSeries(
+            label: entry['label'] as String,
+            detail: entry['detail'] is String ? entry['detail'] as String : '',
+          ));
+        }
+      }
+    }
+
+    final confidence = json['confidence'];
+    return FigureDescription(
+      kind: FigureKind.values.firstWhere(
+        (k) => k.name == json['kind'],
+        orElse: () => FigureKind.unknown,
+      ),
+      title: json['title'] is String ? json['title'] as String : '',
+      summary: summary,
+      axes: strings(json['axes']),
+      series: series,
+      insight: json['insight'] is String ? json['insight'] as String : '',
+      verbatimText:
+          json['verbatimText'] is String ? json['verbatimText'] as String : '',
+      confidence: confidence is num ? confidence.toDouble() : 0.0,
+      modelId: json['modelId'] is String ? json['modelId'] as String : '',
+    );
+  }
+
   FigureDescription copyWith({double? confidence, String? modelId}) =>
       FigureDescription(
         kind: kind,

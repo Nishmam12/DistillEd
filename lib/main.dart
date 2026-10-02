@@ -13,14 +13,18 @@ import 'data/persistence/library_repository.dart';
 import 'data/persistence/lecture_recording_record.dart';
 import 'data/persistence/page_text_record.dart';
 import 'data/persistence/scene_element_record.dart';
+import 'features/ai/data/device/device_health.dart';
 import 'features/ai/data/flashcards/flashcard_record.dart';
 import 'features/ai/data/memory/concept_mastery_record.dart';
 import 'features/ai/data/memory/learning_preferences_record.dart';
 import 'features/ai/data/memory/quiz_attempt_record.dart';
 import 'features/ai/data/memory/concept_relation_record.dart';
 import 'features/ai/data/memory/study_session_record.dart';
+import 'features/ai/data/ocr/read_cache_record.dart';
 import 'features/ai/data/rag/note_chunk_record.dart';
 import 'features/ai/data/study_planner/study_plan_record.dart';
+import 'features/ai/domain/device_state.dart';
+import 'features/ai/presentation/ai_providers.dart' show deviceProfileProvider;
 import 'features/summarize/data/cache/summary_cache.dart';
 import 'editor/state/library_controller.dart';
 import 'editor/state/scene_controller.dart';
@@ -117,6 +121,9 @@ void main() async {
     PageTextRecordSchema,
     FolderSchema,
     LectureRecordingRecordSchema,
+    // Additive, like the collections above: a cache of vision reads, so no
+    // existing data is touched and nothing needs migrating.
+    ReadCacheRecordSchema,
   ]);
 
   // One-time, gated, non-destructive migration of legacy page content into the
@@ -125,9 +132,17 @@ void main() async {
 
   final appDocsPath = (await getApplicationDocumentsDirectory()).path;
 
+  // How much of the on-device AI pipeline this device is given, from its total
+  // RAM. Read once, before the first frame, so providers can use it
+  // synchronously; a reading that cannot be made leaves the full profile, so
+  // nobody is degraded on the strength of nothing.
+  final profile = chooseProfile(
+      totalRamBytes: (await DeviceHealth().read()).totalRamBytes);
+
   runApp(
     ProviderScope(
       overrides: [
+        deviceProfileProvider.overrideWithValue(profile),
         appDocsPathProvider.overrideWithValue(appDocsPath),
         libraryRepositoryProvider.overrideWithValue(
           FileLibraryRepository(File('$appDocsPath/inkflow_library.json')),

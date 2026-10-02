@@ -184,7 +184,16 @@ class FlutterGemmaEmbeddingRuntime implements EmbeddingRuntime {
     final EmbeddingModel model;
     try {
       model = await FlutterGemma.getActiveEmbedder(
-        preferredBackend: PreferredBackend.gpu, // falls back internally
+        // CPU, stated outright. The LiteRT embedding backend (flutter_gemma_
+        // litertlm 1.8) runs on the CPU by decision, because its GPU delegate
+        // compiles and then returns all-zero vectors for EmbeddingGemma's int4
+        // weights. That suits us — it keeps the GPU free for Gemma — but an old
+        // "gpu, falls back internally" here read as if GPU embedding were
+        // happening. Naming the CPU keeps it the CPU if a later plugin version
+        // starts honouring the request. (The 1.x → 2.x move changed where this
+        // code lives, not the vectors: same tokenizer convention, prefixes and
+        // padding, so an index built before it stays valid.)
+        preferredBackend: PreferredBackend.cpu,
       );
     } on StateError {
       throw LlmNotReadyException();

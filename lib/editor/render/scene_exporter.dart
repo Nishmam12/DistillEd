@@ -39,15 +39,26 @@ class SceneExporter {
   /// [imageResolver] supplies decoded bitmaps for [ImageElement]s (callers pass
   /// the shared image cache, after ensuring the paths are loaded). Returns null
   /// when there is nothing to export.
+  ///
+  /// [maxSide] caps the longer side of the result in pixels, shrinking [scale]
+  /// to fit and never enlarging it. For a caller that will hand the picture to a
+  /// model, which keeps only so many pixels however many it is given: a page of
+  /// handwriting at the default 2x can be several megapixels, all of it rendered,
+  /// encoded, passed across and decoded to be thrown away.
   static Future<Uint8List?> toPng(
     List<SceneElement> els, {
     Color background = Colors.white,
     double scale = 2.0,
     double padding = defaultPadding,
+    int? maxSide,
     ui.Image? Function(String relativePath)? imageResolver,
   }) async {
     final bounds = contentBounds(els, padding: padding);
     if (bounds == null) return null;
+
+    if (maxSide != null) {
+      scale = math.min(scale, maxSide / math.max(bounds.width, bounds.height));
+    }
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);

@@ -25,13 +25,16 @@ class FakeCapture implements AudioCapturePort {
   bool cancelled = false;
   int stopReturns = 12345;
   String? path;
+  AudioFormat? format;
 
   @override
   Future<bool> ensurePermission() async => permitted;
 
   @override
-  Future<void> start(String absolutePath) async {
+  Future<void> start(String absolutePath,
+      {AudioFormat format = AudioFormat.aac}) async {
     path = absolutePath;
+    this.format = format;
     started = true;
   }
 

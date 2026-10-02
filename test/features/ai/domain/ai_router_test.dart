@@ -126,4 +126,33 @@ void main() {
       expect(d.truncateForLocal, isFalse);
     });
   });
+
+  group('AiRouter — a degraded local model', () {
+    // The model fell back to the CPU: several times slower, so for someone who
+    // has opted in the network is the faster route even for a short note.
+    AiRouter degraded({required bool online}) => AiRouter(
+          localCapabilities: localCaps,
+          reachability: FakeReachability(online),
+          isLocalModelInstalled: () async => true,
+          isLocalDegraded: () => true,
+        );
+
+    test('online + opted in → cloud, even for short text', () async {
+      final d = await degraded(online: true)
+          .decide(inputWordCount: short, cloudEnabled: true);
+      expect(d.route, AiRoute.cloud);
+    });
+
+    test('NOT opted in → stays local — slow never overrides privacy', () async {
+      final d = await degraded(online: true)
+          .decide(inputWordCount: short, cloudEnabled: false);
+      expect(d.route, AiRoute.local);
+    });
+
+    test('offline → stays local', () async {
+      final d = await degraded(online: false)
+          .decide(inputWordCount: short, cloudEnabled: true);
+      expect(d.route, AiRoute.local);
+    });
+  });
 }

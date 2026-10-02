@@ -41,6 +41,16 @@ class GemmaOcrResult {
 }
 
 class GemmaVisionOcrService {
+  /// How many tokens a read may produce when the caller does not say: enough for
+  /// a dense page of text. A caller reading something smaller should say so.
+  static const int pageReadTokens = 1024;
+
+  /// Which generation of prompt and gate wrote a reading. Part of the read
+  /// cache's key, so bump it whenever the prompts or the acceptance gate change:
+  /// readings cached under the old one would otherwise be served as if the new
+  /// prompt had produced them.
+  static const String cacheVersion = 'ocr1';
+
   final ImageTranscriber _transcriber;
   final MeaningfulnessGate _gate;
 
@@ -57,8 +67,10 @@ class GemmaVisionOcrService {
     // Lenient by design: Gemma produces coherent prose or nothing, so the gate
     // here only guards against empty / symbol-garbage output, not the ML Kit
     // confidence score (Gemma has none). Real quality is Gemma's to deliver.
-    MeaningfulnessGate gate =
-        const MeaningfulnessGate(minWords: 2, minAlphaRatio: 0.4),
+    // Digits count as content: the lines sent here are often maths, and a
+    // correct `x^2 + 3x = 0, so x(x + 3) = 0` is mostly digits and symbols.
+    MeaningfulnessGate gate = const MeaningfulnessGate(
+        minWords: 2, minAlphaRatio: 0.4, countDigits: true),
     this.maxAttempts = 2,
     int Function()? seedSource,
   })  : _transcriber = transcriber,
@@ -118,7 +130,16 @@ class GemmaVisionOcrService {
   /// because the downstream analysis needs Gemma too. A per-attempt
   /// [AiGenerationException] is swallowed as a failed attempt (the next attempt,
   /// or the caller's fallback, takes over).
-  Future<GemmaOcrResult> read(Uint8List imageBytes, {bool vary = false}) async {
+  ///
+  /// [maxOutputTokens] sizes the reply to the task: a crop of two lines cannot
+  /// need a whole page's worth of tokens, and a runaway reply there would
+  /// otherwise hold the model for all of [pageReadTokens]. It applies to every
+  /// attempt, the retry included.
+  Future<GemmaOcrResult> read(
+    Uint8List imageBytes, {
+    bool vary = false,
+    int maxOutputTokens = pageReadTokens,
+  }) async {
     var best = '';
     var attempts = 0;
 
@@ -135,6 +156,7 @@ class GemmaVisionOcrService {
           imageBytes,
           prompt: i == 0 ? _prompt : _retryPrompt,
           temperature: temperature,
+          maxOutputTokens: maxOutputTokens,
           randomSeed: sampled ? _seedSource() : null,
         ))
             .trim();

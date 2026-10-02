@@ -23,6 +23,8 @@ final aiRouterProvider = Provider<AiRouter>((ref) {
   return AiRouter(
     localCapabilities: ref.watch(localAiProvider).capabilities,
     isLocalModelInstalled: downloads.isInstalled,
+    // Read per decision: the backend is only learned when the model first loads.
+    isLocalDegraded: ref.read(localDegradedProvider),
   );
 });
 

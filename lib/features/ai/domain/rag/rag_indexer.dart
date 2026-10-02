@@ -32,6 +32,10 @@ class RagIndexer {
   /// What a page's stored chunks were built with, or null if it has none.
   final Future<PageIndexState?> Function(int pageId) _indexStateOf;
 
+  /// What to call a page's notebook (and imported document) when embedding its
+  /// chunks — see [chunkTitle]. Null embeds every chunk bare, as before.
+  final Future<String?> Function(int notebookId, int pageId)? _titleOf;
+
   final DateTime Function() _now;
 
   RagIndexer({
@@ -40,12 +44,33 @@ class RagIndexer {
         saveChunks,
     required Future<void> Function(int pageId) deleteChunks,
     required Future<PageIndexState?> Function(int pageId) indexStateOf,
+    Future<String?> Function(int notebookId, int pageId)? titleOf,
     DateTime Function() now = DateTime.now,
   })  : _embedder = embedder,
         _saveChunks = saveChunks,
         _deleteChunks = deleteChunks,
         _indexStateOf = indexStateOf,
+        _titleOf = titleOf,
         _now = now;
+
+  /// A title helps ranking; it is never a precondition for indexing, so a lookup
+  /// that fails (a repository closing mid-run) costs the title and nothing else.
+  Future<String?> _titleFor(int notebookId, int pageId) async {
+    final lookup = _titleOf;
+    if (lookup == null) return null;
+    try {
+      final title = (await lookup(notebookId, pageId))?.trim();
+      return title == null || title.isEmpty ? null : title;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The text the model embeds for [passage]: the title first, then the passage.
+  /// The STORED chunk keeps the bare passage — a source card should quote what
+  /// the student wrote, not which notebook it was in.
+  static String _embeddingInput(String? title, String passage) =>
+      title == null ? passage : '$title\n\n$passage';
 
   /// Brings [pageId]'s chunks in line with [text].
   ///
@@ -67,7 +92,11 @@ class RagIndexer {
       return RagIndexOutcome.cleared;
     }
 
-    final signature = pageTextSignature(text);
+    final title = await _titleFor(notebookId, pageId);
+    // The title is part of what the vectors were built from, so a rename must
+    // re-embed a page whose own text never changed. With no title this is the
+    // same signature as before titles existed.
+    final signature = pageTextSignature(_embeddingInput(title, text));
     final state = await _indexStateOf(pageId);
     // The model check is as load-bearing as the signature: after a model swap
     // the old vectors are unusable, and RagRetriever ignores them, so a page
@@ -79,7 +108,7 @@ class RagIndexer {
     }
 
     final vectors = await _embedder.embedAll(
-      [for (final draft in drafts) draft.text],
+      [for (final draft in drafts) _embeddingInput(title, draft.text)],
       taskType: EmbedTaskType.document,
     );
 

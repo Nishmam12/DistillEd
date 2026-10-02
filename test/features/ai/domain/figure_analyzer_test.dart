@@ -16,6 +16,7 @@ class ScriptedTranscriber implements ImageTranscriber {
   final Object? throwError;
   int calls = 0;
   final prompts = <String>[];
+  final maxTokens = <int>[];
 
   ScriptedTranscriber(this.replies, {this.throwError});
 
@@ -28,6 +29,7 @@ class ScriptedTranscriber implements ImageTranscriber {
     int? randomSeed,
   }) async {
     prompts.add(prompt);
+    maxTokens.add(maxOutputTokens);
     if (throwError != null) throw throwError!;
     final reply = calls < replies.length ? replies[calls] : replies.last;
     calls++;
@@ -326,6 +328,26 @@ void main() {
       const content =
           PageContent(recognizedInkText: 'just words', typedText: 'and more');
       expect(content.combinedTextWithFigures, content.combinedText);
+    });
+  });
+
+  group('output budgets', () {
+    test('the figure-only read is capped below the merged read', () async {
+      // The merged read's `verbatim_text` doubles as the page's OCR, so a dense
+      // slide needs the full 1,024 tokens; tightening it would clip real text.
+      // The figure-only read is an optional enhancement — a runaway reply there
+      // should cost less, and a reply too long to fit is simply no figure.
+      final t = ScriptedTranscriber(['{"kind":"none"}']);
+      final analyzer = FigureAnalyzer(local: t);
+
+      await analyzer.analyze(_bytes);
+      final figureOnly = t.maxTokens.single;
+      t.maxTokens.clear();
+      await analyzer.analyzeWithText(_bytes);
+      final merged = t.maxTokens.single;
+
+      expect(merged, greaterThanOrEqualTo(1024));
+      expect(figureOnly, lessThan(merged));
     });
   });
 }

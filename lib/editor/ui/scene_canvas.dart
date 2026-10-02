@@ -3,6 +3,7 @@
 // preview, the laser trail, and the selection overlay. All mutations go through
 // the per-page undo/redo history.
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/providers/settings_provider.dart';
 import '../../domain/commands/scene_command.dart';
 import '../../domain/geometry/scene_geometry.dart';
 import '../../domain/geometry/scene_hit_test.dart';
@@ -33,10 +35,12 @@ import '../render/scene_static_layer.dart';
 import '../render/selection_overlay_layer.dart';
 import '../state/editor_tool_controller.dart';
 import '../state/history_controller.dart';
+import '../state/ink_gesture_providers.dart';
 import '../state/scene_controller.dart';
 import '../state/scene_image_cache_provider.dart';
 import '../state/selection_controller.dart';
 import '../state/viewport_controller.dart';
+import '../tools/ink_gestures.dart';
 import '../tools/shape_factory.dart';
 import 'text_input_dialog.dart';
 
@@ -230,7 +234,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       case EditorTool.select:
         _onSelectUp(p);
       case EditorTool.pen:
-        _commitStroke(tool);
+        _commitStroke(tool, upMs: p.t);
       case EditorTool.shape:
         _commitShape(tool, _toScene(p));
       case EditorTool.frame:
@@ -578,7 +582,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
 
   // ---- commit (pen / shape / text) ------------------------------------------
 
-  void _commitStroke(EditorToolState tool) {
+  void _commitStroke(EditorToolState tool, {int? upMs}) {
     final points = _active.value;
     _active.value = const [];
     if (points.isEmpty) return;
@@ -588,18 +592,61 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     final stamp = ref
         .read(recordingSessionProvider(_key.notebookId))
         .stampFor(points.first.t ?? _engineNowMs());
-    _history.push(AddElementsCommand([
-      FreehandElement(
-        id: _newId(),
-        zOrder: _scene.nextZOrder(),
-        points: points,
-        color: tool.color,
-        size: tool.size,
-        opacity: tool.opacity,
-        recordingId: stamp?.recordingId,
-        audioOffsetMs: stamp?.audioOffsetMs,
-      )
-    ]));
+    final stroke = FreehandElement(
+      id: _newId(),
+      zOrder: _scene.nextZOrder(),
+      points: points,
+      color: tool.color,
+      size: tool.size,
+      opacity: tool.opacity,
+      recordingId: stamp?.recordingId,
+      audioOffsetMs: stamp?.audioOffsetMs,
+    );
+    _history.push(AddElementsCommand([stroke]));
+    _maybeResolveGesture(stroke, upMs ?? points.last.t ?? 0);
+  }
+
+  // ---- ink gestures ---------------------------------------------------------
+
+  /// Hold-to-snap and scribble-to-erase (see `tools/ink_gestures.dart`). Decided
+  /// AFTER the stroke is committed, so it is on the page at once and a gesture
+  /// that is not recognised costs nothing; and entirely downstream of the pointer
+  /// pipeline, whose palm rejection this never touches. Off unless switched on.
+  void _maybeResolveGesture(FreehandElement stroke, int upMs) {
+    final settings = ref.read(settingsProvider);
+    if (!settings.snapShapes && !settings.scribbleErase) return;
+    unawaited(_resolveGesture(stroke, upMs, settings));
+  }
+
+  Future<void> _resolveGesture(
+      FreehandElement stroke, int upMs, SettingsState settings) async {
+    final action = await resolveInkGesture(
+      stroke: stroke,
+      scene: ref.read(sceneControllerProvider(_key)),
+      upMs: upMs,
+      classifier: ref.read(inkClassifierProvider),
+      snapShapes: settings.snapShapes,
+      scribbleErase: settings.scribbleErase,
+      zoom: ref.read(viewportProvider).zoom,
+      newId: _newId,
+      seed: math.Random().nextInt(0x7fffffff),
+    );
+    if (action == null || !mounted) return;
+
+    // The model took a moment: the stroke may have been undone, or what it was
+    // meant to wipe out already gone. Act only on what is still on the page.
+    final onPage = {for (final e in ref.read(sceneControllerProvider(_key))) e.id};
+    if (!onPage.contains(stroke.id)) return;
+    switch (action) {
+      case SnapToShape(:final shape):
+        _history.push(ReplaceElementsCommand(removed: [stroke], added: [shape]));
+      case ScribbleErase(:final victims):
+        _history.push(RemoveElementsCommand([
+          stroke,
+          for (final v in victims)
+            if (onPage.contains(v.id)) v,
+        ]));
+    }
   }
 
   int _engineNowMs() => ref.read(engineClockProvider)();

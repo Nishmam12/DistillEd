@@ -166,4 +166,89 @@ void main() {
     expect(embedder.calls, hasLength(1));
     expect(embedder.calls.single.texts.length, store.saved[7]!.length);
   });
+
+  group('titles', () {
+    RagIndexer titled(Future<String?> Function(int notebookId, int pageId) of) =>
+        RagIndexer(
+          embedder: embedder,
+          saveChunks: store.save,
+          deleteChunks: store.delete,
+          indexStateOf: store.stateOf,
+          titleOf: of,
+          now: () => DateTime(2026, 7, 17),
+        );
+
+    Future<RagIndexOutcome> indexWith(RagIndexer i, String text) =>
+        i.indexPage(notebookId: 1, pageId: 7, text: text);
+
+    test('the embedded text leads with the title; the stored passage does not',
+        () async {
+      // Which notebook a passage came from is signal for ranking across
+      // notebooks, but it is not part of what the student wrote, so it must not
+      // turn up inside the quoted source card.
+      await indexWith(titled((_, __) async => 'Biology 101'),
+          'Mitochondria make ATP.');
+
+      expect(embedder.calls.single.texts,
+          ['Biology 101\n\nMitochondria make ATP.']);
+      expect(store.saved[7]!.single.text, 'Mitochondria make ATP.');
+    });
+
+    test('every chunk of a long page carries the title', () async {
+      final longPage = List.generate(600, (i) => 'word$i').join(' ');
+      await indexWith(titled((_, __) async => 'Biology 101'), longPage);
+
+      final texts = embedder.calls.single.texts;
+      expect(texts.length, greaterThan(1));
+      for (final text in texts) {
+        expect(text, startsWith('Biology 101\n\n'));
+      }
+    });
+
+    test('the title lookup is given the page it is for', () async {
+      int? seenNotebook, seenPage;
+      await indexWith(titled((n, p) async {
+        seenNotebook = n;
+        seenPage = p;
+        return null;
+      }), 'Some text on the page.');
+
+      expect((seenNotebook, seenPage), (1, 7));
+    });
+
+    test('no title embeds the bare passage, exactly as before', () async {
+      await indexWith(titled((_, __) async => null), 'Mitochondria make ATP.');
+      expect(embedder.calls.single.texts, ['Mitochondria make ATP.']);
+
+      embedder.calls.clear();
+      await index('Mitochondria make ATP too.'); // no lookup wired at all
+      expect(embedder.calls.single.texts, ['Mitochondria make ATP too.']);
+    });
+
+    test('a failing title lookup indexes the page untitled rather than not at all',
+        () async {
+      final outcome = await indexWith(
+          titled((_, __) async => throw StateError('repository closed')),
+          'Mitochondria make ATP.');
+
+      expect(outcome, RagIndexOutcome.indexed);
+      expect(embedder.calls.single.texts, ['Mitochondria make ATP.']);
+    });
+
+    test('renaming the notebook re-embeds a page whose text did not change',
+        () async {
+      var name = 'Biology 101';
+      final i = titled((_, __) async => name);
+      const text = 'Mitochondria make ATP.';
+
+      expect(await indexWith(i, text), RagIndexOutcome.indexed);
+      expect(await indexWith(i, text), RagIndexOutcome.unchanged,
+          reason: 'same title, same text: nothing to do');
+
+      name = 'Cell Biology';
+      expect(await indexWith(i, text), RagIndexOutcome.indexed,
+          reason: 'the old vectors were built with the old title');
+      expect(embedder.calls.last.texts, ['Cell Biology\n\n$text']);
+    });
+  });
 }

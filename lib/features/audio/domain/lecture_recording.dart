@@ -41,6 +41,11 @@ class LectureRecording {
 
   Duration get duration => Duration(milliseconds: durationMs);
 
+  /// Recorded as 16 kHz mono WAV — the format the speech models take as it is —
+  /// and so able to be transcribed. A recording made with transcripts off is
+  /// compressed AAC, which nothing here can decode.
+  bool get isSpeechAudio => relativePath.toLowerCase().endsWith('.wav');
+
   bool get isEmpty => durationMs <= 0;
 
   /// Whether [offsetMs] falls inside this recording.

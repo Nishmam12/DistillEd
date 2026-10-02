@@ -60,6 +60,14 @@ class PageContent {
   /// `figure.dart`.
   final List<FigureDescription> figures;
 
+  /// What was SAID in the lectures recorded on this page, transcribed on the
+  /// device and rendered as `[m:ss] words` lines (see `Transcript.asPageText`).
+  /// Empty when the page has no transcribed recording.
+  ///
+  /// Spoken, not written — it carries the speech model's error rate, and its
+  /// timestamps are what let an answer say "minute 23 of Monday's lecture".
+  final String lectureTranscript;
+
   /// Which parts of the page contributed (or couldn't), with bounds.
   final List<PageContentSource> sources;
 
@@ -67,19 +75,33 @@ class PageContent {
     required this.recognizedInkText,
     required this.typedText,
     this.recognizedImageText = '',
+    this.lectureTranscript = '',
     this.inkTopScore,
     this.figures = const [],
     this.sources = const [],
   });
 
+  /// This content with [transcript] as its lecture transcript.
+  PageContent withLectureTranscript(String transcript) => PageContent(
+        recognizedInkText: recognizedInkText,
+        typedText: typedText,
+        recognizedImageText: recognizedImageText,
+        lectureTranscript: transcript,
+        inkTopScore: inkTopScore,
+        figures: figures,
+        sources: sources,
+      );
+
   static const empty = PageContent(recognizedInkText: '', typedText: '');
 
-  /// Everything the student WROTE, ink first, blank-line separated. Excludes
+  /// Everything the student WROTE, ink first, then what was read from images
+  /// and, last, what was said in a lecture — blank-line separated. Excludes
   /// figure descriptions — use [combinedTextWithFigures] for prompting.
   String get combinedText => [
         recognizedInkText.trim(),
         typedText.trim(),
         recognizedImageText.trim(),
+        lectureTranscript.trim(),
       ].where((t) => t.isNotEmpty).join('\n\n');
 
   /// The figures rendered as labelled, LLM-ready blocks ('' when there are

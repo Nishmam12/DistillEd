@@ -6,8 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/persistence/lecture_recording_store.dart';
 import '../data/just_audio_playback.dart';
 import '../data/record_audio_capture.dart';
+import '../data/transcript_store.dart';
 import '../domain/audio_ports.dart';
 import '../domain/recording_session.dart';
+
+import '../../../editor/state/scene_controller.dart' show appDocsPathProvider;
 
 final lectureRecordingStoreProvider = Provider<LectureRecordingStore>(
   (ref) => IsarLectureRecordingStore(),
@@ -44,3 +47,8 @@ final recordingSessionProvider =
   ref.onDispose(session.cancel);
   return session;
 });
+
+/// Where lecture transcripts are kept: beside each recording's audio.
+final transcriptStoreProvider = Provider<TranscriptStore>(
+  (ref) => FileTranscriptStore(ref.watch(appDocsPathProvider)),
+);

@@ -14,6 +14,7 @@ class ScriptedTranscriber implements ImageTranscriber {
   final prompts = <String>[];
   final temperatures = <double>[];
   final seeds = <int?>[];
+  final maxTokens = <int>[];
 
   ScriptedTranscriber(this.script);
 
@@ -28,6 +29,7 @@ class ScriptedTranscriber implements ImageTranscriber {
     prompts.add(prompt);
     temperatures.add(temperature);
     seeds.add(randomSeed);
+    maxTokens.add(maxOutputTokens);
     final item = calls < script.length ? script[calls] : script.last;
     calls++;
     if (item is String) return item;
@@ -40,6 +42,24 @@ void main() {
   GemmaVisionOcrService service(ScriptedTranscriber t,
           {int Function()? seedSource}) =>
       GemmaVisionOcrService(transcriber: t, seedSource: seedSource);
+
+  group('output budget', () {
+    test('a read asks for a full page of text unless told the task is smaller',
+        () async {
+      final t = ScriptedTranscriber(['Sentence segmentation splits text.']);
+      await service(t).read(bytes);
+      expect(t.maxTokens, [1024]);
+    });
+
+    test('a read sized to a small region is capped to that, on every attempt',
+        () async {
+      // A region of two lines cannot need a page's worth of tokens, and a
+      // runaway reply there would otherwise hold the model for all 1,024.
+      final t = ScriptedTranscriber(['::: ??? %%%', 'A proper reading appears.']);
+      await service(t).read(bytes, maxOutputTokens: 160);
+      expect(t.maxTokens, [160, 160]);
+    });
+  });
 
   test('a plausible first read passes in one attempt', () async {
     final t = ScriptedTranscriber(['Sentence segmentation splits text.']);

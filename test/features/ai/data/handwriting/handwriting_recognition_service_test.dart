@@ -2,7 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/data/migration/legacy_models/stroke.dart';
-import 'package:inkflow/domain/model/stroke_point.dart';
+import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
 
 /// Tests the service against a mocked ML Kit platform channel — no device.
@@ -113,6 +113,178 @@ void main() {
         () => service.recognizePage([inkStroke(0)], 'en'),
         throwsA(isA<RecognitionException>()),
       );
+    });
+  });
+
+  /// A stroke of ink as the editor stores it: 20 units tall so lines have height
+  /// (a perfectly flat stroke cannot be split into columns), starting at [x],[y].
+  FreehandElement element(String id, double y, {double x = 0}) =>
+      FreehandElement(
+        id: id,
+        zOrder: 0,
+        color: 0xFF000000,
+        size: 4,
+        points: [
+          StrokePoint(x: x, y: y, t: 0),
+          StrokePoint(x: x + 10, y: y + 20, t: 16),
+        ],
+      );
+
+  group('recognizeElements — page-level behaviour (pinned before refactoring)',
+      () {
+    test('joins the lines in reading order, and the score is their mean',
+        () async {
+      final service = HandwritingRecognitionService();
+      recognizeResponses = [
+        [
+          {'text': 'first line', 'score': 1.0}
+        ],
+        [
+          {'text': 'second line', 'score': 3.0}
+        ],
+      ];
+
+      final page = await service.recognizeElements(
+          [element('b', 200), element('a', 0)], 'en');
+
+      expect(page.text, 'first line\nsecond line');
+      expect(page.topScore, 2.0);
+    });
+
+    test('the score is a mean over SEGMENTS, so a table row counts per column',
+        () async {
+      final service = HandwritingRecognitionService();
+      // Line 1 is a two-column row (two recognise calls, scores 1 and 3); line 2
+      // is one segment (score 5). Mean of segments = (1+3+5)/3 = 3.0, where a
+      // mean of line means would be (2+5)/2 = 3.5.
+      recognizeResponses = [
+        [
+          {'text': 'Topic', 'score': 1.0}
+        ],
+        [
+          {'text': 'Regression', 'score': 3.0}
+        ],
+        [
+          {'text': 'a note below', 'score': 5.0}
+        ],
+      ];
+
+      final page = await service.recognizeElements([
+        element('c1', 0, x: 0),
+        element('c2', 0, x: 900),
+        element('n', 200),
+      ], 'en');
+
+      expect(page.text, 'Topic  Regression\na note below');
+      expect(page.topScore, 3.0);
+    });
+
+    test('a line that reads as nothing leaves no blank line behind', () async {
+      final service = HandwritingRecognitionService();
+      recognizeResponses = [
+        [
+          {'text': 'kept', 'score': 1.0}
+        ],
+        [], // the second line: ML Kit returns no candidates
+        [
+          {'text': 'also kept', 'score': 1.0}
+        ],
+      ];
+
+      final page = await service.recognizeElements(
+          [element('a', 0), element('b', 200), element('c', 400)], 'en');
+
+      expect(page.text, 'kept\nalso kept');
+    });
+  });
+
+  group('recognizeInkLines', () {
+    test('one entry per handwritten line, top to bottom, each with its own '
+        'text, score and place', () async {
+      final service = HandwritingRecognitionService();
+      recognizeResponses = [
+        [
+          {'text': 'first line', 'score': 1.0}
+        ],
+        [
+          {'text': 'second line', 'score': 3.0}
+        ],
+      ];
+
+      final lines = await service.recognizeInkLines(
+          [element('b', 200), element('a', 0)], 'en');
+
+      expect([for (final l in lines) l.text], ['first line', 'second line']);
+      expect([for (final l in lines) l.score], [1.0, 3.0]);
+      expect(lines[0].bounds.top, 0);
+      expect(lines[1].bounds.top, 200);
+    });
+
+    test('each line carries its own strokes, so it can be re-rendered alone',
+        () async {
+      final service = HandwritingRecognitionService();
+      recognizeResponses = [
+        [
+          {'text': 'a', 'score': 1.0}
+        ],
+        [
+          {'text': 'b', 'score': 1.0}
+        ],
+      ];
+      final top = element('top', 0);
+      final bottom = element('bottom', 200);
+
+      final lines = await service.recognizeInkLines([bottom, top], 'en');
+
+      // The very point lists the editor holds, not copies: the caller maps a
+      // line back to its elements by identity.
+      expect(identical(lines[0].strokes.single, top.points), isTrue);
+      expect(identical(lines[1].strokes.single, bottom.points), isTrue);
+    });
+
+    test('a line that reads as nothing is still reported, with empty text',
+        () async {
+      final service = HandwritingRecognitionService();
+      recognizeResponses = [[]];
+
+      final lines = await service.recognizeInkLines([element('doodle', 0)], 'en');
+
+      // The caller decides what an unreadable line means (a doodle, or a page
+      // ML Kit cannot read at all) — it must be able to see it.
+      expect(lines, hasLength(1));
+      expect(lines.single.text, isEmpty);
+      expect(lines.single.score, isNull);
+    });
+
+    test('a line made of columns joins them and averages their scores',
+        () async {
+      final service = HandwritingRecognitionService();
+      recognizeResponses = [
+        [
+          {'text': 'Topic', 'score': 1.0}
+        ],
+        [
+          {'text': 'Regression', 'score': 3.0}
+        ],
+      ];
+
+      final lines = await service.recognizeInkLines(
+          [element('c1', 0, x: 0), element('c2', 0, x: 900)], 'en');
+
+      expect(lines.single.text, 'Topic  Regression');
+      expect(lines.single.score, 2.0);
+      expect(lines.single.strokes, hasLength(2));
+    });
+
+    test('a page with no ink yields no lines and never calls ML Kit',
+        () async {
+      final service = HandwritingRecognitionService();
+
+      final lines = await service.recognizeInkLines(const [], 'en');
+
+      expect(lines, isEmpty);
+      expect(log.where((c) => c.method == 'vision#startDigitalInkRecognizer'),
+          isEmpty);
     });
   });
 

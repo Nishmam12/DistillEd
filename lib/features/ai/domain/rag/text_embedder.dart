@@ -38,7 +38,7 @@ enum EmbedTaskType {
 /// Implementations must be safe to call concurrently — callers do not
 /// serialize; the on-device implementation holds the model mutex itself.
 abstract class TextEmbedder {
-  /// Identity of the underlying model, e.g. `embeddinggemma-300m-seq512`.
+  /// Identity of the underlying model, e.g. `embeddinggemma-300m-seq512-titled`.
   ///
   /// Stored alongside every chunk so the retriever can refuse to compare
   /// vectors produced by a DIFFERENT model (see [NoteChunk.embeddingModelId]).

@@ -201,17 +201,66 @@ class HandwritingRecognitionService {
     String languageCode, {
     mlkit.WritingArea? writingArea,
   }) async {
+    final lines =
+        await _recognizeLines(sources, languageCode, writingArea: writingArea);
+    if (lines.isEmpty) return const PageRecognition.empty();
+
+    // A line that read as nothing leaves no blank line behind.
+    final texts = [
+      for (final line in lines)
+        if (line.text.isNotEmpty) line.text,
+    ];
+    final scores = [for (final line in lines) ...line.segmentScores];
+
+    return PageRecognition(
+      text: texts.join('\n'),
+      // Mean across segments: the whole-page analogue of what a single-ink call
+      // used to report, rather than letting one good line flatter the page.
+      topScore: scores.isEmpty
+          ? null
+          : scores.reduce((a, b) => a + b) / scores.length,
+      hasInk: true,
+    );
+  }
+
+  /// Recognises the freehand ink among [elements] one handwritten line at a
+  /// time, top to bottom, and returns each line's text, score, place and
+  /// strokes — the result [recognizeElements] is built from, before it is
+  /// flattened into one string.
+  ///
+  /// This is what lets the page reader keep the lines ML Kit read well and send
+  /// only the rest to the vision model. A line that read as nothing is still
+  /// returned (with empty text), because whether that is a doodle or a page ML
+  /// Kit cannot read at all is for the caller to judge.
+  Future<List<RecognizedInkLine>> recognizeInkLines(
+    List<SceneElement> elements,
+    String languageCode, {
+    mlkit.WritingArea? writingArea,
+  }) {
+    return _recognizeLines([
+      for (final e in elements)
+        if (e is FreehandElement) (points: e.points, isEraser: e.isEraser),
+    ], languageCode, writingArea: writingArea);
+  }
+
+  Future<List<RecognizedInkLine>> _recognizeLines(
+    List<_InkSource> sources,
+    String languageCode, {
+    mlkit.WritingArea? writingArea,
+  }) async {
     final lines = groupStrokesIntoLines([
       for (final s in sources)
         if (!s.isEraser && s.points.isNotEmpty) s.points,
     ]);
-    if (lines.isEmpty) return const PageRecognition.empty();
 
-    final texts = <String>[];
-    final scores = <double>[];
+    final recognized = <RecognizedInkLine>[];
+    // The text of every earlier line that read as something — what each new
+    // segment is offered as `preContext`.
+    final earlier = <String>[];
 
     for (final line in lines) {
       final segments = <String>[];
+      final scores = <double>[];
       for (final segment in splitLineAtColumnGaps(line)) {
         final normalized = normalizeInkLine(segment);
         final ink = _pointsToInk(normalized.strokes);
@@ -229,24 +278,23 @@ class HandwritingRecognitionService {
           ink,
           languageCode,
           writingArea: area,
-          preContext: _preContextFrom(texts, segments),
+          preContext: _preContextFrom(earlier, segments),
         );
         final text = result.text.trim();
         if (text.isNotEmpty) segments.add(text);
         if (result.topScore != null) scores.add(result.topScore!);
       }
-      if (segments.isNotEmpty) texts.add(segments.join('  '));
-    }
 
-    return PageRecognition(
-      text: texts.join('\n'),
-      // Mean across segments: the whole-page analogue of what a single-ink call
-      // used to report, rather than letting one good line flatter the page.
-      topScore: scores.isEmpty
-          ? null
-          : scores.reduce((a, b) => a + b) / scores.length,
-      hasInk: true,
-    );
+      final text = segments.join('  ');
+      recognized.add(RecognizedInkLine(
+        text: text,
+        segmentScores: scores,
+        bounds: line.bounds,
+        strokes: line.strokes,
+      ));
+      if (text.isNotEmpty) earlier.add(text);
+    }
+    return recognized;
   }
 
   /// The tail of everything recognized so far — earlier [lines] plus the

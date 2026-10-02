@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/storage_paths.dart';
 import '../../../core/providers/search_providers.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../dev/dev_secrets.dart';
@@ -16,25 +17,36 @@ import '../../../editor/render/scene_exporter.dart';
 import '../../../editor/render/scene_image_cache.dart';
 import '../../../editor/state/page_notifier.dart' show pageRepositoryProvider;
 import '../../../editor/state/scene_controller.dart';
+import '../../home/presentation/home_notifier.dart' show noteRepositoryProvider;
 import '../data/embeddings/embedder_download_manager.dart';
+import '../data/device/device_health.dart';
 import '../data/embeddings/local_text_embedder.dart';
 import '../data/flashcards/flashcard_store.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/cloud_llm_client.dart';
+import '../data/llm/gemma_adapter.dart' show FlutterGemmaRuntime, LlmRuntime;
 import '../data/llm/hf_token_check.dart';
+import '../data/llm/llm_model_spec.dart' show LlmModelSpec;
 import '../data/llm/model_download_manager.dart';
 import '../data/llm/model_storage_cleaner.dart';
 import '../data/memory/learning_memory_repository.dart';
 import '../data/ocr/gemma_vision_ocr_service.dart';
 import '../data/ocr/image_text_recognition_service.dart';
+import '../data/ocr/isar_read_cache.dart';
 import '../data/providers/cloud_gateway_provider.dart';
 import '../data/providers/local_gemma_provider.dart';
 import '../data/rag/note_chunk_store.dart';
+import '../../audio/data/transcript_store.dart' show lectureTextOf;
+import '../../audio/presentation/audio_providers.dart';
+import '../data/language/ml_kit_language_detector.dart';
+import '../data/study_planner/ml_kit_date_finder.dart';
 import '../data/study_planner/study_plan_store.dart';
 import '../domain/ai_provider.dart';
 import '../domain/ai_scope.dart';
+import '../domain/compute_backend.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
+import '../domain/device_state.dart';
 import '../domain/features/explainer.dart';
 import '../domain/features/flashcard_generator.dart';
 import '../domain/features/quiz_generator.dart';
@@ -48,11 +60,15 @@ import '../domain/ai_router.dart' show Reachability;
 import '../domain/page_content_extractor.dart';
 import '../domain/quality/ai_quality_guard.dart';
 import '../domain/rag/bulk_indexer.dart';
+import '../domain/rag/page_chunker.dart' show chunkTitle;
 import '../domain/rag/rag_indexer.dart';
 import '../domain/rag/rag_retriever.dart';
 import '../domain/rag/text_embedder.dart';
+import '../domain/read_cache.dart';
 import '../domain/routing/cloud_first_transcriber.dart';
 import '../domain/routing/intelligent_router.dart';
+import '../domain/language/language_detector.dart';
+import '../domain/study_planner/note_deadlines.dart';
 import '../domain/study_planner/study_plan.dart';
 import '../domain/tools/calculator_tool.dart';
 import '../domain/tools/tool.dart';
@@ -105,10 +121,63 @@ final llmDownloadProvider =
 final modelStorageCleanerProvider =
     Provider<ModelStorageCleaner>((ref) => FlutterGemmaStorageCleaner());
 
+/// The inference runtime behind [localAiProvider]. A provider only so the
+/// wiring around it can be tested with a fake — nothing else needs to swap it.
+final llmRuntimeProvider = Provider<LlmRuntime>((ref) => FlutterGemmaRuntime());
+
+/// Where the on-device model last loaded actually ran — null until it has
+/// loaded once.
+///
+/// [LocalGemmaProvider] publishes it after each load, because the plugin asks
+/// for the GPU and falls back to the CPU without saying so. Routing, the
+/// optional figure passes and Settings read it from here rather than assuming
+/// the fast case.
+final localBackendProvider = StateProvider<ComputeBackend?>((ref) => null);
+
+/// Reads the device's RAM, thermal state and battery.
+final deviceHealthProvider = Provider<DeviceHealth>((ref) => DeviceHealth());
+
+/// How much of the on-device pipeline this device is given.
+///
+/// Resolved once at startup (see `main.dart`), from the device's total RAM, and
+/// overridden there; the default here is [AiProfile.full], which is also what
+/// every test gets. Read, not watched, by [localAiProvider]: changing it would
+/// rebuild the provider and drop the resident model.
+final deviceProfileProvider = Provider<AiProfile>((ref) => AiProfile.full);
+
+/// Whether the on-device model cannot be relied on to be fast — it fell back to
+/// the CPU, or the device is too short of RAM to lean on it — which is what
+/// makes routing prefer the cloud for a user who has opted in. Read per
+/// decision: the backend is only learned when the model first loads.
+final localDegradedProvider = Provider<bool Function()>((ref) => () =>
+    (ref.read(localBackendProvider)?.isSlow ?? false) ||
+    ref.read(deviceProfileProvider) == AiProfile.cloudAssisted);
+
 /// The on-device model behind the platform-wide [AiProvider] contract —
 /// streaming, typed failures, load→generate→unload memory invariant.
-final localAiProvider = Provider<AiProvider>(
-    (ref) => LocalGemmaProvider(embedder: ref.watch(textEmbedderProvider)));
+final localAiProvider = Provider<AiProvider>((ref) => LocalGemmaProvider(
+      // A device short on RAM loads a smaller context window.
+      spec: LlmModelSpec.active.forProfile(ref.read(deviceProfileProvider)),
+      runtime: ref.watch(llmRuntimeProvider),
+      embedder: ref.watch(textEmbedderProvider),
+      onBackendChanged: (backend) =>
+          ref.read(localBackendProvider.notifier).state = backend,
+    ));
+
+/// Starts loading the on-device model in the background, so the cold start
+/// (3.6–17 s on the reference tablet) happens behind the user's own reading and
+/// typing time instead of in front of the first answer.
+///
+/// Call it when the user shows intent: the AI panel opens, the Ask box gets
+/// focus. Does nothing in cloud-first mode, where the local model is never used;
+/// nothing on a device too short of RAM to hold the model warm on a guess; and
+/// nothing when the local provider is not the real one (tests).
+final localModelWarmerProvider = Provider<void Function()>((ref) => () {
+      if (ref.read(settingsProvider).aiMode.prefersCloud) return;
+      if (ref.read(deviceProfileProvider) == AiProfile.cloudAssisted) return;
+      final local = ref.read(localAiProvider);
+      if (local is LocalGemmaProvider) unawaited(local.warmUp());
+    });
 
 /// The on-device EMBEDDING model (EmbeddingGemma) — a different model from the
 /// LLM above, with its own download and its own mutex.
@@ -167,6 +236,20 @@ final ragIndexerProvider = Provider<RagIndexer>((ref) {
     saveChunks: store.replaceForPage,
     deleteChunks: store.deleteForPage,
     indexStateOf: store.indexStateForPage,
+    // Which notebook (and, for an import, which document) a chunk belongs to
+    // is embedded with it, so two notebooks that both mention "enthalpy" rank
+    // apart. See [chunkTitle].
+    titleOf: (notebookId, pageId) async {
+      final notebook =
+          await ref.read(noteRepositoryProvider).getNotebook(notebookId);
+      final pages =
+          await ref.read(pageRepositoryProvider).getPagesForNotebook(notebookId);
+      String? source;
+      for (final page in pages) {
+        if (page.id == pageId) source = page.importSourceName;
+      }
+      return chunkTitle(notebookTitle: notebook?.title, sourceName: source);
+    },
   );
 });
 
@@ -200,6 +283,30 @@ final bulkRagIndexerProvider = Provider<BulkRagIndexer>((ref) {
       // — "what did the graph on slide 12 show" must be able to retrieve.
       return content.combinedTextWithFigures;
     },
+    // The reads are the expensive part and a missing embedder would throw every
+    // one of them away, so find out before the first.
+    embedderReady: ref.read(embedderDownloadManagerProvider).isInstalled,
+    // Every read first, THEN every embedding: give the vision model's ~2.6 GB
+    // back the moment the last read is done, before the embedder works.
+    releaseVisionModel: () async {
+      final local = ref.read(localAiProvider);
+      if (local is LocalGemmaProvider) await local.releaseModel();
+    },
+    // Sustained inference throttles a tablet and drains a phone: wait while the
+    // device is hot or low on power, and carry on when it is not.
+    pauseReason: () async =>
+        backgroundPauseReason(await ref.read(deviceHealthProvider).read()),
+    // A page is findable by keyword as soon as it has been read — which also
+    // makes keyword search work for an import before the embedding model has
+    // ever been downloaded. (The live path writes the same store; see
+    // `pageContextProvider`.) Figures are included: for an imported deck they
+    // are part of what the document says.
+    onPageRead: (notebookId, pageId, text) =>
+        ref.read(pageTextStoreProvider).save(
+              notebookId: notebookId,
+              pageId: pageId,
+              text: text,
+            ),
   );
 });
 
@@ -231,6 +338,14 @@ final aiScopeResolverProvider = Provider<AiScopeResolver>((ref) {
 final ragRetrieverProvider = Provider<RagRetriever>((ref) => RagRetriever(
       embedder: ref.watch(textEmbedderProvider),
       loadChunks: ref.watch(noteChunkStoreProvider).forNotebook,
+      // Keyword search runs over the plain page text, which exists whether or
+      // not the embedding model has ever been downloaded — so a question about a
+      // course code or a defined term finds its page either way.
+      loadPageTexts: (notebookId) async => [
+        for (final page
+            in await ref.read(pageTextStoreProvider).forNotebook(notebookId))
+          (pageId: page.pageId, text: page.text),
+      ],
     ));
 
 /// The accuracy fail-safe shared by Explain, Ask, Summarize and the Context
@@ -344,6 +459,31 @@ final figureAnalyzerProvider = Provider<FigureAnalyzer>((ref) {
   );
 });
 
+/// The longest side, in pixels, of an ink or drawn-layer picture handed to the
+/// vision model.
+///
+/// The model downsizes whatever it is given to a fixed patch budget — a
+/// full-resolution read was measured at ~2,300 patches, roughly an 800x800-pixel
+/// equivalent (see PageContentExtractor) — so pixels far beyond that were
+/// rendered, PNG-encoded, passed across and decoded for nothing. 2,048 leaves a
+/// wide margin for small handwriting while cutting a full page from ~8
+/// megapixels to ~4 at most. Inferred from that measurement, not from the
+/// plugin, which exposes no image budget: confirm with a time-to-first-token run.
+const int kVisionRenderMaxSide = 2048;
+
+/// Durable memory of what the vision model has already read — an imported
+/// page, a region of handwriting, a drawn figure — so reopening a notebook after
+/// a restart, or re-indexing it, never pays for the same read twice.
+final readCacheProvider = Provider<ReadCache>((ref) => IsarReadCache());
+
+/// Tells real text from noise — ML Kit Language ID, on-device. One identifier
+/// for the app, freed with the container.
+final languageDetectorProvider = Provider<LanguageDetector>((ref) {
+  final detector = MlKitLanguageDetector();
+  ref.onDispose(detector.dispose);
+  return detector;
+});
+
 /// The one way AI features read a page (editor-2.0 scene store underneath).
 final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
   final store = ref.watch(sceneElementStoreProvider);
@@ -359,12 +499,50 @@ final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
     // Gemma vision, primary on deep reads. Ink is rasterised to a tight PNG the
     // same painter draws to screen; images are read from their file bytes.
     visionOcr: ref.watch(gemmaVisionOcrServiceProvider),
-    renderInk: (inkElements) => SceneExporter.toPng(inkElements),
+    renderInk: (elements) =>
+        SceneExporter.toPng(elements, maxSide: kVisionRenderMaxSide),
     loadImageBytes: (relative) =>
         _readFileBytes(SceneImageCache.resolvePath(docsDir, relative)),
     // Charts and diagrams — drawn with the shape tools or pasted in — read as
     // structured figures instead of vanishing into a few OCR'd axis labels.
     figureAnalyzer: ref.watch(figureAnalyzerProvider),
+    // The optional figure passes are the first thing dropped when the local
+    // model has fallen back to the CPU (whose reads are also cut short, so are
+    // not remembered), or the device is below the full profile (which only
+    // drops the passes). Neither in cloud-first mode: there the cloud reads the
+    // page and the local model's speed is beside the point.
+    localIsSlow: () =>
+        !ref.read(settingsProvider).aiMode.prefersCloud &&
+        (ref.read(localBackendProvider)?.isSlow ?? false),
+    lite: () =>
+        !ref.read(settingsProvider).aiMode.prefersCloud &&
+        ref.read(deviceProfileProvider) != AiProfile.full,
+    readCache: ref.watch(readCacheProvider),
+    // Which model answers a read right now: part of the cache key, so switching
+    // between on-device and cloud-first reads afresh rather than serving one
+    // model's reading as the other's.
+    readModelId: () => ref.read(settingsProvider).aiMode.prefersCloud
+        ? ref.read(cloudGatewayMidProvider).capabilities.modelId
+        : ref.read(localAiProvider).capabilities.modelId,
+    // ML Kit's Latin text recognition answers with noise on Bengali script; this
+    // keeps that noise out of a page's text. See [isUnreadable].
+    languageDetector: ref.watch(languageDetectorProvider),
+    // The text PDFium read off each imported PDF page at import, kept beside the
+    // page's image. A page that has some is read without OCR or a model.
+    // What was SAID in the lectures recorded on a page, transcribed on the
+    // device: read as part of the page, so every feature sees it.
+    lectureTranscript: (pageId) async => lectureTextOf(
+        await ref.read(lectureRecordingStoreProvider).forPage(pageId),
+        ref.read(transcriptStoreProvider)),
+    pdfTextLayer: (relative) async {
+      final file = File(SceneImageCache.resolvePath(
+          docsDir, StoragePaths.pdfTextSidecar(relative)));
+      try {
+        return await file.exists() ? await file.readAsString() : null;
+      } catch (_) {
+        return null;
+      }
+    },
   );
 });
 
@@ -429,7 +607,10 @@ final cloudGatewayFrontierProvider = Provider<AiProvider>((ref) =>
 /// Decides local vs. cloud-mid vs. cloud-frontier per request. Additive
 /// alongside the existing, simpler [AiRouter] (still serves Summarize).
 final intelligentRouterProvider = Provider<IntelligentRouter>((ref) =>
-    IntelligentRouter(localCapabilities: ref.watch(localAiProvider).capabilities));
+    IntelligentRouter(
+      localCapabilities: ref.watch(localAiProvider).capabilities,
+      localDegraded: ref.read(localDegradedProvider),
+    ));
 
 /// Explain, routed through the Phase 3 Intelligent Router — the one feature
 /// wired to it in this pass (see `intelligent_router.dart`'s header for why
@@ -593,6 +774,28 @@ final studyPlannerProvider = StateNotifierProvider.family<StudyPlannerNotifier,
     memory: ref.watch(learningMemoryProvider),
     store: ref.watch(studyPlanStoreProvider),
     notebookId: notebookId,
+  );
+});
+
+/// Reads dates out of note text — ML Kit Entity Extraction, on-device. One
+/// extractor for the app, freed with the container.
+final dateFinderProvider = Provider<DateFinder>((ref) {
+  final finder = MlKitDateFinder();
+  ref.onDispose(finder.dispose);
+  return finder;
+});
+
+/// The quiz and exam dates written in a notebook's notes, soonest first — what
+/// the Study Planner offers as an exam countdown. Read from the stored page text
+/// the moment the student asks (autoDispose: nothing runs until the planner
+/// watches it), so there is no index to keep in step with edits.
+final noteDeadlinesProvider = FutureProvider.autoDispose
+    .family<List<NoteDeadline>, int>((ref, notebookId) async {
+  final pages = await ref.read(pageTextStoreProvider).forNotebook(notebookId);
+  return findNoteDeadlines(
+    pageTexts: {for (final p in pages) p.pageId: p.text},
+    finder: ref.read(dateFinderProvider),
+    now: DateTime.now(),
   );
 });
 

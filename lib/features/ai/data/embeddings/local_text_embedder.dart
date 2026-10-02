@@ -1,7 +1,11 @@
 // EmbeddingGemma behind the domain's [TextEmbedder] seam.
 //
-// Mirrors [LocalGemmaProvider]'s memory discipline: every call loads the model,
-// embeds ONE batch, and unloads it in a finally block, serialized by a mutex.
+// Mirrors [LocalGemmaProvider]'s memory discipline: calls are serialized by a
+// mutex, and the model stays loaded for [idleUnloadDelay] after the last one
+// rather than being rebuilt per call. It used to load and unload around every
+// batch, which put a model load in front of every "Ask your notes" question and
+// every page of a bulk index; at ~175 MB it is cheap enough to hold through a
+// burst of work. Nothing stays resident once the app goes quiet.
 //
 // The mutex is this embedder's OWN, not shared with the LLM's — a deliberate
 // refinement of the "at most one model resident" invariant to "at most one of
@@ -20,16 +24,66 @@ import 'embedder_adapter.dart';
 import 'embedder_spec.dart';
 
 class LocalTextEmbedder implements TextEmbedder {
+  /// How long the model stays loaded after the last call finishes.
+  static const Duration defaultIdleUnloadDelay = Duration(seconds: 60);
+
   final EmbedderSpec spec;
   final EmbeddingRuntime _runtime;
+  final Duration idleUnloadDelay;
 
   LocalTextEmbedder({
     this.spec = EmbedderSpec.active,
     EmbeddingRuntime? runtime,
+    this.idleUnloadDelay = defaultIdleUnloadDelay,
   }) : _runtime = runtime ?? FlutterGemmaEmbeddingRuntime();
 
   /// Mutex: chain of futures; each call awaits the previous one.
   Future<void> _lock = Future.value();
+
+  /// The loaded model, or null when nothing is resident.
+  EmbeddingSession? _session;
+  Timer? _idleUnload;
+
+  /// Runs [body] holding the mutex. The idle unload takes the same lock, so it
+  /// can never close a model out from under a call that is about to use it, nor
+  /// have a new load begin while the old one is still being torn down.
+  Future<T> _locked<T>(Future<T> Function() body) async {
+    final previous = _lock;
+    final gate = Completer<void>();
+    _lock = gate.future;
+    await previous;
+    try {
+      return await body();
+    } finally {
+      gate.complete();
+    }
+  }
+
+  void _armIdleUnload() {
+    _idleUnload?.cancel();
+    _idleUnload = Timer(idleUnloadDelay, () {
+      _idleUnload = null;
+      unawaited(_locked(() async {
+        // A call that ran between the timer firing and this getting the lock
+        // re-armed it; that call's own window applies.
+        if (_idleUnload == null) await _unload();
+      }));
+    });
+  }
+
+  Future<void> _unload() async {
+    final session = _session;
+    _session = null;
+    await session?.close();
+  }
+
+  /// Unloads the model now, without waiting for the idle timer. Safe to call
+  /// when nothing is loaded.
+  Future<void> release() {
+    _idleUnload?.cancel();
+    _idleUnload = null;
+    return _locked(_unload);
+  }
 
   @override
   String get modelId => spec.modelId;
@@ -54,25 +108,19 @@ class LocalTextEmbedder implements TextEmbedder {
     // Before the mutex: nothing to embed must not queue behind a 175 MB load,
     // and must not perform one either.
     if (texts.isEmpty) return const [];
-
-    final previous = _lock;
-    final gate = Completer<void>();
-    _lock = gate.future;
-    await previous;
-    try {
-      return await _embedAll(texts, taskType);
-    } finally {
-      gate.complete();
-    }
+    return _locked(() => _embedAll(texts, taskType));
   }
 
   Future<List<List<double>>> _embedAll(
     List<String> texts,
     EmbedTaskType taskType,
   ) async {
+    _idleUnload?.cancel();
+    _idleUnload = null;
+
     final EmbeddingSession session;
     try {
-      session = await _runtime.open(spec);
+      session = _session ??= await _runtime.open(spec);
     } on LlmNotReadyException catch (e) {
       throw AiModelNotReadyException(
         '${spec.displayName} is not downloaded yet.',
@@ -88,15 +136,17 @@ class LocalTextEmbedder implements TextEmbedder {
     try {
       final vectors = await session.embedAll(texts, taskType: taskType);
       _verifyShape(vectors, texts.length);
+      _armIdleUnload();
       return vectors;
     } on AiException {
+      await _unload();
       rethrow;
     } catch (e) {
+      await _unload();
       throw AiGenerationException('Embedding failed.', cause: e);
-    } finally {
-      // Unload no matter what — nothing stays resident after a call.
-      await session.close();
     }
+    // Success keeps the model for the next call; a failure drops it, so a
+    // session that just misbehaved is never kept warm for the next caller.
   }
 
   /// Checks the native layer returned what was asked for.

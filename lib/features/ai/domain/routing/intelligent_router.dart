@@ -59,10 +59,18 @@ class IntelligentRouter {
   final AiCapabilities localCapabilities;
   final Reachability _reachability;
 
+  /// Whether the on-device model has fallen back to the CPU, which makes even a
+  /// short request several times slower. Read per decision: it is only learned
+  /// when the model first loads.
+  final bool Function() localDegraded;
+
   const IntelligentRouter({
     required this.localCapabilities,
     Reachability reachability = const Reachability(),
+    this.localDegraded = _healthy,
   }) : _reachability = reachability;
+
+  static bool _healthy() => false;
 
   /// Local input budget in words — same math as [AiRouter], so the two
   /// routers never disagree about what "fits locally" means.
@@ -79,11 +87,14 @@ class IntelligentRouter {
       return const RouteCloud(CloudTier.frontier);
     }
 
-    if (inputWordCount <= localInputWordBudget) return const RouteLocal();
+    if (inputWordCount <= localInputWordBudget && !localDegraded()) {
+      return const RouteLocal();
+    }
 
-    // Over the local budget: only escape to cloud when privacy allows it and
-    // we're actually online — otherwise the caller truncates and runs local
-    // (the same "degrade gracefully" behavior as the existing [AiRouter]).
+    // Over the local budget, or the local model is running on the CPU: only
+    // escape to cloud when privacy allows it and we're actually online —
+    // otherwise the caller truncates and runs local (the same "degrade
+    // gracefully" behavior as the existing [AiRouter]).
     if (privacy == CloudPrivacy.localOnly) return const RouteLocal();
     if (!await _reachability.isOnline()) return const RouteLocal();
     return const RouteCloud(CloudTier.mid);

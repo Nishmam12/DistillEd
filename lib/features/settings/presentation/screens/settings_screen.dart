@@ -15,6 +15,13 @@ import '../../../ai/data/llm/hf_token_check.dart';
 import '../../../ai/data/llm/llm_exceptions.dart';
 import '../../../ai/data/llm/llm_model_spec.dart';
 import '../../../ai/data/llm/model_storage_cleaner.dart';
+import '../../../ai/domain/compute_backend.dart';
+import '../../../ai/presentation/ai_providers.dart' show localBackendProvider;
+import '../../../audio/data/flutter_gemma_speech.dart';
+import '../../../audio/presentation/speech_model_notifier.dart';
+import '../../../audio/presentation/transcription_providers.dart';
+import '../../../../editor/state/ink_gesture_providers.dart';
+import '../../../../editor/tools/ink_gestures.dart' show kGestureModel, kShapesModel;
 import '../../../home/data/repositories/note_repository.dart';
 import '../../../summarize/presentation/summarize_providers.dart';
 
@@ -85,6 +92,32 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const _SectionHeader('Pen'),
+          _SettingsCard(
+            children: [
+              // SET-16. Draw-to-shape: hold the pen at the end of a stroke.
+              _InkGestureRow(
+                icon: PhosphorIconsRegular.shapes,
+                title: 'Snap shapes',
+                subtitle: 'Hold the pen still at the end of a rectangle, circle, '
+                    'triangle or arrow and it snaps to a clean shape. Undo '
+                    'brings your drawing back.',
+                model: kShapesModel,
+                value: settings.snapShapes,
+                setEnabled: notifier.setSnapShapes,
+              ),
+              // SET-17. Scribble-to-erase.
+              _InkGestureRow(
+                icon: PhosphorIconsRegular.eraser,
+                title: 'Scribble to erase',
+                subtitle: 'Scrub back and forth over something to wipe it out. '
+                    'Undo brings it back.',
+                model: kGestureModel,
+                value: settings.scribbleErase,
+                setEnabled: notifier.setScribbleErase,
+              ),
+            ],
+          ),
           const _SectionHeader('Export Defaults'),
           _SettingsCard(
             children: [
@@ -120,10 +153,21 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: 'Language used to read your notes',
                 trailing: AppChipGroup<String>(
                   value: settings.recognitionLanguage,
-                  options: const [('en', 'English'), ('bn', 'বাংলা')],
+                  // 'bn-Latn' is Bangla written in English letters ("ami bhalo achi") — its
+                  // own ML Kit model, which reads those words far better than the
+                  // English one does.
+                  options: const [
+                    ('en', 'English'),
+                    ('bn', 'বাংলা'),
+                    ('bn-Latn', 'Banglish'),
+                  ],
                   onChanged: notifier.setRecognitionLanguage,
                 ),
               ),
+              // SET-15. Lecture transcripts: the switch makes new recordings
+              // WAV (the format the speech model reads) and downloads the
+              // model; a lecture is transcribed on the device after it stops.
+              _LectureTranscriptsRow(),
               // SET-14. Presentation only — token storage and verification are
               // untouched; only the button's colour and the chevron are new.
               _SettingsRow(
@@ -445,6 +489,82 @@ class _SettingsCard extends StatelessWidget {
   }
 }
 
+/// A switch for one of the ink gestures. Turning it on downloads its (small) ML
+/// Kit model; a failed download turns it back off, so it never looks on while
+/// doing nothing.
+class _InkGestureRow extends ConsumerWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String model;
+  final bool value;
+  final Future<void> Function(bool) setEnabled;
+
+  const _InkGestureRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.model,
+    required this.value,
+    required this.setEnabled,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _SettingsRow(
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      trailing: Switch(
+        value: value,
+        onChanged: (on) async {
+          if (!on) {
+            await setEnabled(false);
+            return;
+          }
+          final problem = await enableInkGesture(
+            setEnabled: setEnabled,
+            downloadModel: () => ref
+                .read(handwritingRecognitionServiceProvider)
+                .ensureModelDownloaded(model),
+          );
+          if (problem != null && context.mounted) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(problem)));
+          }
+        },
+      ),
+    );
+  }
+}
+
+/// "Transcribe lectures": a switch whose subtitle follows the speech model's
+/// download. Turning it on starts that download; a failed one is retried by
+/// tapping the row.
+class _LectureTranscriptsRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = ref.watch(settingsProvider.select((s) => s.transcribeLectures));
+    final model = ref.watch(speechModelProvider);
+    final settings = ref.read(settingsProvider.notifier);
+    final speech = ref.read(speechModelProvider.notifier);
+
+    return _SettingsRow(
+      icon: PhosphorIconsRegular.microphone,
+      title: 'Transcribe lectures',
+      subtitle: lectureTranscriptsSubtitle(on: on, model: model),
+      onTap: on && model.phase == SpeechModelPhase.failed ? speech.download : null,
+      trailing: Switch(
+        value: on,
+        onChanged: (value) {
+          settings.setTranscribeLectures(value);
+          if (value) speech.download();
+        },
+      ),
+    );
+  }
+}
+
 class _SettingsRow extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -690,6 +810,8 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
     final recognition = ref.read(handwritingRecognitionServiceProvider);
     final sizeGb =
         LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024);
+    // Where the model ran the last time it loaded; null until it has loaded.
+    final backend = ref.watch(localBackendProvider);
 
     return _SettingsCard(
       children: [
@@ -701,6 +823,15 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           isInstalled: downloads.isInstalled,
           confirmDelete: true,
           onDelete: downloads.delete,
+          // Said plainly because the fall-back from GPU to CPU is silent: a
+          // device that is several times slower than it should be otherwise
+          // gives no hint why.
+          detail: switch (backend) {
+            null => null,
+            ComputeBackend.gpu => 'Running on the GPU',
+            ComputeBackend.npu => 'Running on the NPU',
+            ComputeBackend.cpu => 'Running on the CPU — slower',
+          },
         ),
         _EmbeddingModelRow(
           key: ValueKey('embed-$_refresh'),
@@ -722,6 +853,24 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           isInstalled: () => recognition.isModelDownloaded('bn'),
           onDelete: () => recognition.deleteModel('bn'),
         ),
+        _modelRow(
+          key: ValueKey('bn-Latn-$_refresh'),
+          icon: PhosphorIconsRegular.pencilSimple,
+          title: 'Banglish handwriting model',
+          sizeLabel: '~20 MB',
+          isInstalled: () => recognition.isModelDownloaded('bn-Latn'),
+          onDelete: () => recognition.deleteModel('bn-Latn'),
+        ),
+        _modelRow(
+          key: ValueKey('speech-$_refresh'),
+          icon: PhosphorIconsRegular.microphone,
+          title: SpeechModelSpec.active.displayName,
+          sizeLabel: '~80 MB',
+          isInstalled: () => ref
+              .read(speechModelInstallerProvider)
+              .isInstalled(SpeechModelSpec.active),
+          onDelete: () => ref.read(speechModelProvider.notifier).delete(),
+        ),
         _ReclaimSpaceRow(
           key: ValueKey('reclaim-$_refresh'),
           onChanged: () => setState(() => _refresh++),
@@ -738,6 +887,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
     required Future<bool> Function() isInstalled,
     required Future<void> Function() onDelete,
     bool confirmDelete = false,
+    String? detail,
   }) {
     return FutureBuilder<bool>(
       key: key,
@@ -751,7 +901,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           subtitle: checking
               ? 'Checking…'
               : installed
-                  ? '$sizeLabel · Downloaded'
+                  ? '$sizeLabel · Downloaded${detail == null ? '' : ' · $detail'}'
                   : 'Not downloaded — fetched on first use',
           trailing: installed
               ? IconButton(

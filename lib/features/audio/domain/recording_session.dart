@@ -43,6 +43,7 @@ class RecordingSession {
   Future<void> begin({
     required LectureRecording recording,
     required String absolutePath,
+    AudioFormat format = AudioFormat.aac,
   }) async {
     if (_status != RecordingStatus.idle) {
       throw StateError('A recording is already in progress');
@@ -51,7 +52,7 @@ class RecordingSession {
       throw const AudioUnavailableException(
           'Microphone permission is needed to record a lecture.');
     }
-    await _capture.start(absolutePath);
+    await _capture.start(absolutePath, format: format);
     _clock = RecordingClock(
       startedAtEngineMs: _engineNowMs(),
       recordingId: recording.id,

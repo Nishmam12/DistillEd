@@ -7,10 +7,13 @@
 
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma_embeddings/flutter_gemma_embeddings.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
+import 'package:flutter_gemma_speech/flutter_gemma_speech.dart';
 
+import '../../domain/compute_backend.dart';
 import 'llm_exceptions.dart';
 import 'llm_model_spec.dart';
 
@@ -29,16 +32,30 @@ class GemmaBootstrap {
   ///
   /// • [LiteRtLmEngine] runs `.litertlm` models (the Gemma 4 LLM).
   /// • [LiteRtEmbeddingBackend] runs `.tflite` embedding models (Loop 2.2 RAG).
+  /// • [GemmaEmbeddingTokenizers] turns text into the ids that backend consumes.
+  ///   Since flutter_gemma 1.9 the engine no longer bundles one, and leaving them
+  ///   out makes the first embedding throw.
+  /// • [LiteRtSttBackend] runs Whisper / Moonshine for lecture transcripts.
   ///
   /// `initialize` also accepts a global `huggingFaceToken`, deliberately unused:
   /// it would be captured here, on first use, whereas the token is a per-user
   /// setting the user may paste at any time. Tokens are passed per-download
   /// instead (see [FlutterGemmaEmbedderInstaller]).
-  static Future<void> ensureInitialized() =>
-      _init ??= FlutterGemma.initialize(
-        inferenceEngines: const [LiteRtLmEngine()],
-        embeddingBackends: const [LiteRtEmbeddingBackend()],
+  static Future<void> ensureInitialized() => _init ??= FlutterGemma.initialize(
+        inferenceEngines: registrations.inferenceEngines,
+        embeddingBackends: registrations.embeddingBackends,
+        embeddingTokenizers: registrations.embeddingTokenizers,
+        sttBackends: registrations.sttBackends,
       );
+
+  /// What is registered, as a value so a test can check nothing was forgotten
+  /// (the plugin needs a device; see `gemma_bootstrap_test.dart`).
+  static const registrations = (
+    inferenceEngines: [LiteRtLmEngine()],
+    embeddingBackends: [LiteRtEmbeddingBackend()],
+    embeddingTokenizers: [GemmaEmbeddingTokenizers()],
+    sttBackends: [LiteRtSttBackend()],
+  );
 }
 
 /// Installation seam — implemented by [FlutterGemmaInstaller] in production.
@@ -145,6 +162,11 @@ abstract class LlmRuntime {
   /// Opens a loaded model with one session. Set [supportImage] to load the
   /// model's vision encoder and enable [LlmSession.respondWithImage];
   /// [maxNumImages] caps images per turn (ignored when text-only).
+  ///
+  /// The engine is rebuilt whenever [supportImage] / [maxNumImages] differ from
+  /// what is loaded, so callers that alternate between the two (text, then
+  /// image, then text) should all ask for the same configuration — see
+  /// [LlmModelSpec.shareVisionEngine].
   Future<LlmSession> open({
     required LlmModelSpec spec,
     required double temperature,
@@ -166,9 +188,73 @@ abstract class LlmRuntime {
   ///
   /// Safe to call when nothing is loaded.
   Future<void> releaseModel();
+
+  /// Where the model last loaded actually ran, or null before the first load
+  /// (or when the plugin does not say). Deliberately survives [releaseModel]:
+  /// it is a fact about this device that decisions made while nothing is loaded
+  /// — routing, whether to bother with an optional pass — still want.
+  ComputeBackend? get activeBackend;
 }
 
+/// What [FlutterGemmaRuntime] asks the plugin for on one load.
+typedef GemmaLoadRequest = ({
+  int maxTokens,
+  PreferredBackend preferredBackend,
+
+  /// Where the vision encoder runs; null for a text-only load. Always stated:
+  /// the plugin defaults it to the CPU, whatever the model runs on.
+  PreferredBackend? preferredVisionBackend,
+  bool supportImage,
+  int? maxNumImages,
+  bool enableSpeculativeDecoding,
+  ActivationDataType? activationDataType,
+});
+
+typedef GemmaModelLoader = Future<InferenceModel> Function(
+    GemmaLoadRequest request);
+
 class FlutterGemmaRuntime implements LlmRuntime {
+  /// The arguments are seams over the plugin's static API, which needs a
+  /// device: production uses the defaults, tests inject fakes so the decisions
+  /// below can be exercised without one.
+  FlutterGemmaRuntime({
+    Future<void> Function(LlmModelSpec spec)? ensureReady,
+    GemmaModelLoader? loadModel,
+    Future<void> Function()? closeCachedModel,
+  })  : _ensureReady = ensureReady ?? _pluginEnsureReady,
+        _loadModel = loadModel ?? _pluginLoadModel,
+        _closeCachedModel = closeCachedModel ?? _pluginCloseCachedModel;
+
+  final Future<void> Function(LlmModelSpec spec) _ensureReady;
+  final GemmaModelLoader _loadModel;
+  final Future<void> Function() _closeCachedModel;
+
+  static Future<void> _pluginEnsureReady(LlmModelSpec spec) async {
+    await GemmaBootstrap.ensureInitialized();
+    if (!FlutterGemma.hasActiveModel() ||
+        !await FlutterGemma.isModelInstalled(spec.filename)) {
+      throw LlmNotReadyException();
+    }
+  }
+
+  static Future<InferenceModel> _pluginLoadModel(GemmaLoadRequest r) =>
+      FlutterGemma.getActiveModel(
+        maxTokens: r.maxTokens,
+        preferredBackend: r.preferredBackend,
+        // Loads the vision encoder too (Gemma 4 E2B ships one).
+        preferredVisionBackend: r.preferredVisionBackend,
+        supportImage: r.supportImage,
+        maxNumImages: r.maxNumImages,
+        enableSpeculativeDecoding: r.enableSpeculativeDecoding,
+        activationDataType: r.activationDataType,
+      );
+
+  static Future<void> _pluginCloseCachedModel() async {
+    // The plugin owns a single cached instance; closing it fires the internal
+    // close-listener that clears the cache, so the next load rebuilds.
+    await FlutterGemmaPlugin.instance.initializedModel?.close();
+  }
+
   /// The construction parameters of the model instance the plugin currently
   /// has cached, or null when nothing is loaded.
   ///
@@ -185,6 +271,26 @@ class FlutterGemmaRuntime implements LlmRuntime {
   /// the process.
   ({bool supportImage, int? maxNumImages, int maxTokens})? _loadedWith;
 
+  /// The instance last handed back, to tell a fresh load from a cache hit: the
+  /// backend checks below belong to a load, not to every call that reuses it.
+  InferenceModel? _model;
+
+  ComputeBackend? _activeBackend;
+
+  /// Set once a GPU request has come back running on the CPU.
+  ///
+  /// The plugin tries the GPU and falls back on its own, so a device whose GPU
+  /// can't run the model pays a failed GPU attempt on EVERY load; after the
+  /// first one there is no point asking again.
+  ///
+  /// ponytail: remembered for the whole process, so a one-off GPU failure (say,
+  /// memory pressure from other apps) pins this session to the CPU until the app
+  /// restarts. Add an expiry if that turns out to bite.
+  bool _gpuUnavailable = false;
+
+  @override
+  ComputeBackend? get activeBackend => _activeBackend;
+
   @override
   Future<LlmSession> open({
     required LlmModelSpec spec,
@@ -197,12 +303,7 @@ class FlutterGemmaRuntime implements LlmRuntime {
     bool supportImage = false,
     int maxNumImages = 1,
   }) async {
-    await GemmaBootstrap.ensureInitialized();
-
-    if (!FlutterGemma.hasActiveModel() ||
-        !await FlutterGemma.isModelInstalled(spec.filename)) {
-      throw LlmNotReadyException();
-    }
+    await _ensureReady(spec);
 
     final wanted = (
       supportImage: supportImage,
@@ -218,14 +319,7 @@ class FlutterGemmaRuntime implements LlmRuntime {
 
     final InferenceModel model;
     try {
-      model = await FlutterGemma.getActiveModel(
-        maxTokens: spec.maxTokens,
-        preferredBackend: PreferredBackend.gpu, // falls back internally
-        // Loads the vision encoder too (Gemma 4 E2B ships one); no effect on
-        // the text path, which passes false.
-        supportImage: supportImage,
-        maxNumImages: supportImage ? maxNumImages : null,
-      );
+      model = await _load(spec, wanted);
     } on StateError {
       throw LlmNotReadyException();
     }
@@ -246,17 +340,103 @@ class FlutterGemmaRuntime implements LlmRuntime {
       return _GemmaSession(session);
     } catch (e) {
       // Session creation failed — don't leak the loaded model.
+      _loadedWith = null;
+      _model = null;
       await model.close();
       throw LlmGenerationException('Could not start the model session.', e);
     }
   }
 
+  /// Gets the model from the plugin, choosing the backend and whether to run
+  /// multi-token prediction.
+  ///
+  /// MTP decodes ~1.6x faster on the GPU but is pure overhead on the CPU, and
+  /// which of the two we get is only known once the load has finished — the
+  /// plugin falls back on its own. So the first load asks for both, and when the
+  /// GPU turns out not to be there the engine is rebuilt on the CPU without the
+  /// drafter. That costs a second load, but only on a device whose GPU can't run
+  /// the model, and only once: [_gpuUnavailable] sends every later load
+  /// straight to the CPU.
+  Future<InferenceModel> _load(
+    LlmModelSpec spec,
+    ({bool supportImage, int? maxNumImages, int maxTokens}) wanted,
+  ) async {
+    GemmaLoadRequest request(PreferredBackend backend, bool drafter) => (
+          maxTokens: wanted.maxTokens,
+          preferredBackend: backend,
+          // The vision encoder goes where the model does. flutter_gemma 1.3 did
+          // that on its own; 1.11 runs it on the CPU unless told otherwise
+          // (the Metal/WebGPU delegates cannot prepare it), which on Android
+          // would make every image read — the heaviest thing the app does —
+          // several times slower than it was measured.
+          preferredVisionBackend: wanted.supportImage ? backend : null,
+          supportImage: wanted.supportImage,
+          maxNumImages: wanted.maxNumImages,
+          enableSpeculativeDecoding: drafter,
+          // Only the GPU has a lower-precision default to override.
+          activationDataType:
+              backend == PreferredBackend.gpu ? spec.activationDataType : null,
+        );
+
+    final tryGpu = !_gpuUnavailable;
+    final drafter = tryGpu && spec.speculativeDecodingOnGpu;
+    final watch = Stopwatch()..start();
+    InferenceModel model;
+    var drafterOn = drafter;
+    var retriedOnCpu = false;
+    try {
+      model = await _loadModel(request(
+          tryGpu ? PreferredBackend.gpu : PreferredBackend.cpu, drafter));
+    } on StateError {
+      rethrow; // no active model: the CPU would not help
+    } catch (e) {
+      if (!tryGpu) rethrow; // already on the CPU: nothing left to fall back to
+      // A GPU delegate that cannot prepare part of the model (the vision
+      // encoder, say) fails the whole load instead of quietly falling back. The
+      // feature must degrade to the CPU, not die.
+      if (kDebugMode) debugPrint('[AiPerf] GPU load failed ($e); retrying on CPU');
+      _gpuUnavailable = true;
+      model = await _loadModel(request(PreferredBackend.cpu, false));
+      drafterOn = false;
+      retriedOnCpu = true;
+    }
+    if (identical(model, _model)) return model; // a cache hit, nothing to learn
+
+    var backend = _computeBackendOf(model.activeBackend) ??
+        (retriedOnCpu ? ComputeBackend.cpu : null);
+    if (tryGpu && backend == ComputeBackend.cpu) {
+      _gpuUnavailable = true;
+      if (drafterOn) {
+        await _closeCachedModel();
+        model = await _loadModel(request(PreferredBackend.cpu, false));
+        backend = _computeBackendOf(model.activeBackend);
+        drafterOn = false;
+      }
+    }
+
+    _model = model;
+    _activeBackend = backend;
+    if (kDebugMode) {
+      debugPrint('[AiPerf] model load ${watch.elapsedMilliseconds}ms '
+          'backend=${backend?.name ?? 'unknown'} drafter=$drafterOn '
+          'vision=${wanted.supportImage}');
+    }
+    return model;
+  }
+
+  static ComputeBackend? _computeBackendOf(PreferredBackend? backend) =>
+      switch (backend) {
+        null => null,
+        PreferredBackend.gpu => ComputeBackend.gpu,
+        PreferredBackend.npu => ComputeBackend.npu,
+        PreferredBackend.cpu => ComputeBackend.cpu,
+      };
+
   @override
   Future<void> releaseModel() async {
-    // The plugin owns a single cached instance; closing it fires the internal
-    // close-listener that clears the cache, so the next open() rebuilds.
     _loadedWith = null;
-    await FlutterGemmaPlugin.instance.initializedModel?.close();
+    _model = null;
+    await _closeCachedModel();
   }
 }
 

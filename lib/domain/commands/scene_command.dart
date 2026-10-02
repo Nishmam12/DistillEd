@@ -77,6 +77,27 @@ class PixelEraseCommand implements SceneCommand {
   }
 }
 
+/// Swaps [removed] for [added] as ONE undo step: apply takes the first out and
+/// puts the second in, undo does the reverse. A freehand stroke snapped to a clean
+/// shape is this — undoing it brings the stroke back, as drawn.
+class ReplaceElementsCommand implements SceneCommand {
+  final List<SceneElement> removed;
+  final List<SceneElement> added;
+  const ReplaceElementsCommand({required this.removed, required this.added});
+
+  @override
+  void apply(SceneMutator m) {
+    m.applyRemove({for (final e in removed) e.id});
+    m.applyAdd(added);
+  }
+
+  @override
+  void revert(SceneMutator m) {
+    m.applyRemove({for (final e in added) e.id});
+    m.applyAdd(removed);
+  }
+}
+
 /// Replaces the whole element list (e.g. a z-order reindex). Stores full
 /// before/after snapshots.
 class ReplaceAllCommand implements SceneCommand {

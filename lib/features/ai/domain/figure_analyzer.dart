@@ -40,6 +40,23 @@ class FigureQualityBar {
 }
 
 class FigureAnalyzer {
+  /// Which generation of prompt and parser wrote a figure. Part of the read
+  /// cache's key — bump it when [_prompt] or the parsing changes, so figures
+  /// cached under the old one are not served as the new prompt's.
+  static const String cacheVersion = 'fig1';
+
+  /// Output budget for the merged read ([analyzeWithText]). Its `verbatim_text`
+  /// field doubles as the page's OCR, so a dense slide needs all of this and
+  /// tightening it would clip real text.
+  static const int mergedReadTokens = 1024;
+
+  /// Output budget for the figure-only read ([analyze]), which is an optional
+  /// enhancement: a few hundred tokens of JSON for a typical chart or diagram.
+  /// Lower than [mergedReadTokens] so a runaway reply holds the model for less
+  /// time; a reply too long to fit is cut mid-object, parses to nothing, and so
+  /// costs only the figure.
+  static const int figureReadTokens = 768;
+
   /// The on-device VLM. Always tried first.
   final ImageTranscriber _local;
 
@@ -160,7 +177,7 @@ Read the real values, labels and relationships off the image — precision matte
         imageBytes,
         prompt: _prompt,
         temperature: 0.0,
-        maxOutputTokens: 1024,
+        maxOutputTokens: mergedReadTokens,
       );
     } on AiModelNotReadyException {
       rethrow;
@@ -236,7 +253,7 @@ Read the real values, labels and relationships off the image — precision matte
         // Deterministic: this is an extraction task, and sampling mostly buys
         // malformed JSON.
         temperature: 0.0,
-        maxOutputTokens: 1024,
+        maxOutputTokens: figureReadTokens,
       );
     } on AiModelNotReadyException {
       rethrow;

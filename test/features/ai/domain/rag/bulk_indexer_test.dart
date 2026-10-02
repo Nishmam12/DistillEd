@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/features/ai/domain/ai_exception.dart';
+import 'package:inkflow/features/ai/domain/device_state.dart';
 import 'package:inkflow/features/ai/domain/rag/bulk_indexer.dart';
 import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
 import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
@@ -38,6 +39,45 @@ class _AxisEmbedder implements TextEmbedder {
   Future<List<List<double>>> embedAll(List<String> texts,
           {required EmbedTaskType taskType}) async =>
       [for (final t in texts) await embedOne(t, taskType: taskType)];
+}
+
+/// Logs each page it embeds as `embed:<first word's page id>` — the text starts
+/// with nothing page-specific, so it identifies pages by the order they arrive.
+class _LoggingEmbedder implements TextEmbedder {
+  _LoggingEmbedder(this.events, {this.missing = false});
+
+  final List<String> events;
+  final bool missing;
+
+  @override
+  final String modelId = 'fake-v1';
+
+  @override
+  final int dimensions = 3;
+
+  /// Page ids by the text they were given, so the log can name them.
+  static const _ids = {
+    'Mitosis': 10,
+    'Meiosis': 11,
+    'Cytokinesis': 12,
+    'page': 0,
+  };
+
+  @override
+  Future<List<List<double>>> embedAll(List<String> texts,
+      {required EmbedTaskType taskType}) async {
+    if (missing) throw const AiModelNotReadyException('embedding model missing');
+    for (final text in texts) {
+      final first = text.trim().split(RegExp(r'\s+')).first;
+      events.add('embed:${_ids[first] ?? first}');
+    }
+    return [for (final _ in texts) const [1.0, 0.0, 0.0]];
+  }
+
+  @override
+  Future<List<double>> embedOne(String text,
+          {required EmbedTaskType taskType}) async =>
+      (await embedAll([text], taskType: taskType)).first;
 }
 
 /// In-memory chunk storage with the same replace-by-page semantics as Isar.
@@ -246,6 +286,311 @@ void main() {
       );
 
       expect(hits, isEmpty);
+    });
+  });
+
+  group('batched by model — all the vision work, then all the embedding', () {
+    // One log shared by the reader, the embedder and the release hook, so the
+    // ORDER of work is what gets asserted — which is the whole point: a 40-page
+    // import used to alternate Gemma and the embedder page by page.
+    ({
+      BulkRagIndexer bulk,
+      List<String> events,
+      List<(int, int, String)> saved,
+    }) logged(
+      Map<int, String> pageText, {
+      bool batch = true,
+      bool embedderReady = true,
+      Set<int> unreadable = const {},
+      Set<int> modelMissingOnRead = const {},
+      bool embedderMissing = false,
+    }) {
+      final events = <String>[];
+      final saved = <(int, int, String)>[];
+      final store = _MemoryStore();
+      final embedder = _LoggingEmbedder(events, missing: embedderMissing);
+      final indexer = RagIndexer(
+        embedder: embedder,
+        saveChunks: store.save,
+        deleteChunks: store.delete,
+        indexStateOf: store.stateOf,
+      );
+      final bulk = BulkRagIndexer(
+        indexer: indexer,
+        batchByModel: batch,
+        readPage: (pageId) async {
+          events.add('read:$pageId');
+          if (modelMissingOnRead.contains(pageId)) {
+            throw const AiModelNotReadyException('vision model missing');
+          }
+          if (unreadable.contains(pageId)) throw StateError('unreadable');
+          return pageText[pageId] ?? '';
+        },
+        embedderReady: () async {
+          events.add('ready?');
+          return embedderReady;
+        },
+        releaseVisionModel: () async => events.add('release'),
+        onPageRead: (notebookId, pageId, text) async =>
+            saved.add((notebookId, pageId, text)),
+      );
+      return (bulk: bulk, events: events, saved: saved);
+    }
+
+    final pages = {
+      10: 'Mitosis splits one nucleus into two.',
+      11: 'Meiosis halves the chromosome number.',
+      12: 'Cytokinesis divides the cytoplasm.',
+    };
+
+    test('every page is read before any is embedded, Gemma released between',
+        () async {
+      final b = logged(pages);
+
+      final report = await b.bulk.indexPages(notebookId: 1, pageIds: [10, 11, 12]);
+
+      expect(report.indexed, 3);
+      expect(b.events, [
+        'ready?',
+        'read:10', 'read:11', 'read:12',
+        'release',
+        'embed:10', 'embed:11', 'embed:12',
+      ]);
+    });
+
+    test('a missing search model stops before a single expensive read',
+        () async {
+      // Reading 40 pages with the vision model only to find the embedder is not
+      // downloaded would throw all of that work away.
+      final b = logged(pages, embedderReady: false);
+
+      final report = await b.bulk.indexPages(notebookId: 1, pageIds: [10, 11, 12]);
+
+      expect(report.stoppedModelNotReady, isTrue);
+      expect(report.pagesTouched, 0);
+      expect(b.events, ['ready?'], reason: 'no read, no release, no embed');
+    });
+
+    test('each page\'s text is saved as it is read — before any embedding',
+        () async {
+      // So search works for a page the moment it has been read, and keeps
+      // working for someone who has never downloaded the embedding model.
+      final b = logged(pages, embedderMissing: true);
+
+      final report = await b.bulk.indexPages(notebookId: 1, pageIds: [10, 11, 12]);
+
+      expect(report.stoppedModelNotReady, isTrue);
+      expect(b.saved, [
+        (1, 10, pages[10]!),
+        (1, 11, pages[11]!),
+        (1, 12, pages[12]!),
+      ]);
+    });
+
+    test('the vision model is not released when nothing was read', () async {
+      final b = logged(pages, unreadable: {10, 11, 12});
+
+      final report = await b.bulk.indexPages(notebookId: 1, pageIds: [10, 11, 12]);
+
+      expect(report.failedPageIds, [10, 11, 12]);
+      expect(b.events, isNot(contains('release')));
+    });
+
+    test('an unreadable page is skipped; the rest are still embedded', () async {
+      final b = logged(pages, unreadable: {11});
+
+      final report = await b.bulk.indexPages(notebookId: 1, pageIds: [10, 11, 12]);
+
+      expect(report.indexed, 2);
+      expect(report.failedPageIds, [11]);
+      expect(b.events.where((e) => e.startsWith('embed')), ['embed:10', 'embed:12']);
+    });
+
+    test('a model missing partway through the reads still embeds what was read',
+        () async {
+      final b = logged(pages, modelMissingOnRead: {12});
+
+      final report = await b.bulk.indexPages(notebookId: 1, pageIds: [10, 11, 12]);
+
+      expect(report.stoppedModelNotReady, isTrue);
+      expect(report.indexed, 2, reason: 'pages 10 and 11 were read first');
+    });
+
+    test('cancelling during the reads still embeds the pages already read',
+        () async {
+      final b = logged(pages);
+      var polls = 0;
+
+      final report = await b.bulk.indexPages(
+        notebookId: 1,
+        pageIds: [10, 11, 12],
+        isCancelled: () => polls++ >= 2, // page 10 and 11 read, then cancel
+      );
+
+      // Cancel means stop reading — the expensive part — not throw away pages
+      // that are already read and cost almost nothing to embed.
+      expect(report.indexed, 2);
+      expect(b.events.where((e) => e.startsWith('read:')), ['read:10', 'read:11']);
+    });
+
+    test('cancelling during the embedding stops it at the next page', () async {
+      final b = logged(pages);
+      var polls = 0;
+      // Three reads poll three times (no cancel); the embedding then cancels.
+      final report = await b.bulk.indexPages(
+        notebookId: 1,
+        pageIds: [10, 11, 12],
+        isCancelled: () => polls++ >= 4,
+      );
+
+      expect(report.indexed, lessThan(3));
+      expect(report.indexed, greaterThan(0));
+    });
+
+    test('progress reports the reading, then the indexing', () async {
+      final b = logged(pages);
+      final seen = <(BulkIndexPhase, int, int)>[];
+
+      await b.bulk.indexPages(
+        notebookId: 1,
+        pageIds: [10, 11, 12],
+        onProgress: (p) => seen.add((p.phase, p.pagesDone, p.pagesTotal)),
+      );
+
+      expect(seen, [
+        (BulkIndexPhase.reading, 0, 3),
+        (BulkIndexPhase.reading, 1, 3),
+        (BulkIndexPhase.reading, 2, 3),
+        (BulkIndexPhase.reading, 3, 3),
+        (BulkIndexPhase.indexing, 0, 3),
+        (BulkIndexPhase.indexing, 1, 3),
+        (BulkIndexPhase.indexing, 2, 3),
+        (BulkIndexPhase.indexing, 3, 3),
+      ]);
+    });
+
+    test('with batching off, pages go through one at a time as before',
+        () async {
+      final b = logged(pages, batch: false);
+
+      await b.bulk.indexPages(notebookId: 1, pageIds: [10, 11]);
+
+      expect(b.events, [
+        'read:10', 'embed:10',
+        'read:11', 'embed:11',
+      ], reason: 'no pre-check, no release, no batching');
+      expect(b.saved, isEmpty);
+    });
+  });
+
+  group('waiting for a hot or low-battery device', () {
+    // Sustained inference on a tablet throttles: a read that takes 2 s cold can
+    // take far longer after ten minutes of indexing, and a phone on 10% battery
+    // should not be spending it on a background job.
+    BulkRagIndexer gated(
+      List<String> events,
+      PauseReason? Function() reason, {
+      bool batch = true,
+    }) {
+      final store = _MemoryStore();
+      return BulkRagIndexer(
+        batchByModel: batch,
+        indexer: RagIndexer(
+          embedder: _LoggingEmbedder(events),
+          saveChunks: store.save,
+          deleteChunks: store.delete,
+          indexStateOf: store.stateOf,
+        ),
+        readPage: (id) async {
+          events.add('read:$id');
+          return 'Mitosis splits one nucleus into two.';
+        },
+        pauseReason: () async => reason(),
+        pollInterval: const Duration(milliseconds: 5),
+      );
+    }
+
+    test('waits while the device is hot, then carries on', () async {
+      final events = <String>[];
+      PauseReason? now = PauseReason.hot;
+      final bulk = gated(events, () => now);
+
+      final run = bulk.indexPages(notebookId: 1, pageIds: [10, 11]);
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(events, isEmpty, reason: 'nothing may be read while it is hot');
+
+      now = null; // it has cooled
+      final report = await run;
+
+      expect(report.indexed, 2);
+      expect(events.where((e) => e.startsWith('read:')), ['read:10', 'read:11']);
+    });
+
+    test('says why it is waiting, so the UI can tell the student', () async {
+      final events = <String>[];
+      PauseReason? now = PauseReason.lowBattery;
+      final seen = <PauseReason?>[];
+      final bulk = gated(events, () => now);
+
+      final run = bulk.indexPages(
+        notebookId: 1,
+        pageIds: [10],
+        onProgress: (p) => seen.add(p.paused),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      now = null;
+      await run;
+
+      expect(seen, contains(PauseReason.lowBattery));
+      expect(seen.last, isNull, reason: 'the final report is not a paused one');
+    });
+
+    test('is checked before EVERY read, not just the first', () async {
+      final events = <String>[];
+      final clock = Stopwatch()..start();
+      // Cool for the first read; hot for the next 50 ms once one page is read.
+      PauseReason? check() {
+        final reads = events.where((e) => e.startsWith('read:')).length;
+        return reads == 1 && clock.elapsedMilliseconds < 50
+            ? PauseReason.hot
+            : null;
+      }
+
+      final report = await gated(events, check)
+          .indexPages(notebookId: 1, pageIds: [10, 11]);
+
+      expect(report.indexed, 2);
+      expect(clock.elapsedMilliseconds, greaterThanOrEqualTo(45),
+          reason: 'the second read waited out the pause');
+    });
+
+    test('a cancel ends the wait instead of waiting for ever', () async {
+      final events = <String>[];
+      final bulk = gated(events, () => PauseReason.hot); // never cools
+      var polls = 0;
+
+      final report = await bulk.indexPages(
+        notebookId: 1,
+        pageIds: [10, 11],
+        isCancelled: () => polls++ >= 3,
+      );
+
+      expect(events, isEmpty);
+      expect(report.pagesTouched, 0);
+    });
+
+    test('the one-at-a-time loop waits too', () async {
+      final events = <String>[];
+      PauseReason? now = PauseReason.hot;
+      final bulk = gated(events, () => now, batch: false);
+
+      final run = bulk.indexPages(notebookId: 1, pageIds: [10]);
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      expect(events, isEmpty);
+
+      now = null;
+      await run;
+      expect(events, contains('read:10'));
     });
   });
 }

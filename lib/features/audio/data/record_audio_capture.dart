@@ -2,6 +2,7 @@
 //
 // The only file in the feature that knows which recording plugin is in use.
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:record/record.dart';
 
 import '../domain/audio_ports.dart';
@@ -28,15 +29,26 @@ class RecordAudioCapture implements AudioCapturePort {
   @override
   Future<bool> ensurePermission() => _recorder.hasPermission();
 
-  @override
-  Future<void> start(String absolutePath) async {
-    try {
-      await _recorder.start(
+  /// What to ask the plugin for to record in [format].
+  @visibleForTesting
+  static RecordConfig configFor(AudioFormat format) => switch (format) {
         // AAC in an m4a container: small, and playable by just_audio on every
         // target without a codec dependency.
-        const RecordConfig(encoder: AudioEncoder.aacLc),
-        path: absolutePath,
-      );
+        AudioFormat.aac => const RecordConfig(encoder: AudioEncoder.aacLc),
+        // What the speech models take as they are — 16 kHz mono 16-bit — so
+        // nothing has to decode or resample it later. just_audio plays WAV too.
+        AudioFormat.speechWav => const RecordConfig(
+            encoder: AudioEncoder.wav,
+            sampleRate: 16000,
+            numChannels: 1,
+          ),
+      };
+
+  @override
+  Future<void> start(String absolutePath,
+      {AudioFormat format = AudioFormat.aac}) async {
+    try {
+      await _recorder.start(configFor(format), path: absolutePath);
     } on Exception catch (e) {
       throw AudioUnavailableException('Could not start recording: $e');
     }

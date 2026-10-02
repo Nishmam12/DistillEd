@@ -19,11 +19,18 @@ const _spec = EmbedderSpec(
   needsAuth: true,
 );
 
+/// Long enough that a test never sees an unload it didn't ask for.
+const _longIdle = Duration(minutes: 5);
+
 class _FakeSession implements EmbeddingSession {
   _FakeSession({this.vectorsFor, this.throws});
 
   final List<List<double>> Function(List<String> texts)? vectorsFor;
   final Object? throws;
+
+  /// When set, [close] begins (flipping [closed]) but does not finish until
+  /// this completes — a model that takes a while to tear down.
+  Completer<void>? closeGate;
 
   var closed = false;
   final calls = <({List<String> texts, EmbedTaskType taskType})>[];
@@ -42,7 +49,10 @@ class _FakeSession implements EmbeddingSession {
   }
 
   @override
-  Future<void> close() async => closed = true;
+  Future<void> close() async {
+    closed = true;
+    await closeGate?.future;
+  }
 }
 
 class _FakeRuntime implements EmbeddingRuntime {
@@ -75,14 +85,121 @@ void main() {
     expect(runtime.openCount, 0, reason: 'loading 175 MB to embed nothing');
   });
 
-  test('the model is unloaded after a successful batch', () async {
-    final session = _FakeSession();
-    final embedder =
-        LocalTextEmbedder(spec: _spec, runtime: _FakeRuntime(session: session));
+  group('residency', () {
+    test('the model stays loaded after a batch and the next call reuses it',
+        () async {
+      final session = _FakeSession();
+      final runtime = _FakeRuntime(session: session);
+      final embedder = LocalTextEmbedder(
+          spec: _spec, runtime: runtime, idleUnloadDelay: _longIdle);
 
-    await embedder.embedAll(['a', 'b'], taskType: EmbedTaskType.document);
+      await embedder.embedAll(['a', 'b'], taskType: EmbedTaskType.document);
+      await embedder.embedOne('q', taskType: EmbedTaskType.query);
 
-    expect(session.closed, isTrue);
+      // One load for the whole burst — the point of holding a ~175 MB model:
+      // every question and every page of a bulk index used to pay its own.
+      expect(runtime.openCount, 1);
+      expect(session.closed, isFalse);
+      expect(session.calls, hasLength(2));
+      await embedder.release();
+    });
+
+    test('the model unloads once the embedder has been idle for the delay',
+        () async {
+      final session = _FakeSession();
+      final embedder = LocalTextEmbedder(
+          spec: _spec,
+          runtime: _FakeRuntime(session: session),
+          idleUnloadDelay: const Duration(milliseconds: 40));
+
+      await embedder.embedAll(['a'], taskType: EmbedTaskType.document);
+      expect(session.closed, isFalse, reason: 'still resident right after');
+
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(session.closed, isTrue);
+    });
+
+    test('a call inside the idle window postpones the unload', () async {
+      final session = _FakeSession();
+      final embedder = LocalTextEmbedder(
+          spec: _spec,
+          runtime: _FakeRuntime(session: session),
+          idleUnloadDelay: const Duration(milliseconds: 120));
+
+      await embedder.embedAll(['a'], taskType: EmbedTaskType.document);
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await embedder.embedAll(['b'], taskType: EmbedTaskType.document);
+      // 160 ms after the first call: its timer would have fired at 120 ms, but
+      // the second call re-armed it, so the model must still be loaded.
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(session.closed, isFalse);
+
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(session.closed, isTrue);
+    });
+
+    test('release() unloads now, and a later call loads again', () async {
+      final session = _FakeSession();
+      final runtime = _FakeRuntime(session: session);
+      final embedder = LocalTextEmbedder(
+          spec: _spec, runtime: runtime, idleUnloadDelay: _longIdle);
+
+      await embedder.embedAll(['a'], taskType: EmbedTaskType.document);
+      await embedder.release();
+      expect(session.closed, isTrue);
+
+      await embedder.embedAll(['b'], taskType: EmbedTaskType.document);
+      expect(runtime.openCount, 2);
+      await embedder.release();
+    });
+
+    test('a call that arrives while the idle unload is closing waits for it',
+        () async {
+      final closeGate = Completer<void>();
+      final session = _FakeSession()..closeGate = closeGate;
+      final runtime = _FakeRuntime(session: session);
+      final embedder = LocalTextEmbedder(
+          spec: _spec,
+          runtime: runtime,
+          idleUnloadDelay: const Duration(milliseconds: 30));
+
+      await embedder.embedAll(['a'], taskType: EmbedTaskType.document);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(session.closed, isTrue, reason: 'the idle unload has begun');
+
+      final second =
+          embedder.embedAll(['b'], taskType: EmbedTaskType.document);
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      // The plugin hands back its cached instance until the old one finishes
+      // closing, so loading now would wrap a model that is mid-teardown.
+      expect(runtime.openCount, 1);
+
+      closeGate.complete();
+      await second;
+      expect(runtime.openCount, 2);
+      await embedder.release();
+    });
+
+    test('a failed batch unloads at once and the next call opens afresh',
+        () async {
+      final bad = _FakeSession(throws: StateError('native boom'));
+      final runtime = _FakeRuntime(session: bad);
+      final embedder = LocalTextEmbedder(
+          spec: _spec, runtime: runtime, idleUnloadDelay: _longIdle);
+
+      await expectLater(
+        embedder.embedAll(['a'], taskType: EmbedTaskType.document),
+        throwsA(isA<AiGenerationException>()),
+      );
+      // A session that just crashed is not kept warm for the next caller.
+      expect(bad.closed, isTrue);
+
+      await expectLater(
+        embedder.embedAll(['b'], taskType: EmbedTaskType.document),
+        throwsA(isA<AiGenerationException>()),
+      );
+      expect(runtime.openCount, 2);
+    });
   });
 
   test('the model is unloaded even when embedding fails', () async {
@@ -172,18 +289,21 @@ void main() {
 
   test('concurrent calls never load two models at once', () async {
     final runtime = _FakeRuntime()..gate = Completer<void>();
-    final embedder = LocalTextEmbedder(spec: _spec, runtime: runtime);
+    final embedder = LocalTextEmbedder(
+        spec: _spec, runtime: runtime, idleUnloadDelay: _longIdle);
 
     final first = embedder.embedAll(['a'], taskType: EmbedTaskType.document);
     final second = embedder.embedAll(['b'], taskType: EmbedTaskType.document);
     await Future<void>.delayed(Duration.zero);
 
     expect(runtime.openCount, 1,
-        reason: 'the second call must wait for the first to unload');
+        reason: 'the second call must wait for the first, not open its own');
 
     runtime.gate!.complete();
     await Future.wait([first, second]);
-    expect(runtime.openCount, 2);
+    // ...and once it runs it reuses the model the first call loaded.
+    expect(runtime.openCount, 1);
+    await embedder.release();
   });
 
   test('modelId and dimensions come from the spec', () {

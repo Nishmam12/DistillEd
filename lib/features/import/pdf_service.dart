@@ -6,6 +6,7 @@ import 'package:pdfx/pdfx.dart';
 
 import '../../core/constants/storage_paths.dart';
 import '../../data/migration/legacy_models/imported_content.dart';
+import 'pdf_text_layer.dart';
 
 class ImportException implements Exception {
   final String message;
@@ -24,7 +25,12 @@ class _PdfRenderPayload {
 }
 
 class PDFService {
-  PDFService();
+  /// [textLayers] keeps each page's own text beside its image so reading the page
+  /// later needs no OCR (see `pdf_text_layer.dart`); tests pass a fake.
+  PDFService({PdfTextLayerWriter? textLayers})
+      : _textLayers = textLayers ?? PdfTextLayerWriter(PdfiumTextSource());
+
+  final PdfTextLayerWriter _textLayers;
 
   /// Renders all pages of a PDF and creates an ImportedContent for each page.
   /// Runs inside a background isolate to prevent UI thread blocking.
@@ -40,7 +46,15 @@ class PDFService {
     final payload = _PdfRenderPayload(token, filePath, notebookId, docsDir);
     
     // Spawn background isolate
-    return await compute(_renderPdfIsolate, payload);
+    final pages = await compute(_renderPdfIsolate, payload);
+
+    // The text PDFium can read off each page, kept beside its image. It never
+    // fails the import: a PDF it cannot read is simply read as pictures.
+    await _textLayers.write(
+      pdfPath: filePath,
+      pageImagePaths: [for (final p in pages) '$docsDir/${p.relativeImagePath}'],
+    );
+    return pages;
   }
 }
 

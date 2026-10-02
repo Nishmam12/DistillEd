@@ -38,6 +38,16 @@ dependencies:
   # ── PDF Rendering (Phase 4) ──────────────────────────────
   pdfx: ^2.6.0
 
+  # ── PDF text layer (docs/AI_PIPELINE_PLAN.md, item 8) ────
+  #    Most lecture slides and papers already contain real text; PDFium reads it
+  #    out exactly, so only pages without any (scans) need OCR or a vision
+  #    model. pdfx has no text API, hence a second PDF engine. Used ONLY to read
+  #    text — pdfx still renders — which keeps the change out of the page-image
+  #    path. pdfium_flutter is the Flutter packaging of PDFium (Android binaries
+  #    arrive through Dart native assets at build time). Needs Flutter >= 3.47.
+  pdfrx_engine: ^0.6.1
+  pdfium_flutter: ^0.3.1
+
   # ── Image Import (Phase 4) ───────────────────────────────
   image_picker: ^1.1.2
   image: ^4.2.0
@@ -54,16 +64,23 @@ dependencies:
   # ── AI (ported from main's summarize feature — see AI_PROGRESS.md
   #    and ai_prompts/INTEGRATION_ROADMAP.md for justifications).
   #    flutter_gemma pinned exact: the 1.x API is still moving.
-  # PINNED below latest: 0.15.0 migrated the Android side from Java to Kotlin
-  # and broke it — the Dart MethodChannel name ('..._recognizer') no longer
-  # matches what the native Kotlin plugin registers ('..._recognition'), so
-  # EVERY call (isModelDownloaded, recognize, etc.) throws
-  # MissingPluginException on Android. Confirmed via source inspection
-  # 2026-07-18; not yet fixed upstream. Re-check for a fixed release before
-  # bumping past 0.14.2.
-  google_mlkit_digital_ink_recognition: 0.14.2
-  flutter_gemma: 1.3.0
-  flutter_gemma_litertlm: 1.1.0
+  # Held at 0.14.2 until 0.16.0: the 0.15.0 Java→Kotlin migration made the Dart
+  # MethodChannel name disagree with the one the native plugin registered, so
+  # every call threw MissingPluginException on Android. 0.16.0 fixed it (Dart
+  # and Kotlin now both say 'google_mlkit_digital_ink_recognizer' — verified in
+  # the 0.16.1 sources) and 0.16.1 moves to google_mlkit_commons ^0.13.0, which
+  # text recognition and entity extraction below share. Needs Dart ^3.12 /
+  # Flutter >=3.44. Re-run the handwriting checks on a device after bumping.
+  google_mlkit_digital_ink_recognition: ^0.16.1
+  # 1.3.0 → 1.11.3 (docs/AI_PIPELINE_PLAN.md, item 19), the three packages in
+  # lockstep. Brings speech-to-text (flutter_gemma_speech, below), a per-encoder
+  # backend (the vision encoder now defaults to the CPU, so the app asks for the
+  # GPU explicitly — see FlutterGemmaRuntime), and activationDataType. Since 1.9.0
+  # FlutterGemma.initialize must be given the embedding tokenizers.
+  flutter_gemma: 1.11.3
+  flutter_gemma_litertlm: 1.8.5
+  # Whisper / Moonshine on the same LiteRT runtime — lecture transcripts (item 14).
+  flutter_gemma_speech: 0.5.2
   crypto: ^3.0.7
   shared_preferences: ^2.5.5
 
@@ -75,7 +92,7 @@ dependencies:
   #    EmbeddingGemma 300M on the same LiteRT+FFI stack as the LLM above, so
   #    there is no second native inference runtime. NOT flutter_gemma_embedder
   #    (singular) — that package is DISCONTINUED.
-  flutter_gemma_embeddings: 1.0.2
+  flutter_gemma_embeddings: 2.2.1
 
   # ── Flashcard → Anki .apkg export ────────────────────────
   #    sqlite3 builds the Anki collection DB via native assets (no prebuilt
@@ -86,14 +103,20 @@ dependencies:
 
   # ── OCR for imported PDFs / photos ───────────────────────
   #    Image text recognition, as opposed to the stroke-based digital-ink
-  #    recognition above. Held at 0.15.x deliberately: 0.16.0 needs
-  #    google_mlkit_commons ^0.12.0, which cannot co-resolve with the pinned
-  #    digital-ink 0.14.2 (commons ^0.11.0). 0.15.1 is also still the Java
-  #    generation of the plugin, so it does NOT carry the Kotlin-migration
-  #    MethodChannel mismatch that broke digital-ink 0.15.0 — verified
-  #    2026-07-21: Dart and Android both use 'google_mlkit_text_recognizer'.
-  #    Bumping past 0.15.x means unpinning digital ink first.
-  google_mlkit_text_recognition: ^0.15.1
+  #    recognition above. Moves with digital ink: both need
+  #    google_mlkit_commons ^0.13.0, so they only resolve as a pair. Dart and
+  #    Android both use 'google_mlkit_text_recognizer' (verified in 0.17.1).
+  google_mlkit_text_recognition: ^0.17.1
+
+  # ── Document scanner, entity extraction, language ID ─────
+  #    Three more on-device ML Kit pieces (docs/AI_PIPELINE_PLAN.md items 15,
+  #    16, 18). The scanner is Android-only and runs inside Google Play
+  #    services (no camera permission, ~no app size); entity extraction finds
+  #    the dates in notes for the Study Planner and downloads a small model on
+  #    first use; language ID ships its model inside the library.
+  google_mlkit_document_scanner: ^0.6.1
+  google_mlkit_entity_extraction: ^0.17.1
+  google_mlkit_language_id: ^0.15.1
 
   # ── Lecture audio recorded alongside ink (Tier 4.12) ─────
   #    Split deliberately: `record` captures, `just_audio` plays and seeks.

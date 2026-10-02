@@ -33,6 +33,88 @@ void main() {
     });
   });
 
+  group('lecture transcripts', () {
+    test('are off by default — recordings stay small unless asked', () async {
+      expect((await _restored()).state.transcribeLectures, isFalse);
+    });
+
+    test('are written to prefs', () async {
+      final notifier = await _restored();
+
+      await notifier.setTranscribeLectures(true);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('ai.transcribeLectures'), isTrue);
+      expect(notifier.state.transcribeLectures, isTrue);
+    });
+
+    test('survive a relaunch', () async {
+      SharedPreferences.setMockInitialValues({'ai.transcribeLectures': true});
+
+      expect((await _restored()).state.transcribeLectures, isTrue);
+    });
+
+    test('can be switched off again, and stay off', () async {
+      SharedPreferences.setMockInitialValues({'ai.transcribeLectures': true});
+      final notifier = await _restored();
+
+      await notifier.setTranscribeLectures(false);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('ai.transcribeLectures'), isFalse);
+      expect((await _restored()).state.transcribeLectures, isFalse);
+    });
+  });
+
+  group('ink gestures', () {
+    test('are off by default — nothing the student draws changes unasked',
+        () async {
+      final state = (await _restored()).state;
+
+      expect(state.snapShapes, isFalse);
+      expect(state.scribbleErase, isFalse);
+    });
+
+    test('are written to prefs, each under its own key', () async {
+      final notifier = await _restored();
+
+      await notifier.setSnapShapes(true);
+      await notifier.setScribbleErase(true);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('ui.snapShapes'), isTrue);
+      expect(prefs.getBool('ui.scribbleErase'), isTrue);
+    });
+
+    test('are independent: one on leaves the other off', () async {
+      final notifier = await _restored();
+
+      await notifier.setSnapShapes(true);
+
+      expect(notifier.state.snapShapes, isTrue);
+      expect(notifier.state.scribbleErase, isFalse);
+    });
+
+    test('survive a relaunch', () async {
+      SharedPreferences.setMockInitialValues(
+          {'ui.snapShapes': true, 'ui.scribbleErase': true});
+
+      final state = (await _restored()).state;
+
+      expect(state.snapShapes, isTrue);
+      expect(state.scribbleErase, isTrue);
+    });
+
+    test('can be switched off again', () async {
+      SharedPreferences.setMockInitialValues({'ui.scribbleErase': true});
+      final notifier = await _restored();
+
+      await notifier.setScribbleErase(false);
+
+      expect((await _restored()).state.scribbleErase, isFalse);
+    });
+  });
+
   group('theme mode', () {
     test('is written to prefs by name, not by ordinal', () async {
       final notifier = await _restored();

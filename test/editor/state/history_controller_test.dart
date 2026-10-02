@@ -67,4 +67,31 @@ void main() {
     h.push(AddElementsCommand([_el('b', 0)]));
     expect(h.state.canRedo, false);
   });
+
+  test('replace command swaps elements in ONE step, and undo brings them back',
+      () {
+    final ctl = _controller()..setAll([_el('stroke', 3), _el('other', 1)]);
+    final h = HistoryController(ctl);
+    const shape = SceneShapeElement(
+      id: 'shape',
+      zOrder: 3,
+      shapeType: ShapeType.rectangle,
+      geometryData: [0, 0, 10, 10],
+      color: 0xFF000000,
+      strokeWidth: 1,
+    );
+
+    h.push(ReplaceElementsCommand(
+      removed: [ctl.state.firstWhere((e) => e.id == 'stroke')],
+      added: [shape],
+    ));
+    expect(ctl.state.map((e) => e.id).toSet(), {'shape', 'other'});
+
+    h.undo();
+    expect(ctl.state.map((e) => e.id).toSet(), {'stroke', 'other'},
+        reason: 'one undo restores the freehand stroke');
+
+    h.redo();
+    expect(ctl.state.map((e) => e.id).toSet(), {'shape', 'other'});
+  });
 }

@@ -84,6 +84,59 @@ ModelDownloadManager _manager(_FakeInstaller installer) => ModelDownloadManager(
 Future<void> _settle() => Future<void>.delayed(Duration.zero);
 
 void main() {
+  group('free-space check', () {
+    // 100 MiB download + 300 MiB engine load cache.
+    const spec = LlmModelSpec(
+      displayName: 'Fake Gemma',
+      filename: 'fake.litertlm',
+      downloadUrl: 'https://example.com/fake.litertlm',
+      approxSizeBytes: 100 * 1024 * 1024,
+      approxLoadCacheBytes: 300 * 1024 * 1024,
+      modelType: ModelType.gemma4,
+      fileType: ModelFileType.litertlm,
+      maxTokens: 1024,
+    );
+    const mib = 1024 * 1024;
+
+    ModelDownloadManager withFree(_FakeInstaller installer, int free) =>
+        ModelDownloadManager(
+            spec: spec, installer: installer, storage: _FakeStorage(free));
+
+    test('counts the engine load cache, not just the download', () async {
+      // Room for the file and the safety margin — the old check passed this —
+      // but not for the weight cache LiteRT-LM writes on first load, which
+      // would then fail at the first question instead of at the download.
+      final installer = _FakeInstaller();
+      final manager =
+          withFree(installer, 100 * mib + ModelDownloadManager.storageMarginBytes);
+
+      await expectLater(
+        manager.download(),
+        throwsA(isA<InsufficientStorageException>()
+            .having((e) => e.requiredBytes, 'requiredBytes',
+                400 * mib + ModelDownloadManager.storageMarginBytes)
+            .having((e) => e.availableBytes, 'availableBytes',
+                100 * mib + ModelDownloadManager.storageMarginBytes)),
+      );
+      expect(installer.installCount, 0, reason: 'nothing may start');
+      manager.dispose();
+    });
+
+    test('starts when file, cache and margin all fit', () async {
+      final installer = _FakeInstaller();
+      final manager =
+          withFree(installer, 400 * mib + ModelDownloadManager.storageMarginBytes);
+
+      final download = manager.download();
+      await _settle();
+      expect(installer.isRunning, isTrue);
+
+      installer.finish();
+      await download;
+      manager.dispose();
+    });
+  });
+
   test('currentPercent is null before the first tick', () {
     final manager = _manager(_FakeInstaller());
     expect(manager.currentPercent, isNull);

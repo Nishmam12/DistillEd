@@ -42,6 +42,24 @@
 @import google_mlkit_digital_ink_recognition;
 #endif
 
+#if __has_include(<google_mlkit_document_scanner/GoogleMlKitDocumentScannerPlugin.h>)
+#import <google_mlkit_document_scanner/GoogleMlKitDocumentScannerPlugin.h>
+#else
+@import google_mlkit_document_scanner;
+#endif
+
+#if __has_include(<google_mlkit_entity_extraction/GoogleMlKitEntityExtractionPlugin.h>)
+#import <google_mlkit_entity_extraction/GoogleMlKitEntityExtractionPlugin.h>
+#else
+@import google_mlkit_entity_extraction;
+#endif
+
+#if __has_include(<google_mlkit_language_id/GoogleMlKitLanguageIdPlugin.h>)
+#import <google_mlkit_language_id/GoogleMlKitLanguageIdPlugin.h>
+#else
+@import google_mlkit_language_id;
+#endif
+
 #if __has_include(<google_mlkit_text_recognition/GoogleMlKitTextRecognitionPlugin.h>)
 #import <google_mlkit_text_recognition/GoogleMlKitTextRecognitionPlugin.h>
 #else
@@ -76,6 +94,12 @@
 #import <package_info_plus/FPPPackageInfoPlusPlugin.h>
 #else
 @import package_info_plus;
+#endif
+
+#if __has_include(<pdfium_flutter/PDFiumFlutterPlugin.h>)
+#import <pdfium_flutter/PDFiumFlutterPlugin.h>
+#else
+@import pdfium_flutter;
 #endif
 
 #if __has_include(<pdfx/PdfxPlugin.h>)
@@ -123,12 +147,16 @@
   [FlutterGemmaPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterGemmaPlugin"]];
   [GoogleMlKitCommonsPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitCommonsPlugin"]];
   [GoogleMlKitDigitalInkRecognitionPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitDigitalInkRecognitionPlugin"]];
+  [GoogleMlKitDocumentScannerPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitDocumentScannerPlugin"]];
+  [GoogleMlKitEntityExtractionPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitEntityExtractionPlugin"]];
+  [GoogleMlKitLanguageIdPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitLanguageIdPlugin"]];
   [GoogleMlKitTextRecognitionPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitTextRecognitionPlugin"]];
   [FLTImagePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTImagePickerPlugin"]];
   [IsarFlutterLibsPlugin registerWithRegistrar:[registry registrarForPlugin:@"IsarFlutterLibsPlugin"]];
   [JustAudioPlugin registerWithRegistrar:[registry registrarForPlugin:@"JustAudioPlugin"]];
   [LargeFileHandlerPlugin registerWithRegistrar:[registry registrarForPlugin:@"LargeFileHandlerPlugin"]];
   [FPPPackageInfoPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPPackageInfoPlusPlugin"]];
+  [PDFiumFlutterPlugin registerWithRegistrar:[registry registrarForPlugin:@"PDFiumFlutterPlugin"]];
   [PdfxPlugin registerWithRegistrar:[registry registrarForPlugin:@"PdfxPlugin"]];
   [PrintingPlugin registerWithRegistrar:[registry registrarForPlugin:@"PrintingPlugin"]];
   [RecordPlugin registerWithRegistrar:[registry registrarForPlugin:@"RecordPlugin"]];

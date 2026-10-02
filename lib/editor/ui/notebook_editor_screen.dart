@@ -27,9 +27,13 @@ import '../../features/ai/presentation/notebook_index_notifier.dart';
 import '../../features/ai/presentation/sidebar/ai_sidebar.dart';
 import '../../domain/model/template_type.dart';
 import '../../features/import/pdf_service.dart' show ImportException;
+import '../../features/audio/presentation/lecture_transcript_sheet.dart';
+import '../../features/audio/presentation/lecture_transcription_notifier.dart';
 import '../../features/audio/presentation/recording_notifier.dart';
+import '../../features/audio/presentation/transcription_providers.dart';
 import '../../features/search/presentation/note_search_sheet.dart';
 import '../import/fit_image_rect.dart';
+import '../import/ml_kit_document_scanner.dart';
 import '../import/scene_import_service.dart';
 import '../state/page_notifier.dart';
 import '../../features/home/data/repositories/note_repository.dart';
@@ -124,7 +128,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// same microsecond.
   int _noteSeq = 0;
 
-  final SceneImportService _import = SceneImportService();
+  final SceneImportService _import =
+      SceneImportService(scanner: MlKitDocumentScanner());
 
   @override
   void initState() {
@@ -357,6 +362,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// the drawing area.
   void _toggleAiPanel(ScenePageKey key) {
     final wide = MediaQuery.of(context).size.width >= kAiSidebarBreakpoint;
+    // Opening the panel is the first sign the student means to use the model, and
+    // the page read that follows needs it: start the load now so it overlaps the
+    // panel opening and the first debounce instead of following them. Closing
+    // the panel (wide only — the sheet closes itself) warms nothing.
+    if (!wide || !_aiPanelOpen) ref.read(localModelWarmerProvider)();
     if (wide) {
       setState(() => _aiPanelOpen = !_aiPanelOpen);
     } else {
@@ -471,9 +481,17 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
               title: const Text('Photo library'),
               onTap: () => Navigator.of(context).pop(_ImportSource.gallery),
             ),
+            // Where the device has a document scanner the camera entry is that:
+            // it straightens and cleans the page, and everything that reads the
+            // image afterwards works from a better picture.
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Camera'),
+              leading: Icon(_import.canScan
+                  ? Icons.document_scanner_outlined
+                  : Icons.photo_camera_outlined),
+              title: Text(_import.canScan ? 'Scan document' : 'Camera'),
+              subtitle: _import.canScan
+                  ? const Text('Straightens and cleans up the page')
+                  : null,
               onTap: () => Navigator.of(context).pop(_ImportSource.camera),
             ),
             ListTile(
@@ -493,7 +511,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
         case _ImportSource.gallery:
           await _importPhoto(key, ImageSource.gallery);
         case _ImportSource.camera:
-          await _importPhoto(key, ImageSource.camera);
+          await _importCapture(key);
         case _ImportSource.pdf:
           await _importPdf();
       }
@@ -505,7 +523,26 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   Future<void> _importPhoto(ScenePageKey key, ImageSource source) async {
     final imported = await _import.importPhoto(source, '${widget.notebookId}');
     if (imported == null || !mounted) return;
+    await _placePhoto(key, imported);
+  }
 
+  /// The camera entry: a document scan where the device has a scanner, a plain
+  /// photo where it doesn't. One page is placed like any photo; several become a
+  /// page each, grouped like a PDF so "the whole scan" can be named as a scope.
+  Future<void> _importCapture(ScenePageKey key) async {
+    final captured = await _import.importCapture('${widget.notebookId}');
+    if (captured.isEmpty || !mounted) return;
+    if (captured.length == 1) {
+      await _placePhoto(key, captured.single);
+    } else {
+      await _addImportedPages(captured,
+          sourceName: SceneImportService.scanSourceName(DateTime.now()));
+    }
+  }
+
+  /// Asks where one picture goes — onto this page, or a page of its own — and
+  /// puts it there.
+  Future<void> _placePhoto(ScenePageKey key, ImportedImage imported) async {
     final asPage = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -551,12 +588,19 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       return;
     }
 
+    await _addImportedPages(pages,
+        sourceName: SceneImportService.importSourceNameOf(path));
+  }
+
+  /// Appends one page per image of a multi-page import (a PDF, a scan) and
+  /// starts reading the whole document for search.
+  Future<void> _addImportedPages(List<ImportedImage> pages,
+      {required String sourceName}) async {
     // One id for the whole document, stamped on every page it becomes. This is
     // what later lets "the whole PDF" be a scope the AI features can name —
     // without it, a 40-page import is just 40 loose pages (see
     // features/ai/domain/ai_scope.dart).
     final groupId = SceneImportService.newImportGroupId();
-    final sourceName = SceneImportService.importSourceNameOf(path);
     final repository = ref.read(pageRepositoryProvider);
     final createdPageIds = <int>[];
 
@@ -977,10 +1021,19 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref
-        .read(recordingNotifierProvider(widget.notebookId).notifier)
-        .loadForPage(widget.pageId));
+    _loadRecordings();
   }
+
+  @override
+  void didUpdateWidget(_RecordButton old) {
+    super.didUpdateWidget(old);
+    // Another page: its recordings are the ones to offer a transcript for.
+    if (old.pageId != widget.pageId) _loadRecordings();
+  }
+
+  void _loadRecordings() => Future.microtask(() => ref
+      .read(recordingNotifierProvider(widget.notebookId).notifier)
+      .loadForPage(widget.pageId));
 
   @override
   Widget build(BuildContext context) {
@@ -998,17 +1051,46 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
       notifier.clearError();
     });
 
-    return IconButton(
-      tooltip: state.isRecording ? 'Stop recording' : 'Record lecture',
-      icon: Icon(
-        state.isRecording ? Icons.stop_circle : PhosphorIconsRegular.microphone,
-        color: state.isRecording ? context.ink.accentRed : null,
-      ),
-      onPressed: () => state.isRecording
-          ? notifier.stop(widget.pageId)
-          : notifier.start(widget.pageId),
+    // Say when a lecture on this page has been transcribed, or could not be.
+    ref.listen(lectureTranscriptionProvider, (previous, next) {
+      if (!mounted) return;
+      for (final notice in transcriptionNotices(
+          previous: previous, next: next, onPage: state.onPage)) {
+        _toastTranscript(notice);
+      }
+    });
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (state.onPage.isNotEmpty)
+          IconButton(
+            tooltip: 'Lecture transcripts',
+            icon: const Icon(Icons.subtitles_outlined),
+            onPressed: () => showLectureTranscripts(
+              context,
+              notebookId: widget.notebookId,
+              pageId: widget.pageId,
+            ),
+          ),
+        IconButton(
+          tooltip: state.isRecording ? 'Stop recording' : 'Record lecture',
+          icon: Icon(
+            state.isRecording
+                ? Icons.stop_circle
+                : PhosphorIconsRegular.microphone,
+            color: state.isRecording ? context.ink.accentRed : null,
+          ),
+          onPressed: () => state.isRecording
+              ? notifier.stop(widget.pageId)
+              : notifier.start(widget.pageId),
+        ),
+      ],
     );
   }
+
+  void _toastTranscript(String message) => ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(message)));
 }
 
 class _PageNavBar extends StatelessWidget {

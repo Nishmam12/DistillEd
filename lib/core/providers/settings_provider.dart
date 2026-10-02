@@ -93,7 +93,25 @@ class SettingsState {
   /// happens once per install, not once per app launch.
   final bool hasSeenFirstCloudCall;
 
-  /// BCP-47 tag for handwriting recognition ('en' or 'bn').
+  /// Hold the pen still at the end of a freehand stroke and a rectangle, ellipse,
+  /// triangle or arrow snaps to the clean shape (ML Kit's shape model, a small
+  /// download made when this is switched on). Off by default: it changes what the
+  /// student drew.
+  final bool snapShapes;
+
+  /// Scrub back and forth over something to wipe it out (ML Kit's gesture model).
+  /// Off by default, for the same reason — and because a scrub the model reads
+  /// wrongly deletes work, even though it can be undone.
+  final bool scribbleErase;
+
+  /// Record lectures for transcription: 16 kHz mono WAV (about 2 MB a minute)
+  /// instead of compressed AAC (about 0.5 MB), because the speech model reads
+  /// nothing else — and transcribe them on the device once they stop. Off by
+  /// default: it costs storage and an ~80 MB model, and not everyone wants it.
+  final bool transcribeLectures;
+
+  /// ML Kit digital-ink model for handwriting recognition: 'en', 'bn' (Bangla
+  /// script) or 'bn-Latn' (Bangla written in English letters).
   final String recognitionLanguage;
 
   /// The user's own HuggingFace access token, used to download models from
@@ -125,6 +143,9 @@ class SettingsState {
     this.cloudPrivacy = CloudPrivacy.askEachTime,
     this.hasSeenFirstCloudCall = false,
     this.recognitionLanguage = 'en',
+    this.transcribeLectures = false,
+    this.snapShapes = false,
+    this.scribbleErase = false,
     this.huggingFaceToken = '',
     this.loaded = false,
   });
@@ -148,6 +169,9 @@ class SettingsState {
     CloudPrivacy? cloudPrivacy,
     bool? hasSeenFirstCloudCall,
     String? recognitionLanguage,
+    bool? transcribeLectures,
+    bool? snapShapes,
+    bool? scribbleErase,
     String? huggingFaceToken,
     bool? loaded,
   }) {
@@ -159,6 +183,9 @@ class SettingsState {
       cloudPrivacy: cloudPrivacy ?? this.cloudPrivacy,
       hasSeenFirstCloudCall: hasSeenFirstCloudCall ?? this.hasSeenFirstCloudCall,
       recognitionLanguage: recognitionLanguage ?? this.recognitionLanguage,
+      transcribeLectures: transcribeLectures ?? this.transcribeLectures,
+      snapShapes: snapShapes ?? this.snapShapes,
+      scribbleErase: scribbleErase ?? this.scribbleErase,
       huggingFaceToken: huggingFaceToken ?? this.huggingFaceToken,
       loaded: loaded ?? this.loaded,
     );
@@ -183,6 +210,9 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kCloudPrivacy = 'ai.cloudPrivacy';
   static const _kHasSeenFirstCloudCall = 'ai.hasSeenFirstCloudCall';
   static const _kRecognitionLanguage = 'ai.recognitionLanguage';
+  static const _kTranscribeLectures = 'ai.transcribeLectures';
+  static const _kSnapShapes = 'ui.snapShapes';
+  static const _kScribbleErase = 'ui.scribbleErase';
   static const _kHuggingFaceToken = 'ai.huggingFaceToken';
 
   /// Export formats the Settings picker offers. A persisted value outside this
@@ -212,6 +242,9 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       ),
       hasSeenFirstCloudCall: prefs.getBool(_kHasSeenFirstCloudCall) ?? false,
       recognitionLanguage: prefs.getString(_kRecognitionLanguage) ?? 'en',
+      transcribeLectures: prefs.getBool(_kTranscribeLectures) ?? false,
+      snapShapes: prefs.getBool(_kSnapShapes) ?? false,
+      scribbleErase: prefs.getBool(_kScribbleErase) ?? false,
       huggingFaceToken: prefs.getString(_kHuggingFaceToken) ?? '',
       loaded: true,
     );
@@ -297,6 +330,24 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(hasSeenFirstCloudCall: true);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kHasSeenFirstCloudCall, true);
+  }
+
+  Future<void> setSnapShapes(bool value) async {
+    state = state.copyWith(snapShapes: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kSnapShapes, value);
+  }
+
+  Future<void> setScribbleErase(bool value) async {
+    state = state.copyWith(scribbleErase: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kScribbleErase, value);
+  }
+
+  Future<void> setTranscribeLectures(bool value) async {
+    state = state.copyWith(transcribeLectures: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kTranscribeLectures, value);
   }
 
   Future<void> setRecognitionLanguage(String languageCode) async {

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -89,6 +90,62 @@ void main() {
       expect(pdf, isNotNull);
       // "%PDF" header.
       expect(String.fromCharCodes(pdf!.sublist(0, 4)), '%PDF');
+    });
+  });
+
+  group('toPng maxSide — size an image to what the model will use', () {
+    // PNG stores width and height as big-endian 32-bit ints right after the
+    // 8-byte signature and the IHDR chunk header: bytes 16–19 and 20–23.
+    ({int w, int h}) size(Uint8List png) {
+      final data = ByteData.sublistView(png);
+      return (w: data.getUint32(16), h: data.getUint32(20));
+    }
+
+    const wide = <SceneElement>[
+      FreehandElement(
+        id: 'w',
+        zOrder: 0,
+        color: 0xFF000000,
+        size: 3,
+        points: [
+          StrokePoint(x: 0, y: 0, pressure: 0.5),
+          StrokePoint(x: 2000, y: 500, pressure: 0.5),
+        ],
+      ),
+    ];
+
+    testWidgets('a large scene is shrunk so its longer side fits', (tester) async {
+      await tester.runAsync(() async {
+        // 2000x500 of ink plus 24 padding a side is 2048x548 scene units, which
+        // at the default 2x is 4096x1096 pixels — far more than the vision model
+        // keeps, and all of it rendered, encoded, handed over and decoded.
+        final full = size((await SceneExporter.toPng(wide))!);
+        expect(full.w, 4096);
+
+        final capped = size((await SceneExporter.toPng(wide, maxSide: 1024))!);
+        expect(capped.w, lessThanOrEqualTo(1024));
+        expect(capped.w, greaterThan(1000), reason: 'as big as the cap allows');
+        // The shape is unchanged: 4096:1096 is 1024:274.
+        expect(capped.h, closeTo(capped.w * full.h / full.w, 2));
+      });
+    });
+
+    testWidgets('a small scene is never enlarged to reach the cap',
+        (tester) async {
+      await tester.runAsync(() async {
+        final plain = size((await SceneExporter.toPng(_scene))!);
+        final capped = size((await SceneExporter.toPng(_scene, maxSide: 4096))!);
+
+        expect(capped, plain);
+      });
+    });
+
+    testWidgets('without a cap nothing changes', (tester) async {
+      await tester.runAsync(() async {
+        final a = (await SceneExporter.toPng(_scene))!;
+        final b = (await SceneExporter.toPng(_scene, maxSide: null))!;
+        expect(size(a), size(b));
+      });
     });
   });
 

@@ -106,7 +106,11 @@ class ModelDownloadManager {
     if (cancelToken.isCancelled) throw ModelDownloadCancelledException();
 
     final free = await _storage.freeBytes();
-    final required = spec.approxSizeBytes + storageMarginBytes;
+    // The file, the engine's own load cache (written on first load, so a disk
+    // that fits only the download fails at the first question instead), and the
+    // margin.
+    final required =
+        spec.approxSizeBytes + spec.approxLoadCacheBytes + storageMarginBytes;
     if (free < required) {
       throw InsufficientStorageException(
           requiredBytes: required, availableBytes: free);

@@ -14,6 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/ink_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
+import '../../../audio/domain/transcript.dart' show lectureOffsetOf;
+import '../../../audio/presentation/recording_notifier.dart';
 import '../../data/embeddings/embedder_spec.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/ai_scope.dart';
@@ -75,6 +77,10 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
     super.initState();
     // Autofocus the box the moment the Ask surface opens.
     WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
+    // And start loading the model: the student is about to type, and the cold
+    // start (3.6–17 s on the reference tablet) overlaps that instead of
+    // following the Enter key.
+    ref.read(localModelWarmerProvider)();
   }
 
   @override
@@ -102,6 +108,11 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
         .read(askNotesNotifierProvider.notifier)
         .ask(q, notebookId: widget.notebookId, scope: scope);
   }
+
+  /// Plays the lecture a source passage was said in, from that moment.
+  void _playLecture(int pageId, String passage) => ref
+      .read(recordingNotifierProvider(widget.notebookId).notifier)
+      .playPassage(pageId: pageId, passage: passage);
 
   @override
   Widget build(BuildContext context) {
@@ -214,6 +225,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           streaming: true,
           onInsertNote: widget.onInsertNote,
           onJumpToSource: widget.onJumpToSource,
+          onPlayLecture: _playLecture,
         ),
       AskNotesAnswered(
         :final text,
@@ -227,6 +239,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           streaming: false,
           onInsertNote: widget.onInsertNote,
           onJumpToSource: widget.onJumpToSource,
+          onPlayLecture: _playLecture,
           tier: tier,
           // Offered only when the guard said a cloud run is both possible and
           // permitted — under `askEachTime` this button IS the user's consent,
@@ -274,6 +287,9 @@ class _Answer extends StatelessWidget {
   final ValueChanged<String> onInsertNote;
   final void Function(int pageId)? onJumpToSource;
 
+  /// Plays the lecture a source passage was said in.
+  final void Function(int pageId, String passage)? onPlayLecture;
+
   /// Which model produced this — drives the cloud badge / low-confidence
   /// warning above the answer.
   final AnswerTier tier;
@@ -285,6 +301,7 @@ class _Answer extends StatelessWidget {
     required this.streaming,
     required this.onInsertNote,
     required this.onJumpToSource,
+    this.onPlayLecture,
     this.tier = AnswerTier.local,
     this.onVerifyWithCloud,
   });
@@ -334,11 +351,12 @@ class _Answer extends StatelessWidget {
                       )),
                   const SizedBox(height: 8),
                   for (var i = 0; i < sources.length; i++)
-                    _SourceCard(
+                    SourceCard(
                       index: i + 1,
                       pageId: sources[i].chunk.pageId,
                       text: sources[i].chunk.text,
                       onJumpToSource: onJumpToSource,
+                      onPlayLecture: onPlayLecture,
                     ),
                 ],
               ],
@@ -410,24 +428,34 @@ class _Answer extends StatelessWidget {
 }
 
 /// One numbered source passage. The number matches the `[n]` the model cites in
-/// the answer. Tappable to jump to its page when navigation is wired.
-class _SourceCard extends StatelessWidget {
+/// the answer. Tappable to jump to its page when navigation is wired — and, when
+/// the passage was SAID in a lecture (it carries a `[m:ss]` stamp), playable from
+/// that moment.
+@visibleForTesting
+class SourceCard extends StatelessWidget {
   final int index;
   final int pageId;
   final String text;
   final void Function(int pageId)? onJumpToSource;
 
-  const _SourceCard({
+  /// Plays the lecture [text] came from. Null when there is nothing to play with.
+  final void Function(int pageId, String passage)? onPlayLecture;
+
+  const SourceCard({
+    super.key,
     required this.index,
     required this.pageId,
     required this.text,
     required this.onJumpToSource,
+    this.onPlayLecture,
   });
 
   @override
   Widget build(BuildContext context) {
     final snippet = _snippet(text);
     final jump = onJumpToSource;
+    final play = onPlayLecture;
+    final fromLecture = play != null && lectureOffsetOf(text) != null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -470,6 +498,19 @@ class _SourceCard extends StatelessWidget {
                         height: 1.4,
                         color: context.ink.textSecondary)),
               ),
+              if (fromLecture)
+                SizedBox(
+                  width: 28,
+                  height: 24,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    tooltip: 'Play this part of the lecture',
+                    iconSize: 20,
+                    icon: Icon(Icons.play_circle_outline,
+                        color: context.ink.accent),
+                    onPressed: () => play(pageId, text),
+                  ),
+                ),
               if (jump != null)
                 Padding(
                   padding: const EdgeInsets.only(left: 6, top: 2),

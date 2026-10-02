@@ -45,13 +45,23 @@ class MeaningfulnessGate {
   /// without scores are skipped; if no page has a score the rule is skipped.
   final double maxAvgScore;
 
+  /// Whether a digit makes a token count as content, like a letter does.
+  ///
+  /// Off by default: for a whole page, "real writing" means words, and a screen
+  /// of numbers is not a note worth summarising. On when judging a LINE or an OCR
+  /// reading, where `x^2 + 3x = 0` and a bare page number are plainly content and
+  /// only symbol soup (`:::::::`) should fail.
+  final bool countDigits;
+
   const MeaningfulnessGate({
     this.minWords = 10,
     this.minAlphaRatio = 0.5,
     this.maxAvgScore = 8.0,
+    this.countDigits = false,
   });
 
   static final RegExp _letter = RegExp(r'\p{L}', unicode: true);
+  static final RegExp _letterOrDigit = RegExp(r'[\p{L}\p{N}]', unicode: true);
 
   GateResult evaluate(String text, {List<double> topScores = const []}) {
     final tokens =
@@ -61,7 +71,8 @@ class MeaningfulnessGate {
       return const GateResult.fail(GateFailure.tooShort);
     }
 
-    final alphaTokens = tokens.where((t) => _letter.hasMatch(t)).length;
+    final content = countDigits ? _letterOrDigit : _letter;
+    final alphaTokens = tokens.where((t) => content.hasMatch(t)).length;
     if (alphaTokens / tokens.length < minAlphaRatio) {
       return const GateResult.fail(GateFailure.lowAlphaRatio);
     }

@@ -32,6 +32,27 @@ const int kChunkOverlapWords = 30;
 
 final RegExp _whitespace = RegExp(r'\s+');
 
+/// What a page's chunks are said to belong to when they are embedded: the
+/// notebook and, for an imported document, the document it came from.
+///
+/// EmbeddingGemma is trained on `title: … | text: …` documents, but the plugin
+/// writes that prefix itself and always says `none`, so the name has to ride at
+/// the front of the text instead. Two notebooks that both mention "enthalpy" are
+/// then told apart by which one is Chemistry and which is Thermodynamics.
+///
+/// Null when there is nothing to say, so an unnamed page embeds exactly as it
+/// did before titles existed.
+String? chunkTitle({String? notebookTitle, String? sourceName}) {
+  final notebook = notebookTitle?.trim() ?? '';
+  final source = sourceName?.trim() ?? '';
+  if (source.isEmpty) return notebook.isEmpty ? null : notebook;
+  // A document imported under its own name into a notebook of the same name is
+  // the usual case, and saying it twice would only dilute it.
+  if (notebook.isEmpty) return source;
+  if (notebook.toLowerCase() == source.toLowerCase()) return notebook;
+  return '$notebook · $source';
+}
+
 /// Where a chunk came from. Enough to link a retrieved passage back to its
 /// page for "jump to source" / "insert as note", and to re-chunk one page
 /// without touching the rest of the notebook.

@@ -10,13 +10,17 @@
 //   offline + local model not downloaded   → actionable error state
 //   online + cloud opt-in + input longer
 //     than the local budget                → cloud tier
+//   online + cloud opt-in + local model
+//     fell back to the CPU (several times
+//     slower)                              → cloud tier
 //   online, anything else                  → local
 //     (model not downloaded yet            → download-then-local)
 //
 // Input that exceeds the local budget but still routes local (cloud off,
 // offline, or cloud fallback) is truncated by the caller; [truncateForLocal]
-// signals that. Privacy invariant: the cloud route requires BOTH the user's
-// explicit opt-in and the note not fitting locally.
+// signals that. Privacy invariant: the cloud route requires the user's explicit
+// opt-in AND a reason local can't serve the request well — the note not fitting,
+// or the on-device model running on the CPU. Slow never overrides the opt-in.
 
 import 'dart:async';
 import 'dart:io';
@@ -85,12 +89,20 @@ class AiRouter {
   final Reachability _reachability;
   final Future<bool> Function() _isLocalModelInstalled;
 
+  /// Whether the on-device model has fallen back to the CPU. Read per decision,
+  /// because it is only learned when the model first loads.
+  final bool Function() _isLocalDegraded;
+
   AiRouter({
     required this.localCapabilities,
     required Future<bool> Function() isLocalModelInstalled,
     Reachability reachability = const Reachability(),
+    bool Function() isLocalDegraded = _notDegraded,
   })  : _isLocalModelInstalled = isLocalModelInstalled,
-        _reachability = reachability;
+        _reachability = reachability,
+        _isLocalDegraded = isLocalDegraded;
+
+  static bool _notDegraded() => false;
 
   /// Input budget in WORDS for a provider with [capabilities]: its context
   /// window minus the response and scaffolding reserves. Static so features
@@ -123,9 +135,10 @@ class AiRouter {
       return const RoutingDecision(AiRoute.cloud);
     }
 
-    // Privacy default: cloud only when online, explicitly enabled, AND the
-    // note doesn't fit the local budget.
-    if (online && cloudEnabled && tooLong) {
+    // Privacy default: cloud only when online, explicitly enabled, AND local
+    // can't serve it well — the note doesn't fit the budget, or the model has
+    // fallen back to the CPU and would take several times as long.
+    if (online && cloudEnabled && (tooLong || _isLocalDegraded())) {
       return const RoutingDecision(AiRoute.cloud);
     }
 

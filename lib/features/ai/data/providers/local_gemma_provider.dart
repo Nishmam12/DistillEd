@@ -15,13 +15,20 @@
 // multi-second model rebuild for each (measured 3.6s–17.2s per rebuild on a
 // Xiaomi Pad 7). Nothing stays resident once the app goes quiet.
 //
+// The model is also loaded AHEAD of need ([warmUp], when the AI panel opens or
+// the Ask box gets focus) and loaded ONCE for both text and vision calls
+// ([LlmModelSpec.shareVisionEngine]), so a deep page read — image reads, then a
+// text analysis — no longer rebuilds the whole engine at every switch.
+//
 // Failures surface as typed [AiException]s so the router/UI can branch on the
 // kind (offer the model download, route elsewhere) without string-matching.
 
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../../domain/ai_provider.dart';
+import '../../domain/compute_backend.dart';
 import '../../domain/image_transcriber.dart';
 import '../../domain/rag/text_embedder.dart';
 import '../llm/gemma_adapter.dart';
@@ -39,8 +46,27 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
   /// forever and silently block every later re-read.
   static const Duration transcribeTimeout = Duration(minutes: 3);
 
+  /// How long the model stays loaded after the last call finishes.
+  ///
+  /// Long enough to cover the gaps inside one page analysis (its calls run
+  /// back to back), short enough that an idle app is not sitting on gigabytes.
+  static const Duration defaultIdleUnloadDelay = Duration(seconds: 30);
+
+  /// Cap on a vision reply while the model is running on the CPU.
+  ///
+  /// Decoding is several times slower there, so the usual 1,024 tokens can sit
+  /// at [transcribeTimeout] and hold every call queued behind it. A reply cut at
+  /// this length loses the tail of a dense page rather than the whole read.
+  static const int slowBackendVisionTokens = 384;
+
   final LlmModelSpec spec;
   final LlmRuntime _runtime;
+  final Duration idleUnloadDelay;
+
+  /// Told where the model runs, once after the first load and again if it ever
+  /// changes. The runtime only learns this from the load itself — it asks for
+  /// the GPU and the plugin falls back to the CPU without saying so.
+  final void Function(ComputeBackend backend)? onBackendChanged;
 
   /// Backs [embed]. Optional because embedding is a SEPARATE model (Phase 2's
   /// EmbeddingGemma) that a caller may not have wired: without it this provider
@@ -51,6 +77,8 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
     this.spec = LlmModelSpec.active,
     LlmRuntime? runtime,
     TextEmbedder? embedder,
+    this.idleUnloadDelay = defaultIdleUnloadDelay,
+    this.onBackendChanged,
   })  : _runtime = runtime ?? FlutterGemmaRuntime(),
         _embedder = embedder;
 
@@ -58,11 +86,27 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
   /// whole stream so the load→generate lifecycle never overlaps.
   Future<void> _lock = Future.value();
 
-  /// How long the model stays loaded after the last call finishes.
+  /// Runs [body] holding the mutex, for the non-streaming operations. (The
+  /// streaming ones hold it across their `yield*`, so they take it inline.)
+  /// Runs [job] while this provider holds its lock, so it never overlaps a
+  /// generation, a load or an unload — for other on-device AI that must not share
+  /// the device with Gemma (speech-to-text for lecture transcripts). Does NOT load
+  /// the model: it only keeps Gemma out while [job] runs.
   ///
-  /// Long enough to cover the gaps inside one page analysis (its calls run
-  /// back to back), short enough that an idle app is not sitting on gigabytes.
-  static const Duration idleUnloadDelay = Duration(seconds: 30);
+  /// Hold it briefly: everything that wants the model waits behind it.
+  Future<T> exclusive<T>(Future<T> Function() job) => _withLock(job);
+
+  Future<T> _withLock<T>(Future<T> Function() body) async {
+    final previous = _lock;
+    final gate = Completer<void>();
+    _lock = gate.future;
+    await previous;
+    try {
+      return await body();
+    } finally {
+      gate.complete();
+    }
+  }
 
   Timer? _idleUnload;
 
@@ -78,19 +122,80 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
     _idleUnload?.cancel();
     _idleUnload = Timer(idleUnloadDelay, () {
       _idleUnload = null;
+      // Takes the mutex like any other call: a call arriving while the release
+      // is in flight must wait for it, because the plugin hands back its cached
+      // instance until the old one has finished closing — and opening in that
+      // window would wrap a model that is mid-teardown.
+      //
       // Fire-and-forget: an unload failure is not something a caller can act
       // on, and the next open() rebuilds regardless.
-      unawaited(_runtime.releaseModel().catchError((Object _) {}));
+      unawaited(_withLock(() async {
+        // A call that got the lock first re-armed the timer; its window applies.
+        if (_idleUnload != null) return;
+        await _runtime.releaseModel().catchError((Object _) {});
+      }));
     });
   }
 
   /// Unloads the model now, without waiting for the idle timer.
   ///
   /// For callers that know no further generation is coming (app backgrounded,
-  /// AI surfaces disposed) and want the memory back immediately.
-  Future<void> releaseModel() async {
+  /// AI surfaces disposed, a bulk read just finished and an embedding pass is
+  /// next) and want the memory back immediately. Waits for any call in flight
+  /// rather than closing the model under it.
+  Future<void> releaseModel() {
     _cancelIdleUnload();
-    await _runtime.releaseModel();
+    return _withLock(_runtime.releaseModel);
+  }
+
+  /// Loads the model in the background, ahead of the first call.
+  ///
+  /// A cold load costs 3.6–17 s on the reference tablet, which the user would
+  /// otherwise spend watching a spinner; calling this when they show intent —
+  /// the AI panel opens, the Ask box gets focus — moves most of it behind their
+  /// own reading and typing time. Loads the configuration every call will ask
+  /// for and then closes the throwaway session, leaving the model resident and
+  /// the idle timer armed, so an unused warm-up still gives the memory back.
+  ///
+  /// Best effort and never throws: a model that is not downloaded, or a load
+  /// that fails, is reported properly when something actually needs it.
+  Future<void> warmUp() => _withLock(() async {
+        try {
+          final session = await _runtime.open(
+            spec: spec,
+            temperature: 0.0,
+            topK: 1,
+            topP: 1.0,
+            supportImage: spec.shareVisionEngine,
+          );
+          _reportBackend();
+          await session.close();
+          // Only a load that succeeded leaves anything resident to give back,
+          // so only then is there a timer to arm — and arming replaces any
+          // pending one, so the model gets a fresh window from now.
+          _armIdleUnload();
+        } catch (_) {
+          // Advisory by design — see above. A failure leaves whatever timer was
+          // already pending untouched.
+        }
+      });
+
+  /// Where the model last loaded ran, or null before the first load.
+  ComputeBackend? get backend => _runtime.activeBackend;
+
+  ComputeBackend? _reportedBackend;
+
+  void _reportBackend() {
+    final now = _runtime.activeBackend;
+    if (now == null || now == _reportedBackend) return;
+    _reportedBackend = now;
+    try {
+      onBackendChanged?.call(now);
+    } catch (_) {
+      // The listener is the app's, not ours. Being told where the model runs
+      // must never be able to fail the read that happened to be reporting it —
+      // least of all by skipping the code that closes its session.
+    }
   }
 
   @override
@@ -146,18 +251,15 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
     // model, so they must never overlap (two 2.4 GB loads would OOM). A
     // transcription in flight makes a concurrent Summarize wait, and vice
     // versa — serialized, never parallel.
-    final previous = _lock;
-    final gate = Completer<void>();
-    _lock = gate.future;
-    await previous;
-    _cancelIdleUnload();
-    try {
-      return await _transcribe(
-          imageBytes, prompt, temperature, maxOutputTokens, randomSeed);
-    } finally {
-      _armIdleUnload();
-      gate.complete();
-    }
+    return _withLock(() async {
+      _cancelIdleUnload();
+      try {
+        return await _transcribe(
+            imageBytes, prompt, temperature, maxOutputTokens, randomSeed);
+      } finally {
+        _armIdleUnload();
+      }
+    });
   }
 
   Future<String> _transcribe(
@@ -176,12 +278,17 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
         // Gemma's conventional top-k so a retry can escape a bad greedy path.
         topK: temperature == 0.0 ? 1 : 40,
         topP: 0.95,
-        maxOutputTokens: maxOutputTokens,
+        // Judged on what the LAST load reported, so the very first read after
+        // the app starts — before the backend is known — runs uncapped.
+        maxOutputTokens: backend?.isSlow == true
+            ? math.min(maxOutputTokens, slowBackendVisionTokens)
+            : maxOutputTokens,
         // Carries the caller's seed so a re-read samples differently; null lets
         // the runtime use its fixed default (fine for the deterministic pass).
         randomSeed: randomSeed,
         supportImage: true,
       );
+      _reportBackend();
     } on LlmNotReadyException catch (e) {
       throw AiModelNotReadyException(
         'The on-device model is not downloaded yet.',
@@ -230,7 +337,11 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
         maxOutputTokens: opts.maxTokens,
         systemInstruction: systemPrompt,
         randomSeed: opts.seed,
+        // The same configuration vision asks for, so alternating between the
+        // two never rebuilds the engine — see [LlmModelSpec.shareVisionEngine].
+        supportImage: spec.shareVisionEngine,
       );
+      _reportBackend();
     } on LlmNotReadyException catch (e) {
       throw AiModelNotReadyException(
         'The on-device model is not downloaded yet.',

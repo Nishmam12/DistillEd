@@ -42,6 +42,31 @@ void main() {
       expect(good.passed, isTrue);
     });
 
+    group('digits as content', () {
+      // A page-level "is this real writing" gate is right to count letters only:
+      // a screen of numbers is not a note worth summarising. A line reading is a
+      // different question — `x^2 + 3x = 0` is plainly content, and a bare page
+      // number is too — so the gate can be told to count digits.
+      const strict = MeaningfulnessGate(minWords: 1, minAlphaRatio: 0.5);
+      const lenient = MeaningfulnessGate(
+          minWords: 1, minAlphaRatio: 0.5, countDigits: true);
+
+      test('by default digits do not count (the existing behaviour)', () {
+        expect(strict.evaluate('x^2 + 3x = 0').passed, isFalse);
+        expect(strict.evaluate('42').passed, isFalse);
+      });
+
+      test('when asked, maths and numbers are content', () {
+        expect(lenient.evaluate('x^2 + 3x = 0').passed, isTrue);
+        expect(lenient.evaluate('42').passed, isTrue);
+      });
+
+      test('symbol soup is still rejected either way', () {
+        expect(lenient.evaluate(':::::::::').passed, isFalse);
+        expect(lenient.evaluate(r'### $$$ %%%').passed, isFalse);
+      });
+    });
+
     test('score rule is skipped when no scores are available', () {
       const text =
           'these ten recognized words look fine and no scores were reported at all';

@@ -6,6 +6,9 @@
 // and the installer builds one internally from what we pass it. Two types with
 // one name would force an aliased import at every call site.
 
+import 'package:flutter_gemma/flutter_gemma.dart'
+    show EmbeddingModelSpec, ModelSource;
+
 /// Identity, source, and shape of the embedding model.
 class EmbedderSpec {
   final String displayName;
@@ -14,8 +17,12 @@ class EmbedderSpec {
   ///
   /// Includes the sequence length because switching it changes results even
   /// though the weights are identical: a chunk that was truncated at seq256
-  /// embeds differently once seq512 can see all of it. Changing this string is
-  /// what invalidates an index (see [TextEmbedder.modelId]).
+  /// embeds differently once seq512 can see all of it. The same goes for what is
+  /// fed in — the `-titled` suffix marks vectors built from `<notebook title>`
+  /// + passage, which are not comparable with the bare-passage vectors before
+  /// them. Changing this string is what invalidates an index: old chunks stop
+  /// being ranked and each page is re-embedded the next time it is seen (see
+  /// [TextEmbedder.modelId]).
   final String modelId;
 
   final String modelUrl;
@@ -50,7 +57,17 @@ class EmbedderSpec {
   /// symptom would be an "installed" model that never resolves.
   String get modelFilename => _basename(modelUrl);
 
-  String get tokenizerFilename => _basename(tokenizerUrl);
+  /// The tokenizer's id, which is NOT its bare filename: since flutter_gemma 1.5
+  /// it is filed as `<model>__<file>` (two embedding models both ship a
+  /// `sentencepiece.model`), and the plugin migrates an older install to that on
+  /// start. Asked of the plugin's own spec — the one its installer records from —
+  /// so it cannot drift; a hand-built `sentencepiece.model` reads "not installed"
+  /// for a model that is on the disk.
+  String get tokenizerFilename => EmbeddingModelSpec(
+        name: modelFilename,
+        modelSource: ModelSource.network(modelUrl),
+        tokenizerSource: ModelSource.network(tokenizerUrl),
+      ).files[1].filename;
 
   static String _basename(String url) => Uri.parse(url).pathSegments.last;
 
@@ -94,7 +111,7 @@ class EmbedderSpec {
   ///   at runtime per device. Revisit only with profiling numbers.
   static const EmbedderSpec embeddingGemma300m = EmbedderSpec(
     displayName: 'EmbeddingGemma 300M',
-    modelId: 'embeddinggemma-300m-seq512',
+    modelId: 'embeddinggemma-300m-seq512-titled',
     modelUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/'
         'resolve/main/embeddinggemma-300M_seq512_mixed-precision.tflite',
     tokenizerUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/'

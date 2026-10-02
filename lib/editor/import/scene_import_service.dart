@@ -27,6 +27,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/constants/storage_paths.dart';
 import '../../features/import/pdf_service.dart';
+import 'document_scanner_port.dart';
 import 'png_size.dart';
 
 /// One imported picture, ready to be turned into an [ImageElement] once the
@@ -51,10 +52,26 @@ const int kMaxImportedImageEdge = 2048;
 class SceneImportService {
   final PDFService _pdf;
   final ImagePicker _picker;
+  final DocumentScannerPort? _scanner;
+  final Future<String> Function() _documentsDir;
 
-  SceneImportService({PDFService? pdf, ImagePicker? picker})
-      : _pdf = pdf ?? PDFService(),
-        _picker = picker ?? ImagePicker();
+  /// [scanner] is optional: without one (or on a device that can't scan) the
+  /// camera entry is a plain photo. [documentsDir] exists so tests need no
+  /// platform channel.
+  SceneImportService({
+    PDFService? pdf,
+    ImagePicker? picker,
+    DocumentScannerPort? scanner,
+    Future<String> Function()? documentsDir,
+  })  : _pdf = pdf ?? PDFService(),
+        _picker = picker ?? ImagePicker(),
+        _scanner = scanner,
+        _documentsDir = documentsDir ??
+            (() async => (await getApplicationDocumentsDirectory()).path);
+
+  /// Whether the camera entry opens the document scanner rather than the plain
+  /// camera — what the import sheet labels itself from.
+  bool get canScan => _scanner?.isSupported ?? false;
 
   /// Lets the user choose a PDF. Null when they cancel.
   Future<String?> pickPdfPath() async {
@@ -89,7 +106,7 @@ class SceneImportService {
   Future<List<ImportedImage>> importPdf(
       String filePath, String notebookId) async {
     final pages = await _pdf.renderAll(filePath, notebookId);
-    final docsDir = (await getApplicationDocumentsDirectory()).path;
+    final docsDir = await _documentsDir();
 
     final out = <ImportedImage>[];
     for (final page in pages) {
@@ -116,7 +133,7 @@ class SceneImportService {
     final id = DateTime.now().microsecondsSinceEpoch.toString();
     final relativePath =
         StoragePaths.getFreeImageCacheRelativePath(notebookId, id);
-    final docsDir = (await getApplicationDocumentsDirectory()).path;
+    final docsDir = await _documentsDir();
 
     final size = await compute(
       _compressAndSave,
@@ -131,6 +148,69 @@ class SceneImportService {
       pixelSize: size,
       description: picked.name,
     );
+  }
+
+  /// What the camera entry does: scan a document where the device can, take a
+  /// plain photo where it can't — or where the scanner failed to start, so a
+  /// missing Google Play service never leaves the user with no camera at all.
+  /// Empty when the user backs out of either.
+  Future<List<ImportedImage>> importCapture(String notebookId) async {
+    if (canScan) {
+      try {
+        return await importScan(notebookId);
+      } on ScanUnavailableException {
+        // Fall through to the plain camera.
+      }
+    }
+    final photo = await importPhoto(ImageSource.camera, notebookId);
+    return photo == null ? const [] : [photo];
+  }
+
+  /// Runs the document scanner and stores each scanned page the way a photo is
+  /// stored (downscaled, re-encoded, off the main thread). Empty when the user
+  /// backs out.
+  ///
+  /// Throws [ScanUnavailableException] when there is no scanner or it cannot
+  /// start, and [ImportException] when a scanned page cannot be decoded.
+  Future<List<ImportedImage>> importScan(String notebookId) async {
+    final scanner = _scanner;
+    if (scanner == null) throw const ScanUnavailableException('no scanner');
+
+    final paths = await scanner.scan();
+    if (paths.isEmpty) return const [];
+
+    final docsDir = await _documentsDir();
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final out = <ImportedImage>[];
+    for (var i = 0; i < paths.length; i++) {
+      final relativePath =
+          StoragePaths.getFreeImageCacheRelativePath(notebookId, '${stamp}_$i');
+      final size = await compute(
+        _compressAndSave,
+        (source: paths[i], destination: '$docsDir/$relativePath'),
+      );
+      if (size == null) {
+        throw const ImportException('That scan could not be read.');
+      }
+      out.add((
+        relativePath: relativePath,
+        pixelSize: size,
+        description: 'Scanned page ${i + 1}',
+      ));
+    }
+    return out;
+  }
+
+  /// The name a multi-page scan goes by in the scope menu — the scan has no file
+  /// name, so it is named by when it was taken ("Scan 2 Oct, 09:05").
+  static String scanSourceName(DateTime when) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    String two(int n) => n.toString().padLeft(2, '0');
+    return 'Scan ${when.day} ${months[when.month - 1]}, '
+        '${two(when.hour)}:${two(when.minute)}';
   }
 
   /// Reads a cached page's dimensions from its PNG header. [Size.zero] when the

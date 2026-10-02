@@ -19,7 +19,12 @@ android {
         applicationId = "com.inkflow.inkflow"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // 26, not Flutter's default of 24: ML Kit entity extraction (study-planner
+        // dates, docs/AI_PIPELINE_PLAN.md item 16) declares minSdk 26, and forcing
+        // it onto an API 24/25 device would crash at runtime rather than degrade.
+        // Android 8.0 is also well below any phone that can hold the on-device
+        // model.
+        minSdk = maxOf(flutter.minSdkVersion, 26)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

@@ -6,14 +6,26 @@
 // touch a plugin, so swapping the audio package (or running with none at all)
 // changes nothing else.
 
+/// How a recording is encoded.
+enum AudioFormat {
+  /// Compressed AAC in an m4a container: small (about half a megabyte a
+  /// minute), playable everywhere, and unreadable to the speech models.
+  aac,
+
+  /// 16 kHz mono 16-bit WAV — exactly what the speech models take, so a lecture
+  /// can be transcribed. About two megabytes a minute.
+  speechWav,
+}
+
 /// Captures microphone audio to a file.
 abstract class AudioCapturePort {
   /// Whether the app may record. Implementations prompt if they must.
   Future<bool> ensurePermission();
 
-  /// Begins writing to [absolutePath]. Throws [AudioUnavailableException] when
-  /// the device or permission will not allow it.
-  Future<void> start(String absolutePath);
+  /// Begins writing to [absolutePath] in [format]. Throws
+  /// [AudioUnavailableException] when the device or permission will not allow it.
+  Future<void> start(String absolutePath,
+      {AudioFormat format = AudioFormat.aac});
 
   /// Stops and returns the finished length in milliseconds.
   Future<int> stop();

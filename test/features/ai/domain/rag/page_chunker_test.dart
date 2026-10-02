@@ -125,4 +125,31 @@ void main() {
     const ratio = kChunkOverlapWords / kChunkWords;
     expect(ratio, inInclusiveRange(0.10, 0.15));
   });
+
+  group('chunkTitle', () {
+    test('names the notebook and the imported document it came from', () {
+      expect(
+        chunkTitle(notebookTitle: 'Organic Chemistry', sourceName: 'lecture3.pdf'),
+        'Organic Chemistry · lecture3.pdf',
+      );
+    });
+
+    test('a hand-written page is named by its notebook alone', () {
+      expect(chunkTitle(notebookTitle: 'Organic Chemistry'), 'Organic Chemistry');
+    });
+
+    test('a document with the same name as its notebook is not said twice', () {
+      // Importing "lecture3.pdf" into a notebook that has the same title is the
+      // common case, and "lecture3.pdf · lecture3.pdf" would only dilute it.
+      expect(
+        chunkTitle(notebookTitle: 'Lecture3.pdf', sourceName: ' lecture3.pdf '),
+        'Lecture3.pdf',
+      );
+    });
+
+    test('nothing usable gives no title, rather than an empty prefix', () {
+      expect(chunkTitle(), isNull);
+      expect(chunkTitle(notebookTitle: '  ', sourceName: ''), isNull);
+    });
+  });
 }

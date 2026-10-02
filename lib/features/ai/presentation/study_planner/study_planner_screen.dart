@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/ink_colors.dart';
+import '../../domain/study_planner/note_deadlines.dart';
 import '../../domain/study_planner/study_plan.dart';
 import '../ai_providers.dart';
 
@@ -135,6 +136,11 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
                 ? 'Pick your exam date'
                 : 'Exam: ${_formatDate(_examDate!)}'),
           ),
+          _NoteDates(
+            notebookId: widget.notebookId,
+            chosen: _examDate,
+            onChoose: (date) => setState(() => _examDate = date),
+          ),
         ],
         const SizedBox(height: 24),
         FilledButton(
@@ -147,6 +153,143 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
               style: TextStyle(color: context.ink.textOnAccent, fontSize: 15)),
         ),
       ],
+    );
+  }
+}
+
+/// "Find dates in my notes": looks through the notebook's text for quiz and exam
+/// dates and offers each as the exam date, so the countdown can fill itself in.
+///
+/// Nothing runs until the student asks — the first lookup downloads a small
+/// on-device model, which should be something they chose.
+class _NoteDates extends ConsumerStatefulWidget {
+  final int notebookId;
+
+  /// The exam date currently chosen, to mark the matching suggestion.
+  final DateTime? chosen;
+  final ValueChanged<DateTime> onChoose;
+  const _NoteDates({
+    required this.notebookId,
+    required this.chosen,
+    required this.onChoose,
+  });
+
+  @override
+  ConsumerState<_NoteDates> createState() => _NoteDatesState();
+}
+
+class _NoteDatesState extends ConsumerState<_NoteDates> {
+  bool _asked = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_asked) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: () => setState(() => _asked = true),
+          icon: const Icon(Icons.search, size: 18),
+          label: const Text('Find dates in my notes'),
+        ),
+      );
+    }
+
+    final found = ref.watch(noteDeadlinesProvider(widget.notebookId));
+    return found.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (e, _) => _NoteDatesMessage(
+        text: e is DateFinderUnavailable
+            ? "Couldn't load the date model. It downloads once, so connect to "
+                'the internet and try again.'
+            : "Couldn't look through your notes.",
+        onRetry: () => ref.invalidate(noteDeadlinesProvider(widget.notebookId)),
+      ),
+      data: (deadlines) => deadlines.isEmpty
+          ? const _NoteDatesMessage(
+              text: 'No upcoming quiz or exam dates found in your notes.')
+          : Column(
+              children: [
+                for (final d in deadlines)
+                  _DeadlineTile(
+                    deadline: d,
+                    selected: widget.chosen != null &&
+                        DateUtils.isSameDay(widget.chosen, d.date),
+                    onTap: () => widget.onChoose(d.date),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+class _NoteDatesMessage extends StatelessWidget {
+  final String text;
+  final VoidCallback? onRetry;
+  const _NoteDatesMessage({required this.text, this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        children: [
+          Text(text,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: context.ink.textSecondary)),
+          if (onRetry != null)
+            TextButton(onPressed: onRetry, child: const Text('Try again')),
+        ],
+      ),
+    );
+  }
+}
+
+/// One date found in the notes: what the line said, and the day it means.
+class _DeadlineTile extends StatelessWidget {
+  final NoteDeadline deadline;
+  final bool selected;
+  final VoidCallback onTap;
+  const _DeadlineTile({
+    required this.deadline,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? context.ink.accentWash : context.ink.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? context.ink.accent : context.ink.border,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(deadline.label,
+                  style: TextStyle(
+                      fontSize: 14, color: context.ink.textPrimary)),
+              const SizedBox(height: 2),
+              Text(_formatDate(deadline.date),
+                  style: TextStyle(
+                      fontSize: 12, color: context.ink.textSecondary)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

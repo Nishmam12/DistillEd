@@ -234,4 +234,41 @@ void main() {
       expect(vector, [1.0, 2.0, 3.0]);
     });
   });
+
+  group('IntelligentRouter — a degraded local model', () {
+    IntelligentRouter degraded(bool online) => IntelligentRouter(
+          localCapabilities: _localCapabilities,
+          reachability: _FakeReachability(online),
+          localDegraded: () => true,
+        );
+
+    test('short text goes to the cloud when privacy allows and online',
+        () async {
+      final target = await degraded(true).decide(
+        task: TaskType.explain,
+        inputWordCount: 50,
+        privacy: CloudPrivacy.askEachTime,
+      );
+      expect(target, isA<RouteCloud>());
+      expect((target as RouteCloud).tier, CloudTier.mid);
+    });
+
+    test('local-only privacy keeps it local', () async {
+      final target = await degraded(true).decide(
+        task: TaskType.explain,
+        inputWordCount: 50,
+        privacy: CloudPrivacy.localOnly,
+      );
+      expect(target, isA<RouteLocal>());
+    });
+
+    test('offline keeps it local', () async {
+      final target = await degraded(false).decide(
+        task: TaskType.explain,
+        inputWordCount: 50,
+        privacy: CloudPrivacy.allowCloudForNonSensitive,
+      );
+      expect(target, isA<RouteLocal>());
+    });
+  });
 }
