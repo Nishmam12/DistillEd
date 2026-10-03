@@ -15,6 +15,12 @@ import '../../domain/services/frame_service.dart';
 import 'freehand_path.dart';
 import 'scene_element_painter.dart';
 
+/// Eraser outlines, built once per stroke. Pen strokes were already cached
+/// (see `SceneElementPainter`); eraser strokes were rebuilt — a full
+/// perfect_freehand pass each — on EVERY repaint of the page, which is every
+/// stroke added to it.
+final Expando<Path> _eraserCache = Expando<Path>();
+
 class SceneStaticLayer extends CustomPainter {
   final List<SceneElement> elements;
   final Set<String> hiddenIds;
@@ -67,8 +73,12 @@ class SceneStaticLayer extends CustomPainter {
   }
 
   void _erase(Canvas canvas, FreehandElement e) {
-    final path = FreehandPath.build(e.points, e.size, isComplete: true);
-    if (path == null) return;
+    var path = _eraserCache[e];
+    if (path == null) {
+      path = FreehandPath.build(e.points, e.size, isComplete: true);
+      if (path == null) return;
+      _eraserCache[e] = path;
+    }
     canvas.drawPath(
       path,
       Paint()

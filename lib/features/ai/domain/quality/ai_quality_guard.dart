@@ -229,14 +229,34 @@ class AiQualityGuard {
   }) async {
     final buffer = StringBuffer();
     onPartial?.call('');
+    // A token arrives every ~150 ms on the device, and each partial rebuilds the
+    // whole answer view (re-laying-out the text and every formula in it) and
+    // copies the text so far. Coalescing to ~12 updates a second reads the same
+    // to the eye and leaves the frame budget to the UI thread.
+    final clock = Stopwatch()..start();
+    var lastEmitMs = -partialIntervalMs;
+    var unsent = false;
     await for (final chunk in provider.generate(
       prompt: prompt,
       systemPrompt: systemPrompt,
       options: options,
     )) {
       buffer.write(chunk);
-      onPartial?.call(buffer.toString());
+      if (onPartial == null) continue;
+      if (clock.elapsedMilliseconds - lastEmitMs >= partialIntervalMs) {
+        onPartial(buffer.toString());
+        lastEmitMs = clock.elapsedMilliseconds;
+        unsent = false;
+      } else {
+        unsent = true;
+      }
     }
+    // The tail that arrived inside the last interval must still land, or the
+    // view would end a few words short of the answer it returns.
+    if (unsent) onPartial?.call(buffer.toString());
     return buffer.toString();
   }
+
+  /// The least time between two partial updates handed to the UI.
+  static const int partialIntervalMs = 80;
 }

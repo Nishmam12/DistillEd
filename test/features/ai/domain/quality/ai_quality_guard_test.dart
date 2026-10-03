@@ -41,6 +41,24 @@ class FakeProvider implements AiProvider {
       );
 }
 
+/// Tokens arrive slower than the update interval, as they do on the device.
+class _SlowProvider extends FakeProvider {
+  _SlowProvider() : super('');
+
+  @override
+  Stream<String> generate({
+    required String prompt,
+    String? systemPrompt,
+    List<AiMessage>? history,
+    AiGenerationOptions? options,
+  }) async* {
+    for (final word in const ['one', 'two', 'three', 'four', 'five']) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      yield '$word ';
+    }
+  }
+}
+
 const _goodAnswer = 'Photosynthesis happens in the chloroplast, where the '
     'light-dependent reactions take place in the thylakoid membrane.';
 
@@ -115,6 +133,36 @@ void main() {
       expect(seen.first, '', reason: 'each attempt starts from empty');
       expect(seen.length, greaterThan(2), reason: 'streaming is preserved');
       expect(seen.last.trim(), _goodAnswer);
+    });
+  });
+
+  group('partial updates are coalesced', () {
+    test('a burst of tokens is not one UI update per token', () async {
+      final reply = List.filled(200, 'word').join(' ');
+      final seen = <String>[];
+
+      await buildGuard(local: FakeProvider(reply))
+          .run(prompt: 'q', onPartial: seen.add);
+
+      expect(seen.length, lessThan(20),
+          reason: '200 tokens must not mean 200 rebuilds of the answer view');
+      expect(seen.last.trim(), reply,
+          reason: 'the tail inside the last interval still has to arrive');
+    });
+
+    test('a slow stream still updates progressively', () async {
+      final seen = <String>[];
+
+      await AiQualityGuard(
+        local: _SlowProvider(),
+        cloudEnabled: () => false,
+        privacy: () => CloudPrivacy.localOnly,
+        isOnline: () async => false,
+      ).run(prompt: 'q', onPartial: seen.add);
+
+      expect(seen.length, greaterThanOrEqualTo(4),
+          reason: 'tokens 100 ms apart each deserve their own update');
+      expect(seen.last.trim(), 'one two three four five');
     });
   });
 
