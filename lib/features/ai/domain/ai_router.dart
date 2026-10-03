@@ -147,28 +147,31 @@ class AiRouter {
     required bool cloudEnabled,
     bool preferCloud = false,
   }) async {
-    final online = await _reachability.isOnline();
     final tooLong = inputWordCount > localInputWordBudget;
 
     // Cloud-first: the user asked for the cloud to do the work, so length is
-    // irrelevant. Still gated on [cloudEnabled] (belt and braces — the mode
-    // that sets this also permits cloud) and on actually being online: offline
-    // falls through to the local path below rather than failing the call.
-    if (online && cloudEnabled && preferCloud) {
-      return const RoutingDecision(AiRoute.cloud);
-    }
-
-    // Privacy default: cloud only when online, explicitly enabled, AND local
-    // can't serve it well — the note doesn't fit the budget, or the model has
-    // fallen back to the CPU and would take several times as long.
-    if (online && cloudEnabled && (tooLong || _isLocalDegraded())) {
+    // irrelevant. Privacy default otherwise: cloud only when explicitly enabled
+    // AND local can't serve it well — the note doesn't fit the budget, or the
+    // model has fallen back to the CPU and would take several times as long.
+    // Either way it needs a network; offline falls through to the local path
+    // below rather than failing the call.
+    //
+    // The network is only asked about when something hangs on the answer. A
+    // device that is answering locally — the common case — used to wait up to
+    // two seconds on a DNS lookup before every call, for a route it was never
+    // going to take.
+    if (cloudEnabled &&
+        (preferCloud || tooLong || _isLocalDegraded()) &&
+        await _reachability.isOnline()) {
       return const RoutingDecision(AiRoute.cloud);
     }
 
     final hasModel = await _isLocalModelInstalled();
     if (!hasModel) {
       return RoutingDecision(
-        online ? AiRoute.downloadThenLocal : AiRoute.errorOfflineNoModel,
+        await _reachability.isOnline()
+            ? AiRoute.downloadThenLocal
+            : AiRoute.errorOfflineNoModel,
       );
     }
 

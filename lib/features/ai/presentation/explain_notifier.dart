@@ -221,7 +221,7 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
     final guard = _guard;
     if (guard != null && !fromCloud) {
       return guard.run(
-        prompt: Explainer.promptFor(content),
+        prompt: Explainer.promptFor(_explainer.fit(content, mode)),
         systemPrompt: Explainer.systemPromptFor(mode),
         options: Explainer.explainOptions,
         onPartial: onPartial,

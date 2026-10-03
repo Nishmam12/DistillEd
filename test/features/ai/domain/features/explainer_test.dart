@@ -83,7 +83,8 @@ void main() {
     test('content over the context window is truncated to the local budget',
         () async {
       final provider = _ScriptedProvider(['ok']);
-      final budget = AiRouter.inputWordBudgetFor(provider.capabilities);
+      final budget = AiRouter.inputWordBudgetFor(provider.capabilities,
+          systemPrompt: Explainer.systemPromptFor(ExplainMode.beginner));
       final longContent = List.filled(budget + 200, 'word').join(' ');
 
       await Explainer(provider: provider)
@@ -99,6 +100,40 @@ void main() {
           systemPrompt: provider.lastSystemPrompt!,
         ),
       );
+    });
+
+    test('fit() cuts a passage to the same budget the stream uses', () {
+      // The quality guard sends the passage to its own provider, so it needs
+      // the cut without the stream; without it the passage went uncut.
+      final provider = _ScriptedProvider(['ok']);
+      final explainer = Explainer(provider: provider);
+      final long = List.filled(5000, 'word').join(' ');
+
+      final fitted = explainer.fit(long, ExplainMode.beginner);
+
+      final words = RegExp(r'\bword\b').allMatches(fitted).length;
+      expect(words, lessThan(5000));
+      expect(
+          words,
+          AiRouter.inputWordBudgetFor(provider.capabilities,
+              systemPrompt: Explainer.systemPromptFor(ExplainMode.beginner)));
+    });
+
+    test('the system prompt plus the fitted passage fits the window', () {
+      final provider = _ScriptedProvider(['ok']);
+      final explainer = Explainer(provider: provider);
+
+      for (final mode in ExplainMode.values) {
+        final fitted = explainer.fit(List.filled(5000, 'word').join(' '), mode);
+        final promptTokens = (Explainer.systemPromptFor(mode).length /
+                    AiRouter.charsPerToken)
+                .ceil() +
+            (fitted.split(' ').length * AiRouter.tokensPerWord).ceil();
+        expect(
+            promptTokens + AiRouter.responseReserveTokens,
+            lessThanOrEqualTo(provider.capabilities.contextWindowTokens),
+            reason: '$mode would overrun the context window');
+      }
     });
 
     test('every mode has a distinct, non-empty system prompt', () {

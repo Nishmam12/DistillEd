@@ -20,6 +20,8 @@ class MargoApp extends ConsumerWidget {
     // settings edits (the HuggingFace token, say) don't rebuild the whole app.
     final themeMode = ref.watch(settingsProvider.select((s) => s.themeMode));
     final devMode = ref.watch(settingsProvider.select((s) => s.devMode));
+    // Frees the on-device models when the app is backgrounded or memory is short.
+    ref.watch(modelMemoryObserverProvider);
 
     ref.read(modelLifecycleReleaserProvider);
     ref.read(embedderRolloutResumeProvider); // starts/resumes an embedder switch

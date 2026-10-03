@@ -40,6 +40,7 @@ import '../data/ocr/image_text_recognition_service.dart';
 import '../data/ocr/isar_read_cache.dart';
 import '../data/providers/cloud_gateway_provider.dart';
 import '../data/providers/local_gemma_provider.dart';
+import 'model_memory_observer.dart';
 import '../data/embeddings/embedder_adapter.dart' show embedderInstallerFor;
 import '../data/embeddings/embedder_rollout_models.dart';
 import '../data/embeddings/embedder_spec.dart';
@@ -210,6 +211,21 @@ class _ReleaseWhenBackgrounded with WidgetsBindingObserver {
     }
   }
 }
+
+/// Lets go of the on-device models when Android reports memory pressure (and
+/// on backgrounding), so [LocalGemmaProvider]'s long idle window cannot hold
+/// 2.6 GB on a device that needs it back. Watched once, by the app root.
+final modelMemoryObserverProvider = Provider<ModelMemoryObserver>((ref) {
+  final observer = ModelMemoryObserver(release: () async {
+    final local = ref.read(localAiProvider);
+    if (local is LocalGemmaProvider) await local.releaseModel();
+    final embedder = ref.read(textEmbedderProvider);
+    if (embedder is LocalTextEmbedder) await embedder.release();
+  })
+    ..attach();
+  ref.onDispose(observer.detach);
+  return observer;
+});
 
 /// Starts loading the on-device model in the background, so the cold start
 /// (3.6–17 s on the reference tablet) happens behind the user's own reading and
@@ -454,7 +470,12 @@ final contextEngineProvider = Provider<ContextEngine>((ref) {
     // The accuracy fail-safe: an extraction the on-device model returned
     // empty or looping is re-run on the cloud tier when the user's privacy
     // setting allows it, instead of silently reading as "this page is blank".
-    guard: ref.watch(aiQualityGuardProvider),
+    //
+    // Not under cloud-first. The guard always generates on the DEVICE first and
+    // only then escalates, so wiring it here would load the 2.6 GB model and run
+    // the page through it, uncut to its window, before the cloud was ever asked —
+    // the opposite of what the mode is for. The cloud answer is the first one.
+    guard: preferCloud ? null : ref.watch(aiQualityGuardProvider),
   );
 });
 

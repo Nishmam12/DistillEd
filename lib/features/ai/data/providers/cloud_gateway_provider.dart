@@ -107,6 +107,12 @@ class CloudGatewayProvider
   /// read quickly instead of stalling a summary.
   static const Duration visionTimeout = Duration(seconds: 90);
 
+  /// How long to wait for the gateway to accept a connection, and then for its
+  /// next bytes. Generous enough for a cold start, short enough that a dead
+  /// gateway reads as "unavailable" and the caller can move on.
+  static const Duration connectTimeout = Duration(seconds: 20);
+  static const Duration receiveTimeout = Duration(seconds: 75);
+
   final Dio _dio;
   final String _modelTier;
   final AiCapabilities _capabilities;

@@ -51,7 +51,7 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
   ///
   /// Long enough to cover the gaps inside one page analysis (its calls run
   /// back to back), short enough that an idle app is not sitting on gigabytes.
-  static const Duration defaultIdleUnloadDelay = Duration(seconds: 30);
+  static const Duration defaultIdleUnloadDelay = Duration(minutes: 3);
 
   /// Cap on a vision reply while the model is running on the CPU.
   ///

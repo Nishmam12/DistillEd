@@ -10,6 +10,19 @@ class FakeReachability extends Reachability {
   Future<bool> isOnline() async => online;
 }
 
+/// Counts how often the network is asked about — each ask is a DNS lookup that
+/// can take two seconds on a bad connection.
+class CountingReachability extends Reachability {
+  final bool online;
+  int probes = 0;
+  CountingReachability(this.online);
+  @override
+  Future<bool> isOnline() async {
+    probes++;
+    return online;
+  }
+}
+
 /// Matches the local Gemma 4 E2B setup (4096-token context).
 const localCaps = AiCapabilities(
   modelId: 'test-local',
@@ -78,6 +91,85 @@ void main() {
         isLocalModelInstalled: () async => true,
       );
       expect(bigger.localInputWordBudget, greaterThan(budget));
+    });
+  });
+
+  group('AiRouter system prompt budget', () {
+    test('a long system prompt shrinks the note budget', () {
+      final base = AiRouter.inputWordBudgetFor(localCaps);
+      final tight =
+          AiRouter.inputWordBudgetFor(localCaps, systemPrompt: 'x' * 1400);
+      expect(tight, lessThan(base));
+    });
+
+    test('the budget is never negative', () {
+      expect(
+          AiRouter.inputWordBudgetFor(localCaps, systemPrompt: 'x' * 1000000),
+          0);
+    });
+  });
+
+  group('AiRouter network probe', () {
+    AiRouter withProbe(CountingReachability r, {bool modelInstalled = true}) =>
+        AiRouter(
+          localCapabilities: localCaps,
+          reachability: r,
+          isLocalModelInstalled: () async => modelInstalled,
+        );
+
+    test('a local answer with cloud off never touches the network', () async {
+      final reach = CountingReachability(true);
+      final d = await withProbe(reach)
+          .decide(inputWordCount: short, cloudEnabled: false);
+
+      expect(d.route, AiRoute.local);
+      expect(reach.probes, 0,
+          reason: 'a DNS lookup before every call, for a route not taken');
+    });
+
+    test('cloud on but the note fits: still no probe', () async {
+      final reach = CountingReachability(true);
+      final d = await withProbe(reach)
+          .decide(inputWordCount: short, cloudEnabled: true);
+
+      expect(d.route, AiRoute.local);
+      expect(reach.probes, 0);
+    });
+
+    test('over budget with cloud on asks whether the cloud is reachable',
+        () async {
+      final reach = CountingReachability(true);
+      final d = await withProbe(reach)
+          .decide(inputWordCount: long, cloudEnabled: true);
+
+      expect(d.route, AiRoute.cloud);
+      expect(reach.probes, 1);
+    });
+
+    test('cloud-first asks, and falls back to local when offline', () async {
+      final reach = CountingReachability(false);
+      final d = await withProbe(reach).decide(
+          inputWordCount: short, cloudEnabled: true, preferCloud: true);
+
+      expect(d.route, AiRoute.local);
+      expect(reach.probes, 1);
+    });
+
+    test('a missing model asks, to choose download or error', () async {
+      final online = CountingReachability(true);
+      expect(
+          (await withProbe(online, modelInstalled: false)
+                  .decide(inputWordCount: short, cloudEnabled: false))
+              .route,
+          AiRoute.downloadThenLocal);
+      expect(online.probes, 1);
+
+      final offline = CountingReachability(false);
+      expect(
+          (await withProbe(offline, modelInstalled: false)
+                  .decide(inputWordCount: short, cloudEnabled: false))
+              .route,
+          AiRoute.errorOfflineNoModel);
     });
   });
 

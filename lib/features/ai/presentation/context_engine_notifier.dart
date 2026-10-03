@@ -223,7 +223,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       var content = await extract();
       bool unread() =>
           !content.hasText &&
-          !content.hasFigures &&
+          content.figures.isEmpty &&
           _extractor.visionFailureCount > failuresBefore;
       if (unread()) {
         debugPrint('[ContextEngine] page=$_pageId read failed to run; '

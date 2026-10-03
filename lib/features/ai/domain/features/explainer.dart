@@ -121,6 +121,17 @@ class Explainer {
   static String promptFor(String content) =>
       'PASSAGE:\n${fenceUntrusted(content.trim())}';
 
+  /// [content] cut to what this provider's window can take once the system
+  /// prompt for [mode] — a long one — has been paid for.
+  ///
+  /// Public because the quality guard runs the same prompt through its own
+  /// provider and used to send the passage uncut.
+  String fit(String content, ExplainMode mode) => truncateToWords(
+        content.trim(),
+        AiRouter.inputWordBudgetFor(_provider.capabilities,
+            systemPrompt: systemPromptFor(mode)),
+      );
+
   /// Streams the explanation for [input]. Emits incremental chunks (concatenate
   /// in order). Throws/streams-errors from the provider are not caught here.
   Stream<String> explain(ExplainInput input) {
