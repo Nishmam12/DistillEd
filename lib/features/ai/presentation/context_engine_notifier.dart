@@ -21,6 +21,7 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../domain/model/scene_element.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
+import '../domain/ai_exception.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
 import '../domain/page_content.dart';
@@ -98,6 +99,9 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
   /// tests; ~2.5s per the phase spec ("after the user pauses, not per stroke").
   final Duration debounce;
 
+  /// Pause before the single automatic retry of a read that failed to run.
+  final Duration readRetryDelay;
+
   Timer? _timer;
   List<SceneElement> _elements = const [];
 
@@ -126,6 +130,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
     this._onContent,
     this._onContext,
     this.debounce = const Duration(milliseconds: 2500),
+    this.readRetryDelay = const Duration(seconds: 2),
   })  : _pageId = pageId,
         super(const AsyncValue.loading()) {
     final cached = _cache.find(pageId);
@@ -206,10 +211,32 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       // change, rather than repeating the identical deterministic pass. The
       // first successful read (incl. after a model download) stays deterministic.
       final varyVision = force && _visionReadDone;
-      final content = await _extractor.extractPage(_pageId,
+      Future<PageContent> extract() => _extractor.extractPage(_pageId,
           languageCode: language,
           useVision: useVision,
           varyVision: varyVision);
+      // An empty read is only a failure when the model failed to RUN: a page
+      // whose reads threw (memory pressure kills or reloads the model) comes
+      // back empty exactly like a blank one, and caching that would leave the
+      // page "unread" until the student edited it or tapped Re-read.
+      var failuresBefore = _extractor.visionFailureCount;
+      var content = await extract();
+      bool unread() =>
+          !content.hasText &&
+          !content.hasFigures &&
+          _extractor.visionFailureCount > failuresBefore;
+      if (unread()) {
+        debugPrint('[ContextEngine] page=$_pageId read failed to run; '
+            'retrying once');
+        await Future<void>.delayed(readRetryDelay);
+        failuresBefore = _extractor.visionFailureCount;
+        content = await extract();
+        if (unread()) {
+          // Not cached and not marked attempted: the next pause tries again.
+          _lastAttemptedSignature = null;
+          throw const AiGenerationException('The page could not be read.');
+        }
+      }
       _visionReadDone = true;
       final PageContext context;
       try {

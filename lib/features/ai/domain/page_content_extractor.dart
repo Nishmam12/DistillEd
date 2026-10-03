@@ -74,6 +74,12 @@ class PageContentExtractor {
   /// read (`useVision: true`). Null (or the render/loader seams below unset)
   /// falls the whole path back to ML Kit, exactly as before.
   final GemmaVisionOcrService? _visionOcr;
+
+  /// How many Gemma vision attempts have failed to run so far. Compared before
+  /// and after an extraction, it tells a page that read as empty because the
+  /// model could not run from a page that really has nothing to read.
+  int get visionFailureCount => _visionOcr?.failureCount ?? 0;
+
   final InkImageRenderer? _renderInk;
   final ImageBytesLoader? _loadImageBytes;
 

@@ -13,7 +13,7 @@
 //     attempt failed the gate (see [PageContentExtractor]). Cloud escalation
 //     (after 2 local failures, user-prompted) is Phase 2.
 
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 import '../../domain/ai_exception.dart';
 import '../../domain/image_transcriber.dart';
@@ -60,6 +60,16 @@ class GemmaVisionOcrService {
 
   final ImageTranscriber _transcriber;
   final MeaningfulnessGate _gate;
+
+  int _failureCount = 0;
+
+  /// How many read attempts have thrown since this service was built.
+  ///
+  /// A failed attempt is swallowed here (the next attempt or the caller's
+  /// fallback takes over), so a caller that needs to know whether an EMPTY
+  /// result means "nothing on the page" or "the model could not run" compares
+  /// this before and after a read.
+  int get failureCount => _failureCount;
 
   /// Supplies a fresh random seed per sampled attempt so a re-read (and each
   /// retry) reads differently instead of repeating the last decode.
@@ -166,6 +176,8 @@ class GemmaVisionOcrService {
         rethrow;
       } on AiException catch (e) {
         lastError = e;
+        _failureCount++;
+        debugPrint('[VisionOcr] read attempt $attempts/$maxAttempts failed: $e');
         continue; // this attempt failed to run; try the next / fall back
       }
       ran = true;

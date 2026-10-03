@@ -161,4 +161,40 @@ void main() {
     expect(result.text, isEmpty);
     expect(result.attempts, 2);
   });
+
+  group('failureCount', () {
+    test('counts attempts that threw, so an empty read can be told from a blank page',
+        () async {
+      final t = ScriptedTranscriber([
+        const AiGenerationException('one'),
+        const AiGenerationException('two'),
+      ]);
+      final s = service(t);
+      await s.read(bytes);
+
+      expect(s.failureCount, 2);
+    });
+
+    test('a read that ran, even to gibberish, is not a failure', () async {
+      final t = ScriptedTranscriber(['::: ??? %%%', '### !!!']);
+      final s = service(t);
+      await s.read(bytes);
+
+      expect(s.failureCount, 0);
+    });
+
+    test('accumulates across reads', () async {
+      final t = ScriptedTranscriber([
+        const AiGenerationException('a'),
+        'The retry read the page fine.',
+        const AiGenerationException('b'),
+        'The second page reads fine too.',
+      ]);
+      final s = service(t);
+      await s.read(bytes);
+      await s.read(bytes);
+
+      expect(s.failureCount, 2);
+    });
+  });
 }

@@ -50,6 +50,20 @@ class FakeExtractor extends PageContentExtractor {
   /// vs first-read (deterministic) policy.
   final varyFlags = <bool>[];
 
+  /// For each call in order, whether the model "failed to run" during it —
+  /// which makes the fake read come back EMPTY and bump [visionFailureCount],
+  /// as a real read does when Gemma is killed or reloaded mid-read. Calls past
+  /// the end of the list succeed.
+  final failOnCall = <bool>[];
+
+  /// An empty read that did NOT fail: a page with nothing to read.
+  bool blankPage = false;
+
+  int _failures = 0;
+
+  @override
+  int get visionFailureCount => _failures;
+
   FakeExtractor()
       : super(
           loadElements: (_) async => const [],
@@ -61,9 +75,14 @@ class FakeExtractor extends PageContentExtractor {
       {required String languageCode,
       bool useVision = false,
       bool varyVision = false}) async {
-    calls++;
+    final index = calls++;
     visionFlags.add(useVision);
     varyFlags.add(varyVision);
+    if (index < failOnCall.length && failOnCall[index]) {
+      _failures++;
+      return PageContent.empty;
+    }
+    if (blankPage) return PageContent.empty;
     return const PageContent(
         recognizedInkText: 'recognized note text', typedText: '');
   }
@@ -130,6 +149,7 @@ void main() {
         pageId: pageId,
         languageCode: () => 'en',
         debounce: const Duration(milliseconds: 5),
+        readRetryDelay: const Duration(milliseconds: 5),
       );
 
   test('debounce coalesces rapid changes into one analysis', () async {
@@ -185,6 +205,81 @@ void main() {
     expect(engine.calls, 0);
     expect(recognition.ensureCalls, 0);
     expect(n.state.value?.currentTopic, 'Cached topic');
+    n.dispose();
+  });
+
+  group('a read that failed to run', () {
+    test('is retried once, and a recovered read is analysed normally',
+        () async {
+      extractor.failOnCall.addAll([true, false]);
+
+      final n = notifier();
+      n.onSceneChanged(ink);
+      await settle();
+
+      expect(extractor.calls, 2);
+      expect(engine.calls, 1);
+      expect(n.state.value?.currentTopic, 'Topic A');
+      n.dispose();
+    });
+
+    test('that fails again is an error, not an empty page', () async {
+      extractor.failOnCall.addAll([true, true]);
+
+      final n = notifier();
+      n.onSceneChanged(ink);
+      await settle();
+
+      expect(n.state.hasError, isTrue,
+          reason: 'the panel must offer "try again", not look blank');
+      expect(engine.calls, 0, reason: 'nothing was read, so nothing to analyse');
+      expect(cache.find(1), isNull, reason: 'a failed read must not be cached');
+      n.dispose();
+    });
+
+    test('is tried again at the next pause, not stuck until Re-read',
+        () async {
+      extractor.failOnCall.addAll([true, true]);
+
+      final n = notifier();
+      n.onSceneChanged(ink);
+      await settle();
+      expect(n.state.hasError, isTrue);
+
+      // Same content, no edit: a normal pause alone must pick it up again.
+      n.onSceneChanged(List.of(ink));
+      await settle();
+
+      expect(n.state.value?.currentTopic, 'Topic A');
+      expect(engine.calls, 1);
+      n.dispose();
+    });
+
+    test('keeps the deep-read policy until a read actually succeeds', () async {
+      extractor.failOnCall.addAll([true, true]);
+
+      final n = notifier();
+      n.onSceneChanged(ink);
+      await settle();
+      n.onSceneChanged(List.of(ink));
+      await settle();
+
+      // First open reads with Gemma; a failed first read must not demote the
+      // retry on the next pause to the light ML Kit path.
+      expect(extractor.visionFlags, [true, true, true]);
+      n.dispose();
+    });
+  });
+
+  test('a genuinely blank read is NOT treated as a failure', () async {
+    extractor.blankPage = true;
+
+    final n = notifier();
+    n.onSceneChanged(ink);
+    await settle();
+
+    expect(n.state.hasError, isFalse);
+    expect(extractor.calls, 1, reason: 'no model failure, so no retry');
     n.dispose();
   });
 
