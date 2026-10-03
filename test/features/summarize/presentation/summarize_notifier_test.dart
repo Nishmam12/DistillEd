@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_gemma/flutter_gemma.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -115,6 +117,23 @@ class FakeInstaller implements ModelInstaller {
   Future<void> uninstall(String modelId) async => installed = false;
 }
 
+/// An installer whose download stays under way until [finish] is called.
+class SlowInstaller extends FakeInstaller {
+  final gate = Completer<void>();
+
+  @override
+  Future<void> install({
+    required LlmModelSpec spec,
+    String? authToken,
+    void Function(int percent)? onProgress,
+    CancelToken? cancelToken,
+  }) async {
+    onProgress?.call(40);
+    await gate.future;
+    installed = true;
+  }
+}
+
 class FakeStorage implements DeviceStorage {
   @override
   Future<int> freeBytes() async => 1 << 62;
@@ -180,6 +199,51 @@ void main() {
     expect(error.retryable, isFalse);
     expect(error.offerModelDownload, isFalse);
     expect(error.message, contains("Couldn't read"));
+  });
+
+  test('a read that finds the model missing offers the download, not "went wrong"',
+      () async {
+    // Reading handwriting with the on-device model, before any summary call,
+    // throws AiModelNotReadyException.
+    final n = notifier(ScriptedService([
+      (_) async => throw const AiModelNotReadyException('not downloaded'),
+    ]));
+
+    await n.run(request);
+
+    final error = n.state as SummarizeError;
+    expect(error.offerModelDownload, isTrue);
+    expect(error.message, isNot(contains('went wrong')));
+  });
+
+  test('summarizing again while the model downloads rejoins the download',
+      () async {
+    // Closing the sheet leaves the download running. Asking again used to start
+    // a fresh attempt that failed on the missing model and replaced the progress
+    // with an error, so the download looked stopped while it carried on.
+    final installer = SlowInstaller();
+    final service = ScriptedService([
+      (_) async => throw const AiModelNotReadyException('not downloaded'),
+      (_) async => okResult,
+    ]);
+    final n = notifier(service,
+        downloads: ModelDownloadManager(
+            installer: installer, storage: FakeStorage()));
+    await n.run(request);
+    final download = n.downloadModelAndRetry();
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    final again = n.run(request); // reopened, Summarize tapped again
+    await Future<void>.delayed(Duration.zero);
+
+    expect(n.state, isA<SummarizeDownloadingModel>());
+    expect(service.calls, 1, reason: 'no second attempt while it downloads');
+
+    installer.gate.complete();
+    await Future.wait([download, again]);
+    expect(n.state, isA<SummarizeSuccess>());
+    expect(service.calls, 2, reason: 'the summary is made once, not once per tap');
   });
 
   test('missing model online offers download; downloadModelAndRetry succeeds',

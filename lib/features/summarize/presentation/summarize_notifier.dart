@@ -8,9 +8,11 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../ai/data/llm/llm_exceptions.dart';
+import '../../ai/domain/ai_exception.dart';
 import '../../ai/domain/quality/ai_quality_guard.dart';
 import '../../ai/data/llm/model_download_manager.dart';
 import '../../ai/data/handwriting/handwriting_recognition_service.dart';
@@ -128,6 +130,10 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
   Future<void> run(SummarizeRequest request) async {
     if (_running) return;
     _lastRequest = request;
+    // A download already under way (the sheet was closed and reopened) is
+    // rejoined: a fresh attempt would fail on the missing model and replace the
+    // progress with an error while the download carried on unseen.
+    if (_downloads.isDownloading) return downloadModelAndRetry();
     _running = true;
     try {
       state = const SummarizeRecognizing();
@@ -161,7 +167,8 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
         modelUsed: result.modelUsed,
         tier: result.tier,
       );
-    } catch (e) {
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('[summarize] failed: $e\n$st');
       if (!mounted) return;
       state = _mapError(e);
     } finally {
@@ -175,7 +182,7 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
     final request = _lastRequest;
     if (request == null || _running) return;
 
-    state = const SummarizeDownloadingModel(0);
+    state = SummarizeDownloadingModel(_downloads.currentPercent ?? 0);
     final sub = _downloads.progress.listen((p) {
       if (mounted && state is SummarizeDownloadingModel) {
         state = SummarizeDownloadingModel(p);
@@ -189,7 +196,8 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
     } finally {
       await sub.cancel();
     }
-    if (!mounted) return;
+    // Another flow that joined this download may have re-run already.
+    if (!mounted || state is! SummarizeDownloadingModel) return;
     await run(request);
   }
 
@@ -214,6 +222,9 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
         SummarizeError(e.message, retryable: true),
       LocalModelRequiredException _ =>
         SummarizeError(e.message, offerModelDownload: true),
+      AiModelNotReadyException _ => const SummarizeError(
+          'The on-device model needs to be downloaded first.',
+          offerModelDownload: true),
       RecognitionException(:final message) => SummarizeError(message),
       InsufficientStorageException _ =>
         SummarizeError('Not enough storage for the model. ${e.message}'),
