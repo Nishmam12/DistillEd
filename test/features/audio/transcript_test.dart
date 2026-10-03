@@ -386,7 +386,7 @@ void main() {
       await store.save(recording(), sample());
 
       final names =
-          Directory('${docs.path}/audio').listSync().map((e) => e.path.split('/').last);
+          Directory('${docs.path}/audio').listSync().map((e) => e.uri.pathSegments.last);
       expect(names, ['n1_p2_17.transcript.json']);
     });
 

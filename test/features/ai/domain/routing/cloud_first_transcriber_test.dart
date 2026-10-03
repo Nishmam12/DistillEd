@@ -74,7 +74,7 @@ void main() {
     test('falls back to on-device when the cloud call fails', () async {
       final local = RecordingTranscriber('local text');
       final cloud = RecordingTranscriber('',
-          throws: AiGenerationException('gateway 404'));
+          throws: const AiGenerationException('gateway 404'));
 
       final result = await read(CloudFirstTranscriber(
         local: local,

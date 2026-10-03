@@ -52,7 +52,7 @@ class StubProvider implements AiProvider {
 }
 
 void main() {
-  final content = PageContent(recognizedInkText: _richText, typedText: '');
+  const content = PageContent(recognizedInkText: _richText, typedText: '');
 
   group('AiRanOn', () {
     test('only on-device keeps content on the device', () {
@@ -96,7 +96,7 @@ void main() {
       final provider = StubProvider(isLocal: true);
       final engine = ContextEngine(provider: provider);
 
-      final result = await engine.analyze(PageContent(recognizedInkText: 'hi', typedText: ''));
+      final result = await engine.analyze(const PageContent(recognizedInkText: 'hi', typedText: ''));
 
       expect(result.isEmpty, isTrue);
       expect(provider.calls, 0, reason: 'no model ran, so nothing was sent');

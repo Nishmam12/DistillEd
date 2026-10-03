@@ -135,6 +135,9 @@ void main() {
 
     await classifier.classify(stroke, model: kShapesModel);
     await classifier.classify(stroke, model: kShapesModel);
+    // The plugin derives recogniser ids from the clock; on Windows two created
+    // in the same tick would collide.
+    await Future<void>.delayed(const Duration(milliseconds: 20));
     await classifier.classify(stroke, model: kGestureModel);
 
     final ids = recognitions().map((c) => (c.arguments as Map)['id']).toList();
