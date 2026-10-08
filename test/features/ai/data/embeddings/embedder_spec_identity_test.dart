@@ -48,15 +48,15 @@ void main() {
     });
 
     test('every modelId names its prompt contract', () {
-      for (final spec in EmbedderSpec.all) {
+      for (final spec in EmbedderSpec.registry) {
         expect(spec.modelId, contains(spec.promptContract.id),
             reason: spec.displayName);
       }
     });
 
     test('specs with different vector-space values never share a modelId', () {
-      for (final a in EmbedderSpec.all) {
-        for (final b in EmbedderSpec.all) {
+      for (final a in EmbedderSpec.registry) {
+        for (final b in EmbedderSpec.registry) {
           if (a.identityKey != b.identityKey) {
             expect(a.modelId, isNot(b.modelId),
                 reason: '${a.displayName} and ${b.displayName}');
@@ -67,7 +67,7 @@ void main() {
 
     test('no two specs install the same file', () {
       final owner = <String, String>{};
-      for (final spec in EmbedderSpec.all) {
+      for (final spec in EmbedderSpec.registry) {
         for (final file in spec.files) {
           expect(owner.containsKey(file), isFalse,
               reason: '$file: ${spec.displayName} and ${owner[file]}');
@@ -78,7 +78,7 @@ void main() {
 
     test('a tflite spec installs a model and its tokenizer; a bundle one file',
         () {
-      for (final spec in EmbedderSpec.all) {
+      for (final spec in EmbedderSpec.registry) {
         final expected =
             spec.format == EmbedderFormat.tfliteWithTokenizer ? 2 : 1;
         expect(spec.files, hasLength(expected), reason: spec.displayName);
@@ -90,6 +90,43 @@ void main() {
       expect(EmbedderSpec.embeddingGemma2.runtimeSupported, isFalse);
       expect(EmbedderSpec.embeddingGemma2.promptContract.appliedBy,
           PromptAppliedBy.undecided);
+    });
+  });
+
+  group('the dry-run copy', () {
+    test('is a model of its own, with its own id and its own files', () {
+      const copy = EmbedderSpec.dryRunCopy;
+
+      expect(copy.modelId, isNot(EmbedderSpec.active.modelId));
+      expect(copy.files.toSet().intersection(EmbedderSpec.active.files.toSet()),
+          isEmpty);
+    });
+
+    test('differs from the active model only in its names', () {
+      const copy = EmbedderSpec.dryRunCopy;
+      const active = EmbedderSpec.active;
+
+      expect(copy.format, active.format);
+      expect(copy.dimensions, active.dimensions);
+      expect(copy.maxInputTokens, active.maxInputTokens);
+      expect(copy.chunkWords, active.chunkWords);
+      expect(copy.chunkOverlapWords, active.chunkOverlapWords);
+      expect(copy.promptContract.id, active.promptContract.id);
+      expect(copy.runtimeSupported, active.runtimeSupported);
+    });
+
+    test('its tokenizer is filed under its own model name, as the plugin does',
+        () {
+      expect(
+        EmbedderSpec.dryRunCopy.tokenizerFilename,
+        'embeddinggemma-300M_seq512_mixed-precision-dryrun__sentencepiece.model',
+      );
+    });
+
+    test('is in the registry in a debug build, and not in the shipped list',
+        () {
+      expect(EmbedderSpec.registry, contains(EmbedderSpec.dryRunCopy));
+      expect(EmbedderSpec.all, isNot(contains(EmbedderSpec.dryRunCopy)));
     });
   });
 }

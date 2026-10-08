@@ -60,7 +60,7 @@ RagIndexer _indexer(
       embedder: embedder,
       saveChunks: (pageId, chunks) async => saved.addAll(chunks),
       deleteChunks: (pageId) async {},
-      indexStateOf: (pageId) async => null,
+      indexStateOf: (pageId, modelId) async => null,
       titleOf: titleOf,
       now: () => DateTime(2026, 10, 8),
     );

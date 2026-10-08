@@ -431,7 +431,7 @@ void main() {
     test('text generation loads the same configuration as vision', () async {
       // A deep page read alternates image reads and text analysis; if the two
       // asked the runtime for different configurations it would rebuild the
-      // whole engine at every switch (3.6–17 s each, measured on a Pad 7).
+      // whole engine at every switch (3.6–17 s each, measured on the Xiaomi Pad 7).
       final runtime = StreamingFakeRuntime(['x']);
       final provider = LocalGemmaProvider(runtime: runtime);
 

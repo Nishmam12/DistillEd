@@ -117,7 +117,7 @@ class _RecordingIndex extends NotebookIndexNotifier {
             embedder: _NoEmbedder(),
             saveChunks: (_, __) async {},
             deleteChunks: (_) async {},
-            indexStateOf: (_) async => null,
+            indexStateOf: (_, __) async => null,
           ),
           readPage: (_) async => '',
         ));

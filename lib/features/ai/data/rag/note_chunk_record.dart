@@ -28,6 +28,9 @@ class NoteChunkRecord {
   late int notebookId;
 
   @Index()
+  // With the model, so a page holds its serving chunks and its rollout target at
+  // once (phase 4.5). Filters do not use indexes; this serves where-lookups.
+  @Index(composite: [CompositeIndex('embeddingModelId')])
   late int pageId;
 
   late int ordinal;

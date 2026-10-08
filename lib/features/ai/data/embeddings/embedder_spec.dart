@@ -6,6 +6,7 @@
 // and the installer builds one internally from what we pass it. Two types with
 // one name would force an aliased import at every call site.
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_edge_ai/flutter_edge_ai.dart'
     show EmbeddingModelSpec, ModelSource;
 
@@ -176,8 +177,8 @@ class EmbedderSpec {
   ///
   /// • The repo also ships per-SoC builds (qualcomm.sm8550/8650/8750/8850,
   ///   mediatek.mt6991/6993, google.tensor_g5). The generic build is used
-  ///   deliberately: the target Xiaomi Pad 7 is a Snapdragon 7+ Gen 3 (SM7675),
-  ///   which matches none of them, and a per-SoC build would have to be chosen
+  ///   deliberately: the reference device, the Pixel 7 Pro, is a Google Tensor G2
+  ///   (GS201), which matches none of them, and a per-SoC build would have to be chosen
   ///   at runtime per device. Revisit only with profiling numbers.
   static const EmbedderSpec embeddingGemma300m = EmbedderSpec(
     displayName: 'EmbeddingGemma 300M',
@@ -217,9 +218,42 @@ class EmbedderSpec {
     needsAuth: false,
   );
 
-  /// Every spec the app knows about. Each one's identity is checked by
+  /// EmbeddingGemma 300M under other file names, for a rollout dry run (phase 4.5).
+  /// The same weights and the same vector space: only its names differ, and so
+  /// its id, and therefore its chunks.
+  ///
+  /// Never shipped. It is in [registry] in a debug build only, and the debug
+  /// settings copy the active model's files into place for it
+  /// (`installDryRunCopy`, in embedder_dry_run_copy.dart).
+  static const EmbedderSpec dryRunCopy = EmbedderSpec(
+    displayName: 'EmbeddingGemma 300M (dry-run copy)',
+    modelId: 'embeddinggemma-300m-seq512-titled-dryrun',
+    modelUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/'
+        'resolve/main/embeddinggemma-300M_seq512_mixed-precision-dryrun.tflite',
+    tokenizerUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/'
+        'resolve/main/sentencepiece.model',
+    format: EmbedderFormat.tfliteWithTokenizer,
+    maxInputTokens: 512,
+    chunkWords: kChunkWords,
+    chunkOverlapWords: kChunkOverlapWords,
+    promptContract: PromptContract.pluginGemma300m,
+    runtimeSupported: true,
+    approxSizeBytes: 185 * 1024 * 1024,
+    dimensions: 768,
+    needsAuth: false,
+  );
+
+  /// Every spec the shipped app knows about. Each one's identity is checked by
   /// embedder_spec_identity_test.dart.
   static const List<EmbedderSpec> all = [embeddingGemma300m, embeddingGemma2];
+
+  /// What this build knows: [all], plus the dry-run copy in a debug build. Looked
+  /// up by id (the rollout, the serving model, the files a cleaner keeps), so a
+  /// copy installed for a dry run is found there, and the shipped list never names it.
+  static List<EmbedderSpec> get registry => [
+        ...all,
+        if (kDebugMode) dryRunCopy,
+      ];
 
   /// Specs whose files are removed once a rollout to another spec has completed
   /// (phase 4.6). Empty until a swap is made.

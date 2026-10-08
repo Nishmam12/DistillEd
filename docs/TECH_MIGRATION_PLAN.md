@@ -3,7 +3,7 @@
 A phased plan to move every dependency that is discontinued or abandoned onto its maintained successor, refresh the rest of the stack, make the RAG pipeline swap-ready, and switch to EmbeddingGemma 2 once the runtime supports it. Grounded in the current codebase (pubspec `5.0.0+30`, `pubspec.lock` resolved on 3 Oct 2026) and in pub.dev / Hugging Face as of 8 Oct 2026.
 
 - **Goal:** no discontinued or unmaintained package in `pubspec.lock`, latest stable majors where the upgrade is cheap, and a RAG pipeline where changing the embedding model is a one-line spec change with no search downtime
-- **Reference device:** Xiaomi Pad 7 (Snapdragon 7+ Gen 3, 8 GB)
+- **Reference device:** Pixel 7 Pro (Google Tensor G2, 11.7 GB RAM as the kernel reports it)
 - **Order:** each phase ships on its own and passes its checks before the next one starts
 
 Effort sizes are rough: **S** ≈ a day, **M** ≈ a few days, **L** ≈ a week or more.
@@ -58,7 +58,7 @@ Not discontinued but several majors behind (Phase 3):
 | `flutter_lints` | 4.0.0 | 6.x |
 | `build_runner` | 2.4.13 | held back by `isar_generator` (analyzer 5.13) |
 
-Everything else (`ML Kit` plugins, `pdfrx_engine`, `pdfium_flutter`, `sqlite3`, `archive`, `dio`, `share_plus`, `printing`, `flutter_math_fork`) is current or within a minor of it and needs no plan item.
+Checked 2026-10-09 against pub.dev. `dio` (5.10.0, one minor behind) and `printing` (5.15.0, one patch behind) are within a minor and need no plan item. `archive` (4.0.9; 4.3.0 published 13 September) and `sqlite3` (3.5.0; 3.7.0 published 30 September) are further behind than a minor, and no phase covers them yet. `share_plus` was a major release behind (12.0.2 pinned; 13.3.1 published 1 October). It was upgraded in the working tree on 9 October, not committed; see the Phase 3 progress entry. The earlier line called all of these current; that was wrong for `archive`, `sqlite3` and `share_plus`, which were all published before the migration started on 8 October. The ML Kit plugins, `pdfrx_engine`, `pdfium_flutter` and `flutter_math_fork` were not rechecked.
 
 ---
 
@@ -230,7 +230,7 @@ What is missing is below, in implementation order.
 Every later step must leave the current model's vectors byte-for-byte identical, and nothing checks that today.
 
 - Add `integration_test/embedding_golden_test.dart`: embeds three fixed inputs (one English, one Bangla, one with a notebook title, as both `document` and `query`) with the active spec, and compares to vectors stored in `integration_test/golden/<modelId>.json` with a tolerance of 1e-5 per component.
-- Add a `--update-golden` mode (via `--dart-define=UPDATE_GOLDEN=true`) that writes the file instead of comparing. The user generates the file once on the Pad 7 **before** any Phase 4 code change lands, and adds it to the repository.
+- Add a `--update-golden` mode (via `--dart-define=UPDATE_GOLDEN=true`) that writes the file instead of comparing. The user generates the file once on the Pixel 7 Pro **before** any Phase 4 code change lands, and adds it to the repository.
 - This runs on a device only. List it in the device checks; don't try to run it.
 
 - **Effort:** S
@@ -332,7 +332,7 @@ Add `EmbedderSpec.embeddingGemma2` with the values known today and `runtimeSuppo
 - `dimensions: 768`, `needsAuth: false`
 - `maxInputTokens`, `chunkWords`, `chunkOverlapWords`, `promptContract`: **left as clearly marked TODO values** decided in Phase 5 from the evaluation. The identity test must still pass (give it a provisional `modelId` such as `embeddinggemma-2-740m-UNSET`).
 
-The generic file is the right one for the Pad 7: its SM7675 matches none of the per-SoC builds (SM8550/8650/8750/8850, Tensor G5/G6, MT6991/6993).
+The generic file is the right one for the Pixel 7 Pro: its Tensor G2 (GS201) matches none of the per-SoC builds (SM8550/8650/8750/8850, Tensor G5/G6, MT6991/6993).
 
 - **Effort:** S
 
@@ -350,7 +350,7 @@ Benchmarks don't cover Bangla or OCR'd handwriting, which is most of what Distil
 
 ### Device checks — Phase 4
 
-- [ ] **Before** any other Phase 4 code change: run 4.1 in update mode on the Pad 7 and add the golden file to the repository
+- [ ] **Before** any other Phase 4 code change: run 4.1 in update mode on the Pixel 7 Pro and add the golden file to the repository
 - [ ] After all of Phase 4: golden test passes (vectors unchanged)
 - [ ] Ask your notes still works on an existing index without a re-index
 - [ ] Rollout dry run with a debug-only second spec that is a copy of the 300M spec under a different `modelId`: progress shows, questions keep working throughout, cut-over leaves exactly one model's chunks (check the debug counts from 2.2), the copy's files are removed, killing the app mid-rollout and relaunching resumes it
@@ -386,7 +386,7 @@ The Hugging Face card and Google's LiteRT-LM docs give different prefixes:
 | Hugging Face card | `title: {title} \| text: {content}` | `task: search result \| query: {q}` |
 | LiteRT-LM docs | `task: search result \| text:` | `task: search query \| text:` |
 
-Run the 4.9 harness, then repeat the best two configurations against the device runtime (a debug-only screen or integration test that runs the eval set through `TextEmbedder`). Set `promptContract`, `chunkWords`, `chunkOverlapWords`, `maxInputTokens` and `dimensions` on `EmbedderSpec.embeddingGemma2` from the results, give it its final `modelId` (e.g. `embeddinggemma-2-text-<promptContract.id>-w<chunkWords>`), and set `runtimeSupported: true`. Generate its golden file on the Pad 7.
+Run the 4.9 harness, then repeat the best two configurations against the device runtime (a debug-only screen or integration test that runs the eval set through `TextEmbedder`). Set `promptContract`, `chunkWords`, `chunkOverlapWords`, `maxInputTokens` and `dimensions` on `EmbedderSpec.embeddingGemma2` from the results, give it its final `modelId` (e.g. `embeddinggemma-2-text-<promptContract.id>-w<chunkWords>`), and set `runtimeSupported: true`. Generate its golden file on the Pixel 7 Pro.
 
 **Gate:** switch only if EmbeddingGemma 2 is at least as good as the 300M model on the eval set overall and not worse on Bangla. If it is worse, stop and report the table; the token removal in Phase 6 alone is not worth worse search.
 
@@ -396,7 +396,7 @@ Set `EmbedderSpec.active = embeddingGemma2` and add `embeddingGemma300m` to `Emb
 
 ### Device checks — Phase 5
 
-- [ ] Peak memory with Gemma 4 E2B resident plus the EmbeddingGemma 2 text encoder stays inside budget on the Pad 7 (Google measured ~191 MB active for text-only on a Pixel 11 Pro)
+- [ ] Peak memory with Gemma 4 E2B resident plus the EmbeddingGemma 2 text encoder stays inside budget on the Pixel 7 Pro (Google measured ~191 MB active for text-only on a Pixel 11 Pro)
 - [ ] Per-chunk embedding latency and a full re-index of a large notebook: time and battery
 - [ ] Rollout from a real 300M index to EmbeddingGemma 2 with search working throughout, then the 300M files gone
 - [ ] Fresh install: no Hugging Face token asked for embeddings
@@ -434,14 +434,19 @@ Tick each item with the date and a one-line summary when it's done. Note anythin
 - [x] Phase 2 — code (2026-10-08: isar → isar_community 3.3.2 with flutter_libs and generator; imports rewritten in 34 files; build_runner 2.15.1 is the newest that resolves with source_gen 4; regenerated .g.dart files differ only in the generator version line, so collection, property and index definitions are unchanged; debug-only row counts logged at startup; analyze at baseline (3 infos), 2084 tests pass. Skipped: the plan's --delete-conflicting-outputs, which repo memory forbids)
 - [ ] Phase 2 — device checks (user)
 - [x] Phase 3 — code (2026-10-08: flutter_lints 6.0.0; flutter_riverpod 3.4.3 with legacy imports, valueOrNull to value, the context panel's last shown value replacing the internal copyWithPrevious, ProviderException unwrapped in the five error mappers, retry disabled in every scope; go_router 18.0.2 with routes checked; record 7.1.1 and just_audio 0.10.6 with the record_platform_interface override dropped; pdfx 2.11.0, image_picker 1.2.4, file_picker 10.3.10 (11.0.3 fails the Android release build; the cause is not isolated) and package_info_plus 9.0.1 (10.x needs win32 6, which share_plus 12.0.2 blocks); analyze clean; 2084 tests pass. Skipped: build_runner 2.16.2, which needs analyzer above what isar_community_generator allows)
+- Phase 3, share_plus, file_picker and package_info_plus (2026-10-09, done in the working tree, not committed): share_plus 13.3.1, file_picker 13.1.0 and package_info_plus 10.2.2, which resolve together with win32 6.4.0. Code: the PDF picker in scene_import_service.dart uses `FilePicker.pickFile`, because file_picker 13 has no `platform` accessor and `pickFiles` no longer returns a single file, and `allowMultiple` defaults to true from file_picker 12.0.0. The share call and the About screen's PackageInfo call needed no change. Checks: analyze clean; 2201 host tests pass; About shows Version 5.0.0 (build 30); the PDF export opens the system share sheet with the file. Not checked on the phone: PDF import, because the import button sits in the toolbar part that overflows on this device (the known overflow, deferred). Release: see the release entry below.
 - [ ] Phase 3 — device checks (user)
 - [ ] Phase 4 — golden file generated on device (user, before 4.2+)
-- [ ] Phase 4 — code (4.1 – 4.9): 4.1 harness written 2026-10-08 (integration_test/embedding_golden_test.dart, integration_test dev dependency); not run. 4.2 onward waits for the golden file generated on the Pad 7.
+- [ ] Phase 4 — code (4.1 – 4.9): 4.1 harness written 2026-10-08 (integration_test/embedding_golden_test.dart, integration_test dev dependency); not run. 4.2 onward waits for the golden file generated on the Pixel 7 Pro.
 - [ ] Phase 4 — device checks (user)
+- [ ] Phase 4.5 — dry run (2026-10-09): code and host tests done. The rollout can move between EmbeddingGemma 300M and a debug-only copy of it (`EmbedderSpec.dryRunCopy`, in debug builds only); questions and the bulk index follow the serving model; the Settings debug row drives the dry run. Full host suite: 2201 passed, 3 skipped; analyze clean. Run on the phone with the go-ahead: the copy was installed and rolled out to (the cut-over removed the 300M files and their chunks; 6 chunks remained). Questions were answered with the copy (top score 0.535), and again after the rollback to 300M (same score). The 300M files came back by download with matching sha256, and the copy files were removed. The golden compare matched. Not tested: questions during indexing and a kill mid-run, because the two-page rollout finishes in about 4 s.
+- Phase 3 follow-up (2026-10-09): flutter_edge_ai 2.1.1 and flutter_edge_ai_litertlm 1.10.0 (litertlm 1.10.0 requires flutter_edge_ai ^2.1.1; LiteRT-LM v0.18.0). Golden compare on the phone with --no-uninstall: vectors match, and the database checksum is unchanged. Gemma on the phone: Ask answered with sources, Summarize rendered, and the engine initialized. The first Ask after a fresh start took 36.5 s to create the engine, and its retrieval embedding took 17.6 s; a second Ask reused the engine. No same-device timing exists for 1.9.0, so the cold-start change is not established. Not checked: the Settings row's backend text.
+- Release build (2026-10-09): the working tree does not build for release. GeneratedPluginRegistrant registers dev.flutter.plugins.integration_test (the golden harness, Phase 4.1), and release builds leave out dev dependencies, so that reference does not compile. The pinned tree before these changes fails the same way, so the failure is not from the package changes. A scratch copy with only that dev dependency removed release-builds with the current pins (flutter_edge_ai 2.1.1, flutter_edge_ai_litertlm 1.10.0, share_plus 13.3.1, file_picker 13.1.0, package_info_plus 10.2.2; APK 214.7 MB). Needs a decision: move the golden harness out of the app's pubspec, or another fix.
 - [ ] Phase 5 — condition met: route B looks available (libLiteRtLm exports litert_lm_embedding_engine_create, _compute_embedding and _compute_embedding_batch); route A not met (no flutter_edge_ai release loads .litertlm embedding models); checked 2026-10-08; spike not started
 - [ ] Phase 5 — evaluation results recorded
 - [ ] Phase 5 — code
 - [ ] Phase 5 — device checks (user)
+- Phase 5 deferred (2026-10-09, user decision): EmbeddingGemma 2 is still not available, so Phase 5 is not started. The shipped app and the tests keep EmbeddingGemma 300M (`embeddinggemma-300m-seq512-titled`). Phase 6 needs the shipped spec to be ungated, so it waits with Phase 5.
 - [ ] Phase 6 — code
 
 ---

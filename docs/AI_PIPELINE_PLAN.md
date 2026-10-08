@@ -3,7 +3,7 @@
 A prioritized list of changes to the on-device AI stack, grounded in the current codebase (pubspec `5.0.0+30`, 28 Sep 2026). Each item says what to change, where, why, and roughly what it costs.
 
 - **Target:** 8 GB Android
-- **Reference device:** Xiaomi Pad 7 (Snapdragon 7+ Gen 3)
+- **Reference device:** Pixel 7 Pro (Google Tensor G2, 11.7 GB RAM as the kernel reports it)
 - **Main LLM:** Gemma 4 E2B (kept)
 - **Embedder:** EmbeddingGemma 300M (kept)
 
@@ -15,7 +15,7 @@ Effort sizes are rough estimates: **S** ≈ a day, **M** ≈ a few days, **L** �
 
 ## Where time goes today
 
-Found by reading the AI code paths. The numbers in the first two items come from the codebase's own comments, measured on the Pad 7.
+Found by reading the AI code paths. The numbers in the first two items come from the codebase's own comments, measured on the Xiaomi Pad 7, not on the Pixel 7 Pro.
 
 | Finding | Detail | Where |
 |---|---|---|
@@ -80,7 +80,7 @@ After loading, read `InferenceModel.activeBackend`. Log it, and store it so the 
 
 Start loading the model in the background when the AI sidebar opens, or when the Ask box gets focus. The mutex and idle-unload timer already exist, so this is a single `warmUp()` call that loads and arms the timer. It hides most of the 3.6–17 s cold start behind the user's own reading and typing time.
 
-Load one configuration for everything. Open every session with `supportImage: true` and a fixed `maxNumImages`, so text and vision calls share the same resident engine instead of forcing a reload each time they alternate. Text sessions simply send no image. Measure the extra memory the resident vision encoder costs on the Pad 7.
+Load one configuration for everything. Open every session with `supportImage: true` and a fixed `maxNumImages`, so text and vision calls share the same resident engine instead of forcing a reload each time they alternate. Text sessions simply send no image. Measure the extra memory the resident vision encoder costs on the Pixel 7 Pro.
 
 Repeat loads are already helped by LiteRT-LM's load cache: `flutter_gemma` 1.3.0 sets `cacheDir` to the app support directory for you. The cache (including an XNNPACK weight cache of hundreds of MB) is keyed to the model file's modification time and size, so never touch the file after download. Add the cache to the free-space check, which today only counts the download.
 
@@ -256,7 +256,7 @@ Gemma 4 is Apache 2.0. EmbeddingGemma's Gemma Terms allow redistribution if you 
 
 ### 22. Raise the context window only after measuring
 
-Gemma 4 E2B supports up to 32K tokens and you load 4,096. Going to 6K or 8K lets the router summarize more on-device before truncating, but the memory for past tokens grows with it. Measure peak memory on the Pad 7 at each size, and keep the largest that stays within budget with the embedder also loaded.
+Gemma 4 E2B supports up to 32K tokens and you load 4,096. Going to 6K or 8K lets the router summarize more on-device before truncating, but the memory for past tokens grows with it. Measure peak memory on the Pixel 7 Pro at each size, and keep the largest that stays within budget with the embedder also loaded.
 
 - **Where:** `llm_model_spec.dart` (`maxTokens`)
 - **Effort:** S plus measurement
@@ -276,7 +276,7 @@ Android and the app itself typically use 3–4 GB, leaving about 2–3 GB for mo
 | ML Kit Digital Ink | Handwriting, shapes, gestures | ~20 MB per language | Anything |
 | ML Kit Text Rec. · Entity · Language ID · Doc Scanner | Utility | small | Anything |
 
-\* Figures published for a Galaxy S26 Ultra (Gemma) and a Galaxy S26 GPU (PaddleOCR-VL). Measure on the Pad 7 before relying on them.
+\* Figures published for a Galaxy S26 Ultra (Gemma) and a Galaxy S26 GPU (PaddleOCR-VL). Measure on the Pixel 7 Pro before relying on them.
 
 † Google's benchmark reports 676 MB. A LiteRT-LM bug report (issue #3507) measured 2.6 GB resident for Gemma 4 E2B on an Android GPU (8K context), because Android copies weights into GPU memory where iOS memory-maps them. Plan for the high end until you've measured.
 

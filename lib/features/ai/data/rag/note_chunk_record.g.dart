@@ -89,6 +89,24 @@ const NoteChunkRecordSchema = CollectionSchema(
           caseSensitive: false,
         )
       ],
+    ),
+    r'pageId_embeddingModelId': IndexSchema(
+      id: 4955993729807630652,
+      name: r'pageId_embeddingModelId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'pageId',
+          type: IndexType.value,
+          caseSensitive: false,
+        ),
+        IndexPropertySchema(
+          name: r'embeddingModelId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
     )
   },
   links: {},
@@ -466,6 +484,145 @@ extension NoteChunkRecordQueryWhere
         upper: [upperPageId],
         includeUpper: includeUpper,
       ));
+    });
+  }
+
+  QueryBuilder<NoteChunkRecord, NoteChunkRecord, QAfterWhereClause>
+      pageIdEqualToAnyEmbeddingModelId(int pageId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'pageId_embeddingModelId',
+        value: [pageId],
+      ));
+    });
+  }
+
+  QueryBuilder<NoteChunkRecord, NoteChunkRecord, QAfterWhereClause>
+      pageIdNotEqualToAnyEmbeddingModelId(int pageId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pageId_embeddingModelId',
+              lower: [],
+              upper: [pageId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pageId_embeddingModelId',
+              lower: [pageId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pageId_embeddingModelId',
+              lower: [pageId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pageId_embeddingModelId',
+              lower: [],
+              upper: [pageId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<NoteChunkRecord, NoteChunkRecord, QAfterWhereClause>
+      pageIdGreaterThanAnyEmbeddingModelId(
+    int pageId, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'pageId_embeddingModelId',
+        lower: [pageId],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<NoteChunkRecord, NoteChunkRecord, QAfterWhereClause>
+      pageIdLessThanAnyEmbeddingModelId(
+    int pageId, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'pageId_embeddingModelId',
+        lower: [],
+        upper: [pageId],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<NoteChunkRecord, NoteChunkRecord, QAfterWhereClause>
+      pageIdBetweenAnyEmbeddingModelId(
+    int lowerPageId,
+    int upperPageId, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'pageId_embeddingModelId',
+        lower: [lowerPageId],
+        includeLower: includeLower,
+        upper: [upperPageId],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<NoteChunkRecord, NoteChunkRecord, QAfterWhereClause>
+      pageIdEmbeddingModelIdEqualTo(int pageId, String embeddingModelId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'pageId_embeddingModelId',
+        value: [pageId, embeddingModelId],
+      ));
+    });
+  }
+
+  QueryBuilder<NoteChunkRecord, NoteChunkRecord, QAfterWhereClause>
+      pageIdEqualToEmbeddingModelIdNotEqualTo(
+          int pageId, String embeddingModelId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pageId_embeddingModelId',
+              lower: [pageId],
+              upper: [pageId, embeddingModelId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pageId_embeddingModelId',
+              lower: [pageId, embeddingModelId],
+              includeLower: false,
+              upper: [pageId],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pageId_embeddingModelId',
+              lower: [pageId, embeddingModelId],
+              includeLower: false,
+              upper: [pageId],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'pageId_embeddingModelId',
+              lower: [pageId],
+              upper: [pageId, embeddingModelId],
+              includeUpper: false,
+            ));
+      }
     });
   }
 }

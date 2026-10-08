@@ -5,6 +5,8 @@
 // button, so a model that did not fetch on first use can still be fetched by
 // hand. These run the real screen against fakes for the managers.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +19,7 @@ import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
 import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
 import 'package:inkflow/features/ai/data/llm/model_storage_cleaner.dart';
 import 'package:inkflow/features/ai/presentation/ai_providers.dart';
+import 'package:inkflow/features/ai/domain/rag/embedder_rollout.dart';
 import 'package:inkflow/features/audio/data/edge_ai_speech.dart';
 import 'package:inkflow/features/audio/presentation/transcription_providers.dart';
 import 'package:inkflow/features/settings/presentation/screens/settings_screen.dart';
@@ -172,6 +175,8 @@ Future<void> _pumpSettings(
   SpeechModelInstaller? speech,
   ModelDownloadManager? llm,
   HandwritingRecognitionService? handwriting,
+  EmbedderRollout? rollout,
+  bool dryRunCopyInstalled = false,
 }) async {
   SharedPreferences.setMockInitialValues({});
   // Tall enough that the whole AI section is on screen, with no scrolling.
@@ -190,6 +195,11 @@ Future<void> _pumpSettings(
       modelStorageCleanerProvider.overrideWithValue(cleaner),
       speechModelInstallerProvider
           .overrideWithValue(speech ?? _FakeSpeechInstaller()),
+      embedderRolloutStatusProvider.overrideWith((ref) => Stream.value(
+          rollout ??
+              EmbedderRollout(servingModelId: EmbedderSpec.active.modelId))),
+      dryRunCopyInstalledProvider
+          .overrideWith((ref) async => dryRunCopyInstalled),
     ],
     child: MaterialApp(
       theme: AppTheme.light(),
@@ -363,5 +373,91 @@ void main() {
         cleaner: _FakeCleaner(const []));
 
     expect(find.byKey(const ValueKey('export-rag-corpus')), findsOneWidget);
+  });
+
+  testWidgets('a running rollout shows its progress, and offers to cancel it',
+      (tester) async {
+    final rollout = const EmbedderRollout(servingModelId: 'serving')
+        .start(
+          targetModelId: 'target',
+          totalPages: 5,
+          now: DateTime(2026, 10, 9),
+        )
+        .downloaded()
+        .progress(2);
+    await _pumpSettings(tester,
+        embedder: _FakeEmbedder(installed: true),
+        cleaner: _FakeCleaner(const []),
+        rollout: rollout);
+
+    expect(find.text('Upgrading search model: 2 of 5 pages'), findsOneWidget);
+    expect(find.byKey(const ValueKey('rollout-cancel')), findsOneWidget);
+  });
+
+  testWidgets('with no rollout running there is no progress row', (tester) async {
+    await _pumpSettings(tester,
+        embedder: _FakeEmbedder(installed: true),
+        cleaner: _FakeCleaner(const []));
+
+    expect(find.byKey(const ValueKey('rollout-progress')), findsNothing);
+  });
+
+  group('the dry-run row', () {
+    bool enabled(WidgetTester tester, String key) =>
+        tester.widget<TextButton>(find.byKey(ValueKey(key))).onPressed != null;
+
+    testWidgets('installs the copy only while it is missing', (tester) async {
+      await _pumpSettings(tester,
+          embedder: _FakeEmbedder(installed: true),
+          cleaner: _FakeCleaner(const []));
+
+      expect(enabled(tester, 'dry-run-install'), isTrue);
+      expect(enabled(tester, 'dry-run-roll-out'), isFalse);
+      expect(enabled(tester, 'dry-run-roll-back'), isFalse);
+    });
+
+    testWidgets('rolls out to the copy once it is installed', (tester) async {
+      await _pumpSettings(tester,
+          embedder: _FakeEmbedder(installed: true),
+          cleaner: _FakeCleaner(const []),
+          dryRunCopyInstalled: true);
+
+      expect(enabled(tester, 'dry-run-install'), isFalse);
+      expect(enabled(tester, 'dry-run-roll-out'), isTrue);
+      expect(enabled(tester, 'dry-run-roll-back'), isFalse);
+    });
+
+    testWidgets('rolls back to the active model only while the copy serves',
+        (tester) async {
+      await _pumpSettings(tester,
+          embedder: _FakeEmbedder(installed: true),
+          cleaner: _FakeCleaner(const []),
+          dryRunCopyInstalled: true,
+          rollout:
+              EmbedderRollout(servingModelId: EmbedderSpec.dryRunCopy.modelId));
+
+      expect(enabled(tester, 'dry-run-roll-out'), isFalse);
+      expect(enabled(tester, 'dry-run-roll-back'), isTrue);
+    });
+
+    testWidgets('offers none of its actions while a rollout runs',
+        (tester) async {
+      final rollout =
+          EmbedderRollout(servingModelId: EmbedderSpec.dryRunCopy.modelId)
+              .start(
+        targetModelId: EmbedderSpec.active.modelId,
+        totalPages: 5,
+        now: DateTime(2026, 10, 9),
+      );
+      await _pumpSettings(tester,
+          embedder: _FakeEmbedder(installed: true),
+          cleaner: _FakeCleaner(const []),
+          dryRunCopyInstalled: true,
+          rollout: rollout);
+
+      expect(enabled(tester, 'dry-run-install'), isFalse);
+      expect(enabled(tester, 'dry-run-roll-out'), isFalse);
+      expect(enabled(tester, 'dry-run-roll-back'), isFalse);
+    });
   });
 }

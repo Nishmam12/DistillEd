@@ -71,7 +71,7 @@ class EdgeAiStorageCleaner implements ModelStorageCleaner {
   /// these may EVER be listed as orphaned while it is installed.
   static Set<String> get _knownModelFiles => {
         LlmModelSpec.active.filename,
-        ...EmbedderSpec.active.files,
+        for (final spec in EmbedderSpec.registry) ...spec.files,
       };
 
   @override

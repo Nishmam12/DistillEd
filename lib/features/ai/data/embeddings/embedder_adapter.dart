@@ -206,6 +206,10 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
       // Lost a race with another delete, or the metadata vanished underneath
       // us. Either way the file is gone or unreachable; nothing to report.
     }
+    // The plugin deletes a file it downloaded, but not one it was handed by path
+    // (the dry-run copy). Its bytes would outlive its record, so they go here.
+    final leftover = File(await FlutterEdgeAi.getModelPath(filename));
+    if (await leftover.exists()) await leftover.delete();
   }
 }
 
@@ -229,8 +233,49 @@ abstract class EmbeddingRuntime {
 class EdgeAiEmbeddingRuntime implements EmbeddingRuntime {
   final EmbedderInstaller _installer;
 
-  EdgeAiEmbeddingRuntime({EmbedderInstaller? installer})
-      : _installer = installer ?? EdgeAiEmbedderInstaller();
+  /// Seams over the plugin, which needs a device. Each default asks the plugin.
+  final Future<String> Function(String filename) _pathOf;
+  final Future<EmbeddingModel> Function({
+    required String modelPath,
+    required String tokenizerPath,
+  }) _createModel;
+
+  EdgeAiEmbeddingRuntime({
+    EmbedderInstaller? installer,
+    Future<String> Function(String filename)? pathOf,
+    Future<EmbeddingModel> Function({
+      required String modelPath,
+      required String tokenizerPath,
+    })? createModel,
+  })  : _installer = installer ?? EdgeAiEmbedderInstaller(),
+        _pathOf = pathOf ?? _pluginPath,
+        _createModel = createModel ?? _pluginCreateModel;
+
+  static Future<String> _pluginPath(String filename) async {
+    await GemmaBootstrap.ensureInitialized();
+    return FlutterEdgeAi.getModelPath(filename);
+  }
+
+  static Future<EmbeddingModel> _pluginCreateModel({
+    required String modelPath,
+    required String tokenizerPath,
+  }) async {
+    await GemmaBootstrap.ensureInitialized();
+    return FlutterEdgeAiPlugin.instance.createEmbeddingModel(
+      modelPath: modelPath,
+      tokenizerPath: tokenizerPath,
+        // CPU, stated outright. The LiteRT embedding backend (flutter_gemma_
+        // litertlm 1.8) runs on the CPU by decision, because its GPU delegate
+        // compiles and then returns all-zero vectors for EmbeddingGemma's int4
+        // weights. That suits us — it keeps the GPU free for Gemma — but an old
+        // "gpu, falls back internally" here read as if GPU embedding were
+        // happening. Naming the CPU keeps it the CPU if a later plugin version
+        // starts honouring the request. (The 1.x → 2.x move changed where this
+        // code lives, not the vectors: same tokenizer convention, prefixes and
+        // padding, so an index built before it stays valid.)
+        preferredBackend: PreferredBackend.cpu,
+    );
+  }
 
   @override
   Future<EmbeddingSession> open(EmbedderSpec spec) async {
@@ -242,30 +287,17 @@ class EdgeAiEmbeddingRuntime implements EmbeddingRuntime {
         '${spec.displayName}: app-owned prompts are not supported',
       );
     }
-    await GemmaBootstrap.ensureInitialized();
-
-    // Guard BEFORE the install() below, which would otherwise download 175 MB
-    // behind the user's back — install() is idempotent and, when the files are
-    // already on disk, does nothing but re-mark the model active. That
-    // re-activation is why it's called at all: `installEmbedder().install()` is
-    // the only public way to set the active embedding spec, and the active spec
-    // is what `getActiveEmbedder()` resolves paths from after a restart.
+    // Opening never installs: a download is always an explicit act, and install()
+    // would also re-mark a model as the plugin's active one. The files are named
+    // by the spec instead, so the serving model and a rollout's target can be
+    // loaded in turn without either becoming the active model.
     if (!await _installer.isInstalled(spec)) throw LlmNotReadyException();
-    await _installer.install(spec: spec, authToken: null);
 
     final EmbeddingModel model;
     try {
-      model = await FlutterEdgeAi.getActiveEmbedder(
-        // CPU, stated outright. The LiteRT embedding backend (flutter_gemma_
-        // litertlm 1.8) runs on the CPU by decision, because its GPU delegate
-        // compiles and then returns all-zero vectors for EmbeddingGemma's int4
-        // weights. That suits us — it keeps the GPU free for Gemma — but an old
-        // "gpu, falls back internally" here read as if GPU embedding were
-        // happening. Naming the CPU keeps it the CPU if a later plugin version
-        // starts honouring the request. (The 1.x → 2.x move changed where this
-        // code lives, not the vectors: same tokenizer convention, prefixes and
-        // padding, so an index built before it stays valid.)
-        preferredBackend: PreferredBackend.cpu,
+      model = await _createModel(
+        modelPath: await _pathOf(spec.modelFilename),
+        tokenizerPath: await _pathOf(spec.tokenizerFilename),
       );
     } on StateError {
       throw LlmNotReadyException();

@@ -36,6 +36,10 @@ import '../data/ocr/image_text_recognition_service.dart';
 import '../data/ocr/isar_read_cache.dart';
 import '../data/providers/cloud_gateway_provider.dart';
 import '../data/providers/local_gemma_provider.dart';
+import '../data/embeddings/embedder_adapter.dart' show embedderInstallerFor;
+import '../data/embeddings/embedder_rollout_models.dart';
+import '../data/embeddings/embedder_spec.dart';
+import '../data/rag/embedder_rollout_state_store.dart';
 import '../data/rag/note_chunk_store.dart';
 import '../../audio/data/transcript_store.dart' show lectureTextOf;
 import '../../audio/presentation/audio_providers.dart';
@@ -61,6 +65,9 @@ import '../domain/ai_router.dart' show Reachability;
 import '../domain/page_content_extractor.dart';
 import '../domain/quality/ai_quality_guard.dart';
 import '../domain/rag/bulk_indexer.dart';
+import '../domain/rag/embedder_rollout.dart';
+import '../domain/rag/embedder_rollout_runner.dart';
+import '../domain/rag/notebook_rollout_index.dart';
 import '../domain/rag/page_chunker.dart' show chunkTitle;
 import '../domain/rag/rag_indexer.dart';
 import '../domain/rag/rag_retriever.dart';
@@ -186,8 +193,23 @@ final localModelWarmerProvider = Provider<void Function()>((ref) => () {
 /// Exposed separately rather than only through [AiProvider.embed] because
 /// embeddings are model-locked and must never be routed: see the header of
 /// `domain/rag/text_embedder.dart`.
-final textEmbedderProvider =
-    Provider<TextEmbedder>((ref) => LocalTextEmbedder());
+final textEmbedderProvider = Provider<TextEmbedder>(
+    (ref) => LocalTextEmbedder(spec: ref.watch(servingEmbedderSpecProvider)));
+
+/// The embedding model that answers questions and embeds new notes: the one the
+/// rollout says is serving (docs/TECH_MIGRATION_PLAN.md, phase 4.5). It is the
+/// active model until a switch, and changes only when a switch completes. An id no
+/// spec has is an error: answering with another vector space would look plausible
+/// and be wrong.
+final servingEmbedderSpecProvider = Provider<EmbedderSpec>((ref) {
+  final serving =
+      ref.watch(embedderRolloutStatusProvider).value?.servingModelId;
+  if (serving == null) return EmbedderSpec.active;
+  return EmbedderSpec.registry.firstWhere(
+    (spec) => spec.modelId == serving,
+    orElse: () => throw StateError('no embedder spec has the id $serving'),
+  );
+});
 
 /// The effective HuggingFace token for gated downloads.
 ///
@@ -240,18 +262,103 @@ final ragIndexerProvider = Provider<RagIndexer>((ref) {
     // Which notebook (and, for an import, which document) a chunk belongs to
     // is embedded with it, so two notebooks that both mention "enthalpy" rank
     // apart. See [chunkTitle].
-    titleOf: (notebookId, pageId) async {
-      final notebook =
-          await ref.read(noteRepositoryProvider).getNotebook(notebookId);
-      final pages =
-          await ref.read(pageRepositoryProvider).getPagesForNotebook(notebookId);
-      String? source;
-      for (final page in pages) {
-        if (page.id == pageId) source = page.importSourceName;
-      }
-      return chunkTitle(notebookTitle: notebook?.title, sourceName: source);
-    },
+    titleOf: (notebookId, pageId) => _pageTitle(ref, notebookId, pageId),
   );
+});
+
+/// What a page is embedded under: its notebook, and for an import its document.
+Future<String?> _pageTitle(Ref ref, int notebookId, int pageId) async {
+  final notebook =
+      await ref.read(noteRepositoryProvider).getNotebook(notebookId);
+  final pages =
+      await ref.read(pageRepositoryProvider).getPagesForNotebook(notebookId);
+  String? source;
+  for (final page in pages) {
+    if (page.id == pageId) source = page.importSourceName;
+  }
+  return chunkTitle(notebookTitle: notebook?.title, sourceName: source);
+}
+
+/// Every page with text, across every notebook, for the rollout's indexing job.
+Future<List<RolloutPage>> _rolloutPages(Ref ref) async {
+  final pages = <RolloutPage>[];
+  final notebooks = await ref.read(noteRepositoryProvider).getAllNotebooks();
+  for (final notebook in notebooks) {
+    final texts = await ref.read(pageTextStoreProvider).forNotebook(notebook.id);
+    for (final page in texts) {
+      if (page.text.trim().isNotEmpty) {
+        pages.add(RolloutPage(
+          notebookId: notebook.id,
+          pageId: page.pageId,
+          text: page.text,
+        ));
+      }
+    }
+  }
+  return pages;
+}
+
+/// The shadow re-index (docs/TECH_MIGRATION_PLAN.md, phase 4.5): downloads a target
+/// model, builds its chunks beside the serving ones, and switches once every page
+/// is current. Nothing starts a rollout yet.
+final embedderRolloutRunnerProvider = Provider<EmbedderRolloutRunner>((ref) {
+  final store = ref.watch(noteChunkStoreProvider);
+  return EmbedderRolloutRunner(
+    states: SharedPrefsRolloutStateStore(),
+    models: EmbedderRolloutModels(
+      installerFor: embedderInstallerFor,
+      downloadFor: (spec) async {
+        final manager = EmbedderDownloadManager(
+          spec: spec,
+          authToken: () => ref.read(huggingFaceTokenProvider),
+        );
+        try {
+          await manager.download();
+        } finally {
+          manager.dispose();
+        }
+      },
+    ),
+    chunks: store,
+    index: NotebookRolloutIndex(
+      pages: () => _rolloutPages(ref),
+      indexerFor: (target) => RagIndexer(
+        embedder: target,
+        saveChunks: store.replaceForPage,
+        deleteChunks: store.deleteForPage,
+        indexStateOf: store.indexStateForPage,
+        titleOf: (notebookId, pageId) => _pageTitle(ref, notebookId, pageId),
+      ),
+    ),
+    embedderFor: (modelId) => LocalTextEmbedder(
+      spec: EmbedderSpec.registry.firstWhere(
+        (spec) => spec.modelId == modelId,
+        orElse: () => throw StateError('no embedder spec has the id $modelId'),
+      ),
+    ),
+    now: DateTime.now,
+  );
+});
+
+/// The rollout as it was last saved, for the Settings row and for the model that
+/// answers questions. While a rollout runs it is read again every second, so the
+/// progress row moves; each step saves before the next one starts, so each read is
+/// current. Invalidate it after an action that changes the saved state.
+final embedderRolloutStatusProvider =
+    StreamProvider<EmbedderRollout>((ref) async* {
+  final states = SharedPrefsRolloutStateStore();
+  while (true) {
+    final rollout = await states.load(EmbedderSpec.active.modelId);
+    yield rollout;
+    if (!rollout.isRunning) return;
+    await Future<void>.delayed(const Duration(seconds: 1));
+  }
+});
+
+/// Whether the dry run's copy is installed. Only the debug settings read it.
+final dryRunCopyInstalledProvider = FutureProvider<bool>((ref) {
+  const copy = EmbedderSpec.dryRunCopy;
+  return embedderInstallerFor(copy).isInstalled(copy);
 });
 
 /// Debounces indexing off the Context Engine's extraction (see the file header
@@ -286,7 +393,11 @@ final bulkRagIndexerProvider = Provider<BulkRagIndexer>((ref) {
     },
     // The reads are the expensive part and a missing embedder would throw every
     // one of them away, so find out before the first.
-    embedderReady: ref.read(embedderDownloadManagerProvider).isInstalled,
+    // The model that embeds the notes, which after a switch is not the active one.
+    embedderReady: () async {
+      final spec = ref.read(servingEmbedderSpecProvider);
+      return embedderInstallerFor(spec).isInstalled(spec);
+    },
     // Every read first, THEN every embedding: give the vision model's ~2.6 GB
     // back the moment the last read is done, before the embedder works.
     releaseVisionModel: () async {

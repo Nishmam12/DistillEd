@@ -1,13 +1,13 @@
 // EmbeddingGemma behind the domain's [TextEmbedder] seam.
 //
-// Mirrors [LocalGemmaProvider]'s memory discipline: calls are serialized by a
-// mutex, and the model stays loaded for [idleUnloadDelay] after the last one
+// Mirrors [LocalGemmaProvider]'s memory discipline: calls are serialized by the
+// embedder slot ([EmbedderSlot]), and the model stays loaded for [idleUnloadDelay] after the last one
 // rather than being rebuilt per call. It used to load and unload around every
 // batch, which put a model load in front of every "Ask your notes" question and
 // every page of a bulk index; at ~175 MB it is cheap enough to hold through a
 // burst of work. Nothing stays resident once the app goes quiet.
 //
-// The mutex is this embedder's OWN, not shared with the LLM's — a deliberate
+// The slot is shared by the app's embedders but NOT with the LLM's — a deliberate
 // refinement of the "at most one model resident" invariant to "at most one of
 // each". Sharing one lock across both would strictly cap residency, but it
 // would also park a user-waiting Summarize behind a background re-index, which
@@ -22,49 +22,35 @@ import '../../domain/rag/prompt_contract.dart';
 import '../../domain/rag/text_embedder.dart';
 import '../llm/llm_exceptions.dart';
 import 'embedder_adapter.dart';
+import 'embedder_slot.dart';
 import 'embedder_spec.dart';
 
-class LocalTextEmbedder implements TextEmbedder {
+class LocalTextEmbedder implements TextEmbedder, EmbedderSlotOwner {
   /// How long the model stays loaded after the last call finishes.
   static const Duration defaultIdleUnloadDelay = Duration(seconds: 60);
 
   final EmbedderSpec spec;
   final EmbeddingRuntime _runtime;
   final Duration idleUnloadDelay;
+  final EmbedderSlot _slot;
 
   LocalTextEmbedder({
     this.spec = EmbedderSpec.active,
     EmbeddingRuntime? runtime,
     this.idleUnloadDelay = defaultIdleUnloadDelay,
-  }) : _runtime = runtime ?? embeddingRuntimeFor(spec);
-
-  /// Mutex: chain of futures; each call awaits the previous one.
-  Future<void> _lock = Future.value();
+    EmbedderSlot? slot,
+  })  : _runtime = runtime ?? embeddingRuntimeFor(spec),
+        _slot = slot ?? EmbedderSlot.shared;
 
   /// The loaded model, or null when nothing is resident.
   EmbeddingSession? _session;
   Timer? _idleUnload;
 
-  /// Runs [body] holding the mutex. The idle unload takes the same lock, so it
-  /// can never close a model out from under a call that is about to use it, nor
-  /// have a new load begin while the old one is still being torn down.
-  Future<T> _locked<T>(Future<T> Function() body) async {
-    final previous = _lock;
-    final gate = Completer<void>();
-    _lock = gate.future;
-    await previous;
-    try {
-      return await body();
-    } finally {
-      gate.complete();
-    }
-  }
-
   void _armIdleUnload() {
     _idleUnload?.cancel();
     _idleUnload = Timer(idleUnloadDelay, () {
       _idleUnload = null;
-      unawaited(_locked(() async {
+      unawaited(_slot.run(() async {
         // A call that ran between the timer firing and this getting the lock
         // re-armed it; that call's own window applies.
         if (_idleUnload == null) await _unload();
@@ -75,6 +61,7 @@ class LocalTextEmbedder implements TextEmbedder {
   Future<void> _unload() async {
     final session = _session;
     _session = null;
+    _slot.released(this);
     await session?.close();
   }
 
@@ -83,7 +70,16 @@ class LocalTextEmbedder implements TextEmbedder {
   Future<void> release() {
     _idleUnload?.cancel();
     _idleUnload = null;
-    return _locked(_unload);
+    return _slot.run(_unload);
+  }
+
+  /// Another embedder is about to load, so this one gives its model up. It is
+  /// already inside the slot, so this does not take the slot again.
+  @override
+  Future<void> releaseFromSlot() async {
+    _idleUnload?.cancel();
+    _idleUnload = null;
+    await _unload();
   }
 
   @override
@@ -115,10 +111,22 @@ class LocalTextEmbedder implements TextEmbedder {
     List<String> texts, {
     required EmbedTaskType taskType,
   }) async {
-    // Before the mutex: nothing to embed must not queue behind a 175 MB load,
+    // Before the slot: nothing to embed must not queue behind a 175 MB load,
     // and must not perform one either.
     if (texts.isEmpty) return const [];
-    return _locked(() => _embedAll(texts, taskType));
+    return _slot.run(() => _embedAll(texts, taskType));
+  }
+
+  /// Loads the model once the slot has released whichever embedder held it. A
+  /// failed load gives the slot back at once.
+  Future<EmbeddingSession> _openSession() async {
+    await _slot.claim(this);
+    try {
+      return await _runtime.open(spec);
+    } catch (_) {
+      _slot.released(this);
+      rethrow;
+    }
   }
 
   Future<List<List<double>>> _embedAll(
@@ -130,7 +138,7 @@ class LocalTextEmbedder implements TextEmbedder {
 
     final EmbeddingSession session;
     try {
-      session = _session ??= await _runtime.open(spec);
+      session = _session ??= await _openSession();
     } on LlmNotReadyException catch (e) {
       throw AiModelNotReadyException(
         '${spec.displayName} is not downloaded yet.',

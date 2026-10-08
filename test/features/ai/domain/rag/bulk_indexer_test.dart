@@ -112,9 +112,12 @@ class _MemoryStore {
 
   Future<void> delete(int pageId) async => byPage.remove(pageId);
 
-  Future<PageIndexState?> stateOf(int pageId) async {
-    final chunks = byPage[pageId];
-    if (chunks == null || chunks.isEmpty) return null;
+  Future<PageIndexState?> stateOf(int pageId, String modelId) async {
+    final chunks = [
+      for (final c in byPage[pageId] ?? const <NoteChunk>[])
+        if (c.embeddingModelId == modelId) c,
+    ];
+    if (chunks.isEmpty) return null;
     return PageIndexState(
       contentSignature: chunks.first.contentSignature,
       embeddingModelId: chunks.first.embeddingModelId,

@@ -86,9 +86,12 @@ RagIndexScheduler buildScheduler(
       embedder: embedder,
       saveChunks: (pageId, chunks) async => store[pageId] = chunks,
       deleteChunks: (pageId) async => store.remove(pageId),
-      indexStateOf: (pageId) async {
-        final chunks = store[pageId];
-        if (chunks == null || chunks.isEmpty) return null;
+      indexStateOf: (pageId, modelId) async {
+        final chunks = [
+          for (final c in store[pageId] ?? const <NoteChunk>[])
+            if (c.embeddingModelId == modelId) c,
+        ];
+        if (chunks.isEmpty) return null;
         return PageIndexState(
           contentSignature: chunks.first.contentSignature,
           embeddingModelId: chunks.first.embeddingModelId,

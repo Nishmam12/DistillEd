@@ -30,7 +30,7 @@ class RagIndexer {
   final Future<void> Function(int pageId) _deleteChunks;
 
   /// What a page's stored chunks were built with, or null if it has none.
-  final Future<PageIndexState?> Function(int pageId) _indexStateOf;
+  final Future<PageIndexState?> Function(int pageId, String modelId) _indexStateOf;
 
   /// What to call a page's notebook (and imported document) when embedding its
   /// chunks — see [chunkTitle]. Null embeds every chunk bare, as before.
@@ -43,7 +43,8 @@ class RagIndexer {
     required Future<void> Function(int pageId, List<NoteChunk> chunks)
         saveChunks,
     required Future<void> Function(int pageId) deleteChunks,
-    required Future<PageIndexState?> Function(int pageId) indexStateOf,
+    required Future<PageIndexState?> Function(int pageId, String modelId)
+        indexStateOf,
     Future<String?> Function(int notebookId, int pageId)? titleOf,
     DateTime Function() now = DateTime.now,
   })  : _embedder = embedder,
@@ -64,6 +65,32 @@ class RagIndexer {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Whether [pageId]'s chunks, built with this embedder, are current for [text].
+  /// Nothing is embedded or stored, so every page can be asked cheaply. A blank
+  /// page is current when it has no chunks for this model.
+  Future<bool> isCurrent({
+    required int notebookId,
+    required int pageId,
+    required String text,
+  }) async {
+    final state = await _indexStateOf(pageId, _embedder.modelId);
+    final drafts = chunkPage(
+      text: text,
+      notebookId: notebookId,
+      pageId: pageId,
+      maxWords: _embedder.chunkWords,
+      overlapWords: _embedder.chunkOverlapWords,
+    );
+    if (drafts.isEmpty) return state == null;
+    final title = await _titleFor(notebookId, pageId);
+    final signature = pageTextSignature(
+      _embedder.promptContract.embeddingInput(title, text),
+    );
+    return state != null &&
+        state.contentSignature == signature &&
+        state.embeddingModelId == _embedder.modelId;
   }
 
   /// Brings [pageId]'s chunks in line with [text].
@@ -99,7 +126,7 @@ class RagIndexer {
     final signature = pageTextSignature(
       _embedder.promptContract.embeddingInput(title, text),
     );
-    final state = await _indexStateOf(pageId);
+    final state = await _indexStateOf(pageId, _embedder.modelId);
     // The model check is as load-bearing as the signature: after a model swap
     // the old vectors are unusable, and RagRetriever ignores them, so a page
     // whose text never changes again would otherwise stay invisible forever.

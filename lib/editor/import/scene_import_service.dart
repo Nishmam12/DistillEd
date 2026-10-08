@@ -75,11 +75,11 @@ class SceneImportService {
 
   /// Lets the user choose a PDF. Null when they cancel.
   Future<String?> pickPdfPath() async {
-    final result = await FilePicker.platform.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
     );
-    return result?.files.single.path;
+    return file?.path;
   }
 
   /// A fresh identifier for one import, stamped onto every page it produces
