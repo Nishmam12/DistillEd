@@ -41,6 +41,7 @@ void main() {
 
     Future<bool> installedWith(Set<String> files) => EdgeAiSpeechInstaller(
           isFileInstalled: (name) async => files.contains(name),
+          isFileOnDisk: (name) async => files.contains(name),
         ).isInstalled(spec);
 
     test('the filenames are the ones the plugin installs the model under', () {
@@ -78,6 +79,66 @@ void main() {
         () async {
       expect(await installedWith({spec.modelFilename, 'tokenizer.json'}),
           isFalse);
+    });
+
+    test('registered but gone from disk is not installed', () async {
+      // A restored backup keeps the plugin's records and loses the files they
+      // point at. The Settings row must not say "Downloaded" for that.
+      final installer = EdgeAiSpeechInstaller(
+        isFileInstalled: (_) async => true,
+        isFileOnDisk: (_) async => false,
+      );
+
+      expect(await installer.isInstalled(spec), isFalse);
+    });
+
+    test('a model file on disk without its tokenizer is not installed',
+        () async {
+      final installer = EdgeAiSpeechInstaller(
+        isFileInstalled: (_) async => true,
+        isFileOnDisk: (name) async => name == spec.modelFilename,
+      );
+
+      expect(await installer.isInstalled(spec), isFalse);
+    });
+  });
+
+  group('uninstalling', () {
+    const spec = SpeechModelSpec.whisperBase;
+
+    test('forgets both records and the active model, even with no files',
+        () async {
+      final forgotten = <String>[];
+      var activeCleared = 0;
+      final installer = EdgeAiSpeechInstaller(
+        isFileInstalled: (_) async => true,
+        forgetFile: (name) async {
+          forgotten.add(name);
+        },
+        uninstallActive: () async {
+          activeCleared++;
+        },
+      );
+
+      await installer.uninstall(spec);
+
+      expect(forgotten, [spec.modelFilename, spec.tokenizerFilename]);
+      expect(activeCleared, 1);
+    });
+
+    test('with nothing recorded there is nothing to forget', () async {
+      final forgotten = <String>[];
+      final installer = EdgeAiSpeechInstaller(
+        isFileInstalled: (_) async => false,
+        forgetFile: (name) async {
+          forgotten.add(name);
+        },
+        uninstallActive: () async {},
+      );
+
+      await installer.uninstall(spec);
+
+      expect(forgotten, isEmpty);
     });
   });
 

@@ -812,6 +812,10 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
         LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024);
     // Where the model ran the last time it loaded; null until it has loaded.
     final backend = ref.watch(localBackendProvider);
+    // The Whisper row reads whether it is installed only when it is built, so
+    // it is rebuilt whenever the speech model changes (a download or a delete).
+    final speechPhase =
+        ref.watch(speechModelProvider.select((s) => s.phase));
 
     return _SettingsCard(
       children: [
@@ -862,7 +866,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           onDelete: () => recognition.deleteModel('bn-Latn'),
         ),
         _modelRow(
-          key: ValueKey('speech-$_refresh'),
+          key: ValueKey('speech-$_refresh-${speechPhase.name}'),
           icon: PhosphorIconsRegular.microphone,
           title: SpeechModelSpec.active.displayName,
           sizeLabel: '~80 MB',
@@ -1038,8 +1042,13 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
     return _InstallState.absent;
   }
 
-  void _refreshInstalled() =>
-      setState(() => _installedCheck = _checkInstalled());
+  // A block, not an arrow: the arrow would return the assigned Future, which
+  // setState refuses, so the row would keep its old state.
+  void _refreshInstalled() {
+    setState(() {
+      _installedCheck = _checkInstalled();
+    });
+  }
 
   Future<void> _download() async {
     final manager = ref.read(embedderDownloadManagerProvider);
@@ -1282,7 +1291,10 @@ class _ReclaimSpaceRowState extends ConsumerState<_ReclaimSpaceRow> {
     try {
       await ref.read(modelStorageCleanerProvider).cleanup();
       if (!mounted) return;
-      setState(() => _orphans = _findOrphans());
+      // A block, not an arrow, for the same reason as _refreshInstalled.
+      setState(() {
+        _orphans = _findOrphans();
+      });
       widget.onChanged();
     } on LlmException catch (e) {
       // Includes the refuse-to-delete guard, whose message is the whole point

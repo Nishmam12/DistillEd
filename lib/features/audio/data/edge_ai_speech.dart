@@ -11,6 +11,7 @@
 // outside English; the larger checkpoints are a different order of download.
 // Moonshine (English only, 5 s windows) is the follow-up if English speed matters.
 
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_edge_ai/flutter_edge_ai.dart';
@@ -79,16 +80,47 @@ abstract class SpeechModelInstaller {
 }
 
 class EdgeAiSpeechInstaller implements SpeechModelInstaller {
-  /// [isFileInstalled] is a seam over the plugin, which needs a device.
-  EdgeAiSpeechInstaller(
-      {Future<bool> Function(String filename)? isFileInstalled})
-      : _isFileInstalled = isFileInstalled ?? _pluginHas;
+  /// The seams are over the plugin, which needs a device. Each default asks the
+  /// plugin; a test answers instead.
+  EdgeAiSpeechInstaller({
+    Future<bool> Function(String filename)? isFileInstalled,
+    Future<bool> Function(String filename)? isFileOnDisk,
+    Future<void> Function(String filename)? forgetFile,
+    Future<void> Function()? uninstallActive,
+  })  : _isFileInstalled = isFileInstalled ?? _pluginHas,
+        _isFileOnDisk = isFileOnDisk ?? _pluginOnDisk,
+        _forgetFile = forgetFile ?? _pluginForget,
+        _uninstallActive = uninstallActive ?? _pluginUninstallActive;
 
+  /// The plugin's records: what it says it installed.
   final Future<bool> Function(String filename) _isFileInstalled;
+
+  /// The disk: whether the file is where the plugin reads it from.
+  final Future<bool> Function(String filename) _isFileOnDisk;
+
+  /// Removes a file's record, and the file if it is still there.
+  final Future<void> Function(String filename) _forgetFile;
+
+  final Future<void> Function() _uninstallActive;
 
   static Future<bool> _pluginHas(String filename) async {
     await GemmaBootstrap.ensureInitialized();
     return FlutterEdgeAi.isModelInstalled(filename);
+  }
+
+  static Future<bool> _pluginOnDisk(String filename) async {
+    await GemmaBootstrap.ensureInitialized();
+    return File(await FlutterEdgeAi.getModelPath(filename)).exists();
+  }
+
+  static Future<void> _pluginForget(String filename) async {
+    await GemmaBootstrap.ensureInitialized();
+    await FlutterEdgeAi.uninstallModel(filename);
+  }
+
+  static Future<void> _pluginUninstallActive() async {
+    await GemmaBootstrap.ensureInitialized();
+    await FlutterEdgeAi.uninstallStt();
   }
 
   /// The model is ~97% of the download (the tokenizer is a couple of MB), so its
@@ -98,10 +130,15 @@ class EdgeAiSpeechInstaller implements SpeechModelInstaller {
   /// Both files: the plugin installs them one after the other, so a download
   /// that fails between them leaves a model that cannot run, and calling that
   /// "ready" would never be put right.
+  ///
+  /// Both records and files. A backup restored without the model files keeps
+  /// the records, and the plugin would then report a model that is not there.
   @override
   Future<bool> isInstalled(SpeechModelSpec spec) async =>
       await _isFileInstalled(spec.modelFilename) &&
-      await _isFileInstalled(spec.tokenizerFilename);
+      await _isFileInstalled(spec.tokenizerFilename) &&
+      await _isFileOnDisk(spec.modelFilename) &&
+      await _isFileOnDisk(spec.tokenizerFilename);
 
   @override
   Future<void> install(
@@ -124,10 +161,18 @@ class EdgeAiSpeechInstaller implements SpeechModelInstaller {
     await builder.install();
   }
 
+  /// The plugin's own uninstall reaches only a model loaded as the active one,
+  /// and a model whose files are gone never is, so it did nothing and Delete
+  /// left the record behind. Each record is forgotten by name instead.
   @override
   Future<void> uninstall(SpeechModelSpec spec) async {
-    await GemmaBootstrap.ensureInitialized();
-    await FlutterEdgeAi.uninstallStt();
+    await _uninstallActive();
+    await _forget(spec.modelFilename);
+    await _forget(spec.tokenizerFilename);
+  }
+
+  Future<void> _forget(String filename) async {
+    if (await _isFileInstalled(filename)) await _forgetFile(filename);
   }
 }
 
