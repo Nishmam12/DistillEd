@@ -132,4 +132,45 @@ void main() {
       expect(await lectureLanguage(pageText: bangla, setting: 'en'), 'en');
     });
   });
+
+  group('the language a student chooses when a lecture starts', () {
+    test('the choice is written before the extension of the recording', () {
+      expect(withLectureLanguage('audio/n2_p2_123.wav', 'bn'),
+          'audio/n2_p2_123_bn.wav');
+    });
+
+    test('and read back from the name, or null for an older recording', () {
+      expect(languageOfRecording('audio/n2_p2_123_bn.m4a'), 'bn');
+      expect(languageOfRecording('audio/n2_p2_123_en.wav'), 'en');
+      expect(languageOfRecording('audio/n2_p2_123.wav'), isNull);
+    });
+
+    test('a choice beats the notes beside the lecture, and nothing re-judges it',
+        () async {
+      final detector = _Detector('en');
+
+      expect(
+        await transcriptionLanguage(
+          relativePath: 'audio/n2_p2_123_bn.wav',
+          pageText: english,
+          setting: 'en',
+          detector: detector,
+        ),
+        'bn',
+      );
+      expect(detector.asked, 0);
+    });
+
+    test('an older recording still takes the notes beside it', () async {
+      expect(
+        await transcriptionLanguage(
+          relativePath: 'audio/n2_p2_123.wav',
+          pageText: bangla,
+          setting: 'en',
+          detector: _Detector('bn'),
+        ),
+        'bn',
+      );
+    });
+  });
 }

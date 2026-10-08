@@ -31,6 +31,7 @@ import '../../features/audio/presentation/lecture_transcript_sheet.dart';
 import '../../features/audio/presentation/lecture_transcription_notifier.dart';
 import '../../features/audio/presentation/recording_notifier.dart';
 import '../../features/audio/presentation/transcription_providers.dart';
+import '../../features/audio/presentation/lecture_language_picker.dart';
 import '../../features/search/presentation/note_search_sheet.dart';
 import '../import/fit_image_rect.dart';
 import '../import/ml_kit_document_scanner.dart';
@@ -1081,9 +1082,17 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
                 : PhosphorIconsRegular.microphone,
             color: state.isRecording ? context.ink.accentRed : null,
           ),
-          onPressed: () => state.isRecording
-              ? notifier.stop(widget.pageId)
-              : notifier.start(widget.pageId),
+          onPressed: () async {
+            if (state.isRecording) {
+              notifier.stop(widget.pageId);
+              return;
+            }
+            // Asked first, so the transcript is made in the language the lecture
+            // is in. Backing out records nothing.
+            final language = await pickLectureLanguage(context);
+            if (language == null || !mounted) return;
+            notifier.start(widget.pageId, language: language);
+          },
         ),
       ],
     );

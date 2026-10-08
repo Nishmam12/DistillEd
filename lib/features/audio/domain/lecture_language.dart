@@ -43,3 +43,37 @@ Future<String> lectureLanguage({
     return fallback;
   }
 }
+
+/// [relativePath] with the language the student chose for the lecture written
+/// before its extension: `audio/n2_p2_123.wav` becomes `audio/n2_p2_123_bn.wav`.
+///
+/// The choice lives in the name because a recording row has no field for it, and
+/// adding one would change the stored schema of every user's database.
+String withLectureLanguage(String relativePath, String language) {
+  final dot = relativePath.lastIndexOf('.');
+  return '${relativePath.substring(0, dot)}_$language'
+      '${relativePath.substring(dot)}';
+}
+
+/// The language a recording was made in, from its name (see
+/// [withLectureLanguage]); null for a recording made before the choice existed.
+String? languageOfRecording(String relativePath) =>
+    RegExp(r'_(en|bn)\.[A-Za-z0-9]+$').firstMatch(relativePath)?.group(1);
+
+/// The language to transcribe a recording as. The student's choice when the
+/// recording has one; otherwise [lectureLanguage]'s reading of the notes and the
+/// setting, exactly as before the choice existed.
+Future<String> transcriptionLanguage({
+  required String relativePath,
+  required String pageText,
+  required String setting,
+  LanguageDetector? detector,
+}) async {
+  final chosen = languageOfRecording(relativePath);
+  if (chosen != null) return chosen;
+  return lectureLanguage(
+    pageText: pageText,
+    setting: setting,
+    detector: detector,
+  );
+}

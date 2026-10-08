@@ -13,6 +13,7 @@ import '../../../editor/state/scene_controller.dart';
 import '../domain/audio_ports.dart';
 import '../domain/lecture_recording.dart';
 import '../domain/recording_session.dart';
+import '../domain/lecture_language.dart';
 import '../../../core/providers/settings_provider.dart';
 import 'audio_providers.dart';
 import 'transcription_providers.dart';
@@ -97,14 +98,17 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
     state = state.copyWith(onPage: await _store.forPage(pageId));
   }
 
-  Future<void> start(int pageId) async {
+  Future<void> start(int pageId, {String? language}) async {
     if (_session.isRecording) return;
     state = state.copyWith(clearError: true);
 
     final startedAt = DateTime.now();
     final forSpeech = _transcribeLectures();
-    final relativePath = 'audio/n${_notebookId}_p${pageId}_'
+    final name = 'audio/n${_notebookId}_p${pageId}_'
         '${startedAt.millisecondsSinceEpoch}.${forSpeech ? 'wav' : 'm4a'}';
+    // The language the student chose is part of the name; see withLectureLanguage.
+    final relativePath =
+        language == null ? name : withLectureLanguage(name, language);
     final absolute = _absolute(relativePath);
 
     try {

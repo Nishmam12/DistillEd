@@ -205,6 +205,15 @@ void main() {
       expect(f.store.recordings.single.isSpeechAudio, isTrue);
     });
 
+    test('the language the student chose is stamped on the recording',
+        () async {
+      final f = _build(transcribe: true);
+
+      await f.notifier.start(10, language: 'bn');
+
+      expect(f.store.recordings.single.relativePath, endsWith('_bn.wav'));
+    });
+
     test('with transcripts off, it is compressed AAC exactly as before',
         () async {
       final f = _build();

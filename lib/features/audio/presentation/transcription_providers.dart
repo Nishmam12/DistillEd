@@ -62,15 +62,17 @@ final lectureTranscriptionProvider = StateNotifierProvider<
     speech: ref.watch(speechToTextProvider),
     store: ref.watch(transcriptStoreProvider),
     appDocsPath: ref.watch(appDocsPathProvider),
-    // The notes beside a lecture say what language it is in; the setting is the
-    // fallback. Whisper translates rather than detects, so this has to be right.
+    // The language the student chose when the lecture started. Whisper translates
+    // rather than detects, so this has to be right. A recording made before the
+    // choice existed falls back to the notes beside it, then the setting.
     languageFor: (recording) async {
       // Notes that cannot be read cost the detection, not the lecture.
       var pageText = '';
       try {
         pageText = await ref.read(pageTextStoreProvider).forPage(recording.pageId);
       } catch (_) {}
-      return lectureLanguage(
+      return transcriptionLanguage(
+        relativePath: recording.relativePath,
         pageText: pageText,
         setting: ref.read(settingsProvider).recognitionLanguage,
         detector: ref.read(languageDetectorProvider),

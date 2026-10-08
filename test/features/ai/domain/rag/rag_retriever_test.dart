@@ -15,14 +15,18 @@ class _FakeEmbedder implements TextEmbedder {
   @override
   PromptContract get promptContract => PromptContract.pluginGemma300m;
 
-  @override
-  int get chunkWords => kChunkWords;
+  _FakeEmbedder({
+    this.modelId = 'fake-v1',
+    Map<String, List<double>>? vectors,
+    this.chunkWords = kChunkWords,
+    this.chunkOverlapWords = kChunkOverlapWords,
+  }) : _vectors = vectors ?? const {};
 
   @override
-  int get chunkOverlapWords => kChunkOverlapWords;
+  final int chunkWords;
 
-  _FakeEmbedder({this.modelId = 'fake-v1', Map<String, List<double>>? vectors})
-      : _vectors = vectors ?? const {};
+  @override
+  final int chunkOverlapWords;
 
   final Map<String, List<double>> _vectors;
 
@@ -361,6 +365,24 @@ void main() {
 
       expect([for (final h in hits) h.chunk.pageId], [1, 2]);
       expect(texts(hits), ['alpha beta', 'alpha gamma']);
+    });
+
+    test('keyword search cuts an unindexed page to the embedder\'s own window',
+        () async {
+      // An unindexed page is cut on the fly for keyword search. With four-word
+      // chunks the hit is the passage that holds the term, not the whole page;
+      // the default 250-word window would return all twelve words.
+      final hits = await hybrid(
+        _FakeEmbedder(chunkWords: 4, chunkOverlapWords: 0),
+        pages: [
+          (
+            pageId: 7,
+            text: 'one two three four five six seven eight nine ten eleven twelve',
+          ),
+        ],
+      ).search(query: 'eleven', notebookId: 1);
+
+      expect(texts(hits), ['nine ten eleven twelve']);
     });
 
     test('a scope narrows the keyword search too', () async {
