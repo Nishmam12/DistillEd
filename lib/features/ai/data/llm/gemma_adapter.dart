@@ -6,6 +6,7 @@
 // touches the Summarize feature, and app boot stays fast.
 
 import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_edge_ai/flutter_edge_ai.dart';
@@ -78,10 +79,51 @@ abstract class ModelInstaller {
 }
 
 class EdgeAiInstaller implements ModelInstaller {
-  @override
-  Future<bool> isInstalled(String modelId) async {
+  /// The seams are over the plugin, which needs a device. Each default asks the
+  /// plugin; a test answers instead.
+  EdgeAiInstaller({
+    Future<bool> Function(String filename)? isFileInstalled,
+    Future<bool> Function(String filename)? isFileOnDisk,
+    Future<void> Function(String filename)? forgetFile,
+  })  : _isFileInstalled = isFileInstalled ?? _pluginHas,
+        _isFileOnDisk = isFileOnDisk ?? _pluginOnDisk,
+        _forgetFile = forgetFile ?? _pluginForget;
+
+  /// The plugin's record for the model, and the disk.
+  final Future<bool> Function(String filename) _isFileInstalled;
+  final Future<bool> Function(String filename) _isFileOnDisk;
+
+  /// Removes a model's record, and the file if it is still there.
+  final Future<void> Function(String filename) _forgetFile;
+
+  static Future<void> _pluginForget(String filename) async {
     await GemmaBootstrap.ensureInitialized();
-    return FlutterEdgeAi.isModelInstalled(modelId);
+    await FlutterEdgeAi.uninstallModel(filename);
+  }
+
+  static Future<bool> _pluginHas(String filename) async {
+    await GemmaBootstrap.ensureInitialized();
+    return FlutterEdgeAi.isModelInstalled(filename);
+  }
+
+  static Future<bool> _pluginOnDisk(String filename) async {
+    await GemmaBootstrap.ensureInitialized();
+    return File(await FlutterEdgeAi.getModelPath(filename)).exists();
+  }
+
+  /// The record and the file together. A backup restored without the model
+  /// file keeps the record, and the download would then be skipped as done.
+  @override
+  Future<bool> isInstalled(String modelId) async =>
+      await _isFileInstalled(modelId) && await _isFileOnDisk(modelId);
+
+  /// The plugin's install skips a model whose record exists, file or no file, so
+  /// a record that outlived its file is forgotten first and the download runs.
+  /// A file that is on disk is never touched.
+  Future<void> forgetStaleRecords(String modelId) async {
+    if (await _isFileInstalled(modelId) && !await _isFileOnDisk(modelId)) {
+      await _forgetFile(modelId);
+    }
   }
 
   @override
@@ -92,6 +134,7 @@ class EdgeAiInstaller implements ModelInstaller {
     CancelToken? cancelToken,
   }) async {
     await GemmaBootstrap.ensureInitialized();
+    await forgetStaleRecords(spec.filename);
     var builder = FlutterEdgeAi.installModel(
       modelType: spec.modelType,
       fileType: spec.fileType,

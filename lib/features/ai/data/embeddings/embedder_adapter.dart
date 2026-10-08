@@ -7,6 +7,8 @@
 // download over mobile data. [EdgeAiEmbeddingRuntime.open] therefore
 // refuses to install anything.
 
+import 'dart:io';
+
 import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 import '../../domain/rag/text_embedder.dart';
@@ -61,24 +63,66 @@ abstract class EmbedderInstaller {
 }
 
 class EdgeAiEmbedderInstaller implements EmbedderInstaller {
+  /// The seams are over the plugin, which needs a device. Each default asks the
+  /// plugin; a test answers instead.
+  EdgeAiEmbedderInstaller({
+    Future<bool> Function(String filename)? isFileInstalled,
+    Future<bool> Function(String filename)? isFileOnDisk,
+    Future<void> Function(String filename)? forgetFile,
+  })  : _isFileInstalled = isFileInstalled ?? _pluginHas,
+        _isFileOnDisk = isFileOnDisk ?? _pluginOnDisk,
+        _forgetFile = forgetFile ?? _uninstallIfPresent;
+
+  /// The plugin's records: what it says it installed.
+  final Future<bool> Function(String filename) _isFileInstalled;
+
+  /// The disk: whether the file is where the plugin reads it from.
+  final Future<bool> Function(String filename) _isFileOnDisk;
+
+  /// Removes a file's record, and the file if it is still there.
+  final Future<void> Function(String filename) _forgetFile;
+
+  static Future<bool> _pluginHas(String filename) async {
+    await GemmaBootstrap.ensureInitialized();
+    return FlutterEdgeAi.isModelInstalled(filename);
+  }
+
+  static Future<bool> _pluginOnDisk(String filename) async {
+    await GemmaBootstrap.ensureInitialized();
+    return File(await FlutterEdgeAi.getModelPath(filename)).exists();
+  }
+
   /// The model dominates the download (~171 MB vs ~4.5 MB), so its progress
   /// owns almost the whole bar. Files install in this order, so a single
   /// monotonic 0–100 is honest.
   static const int _modelShare = 97;
 
+  /// Both files, each in the plugin's records and on disk. A backup restored
+  /// without the model files keeps the records; counting them as installed made
+  /// the download a no-op, so the Download button did nothing.
   @override
-  Future<bool> isInstalled(EmbedderSpec spec) async {
-    await GemmaBootstrap.ensureInitialized();
-    return await FlutterEdgeAi.isModelInstalled(spec.modelFilename) &&
-        await FlutterEdgeAi.isModelInstalled(spec.tokenizerFilename);
+  Future<bool> isInstalled(EmbedderSpec spec) async =>
+      await _isFileInstalled(spec.modelFilename) &&
+      await _isFileInstalled(spec.tokenizerFilename) &&
+      await _isFileOnDisk(spec.modelFilename) &&
+      await _isFileOnDisk(spec.tokenizerFilename);
+
+  /// The plugin's install skips a file whose record exists, file or no file, so
+  /// a record that outlived its file is forgotten first and the download runs.
+  /// A file that is on disk is never touched.
+  Future<void> forgetStaleRecords(EmbedderSpec spec) async {
+    for (final name in [spec.modelFilename, spec.tokenizerFilename]) {
+      if (await _isFileInstalled(name) && !await _isFileOnDisk(name)) {
+        await _forgetFile(name);
+      }
+    }
   }
 
   @override
   Future<bool> isPartiallyInstalled(EmbedderSpec spec) async {
     await GemmaBootstrap.ensureInitialized();
-    final model = await FlutterEdgeAi.isModelInstalled(spec.modelFilename);
-    final tokenizer =
-        await FlutterEdgeAi.isModelInstalled(spec.tokenizerFilename);
+    final model = await _isFileInstalled(spec.modelFilename);
+    final tokenizer = await _isFileInstalled(spec.tokenizerFilename);
     return model != tokenizer;
   }
 
@@ -104,6 +148,7 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
       throw EmbedderTokenRequiredException(spec);
     }
 
+    await forgetStaleRecords(spec);
     var builder = FlutterEdgeAi.installEmbedder()
         .modelFromNetwork(spec.modelUrl, token: token)
         .tokenizerFromNetwork(spec.tokenizerUrl, token: token);

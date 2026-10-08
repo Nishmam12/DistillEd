@@ -804,6 +804,10 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
   /// Bumped after a delete so the FutureBuilders re-query install status.
   int _refresh = 0;
 
+  /// Rows whose download is running, and the percent of those that report one.
+  final Set<String> _downloading = {};
+  final Map<String, int> _percent = {};
+
   @override
   Widget build(BuildContext context) {
     final downloads = ref.read(modelDownloadManagerProvider);
@@ -827,6 +831,8 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           isInstalled: downloads.isInstalled,
           confirmDelete: true,
           onDelete: downloads.delete,
+          onDownload: downloads.download,
+          progress: downloads.progress,
           // Said plainly because the fall-back from GPU to CPU is silent: a
           // device that is several times slower than it should be otherwise
           // gives no hint why.
@@ -848,6 +854,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           sizeLabel: '~20 MB',
           isInstalled: () => recognition.isModelDownloaded('en'),
           onDelete: () => recognition.deleteModel('en'),
+          onDownload: () => recognition.ensureModelDownloaded('en'),
         ),
         _modelRow(
           key: ValueKey('bn-$_refresh'),
@@ -856,6 +863,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           sizeLabel: '~20 MB',
           isInstalled: () => recognition.isModelDownloaded('bn'),
           onDelete: () => recognition.deleteModel('bn'),
+          onDownload: () => recognition.ensureModelDownloaded('bn'),
         ),
         _modelRow(
           key: ValueKey('bn-Latn-$_refresh'),
@@ -864,6 +872,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           sizeLabel: '~20 MB',
           isInstalled: () => recognition.isModelDownloaded('bn-Latn'),
           onDelete: () => recognition.deleteModel('bn-Latn'),
+          onDownload: () => recognition.ensureModelDownloaded('bn-Latn'),
         ),
         _modelRow(
           key: ValueKey('speech-$_refresh-${speechPhase.name}'),
@@ -874,6 +883,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
               .read(speechModelInstallerProvider)
               .isInstalled(SpeechModelSpec.active),
           onDelete: () => ref.read(speechModelProvider.notifier).delete(),
+          onDownload: _downloadWhisper,
         ),
         _ReclaimSpaceRow(
           key: ValueKey('reclaim-$_refresh'),
@@ -883,6 +893,55 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
     );
   }
 
+  /// Downloads a model from its row. The row is the failsafe for a model that
+  /// was meant to arrive on first use and did not, so it works for every model
+  /// that is not installed. Failures are shown, and the button stays.
+  Future<void> _downloadModel(
+    String title,
+    Future<void> Function() download, {
+    Stream<int>? progress,
+  }) async {
+    final sub = progress?.listen((p) {
+      if (mounted) {
+        setState(() {
+          _percent[title] = p;
+        });
+      }
+    });
+    setState(() {
+      _downloading.add(title);
+      _percent.remove(title);
+    });
+    String? failure;
+    try {
+      await download();
+    } on LlmException catch (e) {
+      failure = e.message;
+    } catch (_) {
+      failure = "Couldn't download $title. Check your connection and try again.";
+    }
+    sub?.cancel();
+    if (!mounted) return;
+    setState(() {
+      _downloading.remove(title);
+      _percent.remove(title);
+      _refresh++;
+    });
+    if (failure != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(failure)));
+    }
+  }
+
+  /// The speech notifier reports a failed download as a state, not an error, so
+  /// it is raised here for the row to show.
+  Future<void> _downloadWhisper() async {
+    await ref.read(speechModelProvider.notifier).download();
+    if (ref.read(speechModelProvider).phase == SpeechModelPhase.failed) {
+      throw StateError('the speech model did not download');
+    }
+  }
+
   Widget _modelRow({
     required Key key,
     required IconData icon,
@@ -890,6 +949,8 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
     required String sizeLabel,
     required Future<bool> Function() isInstalled,
     required Future<void> Function() onDelete,
+    required Future<void> Function() onDownload,
+    Stream<int>? progress,
     bool confirmDelete = false,
     String? detail,
   }) {
@@ -899,22 +960,50 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
       builder: (context, snapshot) {
         final installed = snapshot.data ?? false;
         final checking = !snapshot.hasData && !snapshot.hasError;
+        final downloading = _downloading.contains(title);
+        final percent = _percent[title];
+        final String subtitle;
+        if (checking) {
+          subtitle = 'Checking…';
+        } else if (installed) {
+          subtitle =
+              '$sizeLabel · Downloaded${detail == null ? '' : ' · $detail'}';
+        } else if (downloading) {
+          subtitle =
+              percent == null ? 'Downloading…' : 'Downloading… $percent%';
+        } else {
+          subtitle = 'Not downloaded — fetched on first use';
+        }
+        final Widget? trailing;
+        if (installed) {
+          trailing = IconButton(
+            icon: Icon(PhosphorIconsRegular.trash,
+                color: context.colors.textSecondary),
+            tooltip: 'Delete model',
+            onPressed: () => _delete(onDelete, confirmDelete, title),
+          );
+        } else if (checking) {
+          trailing = null;
+        } else if (downloading) {
+          trailing = const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        } else {
+          trailing = TextButton(
+            key: ValueKey('download-$title'),
+            onPressed: () =>
+                _downloadModel(title, onDownload, progress: progress),
+            child: Text('Download',
+                style: TextStyle(color: context.colors.accent)),
+          );
+        }
         return _SettingsRow(
           icon: icon,
           title: title,
-          subtitle: checking
-              ? 'Checking…'
-              : installed
-                  ? '$sizeLabel · Downloaded${detail == null ? '' : ' · $detail'}'
-                  : 'Not downloaded — fetched on first use',
-          trailing: installed
-              ? IconButton(
-                  icon: Icon(PhosphorIconsRegular.trash,
-                      color: context.colors.textSecondary),
-                  tooltip: 'Delete model',
-                  onPressed: () => _delete(onDelete, confirmDelete, title),
-                )
-              : null,
+          subtitle: subtitle,
+          trailing: trailing,
         );
       },
     );
@@ -1205,6 +1294,7 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
                         ),
                       ),
                     TextButton(
+                      key: ValueKey('download-${_spec.displayName} (search)'),
                       // Disabled only once we KNOW there is no token — a
                       // pending settings load must not look like a missing one.
                       onPressed:

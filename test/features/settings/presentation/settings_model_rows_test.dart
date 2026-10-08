@@ -1,7 +1,9 @@
 // The Settings rows for a model refresh themselves after a download, a delete or
 // a clean-up. Each refresh once ran a Future-returning call inside setState,
 // which Flutter refuses, so the row kept its old state and the student saw
-// nothing change. These run the real screen against fakes for the managers.
+// nothing change. Every model that is not installed also offers a Download
+// button, so a model that did not fetch on first use can still be fetched by
+// hand. These run the real screen against fakes for the managers.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
@@ -58,6 +60,9 @@ class _FakeEmbedder implements EmbedderDownloadManager {
 }
 
 class _FakeLlm implements ModelDownloadManager {
+  bool installed = false;
+  Object? failWith;
+
   @override
   LlmModelSpec get spec => LlmModelSpec.active;
 
@@ -71,27 +76,42 @@ class _FakeLlm implements ModelDownloadManager {
   bool get isDownloading => false;
 
   @override
-  Future<bool> isInstalled() async => false;
+  Future<bool> isInstalled() async => installed;
 
   @override
-  Future<void> download() async {}
+  Future<void> download() async {
+    final failure = failWith;
+    if (failure != null) throw failure;
+    installed = true;
+  }
 
   @override
   void cancelDownload() {}
 
   @override
-  Future<void> delete() async {}
+  Future<void> delete() async {
+    installed = false;
+  }
 
   @override
   void dispose() {}
 }
 
 class _FakeHandwriting implements HandwritingRecognitionService {
-  @override
-  Future<bool> isModelDownloaded(String languageCode) async => false;
+  final downloaded = <String>{};
 
   @override
-  Future<bool> deleteModel(String languageCode) async => false;
+  Future<bool> isModelDownloaded(String languageCode) async =>
+      downloaded.contains(languageCode);
+
+  @override
+  Future<void> ensureModelDownloaded(String languageCode) async {
+    downloaded.add(languageCode);
+  }
+
+  @override
+  Future<bool> deleteModel(String languageCode) async =>
+      downloaded.remove(languageCode);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -136,11 +156,22 @@ class _FakeSpeechInstaller implements SpeechModelInstaller {
   }
 }
 
+/// The row titles, as the screen shows them.
+final _gemmaTitle = '${LlmModelSpec.active.displayName} (summarization)';
+final _embedTitle = '${EmbedderSpec.active.displayName} (search)';
+final _whisperTitle = SpeechModelSpec.active.displayName;
+const _englishTitle = 'English handwriting model';
+
+/// A row's Download button, found by the row's title.
+Finder _downloadButton(String title) => find.byKey(ValueKey('download-$title'));
+
 Future<void> _pumpSettings(
   WidgetTester tester, {
   required EmbedderDownloadManager embedder,
   required ModelStorageCleaner cleaner,
   SpeechModelInstaller? speech,
+  ModelDownloadManager? llm,
+  HandwritingRecognitionService? handwriting,
 }) async {
   SharedPreferences.setMockInitialValues({});
   // Tall enough that the whole AI section is on screen, with no scrolling.
@@ -153,9 +184,9 @@ Future<void> _pumpSettings(
     overrides: [
       huggingFaceTokenProvider.overrideWithValue('hf_test'),
       embedderDownloadManagerProvider.overrideWithValue(embedder),
-      modelDownloadManagerProvider.overrideWithValue(_FakeLlm()),
+      modelDownloadManagerProvider.overrideWithValue(llm ?? _FakeLlm()),
       handwritingRecognitionServiceProvider
-          .overrideWithValue(_FakeHandwriting()),
+          .overrideWithValue(handwriting ?? _FakeHandwriting()),
       modelStorageCleanerProvider.overrideWithValue(cleaner),
       speechModelInstallerProvider
           .overrideWithValue(speech ?? _FakeSpeechInstaller()),
@@ -175,13 +206,13 @@ void main() {
     await _pumpSettings(tester,
         embedder: embedder, cleaner: _FakeCleaner(const []));
 
-    await tester.tap(find.widgetWithText(TextButton, 'Download'));
+    await tester.tap(_downloadButton(_embedTitle));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     expect(embedder.installed, isTrue);
     expect(find.textContaining('· Downloaded'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'Download'), findsNothing);
+    expect(_downloadButton(_embedTitle), findsNothing);
   });
 
   testWidgets('deleting EmbeddingGemma reads as not downloaded, offering Download',
@@ -195,7 +226,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(embedder.installed, isFalse);
-    expect(find.widgetWithText(TextButton, 'Download'), findsOneWidget);
+    expect(_downloadButton(_embedTitle), findsOneWidget);
   });
 
   testWidgets('Whisper reads as downloaded on the screen once its download finishes',
@@ -216,6 +247,93 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(speech.installed, isTrue);
     expect(find.textContaining('~80 MB · Downloaded'), findsOneWidget);
+  });
+
+  testWidgets('every model that is not downloaded offers a Download button',
+      (tester) async {
+    await _pumpSettings(tester,
+        embedder: _FakeEmbedder(installed: false),
+        cleaner: _FakeCleaner(const []));
+
+    for (final title in [
+      _gemmaTitle,
+      _embedTitle,
+      _englishTitle,
+      'Bangla handwriting model',
+      'Banglish handwriting model',
+      _whisperTitle,
+    ]) {
+      expect(_downloadButton(title), findsOneWidget, reason: title);
+    }
+  });
+
+  testWidgets('Gemma downloads from its own button, and reads as downloaded',
+      (tester) async {
+    final llm = _FakeLlm();
+    await _pumpSettings(tester,
+        embedder: _FakeEmbedder(installed: true),
+        cleaner: _FakeCleaner(const []),
+        llm: llm);
+
+    await tester.tap(_downloadButton(_gemmaTitle));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(llm.installed, isTrue);
+    expect(find.textContaining('GB · Downloaded'), findsOneWidget);
+    expect(_downloadButton(_gemmaTitle), findsNothing);
+  });
+
+  testWidgets('Whisper downloads from its own button, and reads as downloaded',
+      (tester) async {
+    final speech = _FakeSpeechInstaller();
+    await _pumpSettings(tester,
+        embedder: _FakeEmbedder(installed: true),
+        cleaner: _FakeCleaner(const []),
+        speech: speech);
+
+    await tester.tap(_downloadButton(_whisperTitle));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(speech.installed, isTrue);
+    expect(find.textContaining('~80 MB · Downloaded'), findsOneWidget);
+    expect(_downloadButton(_whisperTitle), findsNothing);
+  });
+
+  testWidgets('a handwriting model downloads from its own button',
+      (tester) async {
+    final handwriting = _FakeHandwriting();
+    await _pumpSettings(tester,
+        embedder: _FakeEmbedder(installed: true),
+        cleaner: _FakeCleaner(const []),
+        handwriting: handwriting);
+
+    await tester.tap(_downloadButton(_englishTitle));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(handwriting.downloaded, {'en'});
+    expect(_downloadButton(_englishTitle), findsNothing);
+    expect(find.textContaining('~20 MB · Downloaded'), findsOneWidget);
+  });
+
+  testWidgets('a failed download says so, and the button stays for another try',
+      (tester) async {
+    final llm = _FakeLlm()..failWith = StateError('no network');
+    await _pumpSettings(tester,
+        embedder: _FakeEmbedder(installed: true),
+        cleaner: _FakeCleaner(const []),
+        llm: llm);
+
+    await tester.tap(_downloadButton(_gemmaTitle));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(llm.installed, isFalse);
+    expect(find.textContaining("Couldn't download $_gemmaTitle"),
+        findsOneWidget);
+    expect(_downloadButton(_gemmaTitle), findsOneWidget);
   });
 
   testWidgets('freeing leftover files clears the row, without an error',

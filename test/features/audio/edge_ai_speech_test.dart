@@ -244,4 +244,39 @@ void main() {
     await expectLater(speech.transcribe(pcm, language: 'en'),
         throwsA(isA<StateError>()));
   });
+
+  group('installing over records whose files are gone', () {
+    const spec = SpeechModelSpec.whisperBase;
+
+    test('stale records for the model and its tokenizer are forgotten',
+        () async {
+      final forgotten = <String>[];
+      final installer = EdgeAiSpeechInstaller(
+        isFileInstalled: (_) async => true,
+        isFileOnDisk: (_) async => false,
+        forgetFile: (name) async {
+          forgotten.add(name);
+        },
+      );
+
+      await installer.forgetStaleRecords(spec);
+
+      expect(forgotten, [spec.modelFilename, spec.tokenizerFilename]);
+    });
+
+    test('files that are on disk keep their records', () async {
+      final forgotten = <String>[];
+      final installer = EdgeAiSpeechInstaller(
+        isFileInstalled: (_) async => true,
+        isFileOnDisk: (_) async => true,
+        forgetFile: (name) async {
+          forgotten.add(name);
+        },
+      );
+
+      await installer.forgetStaleRecords(spec);
+
+      expect(forgotten, isEmpty);
+    });
+  });
 }

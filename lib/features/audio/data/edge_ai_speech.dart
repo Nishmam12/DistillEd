@@ -147,6 +147,7 @@ class EdgeAiSpeechInstaller implements SpeechModelInstaller {
     CancelToken? cancelToken,
   }) async {
     await GemmaBootstrap.ensureInitialized();
+    await forgetStaleRecords(spec);
     var builder = FlutterEdgeAi.installStt()
         .modelFromNetwork(spec.modelUrl)
         .tokenizerFromNetwork(spec.tokenizerUrl)
@@ -159,6 +160,17 @@ class EdgeAiSpeechInstaller implements SpeechModelInstaller {
     }
     if (cancelToken != null) builder = builder.withCancelToken(cancelToken);
     await builder.install();
+  }
+
+  /// The plugin's install skips a file whose record exists, file or no file, so
+  /// a record that outlived its file is forgotten first and the download runs.
+  /// A file that is on disk is never touched.
+  Future<void> forgetStaleRecords(SpeechModelSpec spec) async {
+    for (final name in [spec.modelFilename, spec.tokenizerFilename]) {
+      if (await _isFileInstalled(name) && !await _isFileOnDisk(name)) {
+        await _forgetFile(name);
+      }
+    }
   }
 
   /// The plugin's own uninstall reaches only a model loaded as the active one,
