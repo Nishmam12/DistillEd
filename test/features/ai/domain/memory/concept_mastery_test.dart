@@ -108,6 +108,25 @@ void main() {
     });
   });
 
+  group('recovering from weakness', () {
+    test('a correct answer clears gap flags; mastery clears the miss count', () {
+      final at = DateTime(2026, 7, 10);
+      var c = concept('x', level: MasteryLevel.practiced)
+          .flaggedAsGap(at: at)
+          .afterQuiz(correct: false, at: at); // practiced -> learning, 1 miss
+      expect(c.isWeak, isTrue);
+
+      c = c.afterQuiz(correct: true, at: at); // learning -> practiced
+      expect(c.timesFlaggedAsGap, 0);
+      expect(c.isWeak, isTrue, reason: 'the miss still counts below mastered');
+
+      c = c.afterQuiz(correct: true, at: at); // practiced -> mastered
+      expect(c.level, MasteryLevel.mastered);
+      expect(c.timesMissedInQuiz, 0);
+      expect(c.isWeak, isFalse);
+    });
+  });
+
   group('flaggedAsGap (knowledge-gap signal)', () {
     test('counts the flag and makes the concept weak without moving level', () {
       final at = DateTime(2026, 7, 10);
@@ -143,6 +162,16 @@ void main() {
       );
       expect(conceptKeysMentionedIn('Unrelated question', concepts), isEmpty);
       expect(conceptKeysMentionedIn('', concepts), isEmpty);
+    });
+
+    test('matches whole words only, not substrings of longer words', () {
+      expect(conceptKeysMentionedIn('what is a function', ['ion']), isEmpty);
+      expect(conceptKeysMentionedIn('photosynthesis', ['ph']), isEmpty);
+      expect(conceptKeysMentionedIn('define the ion here', ['ion']), ['ion']);
+      expect(conceptKeysMentionedIn('two cells, one cell wall', ['cell']),
+          ['cell']);
+      expect(conceptKeysMentionedIn('গাছ ও সালোকসংশ্লেষণ', ['সালোকসংশ্লেষণ']),
+          ['সালোকসংশ্লেষণ']);
     });
 
     test('conceptKeysMentionedIn dedupes and can match several', () {

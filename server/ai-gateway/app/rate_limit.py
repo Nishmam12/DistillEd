@@ -17,7 +17,7 @@ import contextlib
 import sqlite3
 import threading
 from dataclasses import dataclass
-from datetime import date
+from datetime import datetime, timezone
 
 _lock = threading.Lock()
 
@@ -44,6 +44,19 @@ class RateLimitConfig:
     db_path: str
     daily_token_cap: int
     daily_request_cap: int
+    # Kill switch across ALL device keys. Device keys are client-chosen, so
+    # per-key caps alone cannot bound spend — this does.
+    global_token_cap: int = 2_000_000
+    global_request_cap: int = 5_000
+
+
+_GLOBAL_KEY = "*"
+_MAX_KEY_LEN = 128
+
+
+def _check_key(device_key: str) -> None:
+    if not device_key or len(device_key) > _MAX_KEY_LEN or device_key == _GLOBAL_KEY:
+        raise RateLimitExceededError("Invalid device key.")
 
 
 class RateLimiter:
@@ -74,39 +87,58 @@ class RateLimiter:
         request that would clearly blow the budget is rejected before any
         provider call is made.
         """
-        today = date.today().isoformat()
-        with _lock, _transaction(self._config.db_path) as conn:
-            row = conn.execute(
-                "SELECT tokens, requests FROM usage WHERE device_key = ? AND day = ?",
-                (device_key, today),
-            ).fetchone()
-            tokens_so_far, requests_so_far = row if row else (0, 0)
+        _check_key(device_key)
+        today = datetime.now(timezone.utc).date().isoformat()
+        c = self._config
+        with _lock, _transaction(c.db_path) as conn:
+            # IMMEDIATE takes the write lock up front so the check-then-write
+            # below is atomic across worker processes too.
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute("DELETE FROM usage WHERE day < ?", (today,))
 
-            if requests_so_far + 1 > self._config.daily_request_cap:
+            def used(key: str) -> tuple[int, int]:
+                row = conn.execute(
+                    "SELECT tokens, requests FROM usage WHERE device_key = ? AND day = ?",
+                    (key, today),
+                ).fetchone()
+                return row if row else (0, 0)
+
+            g_tokens, g_requests = used(_GLOBAL_KEY)
+            if (
+                g_requests + 1 > c.global_request_cap
+                or g_tokens + estimated_tokens > c.global_token_cap
+            ):
+                raise RateLimitExceededError(
+                    "The AI service is at capacity for today. Try again tomorrow."
+                )
+            tokens_so_far, requests_so_far = used(device_key)
+            if requests_so_far + 1 > c.daily_request_cap:
                 raise RateLimitExceededError(
                     "Daily request limit reached for this device. Try again tomorrow."
                 )
-            if tokens_so_far + estimated_tokens > self._config.daily_token_cap:
+            if tokens_so_far + estimated_tokens > c.daily_token_cap:
                 raise RateLimitExceededError(
                     "Daily token limit reached for this device. Try again tomorrow."
                 )
 
-            conn.execute(
-                """
-                INSERT INTO usage (device_key, day, tokens, requests)
-                VALUES (?, ?, ?, 1)
-                ON CONFLICT(device_key, day) DO UPDATE SET
-                    tokens = tokens + excluded.tokens,
-                    requests = requests + 1
-                """,
-                (device_key, today, estimated_tokens),
-            )
+            for key in (device_key, _GLOBAL_KEY):
+                conn.execute(
+                    """
+                    INSERT INTO usage (device_key, day, tokens, requests)
+                    VALUES (?, ?, ?, 1)
+                    ON CONFLICT(device_key, day) DO UPDATE SET
+                        tokens = tokens + excluded.tokens,
+                        requests = requests + 1
+                    """,
+                    (key, today, estimated_tokens),
+                )
 
 
 @dataclass(frozen=True)
 class SearchRateLimitConfig:
     db_path: str
     daily_search_cap: int
+    global_search_cap: int = 500
 
 
 class SearchRateLimiter:
@@ -136,25 +168,35 @@ class SearchRateLimiter:
         """Raises [RateLimitExceededError] if [device_key] already used its
         daily search cap; otherwise records one more search.
         """
-        today = date.today().isoformat()
-        with _lock, _transaction(self._config.db_path) as conn:
-            row = conn.execute(
-                "SELECT searches FROM search_usage WHERE device_key = ? AND day = ?",
-                (device_key, today),
-            ).fetchone()
-            searches_so_far = row[0] if row else 0
+        _check_key(device_key)
+        today = datetime.now(timezone.utc).date().isoformat()
+        c = self._config
+        with _lock, _transaction(c.db_path) as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute("DELETE FROM search_usage WHERE day < ?", (today,))
 
-            if searches_so_far + 1 > self._config.daily_search_cap:
+            def used(key: str) -> int:
+                row = conn.execute(
+                    "SELECT searches FROM search_usage WHERE device_key = ? AND day = ?",
+                    (key, today),
+                ).fetchone()
+                return row[0] if row else 0
+
+            if used(_GLOBAL_KEY) + 1 > c.global_search_cap:
+                raise RateLimitExceededError(
+                    "Web search is at capacity for today. Try again tomorrow."
+                )
+            if used(device_key) + 1 > c.daily_search_cap:
                 raise RateLimitExceededError(
                     "Daily search limit reached for this device. Try again tomorrow."
                 )
-
-            conn.execute(
-                """
-                INSERT INTO search_usage (device_key, day, searches)
-                VALUES (?, ?, 1)
-                ON CONFLICT(device_key, day) DO UPDATE SET
-                    searches = searches + 1
-                """,
-                (device_key, today),
-            )
+            for key in (device_key, _GLOBAL_KEY):
+                conn.execute(
+                    """
+                    INSERT INTO search_usage (device_key, day, searches)
+                    VALUES (?, ?, 1)
+                    ON CONFLICT(device_key, day) DO UPDATE SET
+                        searches = searches + 1
+                    """,
+                    (key, today),
+                )

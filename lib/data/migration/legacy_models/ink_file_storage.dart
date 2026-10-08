@@ -100,15 +100,20 @@ class InkFileStorage {
     }
   }
 
+  /// [strict]: throw [FormatException] when a file exists with content but none
+  /// of them parses, instead of returning [] (which reads as "empty page").
+  /// The migrator uses it so a corrupt page is retried, not marked migrated.
   static Future<List<Stroke>> loadStrokes({
     required int notebookId,
     required int pageId,
+    bool strict = false,
   }) async {
     final filePath = await _pageFilePath(notebookId, pageId);
     final finalFile = File(filePath);
     final bakFile = File('$filePath.bak');
     final tmpFile = File('$filePath.tmp');
 
+    var sawContent = false;
     // Attempt to load from the main file, then backup, then temp.
     for (final file in [finalFile, bakFile, tmpFile]) {
       if (!await file.exists()) continue;
@@ -116,6 +121,7 @@ class InkFileStorage {
       try {
         final jsonString = await file.readAsString();
         if (jsonString.trim().isEmpty) continue;
+        sawContent = true;
 
         final data = jsonDecode(jsonString) as List<dynamic>;
         return data
@@ -127,6 +133,9 @@ class InkFileStorage {
       }
     }
 
+    if (strict && sawContent) {
+      throw FormatException('No readable ink file for page $pageId');
+    }
     return [];
   }
 

@@ -389,7 +389,15 @@ final bulkRagIndexerProvider = Provider<BulkRagIndexer>((ref) {
       );
       // Figures are indexed alongside the words, exactly as the live path does
       // — "what did the graph on slide 12 show" must be able to retrieve.
-      return content.combinedTextWithFigures;
+      final text = content.combinedTextWithFigures;
+      // Images that could not be read and nothing else to show for the page:
+      // this is a failed read (OOM, timeout, no model), not an empty page.
+      // Returning '' would CLEAR the page's chunks and search text, so fail the
+      // page instead and keep what is already indexed.
+      if (text.isEmpty && content.hasUnrecognizedImages) {
+        throw StateError('page $pageId has images that could not be read');
+      }
+      return text;
     },
     // The reads are the expensive part and a missing embedder would throw every
     // one of them away, so find out before the first.
@@ -540,7 +548,8 @@ final routedImageTranscriberProvider = Provider<ImageTranscriber>((ref) {
   return CloudFirstTranscriber(
     local: ref.watch(imageTranscriberProvider),
     cloud: cloud,
-    preferCloud: () => ref.read(settingsProvider).aiMode.prefersCloud,
+    preferCloud: () => _mayUploadImages(ref.read(settingsProvider)) &&
+        ref.read(settingsProvider).aiMode.prefersCloud,
   );
 });
 
@@ -558,14 +567,21 @@ final gemmaVisionOcrServiceProvider = Provider<GemmaVisionOcrService>((ref) =>
 /// VLM already failed to read the figure. Read (not watched) at call time so
 /// toggling the setting takes effect on the next read without rebuilding the
 /// extractor.
+/// Page images are uploaded silently (no per-call prompt), so the cloud being
+/// switched on is not enough: the user must also have allowed cloud use
+/// without asking. `localOnly` and `askEachTime` keep images on the device.
+bool _mayUploadImages(SettingsState s) =>
+    s.cloudAiEnabled && s.cloudPrivacy == CloudPrivacy.allowCloudForNonSensitive;
+
 final figureAnalyzerProvider = Provider<FigureAnalyzer>((ref) {
   final local = ref.watch(imageTranscriberProvider);
   final cloud = ref.watch(cloudGatewayMidProvider);
   return FigureAnalyzer(
     local: local,
     cloud: cloud,
-    canEscalate: () async => ref.read(settingsProvider).cloudAiEnabled,
-    preferCloud: () => ref.read(settingsProvider).aiMode.prefersCloud,
+    canEscalate: () async => _mayUploadImages(ref.read(settingsProvider)),
+    preferCloud: () => _mayUploadImages(ref.read(settingsProvider)) &&
+        ref.read(settingsProvider).aiMode.prefersCloud,
     localModelId: ref.watch(localAiProvider).capabilities.modelId,
     cloudModelId: cloud.capabilities.modelId,
   );

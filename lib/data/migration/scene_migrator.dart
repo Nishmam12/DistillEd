@@ -6,6 +6,10 @@
 //     clears NotePage.shapes/importedContents.
 //   * Idempotent — upserts are keyed by element id, and the [MigrationGate]
 //     short-circuits once the target version is reached.
+//   * Resumable — a page that already has scene rows is skipped, so a run
+//     that died midway never overwrites edits made since on pages it finished.
+//   * Honest — a page whose ink file is unreadable is left for the next launch
+//     and the gate stays open, instead of being migrated as an empty page.
 //   * Decoupled — depends on abstractions so it is fully unit-testable without
 //     a native Isar database.
 
@@ -33,12 +37,19 @@ class SceneMigratorV2 {
     if (await gate.currentVersion() >= targetVersion) return false;
 
     final pages = await source.loadAllPages();
+    var incomplete = false;
     for (final page in pages) {
+      if (page.unreadable) {
+        incomplete = true;
+        continue;
+      }
       final elements = LegacyAdapters.pageToSceneElements(page);
       if (elements.isEmpty) continue;
+      if ((await store.loadForPage(page.pageId)).isNotEmpty) continue;
       await store.upsertForPage(page.notebookId, page.pageId, elements);
     }
 
+    if (incomplete) return true;
     await gate.setVersion(targetVersion);
     return true;
   }

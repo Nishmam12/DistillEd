@@ -83,3 +83,43 @@ def test_search_and_llm_caps_are_independent(limiter, search_limiter):
         limiter.check_and_record("device-a", estimated_tokens=1)
 
     search_limiter.check_and_record("device-a")  # no raise
+
+
+def test_global_cap_stops_rotating_device_keys():
+    fd, path = tempfile.mkstemp(suffix=".sqlite3")
+    os.close(fd)
+    try:
+        limiter = RateLimiter(
+            RateLimitConfig(
+                db_path=path,
+                daily_token_cap=1000,
+                daily_request_cap=3,
+                global_request_cap=2,
+            )
+        )
+        limiter.check_and_record("a", estimated_tokens=1)
+        limiter.check_and_record("b", estimated_tokens=1)
+        with pytest.raises(RateLimitExceededError):
+            limiter.check_and_record("c", estimated_tokens=1)
+    finally:
+        os.remove(path)
+
+
+def test_global_search_cap_stops_rotating_device_keys():
+    fd, path = tempfile.mkstemp(suffix=".sqlite3")
+    os.close(fd)
+    try:
+        limiter = SearchRateLimiter(
+            SearchRateLimitConfig(db_path=path, daily_search_cap=3, global_search_cap=1)
+        )
+        limiter.check_and_record("a")
+        with pytest.raises(RateLimitExceededError):
+            limiter.check_and_record("b")
+    finally:
+        os.remove(path)
+
+
+def test_rejects_oversized_or_reserved_device_key(limiter):
+    for bad in ("", "x" * 200, "*"):
+        with pytest.raises(RateLimitExceededError):
+            limiter.check_and_record(bad, estimated_tokens=1)

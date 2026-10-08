@@ -67,6 +67,65 @@ void main() {
     });
   });
 
+  testWidgets('keeps at most maxEntries bitmaps, dropping the least recent',
+      (tester) async {
+    await tester.runAsync(() async {
+      final cache = SceneImageCache(
+        baseDir: '/docs',
+        readBytes: (_) async => _dummyBytes,
+        decode: (_) => _solidImage(4),
+      );
+      addTearDown(cache.dispose);
+
+      await cache.ensure(['p0.png']);
+      for (var i = 1; i < SceneImageCache.maxEntries; i++) {
+        await cache.ensure(['p$i.png']);
+      }
+      cache.get('p0.png'); // p0 is drawn again, so p1 is now the oldest
+      await cache.ensure(['extra.png']);
+
+      expect(cache.get('p0.png'), isNotNull);
+      expect(cache.get('p1.png'), isNull);
+      expect(cache.get('extra.png'), isNotNull);
+    });
+  });
+
+  testWidgets('a failed load is not retried on every ensure', (tester) async {
+    await tester.runAsync(() async {
+      var reads = 0;
+      final cache = SceneImageCache(
+        baseDir: '/docs',
+        readBytes: (_) async {
+          reads++;
+          throw const _LoadFailure();
+        },
+      );
+      addTearDown(cache.dispose);
+
+      await cache.ensure(['bad.png']);
+      await cache.ensure(['bad.png']);
+
+      expect(reads, 1);
+    });
+  });
+
+  testWidgets('a decode finishing after dispose does not throw or leak',
+      (tester) async {
+    await tester.runAsync(() async {
+      final cache = SceneImageCache(
+        baseDir: '/docs',
+        readBytes: (_) async => _dummyBytes,
+        decode: (_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          return _solidImage(4);
+        },
+      );
+      final pending = cache.ensure(['a.png']);
+      cache.dispose();
+      await pending; // must complete without "used after dispose"
+    });
+  });
+
   testWidgets('a failed load leaves the path unloaded (no throw)',
       (tester) async {
     await tester.runAsync(() async {

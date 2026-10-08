@@ -9,9 +9,11 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' show Random;
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/ai_provider.dart';
 import '../../domain/features/researcher.dart' show ToolCallingClient;
@@ -20,22 +22,36 @@ import '../../domain/tools/tool.dart';
 import '../../domain/tools/tool_generation_event.dart';
 
 /// A per-install anonymous key sent as `X-Device-Key`, used only for the
-/// gateway's rate-limit counters — never a user identity. Session-lifetime
-/// (regenerated each app launch) rather than persisted: the gateway isn't
-/// deployed yet in this phase, so a daily cap that resets per-launch is a
-/// harmless simplification, not a real gap. Revisit (persist via
-/// SharedPreferences) once the gateway is actually deployed.
+/// gateway's rate-limit counters — never a user identity. Persisted so the
+/// daily caps survive an app restart; [loadDeviceKey] must run before
+/// `runApp`. Until it has, a throwaway random key stands in.
 ///
-/// Public (not just this file's own `_sessionDeviceKey` before Loop 3.4) so
-/// `WebSearchTool` presents the same device identity to the gateway's
-/// search endpoint as this file presents to `/v1/generate` — one session,
-/// one identity, even though LLM and search usage are tracked in separate
-/// tables server-side.
-final String sessionDeviceKey = _randomDeviceKey();
+/// Public so `WebSearchTool` presents the same device identity to the
+/// gateway's search endpoint as this file presents to `/v1/generate` (LLM and
+/// search usage are still tracked in separate tables server-side).
+String _deviceKey = _randomDeviceKey();
+String get sessionDeviceKey => _deviceKey;
+
+const _kDeviceKeyPref = 'ai.deviceKey';
+
+Future<void> loadDeviceKey() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_kDeviceKeyPref);
+    if (saved != null && saved.length >= 16) {
+      _deviceKey = saved;
+    } else {
+      await prefs.setString(_kDeviceKeyPref, _deviceKey);
+    }
+  } catch (_) {
+    // Storage unavailable: keep the in-memory key for this session.
+  }
+}
 
 String _randomDeviceKey() {
-  final rand = DateTime.now().microsecondsSinceEpoch ^ identityHashCode(Object());
-  return 'device-${rand.toRadixString(16)}';
+  final rand = Random.secure();
+  final bytes = List<int>.generate(16, (_) => rand.nextInt(256));
+  return 'device-${bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}';
 }
 
 class CloudGatewayProvider
@@ -58,7 +74,15 @@ class CloudGatewayProvider
     required String modelTier,
     Dio? dio,
   })  : _modelTier = modelTier,
-        _dio = dio ?? Dio(BaseOptions(baseUrl: baseUrl)),
+        _dio = dio ??
+            Dio(BaseOptions(
+              baseUrl: baseUrl,
+              // Render's free tier cold-starts in 30-60 s; beyond that, give
+              // up and let the caller fall back on-device. receiveTimeout is
+              // the gap between stream chunks, not the whole reply.
+              connectTimeout: const Duration(seconds: 60),
+              receiveTimeout: const Duration(seconds: 60),
+            )),
         _capabilities = AiCapabilities(
           modelId: 'cloud-gateway-$modelTier',
           displayName:
@@ -117,7 +141,7 @@ class CloudGatewayProvider
     try {
       await for (final line in lines) {
         if (!line.startsWith('data: ')) continue;
-        final decoded = jsonDecode(line.substring(6)) as Map<String, dynamic>;
+        final decoded = _decodeEvent(line);
         final error = decoded['error'] as String?;
         if (error != null) {
           throw AiGenerationException(error);
@@ -190,7 +214,7 @@ class CloudGatewayProvider
     try {
       await for (final line in lines) {
         if (!line.startsWith('data: ')) continue;
-        final decoded = jsonDecode(line.substring(6)) as Map<String, dynamic>;
+        final decoded = _decodeEvent(line);
         final error = decoded['error'] as String?;
         if (error != null) {
           throw AiGenerationException(error);
@@ -260,6 +284,18 @@ class CloudGatewayProvider
           'Cloud vision returned no text for the image.');
     }
     return text;
+  }
+
+  /// A truncated or non-JSON `data:` line (a proxy error page, a cut stream)
+  /// becomes an [AiException] so the caller's on-device fallback still fires.
+  Map<String, dynamic> _decodeEvent(String line) {
+    try {
+      return jsonDecode(line.substring(6)) as Map<String, dynamic>;
+    } on FormatException {
+      throw const AiGenerationException('Malformed response from the cloud.');
+    } on TypeError {
+      throw const AiGenerationException('Malformed response from the cloud.');
+    }
   }
 
   AiException _mapError(DioException e) {

@@ -12,7 +12,12 @@ import 'scene_element_record_mapper.dart';
 import 'scene_element_store.dart';
 
 class IsarSceneElementStore implements SceneElementStore {
-  Isar get _isar => IsarService.instance;
+  /// [isar] lets a test point the store at its own database.
+  IsarSceneElementStore({Isar Function()? isar}) : _isarOverride = isar;
+
+  final Isar Function()? _isarOverride;
+
+  Isar get _isar => _isarOverride?.call() ?? IsarService.instance;
 
   @override
   Future<List<SceneElement>> loadForPage(int pageId) async {
@@ -30,7 +35,16 @@ class IsarSceneElementStore implements SceneElementStore {
     int pageId,
     List<SceneElement> elements,
   ) async {
-    await _isar.writeTxn(() async {
+    await _isar.writeTxn(() => _upsert(notebookId, pageId, elements));
+  }
+
+  /// Must run inside a write transaction.
+  Future<void> _upsert(
+    int notebookId,
+    int pageId,
+    List<SceneElement> elements,
+  ) async {
+    {
       // Map existing rows by elementId so re-running replaces rather than dupes.
       final existing = await _isar.sceneElementRecords
           .filter()
@@ -52,7 +66,7 @@ class IsarSceneElementStore implements SceneElementStore {
       }).toList();
 
       await _isar.sceneElementRecords.putAll(records);
-    });
+    }
   }
 
   @override
@@ -64,6 +78,33 @@ class IsarSceneElementStore implements SceneElementStore {
           .idProperty()
           .findAll();
       await _isar.sceneElementRecords.deleteAll(ids);
+    });
+  }
+
+  @override
+  Future<void> deleteElements(int pageId, Set<String> elementIds) async {
+    if (elementIds.isEmpty) return;
+    await _isar.writeTxn(() async {
+      await _isar.sceneElementRecords
+          .filter()
+          .pageIdEqualTo(pageId)
+          .anyOf(elementIds, (q, id) => q.elementIdEqualTo(id))
+          .deleteAll();
+    });
+  }
+
+  @override
+  Future<void> replaceForPage(
+    int notebookId,
+    int pageId,
+    List<SceneElement> elements,
+  ) async {
+    await _isar.writeTxn(() async {
+      await _isar.sceneElementRecords
+          .filter()
+          .pageIdEqualTo(pageId)
+          .deleteAll();
+      await _upsert(notebookId, pageId, elements);
     });
   }
 }

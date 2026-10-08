@@ -59,3 +59,15 @@ server/ai-gateway/.env
 server/ai-gateway/*.sqlite3
 server/ai-gateway/.pytest_cache/
 graphify-out/
+
+# Local debugging dumps (a 51 MB logcat was once committed)
+logcat_dump.txt
+code_dump.txt
+codebase_dump.txt
+*.log
+
+# Generated per-machine iOS files
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/ephemeral/
+ios/Runner/GeneratedPluginRegistrant.*

@@ -12,12 +12,13 @@ EmbeddingGemma already covers embeddings; see the phase spec.
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..config import get_settings
 from ..logging_config import RequestLogEntry, Stopwatch, log_request
@@ -26,16 +27,25 @@ from ..providers.base import ChatTurn, ProviderError
 from ..rate_limit import RateLimitConfig, RateLimiter, RateLimitExceededError
 
 router = APIRouter(prefix="/v1")
+_log = logging.getLogger(__name__)
 
 # Rough tokens-per-word ratio for the pre-call rate-limit estimate — matches
 # the same heuristic the Flutter app's `AiRouter` uses (`tokensPerWord`), kept
 # in sync by convention rather than shared code across the two languages.
 _TOKENS_PER_WORD = 1.35
 
+# Input bounds. Without them one request can carry megabytes of text that the
+# word-count estimate under-counts, bypassing the token cap.
+_MAX_TEXT_CHARS = 60_000
+_MAX_HISTORY_TURNS = 40
+_MAX_TOOLS = 8
+_MAX_OUTPUT_TOKENS = 8192
+_DEFAULT_OUTPUT_TOKENS = 1024
+
 
 class HistoryTurn(BaseModel):
     role: Literal["system", "user", "assistant", "tool"]
-    content: str = ""
+    content: str = Field(default="", max_length=_MAX_TEXT_CHARS)
     # Loop 3.4 tool round-trip only: `tool_call_id` on a `role: "tool"` turn
     # answers a specific prior call; `tool_calls` on a `role: "assistant"`
     # turn carries that call forward (OpenAI-shape `[{"id","type","function":
@@ -48,25 +58,27 @@ class HistoryTurn(BaseModel):
 class GenerateRequest(BaseModel):
     model_tier: Literal["cloud-mid", "cloud-frontier"]
     provider_hint: Literal["gemini", "claude", "gpt"] | None = None
-    prompt: str
-    system_prompt: str | None = None
-    history: list[HistoryTurn] = []
+    prompt: str = Field(max_length=_MAX_TEXT_CHARS)
+    system_prompt: str | None = Field(default=None, max_length=_MAX_TEXT_CHARS)
+    history: list[HistoryTurn] = Field(default=[], max_length=_MAX_HISTORY_TURNS)
     stream: bool = True
     temperature: float = 0.7
-    max_tokens: int | None = None
+    max_tokens: int = Field(default=_DEFAULT_OUTPUT_TOKENS, ge=1, le=_MAX_OUTPUT_TOKENS)
     # Loop 3.4: OpenAI-shape function declarations
     # (`[{"type":"function","function":{"name","description","parameters"}}]`).
     # Empty means "no tools" — every existing caller is unaffected.
-    tools: list[dict] = []
+    tools: list[dict] = Field(default=[], max_length=_MAX_TOOLS)
 
 
 def _estimate_tokens(request: GenerateRequest) -> int:
-    words = len(request.prompt.split())
-    words += sum(len(turn.content.split()) for turn in request.history)
-    if request.system_prompt:
-        words += len(request.system_prompt.split())
-    return int(words * _TOKENS_PER_WORD) + (request.max_tokens or 512)
+    # Characters, not words: a blob with no whitespace is one "word".
+    chars = len(request.prompt) + len(request.system_prompt or "")
+    chars += sum(len(turn.content) for turn in request.history)
+    return max(int(chars / 4), int(len(request.prompt.split()) * _TOKENS_PER_WORD)) + request.max_tokens
 
+
+# Upstream exception text can carry URLs and request ids; keep it server-side.
+_UPSTREAM_ERROR = "The AI provider failed. Try again."
 
 _rate_limiter: RateLimiter | None = None
 
@@ -80,6 +92,8 @@ def _get_rate_limiter() -> RateLimiter:
                 db_path=settings.rate_limit_db_path,
                 daily_token_cap=settings.daily_token_cap,
                 daily_request_cap=settings.daily_request_cap,
+                global_token_cap=settings.global_token_cap,
+                global_request_cap=settings.global_request_cap,
             )
         )
     return _rate_limiter
@@ -166,6 +180,7 @@ async def generate(
             ]
         )
     except ProviderError as exc:
+        _log.warning("provider error: %s", exc)
         log_request(
             RequestLogEntry(
                 request_id=request_id,
@@ -177,7 +192,7 @@ async def generate(
                 status="error",
             )
         )
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail=_UPSTREAM_ERROR) from exc
 
     log_request(
         RequestLogEntry(
@@ -206,11 +221,12 @@ async def _sse_stream(request_id, request, provider, history, estimated_tokens):
         ):
             yield f"data: {json.dumps({'text': chunk})}\n\n"
     except ProviderError as exc:
+        _log.warning("provider error: %s", exc)
         status = "error"
         # Partial output already reached the client via prior `data:` events —
         # this final error event lets `CloudGatewayProvider` mark the reply
         # incomplete rather than silently truncating it.
-        yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+        yield f"data: {json.dumps({'error': _UPSTREAM_ERROR})}\n\n"
     finally:
         log_request(
             RequestLogEntry(
@@ -248,8 +264,9 @@ async def _sse_stream_with_tools(
         ):
             yield f"data: {json.dumps(event)}\n\n"
     except ProviderError as exc:
+        _log.warning("provider error: %s", exc)
         status = "error"
-        yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+        yield f"data: {json.dumps({'error': _UPSTREAM_ERROR})}\n\n"
     finally:
         log_request(
             RequestLogEntry(

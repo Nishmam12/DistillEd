@@ -1,9 +1,10 @@
 // Holds the unified scene (ordered [SceneElement]s) for one page and persists
 // mutations through a [SceneElementStore].
 //
-// Foundation for Phase 2+: the editor input pipeline and render layers will
-// read/drive this controller. It is not yet wired into the running editor.
+// Store writes are queued per controller (see [_enqueue]) so they reach the
+// database in the order the edits were made.
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -26,6 +27,23 @@ class SceneController extends StateNotifier<List<SceneElement>>
         _pageId = pageId,
         super(const []);
 
+  // Tail of the write queue. Edits change `state` synchronously but their
+  // writes are async; without ordering, a slow earlier write could land after
+  // a later one and resurrect a deleted element.
+  Future<void> _tail = Future.value();
+
+  Future<void> _enqueue(Future<void> Function() write) {
+    final next = _tail.then((_) => write());
+    _tail = next.catchError((_) {});
+    return next;
+  }
+
+  /// For the sync [SceneMutator] entry points, which cannot be awaited.
+  void _fireAndLog(Future<void> write) =>
+      write.catchError((Object e, StackTrace s) {
+        debugPrint('Scene write failed: $e\n$s');
+      });
+
   /// Loads this page's elements from the store (ordered by zOrder).
   Future<void> load() async {
     state = List.unmodifiable(await _store.loadForPage(_pageId));
@@ -34,19 +52,18 @@ class SceneController extends StateNotifier<List<SceneElement>>
   /// Replaces the whole scene and persists it.
   Future<void> setAll(List<SceneElement> elements) async {
     state = List.unmodifiable(elements);
-    await _store.clearForPage(_pageId);
-    await _store.upsertForPage(_notebookId, _pageId, elements);
+    await _enqueue(() => _store.replaceForPage(_notebookId, _pageId, elements));
   }
 
   Future<void> add(SceneElement element) async {
     state = List.unmodifiable([...state, element]);
-    await _store.upsertForPage(_notebookId, _pageId, [element]);
+    await _enqueue(() => _store.upsertForPage(_notebookId, _pageId, [element]));
   }
 
   Future<void> addMany(List<SceneElement> elements) async {
     if (elements.isEmpty) return;
     state = List.unmodifiable([...state, ...elements]);
-    await _store.upsertForPage(_notebookId, _pageId, elements);
+    await _enqueue(() => _store.upsertForPage(_notebookId, _pageId, elements));
   }
 
   /// Replaces existing elements (matched by id) with [elements].
@@ -56,7 +73,7 @@ class SceneController extends StateNotifier<List<SceneElement>>
     state = List.unmodifiable([
       for (final e in state) byId[e.id] ?? e,
     ]);
-    await _store.upsertForPage(_notebookId, _pageId, elements);
+    await _enqueue(() => _store.upsertForPage(_notebookId, _pageId, elements));
   }
 
   Future<void> removeMany(Set<String> ids) async {
@@ -66,8 +83,7 @@ class SceneController extends StateNotifier<List<SceneElement>>
         if (!ids.contains(e.id)) e,
     ];
     state = List.unmodifiable(remaining);
-    await _store.clearForPage(_pageId);
-    await _store.upsertForPage(_notebookId, _pageId, remaining);
+    await _enqueue(() => _store.deleteElements(_pageId, ids));
   }
 
   Future<void> update(SceneElement element) async {
@@ -75,7 +91,7 @@ class SceneController extends StateNotifier<List<SceneElement>>
       for (final e in state)
         if (e.id == element.id) element else e,
     ]);
-    await _store.upsertForPage(_notebookId, _pageId, [element]);
+    await _enqueue(() => _store.upsertForPage(_notebookId, _pageId, [element]));
   }
 
   Future<void> remove(String id) async {
@@ -84,25 +100,24 @@ class SceneController extends StateNotifier<List<SceneElement>>
         if (e.id != id) e,
     ];
     state = List.unmodifiable(remaining);
-    // No per-element delete on the store yet (added when autosave lands in a
-    // later phase); rewrite the page's rows for now.
-    await _store.clearForPage(_pageId);
-    await _store.upsertForPage(_notebookId, _pageId, remaining);
+    await _enqueue(() => _store.deleteElements(_pageId, {id}));
   }
 
   // ---- SceneMutator (used by undo/redo commands; state updates are sync) ----
 
   @override
-  void applyAdd(List<SceneElement> elements) => addMany(elements);
+  void applyAdd(List<SceneElement> elements) => _fireAndLog(addMany(elements));
 
   @override
-  void applyRemove(Set<String> ids) => removeMany(ids);
+  void applyRemove(Set<String> ids) => _fireAndLog(removeMany(ids));
 
   @override
-  void applyUpdate(List<SceneElement> elements) => updateMany(elements);
+  void applyUpdate(List<SceneElement> elements) =>
+      _fireAndLog(updateMany(elements));
 
   @override
-  void applyReplaceAll(List<SceneElement> elements) => setAll(elements);
+  void applyReplaceAll(List<SceneElement> elements) =>
+      _fireAndLog(setAll(elements));
 
   /// Next free z-order value (one above the current top).
   int nextZOrder() {

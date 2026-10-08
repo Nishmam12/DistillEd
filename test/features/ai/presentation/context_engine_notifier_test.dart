@@ -337,14 +337,16 @@ void main() {
       n.dispose();
     });
 
-    test('does not fire when analysis fails', () async {
+    test('still fires when analysis fails, so search text is saved anyway',
+        () async {
       engine.throwOnAnalyze = const AiModelNotReadyException('no model');
       final received = <PageContent>[];
       final n = withHook(received.add);
       n.onSceneChanged(ink);
       await settle();
 
-      expect(received, isEmpty);
+      expect(received, hasLength(1));
+      expect(n.state.hasError, isTrue);
       n.dispose();
     });
 

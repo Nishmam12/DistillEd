@@ -1,11 +1,18 @@
 FROM python:3.11-slim
 
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
+
+# Run unprivileged. /data is where RATE_LIMIT_DB_PATH should point (mount a
+# persistent disk there in production, or caps reset on every restart).
+RUN useradd --no-create-home app && mkdir /data && chown app /data /app
+USER app
 
 # rate_limit.sqlite3 lives in the working directory by default (see
 # app/config.py RATE_LIMIT_DB_PATH) — mount a volume there in production if

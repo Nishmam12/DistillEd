@@ -195,7 +195,16 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
         state = const AsyncValue<PageContext>.loading();
       }
       final language = _languageCode();
-      await _recognition.ensureModelDownloaded(language);
+      // The ink model is only needed to read handwriting. A typed-only or
+      // imported page must still be read (and its text saved for search) when
+      // offline with no model, so a failed download is not fatal for it.
+      final hasInk = _elements.any(
+          (e) => e is FreehandElement && !e.isEraser && e.points.isNotEmpty);
+      try {
+        await _recognition.ensureModelDownloaded(language);
+      } catch (_) {
+        if (hasInk) rethrow;
+      }
       // Gemma vision is the primary read on first open and on every forced
       // Re-read; intermediate edits fall to the light ML Kit path.
       final useVision = force || !_visionReadDone;
@@ -209,8 +218,17 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
           useVision: useVision,
           varyVision: varyVision);
       _visionReadDone = true;
-      final context =
-          await _engine.analyze(content, previousContext: cached?.context);
+      final PageContext context;
+      try {
+        context =
+            await _engine.analyze(content, previousContext: cached?.context);
+      } catch (_) {
+        // Analysis needs the LLM; search text does not. Hand the extracted
+        // content on anyway so a missing model or an OOM cannot leave the
+        // page unfindable.
+        _notifyContent(content);
+        rethrow;
+      }
       // Answers "did this page go to the cloud?" from `adb logcat` alone.
       // Deliberately not debug-gated: this is a privacy fact about the user's
       // own notes, and a release build should be able to demonstrate it.

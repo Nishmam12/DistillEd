@@ -22,7 +22,10 @@ class GeminiProvider:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._client = (
-            genai.Client(api_key=settings.gemini_api_key)
+            genai.Client(
+                api_key=settings.gemini_api_key,
+                http_options=genai.types.HttpOptions(timeout=60_000),
+            )
             if settings.gemini_enabled
             else None
         )

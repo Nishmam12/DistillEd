@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import logging
 import uuid
 
 from fastapi import APIRouter, Header, HTTPException
@@ -38,6 +39,7 @@ from ..rate_limit import RateLimitExceededError
 from . import generate as generate_router
 
 router = APIRouter(prefix="/v1")
+_log = logging.getLogger(__name__)
 
 # 8 MB of decoded image. A rasterised notebook page is far under this; anything
 # above it is a client bug or an abuse attempt, and we would rather 413 than
@@ -57,11 +59,13 @@ class VisionRequest(BaseModel):
     """One image, one prompt, one JSON answer."""
 
     # Base64 of the raw image file (no `data:` URI prefix).
-    image_base64: str
+    # Bounded at parse time (base64 is 4/3 of the bytes) so an oversized body
+    # is rejected before it is decoded into a second in-memory copy.
+    image_base64: str = Field(max_length=MAX_IMAGE_BYTES * 4 // 3 + 16)
     mime_type: str = "image/png"
-    prompt: str
+    prompt: str = Field(max_length=20_000)
     temperature: float = 0.0
-    max_tokens: int | None = Field(default=1536)
+    max_tokens: int = Field(default=1536, ge=1, le=4096)
     provider_hint: str | None = None
 
 
@@ -121,6 +125,7 @@ async def vision(
             max_tokens=request.max_tokens,
         )
     except ProviderError as exc:
+        _log.warning("provider error: %s", exc)
         log_request(
             RequestLogEntry(
                 request_id=request_id,
@@ -132,7 +137,9 @@ async def vision(
                 status="error",
             )
         )
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=502, detail="The AI provider failed. Try again."
+        ) from exc
 
     log_request(
         RequestLogEntry(

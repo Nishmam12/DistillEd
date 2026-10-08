@@ -334,3 +334,22 @@ async def test_tool_history_turn_round_trips(client, monkeypatch):
     history = captured["history"]
     assert history[1].tool_calls[0]["id"] == "call_1"
     assert history[2].tool_call_id == "call_1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"prompt": "x" * 70_000},
+        {"max_tokens": 1_000_000},
+        {"max_tokens": None},
+        {"history": [{"role": "user", "content": "a"}] * 41},
+    ],
+)
+async def test_oversized_input_is_rejected(client, extra):
+    body = {"model_tier": "cloud-mid", "prompt": "hi", **extra}
+    async with client as c:
+        resp = await c.post(
+            "/v1/generate", headers={"X-Device-Key": "test-device"}, json=body
+        )
+    assert resp.status_code == 422

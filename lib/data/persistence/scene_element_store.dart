@@ -20,6 +20,17 @@ abstract class SceneElementStore {
 
   /// Removes every element on [pageId].
   Future<void> clearForPage(int pageId);
+
+  /// Removes the elements with [elementIds] from [pageId], atomically.
+  Future<void> deleteElements(int pageId, Set<String> elementIds);
+
+  /// Makes [elements] the whole content of [pageId] in ONE transaction, so a
+  /// crash can never leave the page cleared but not yet rewritten.
+  Future<void> replaceForPage(
+    int notebookId,
+    int pageId,
+    List<SceneElement> elements,
+  );
 }
 
 /// In-memory store for tests and migration without a live database.
@@ -51,5 +62,19 @@ class InMemorySceneElementStore implements SceneElementStore {
   @override
   Future<void> clearForPage(int pageId) async {
     _byPage.remove(pageId);
+  }
+
+  @override
+  Future<void> deleteElements(int pageId, Set<String> elementIds) async {
+    _byPage[pageId]?.removeWhere((id, _) => elementIds.contains(id));
+  }
+
+  @override
+  Future<void> replaceForPage(
+    int notebookId,
+    int pageId,
+    List<SceneElement> elements,
+  ) async {
+    _byPage[pageId] = {for (final e in elements) e.id: e};
   }
 }

@@ -2,7 +2,9 @@
 
 import 'package:isar_community/isar.dart';
 
+import '../../../../data/persistence/content_purge.dart';
 import '../../../../data/persistence/page_text_record.dart';
+import '../../../../data/persistence/scene_element_record.dart';
 import '../../domain/models/note_page.dart';
 import '../../domain/models/notebook.dart';
 
@@ -58,6 +60,7 @@ class PageRepository {
 
   /// Deletes the page at [pageIndex] and decrements subsequent indexes.
   Future<void> deletePage(int notebookId, int pageIndex) async {
+    var audio = <String>[];
     await _isar.writeTxn(() async {
       final notebook = await _isar.notebooks.get(notebookId);
       if (notebook == null) throw StateError('Notebook not found');
@@ -80,6 +83,16 @@ class PageRepository {
             .filter()
             .pageIdEqualTo(pageToDelete.id)
             .deleteAll();
+        // In the same transaction, so a crash cannot strand the page's strokes.
+        await _isar.sceneElementRecords
+            .filter()
+            .pageIdEqualTo(pageToDelete.id)
+            .deleteAll();
+        audio = await purgePageRows(
+          _isar,
+          notebookId: notebookId,
+          pageId: pageToDelete.id,
+        );
       }
 
       // Decrement all pages with index > pageIndex
@@ -100,6 +113,7 @@ class PageRepository {
       await _isar.notebooks.put(notebook);
     });
 
+    await deleteContentFiles(audioRelativePaths: audio);
     await _enforceContiguity(notebookId);
   }
 
@@ -143,7 +157,9 @@ class PageRepository {
     await _isar.writeTxn(() async {
       for (int i = 0; i < newOrder.length; i++) {
         final page = await _isar.notePages.get(newOrder[i]);
-        if (page != null && page.notebookId == notebookId && page.pageIndex != i) {
+        if (page != null &&
+            page.notebookId == notebookId &&
+            page.pageIndex != i) {
           page.pageIndex = i;
           await _isar.notePages.put(page);
         }

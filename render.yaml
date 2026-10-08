@@ -31,3 +31,11 @@ services:
         value: "500"
       - key: DAILY_SEARCH_CAP
         value: "25"
+      # Global kill switch across ALL device keys (keys are client-chosen, so
+      # per-key caps alone do not bound spend).
+      - key: GLOBAL_TOKEN_CAP
+        value: "2000000"
+      - key: GLOBAL_REQUEST_CAP
+        value: "5000"
+      - key: GLOBAL_SEARCH_CAP
+        value: "500"

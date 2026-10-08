@@ -23,7 +23,9 @@ class GptProvider:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._client = (
-            AsyncOpenAI(api_key=settings.openai_api_key)
+            AsyncOpenAI(
+                api_key=settings.openai_api_key, timeout=60.0, max_retries=0
+            )
             if settings.gpt_enabled
             else None
         )

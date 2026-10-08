@@ -2,6 +2,7 @@
 
 import 'package:isar_community/isar.dart';
 
+import '../../../../data/persistence/content_purge.dart';
 import '../../../../data/persistence/page_text_record.dart';
 import '../../../../data/persistence/scene_element_record.dart';
 import '../../domain/models/folder.dart';
@@ -93,7 +94,9 @@ class NoteRepository {
   /// collection, so deleting only the notebook and pages would leave every
   /// stroke on disk forever with nothing pointing at it.
   Future<void> deleteNotebook(int id) async {
+    late final List<String> audio;
     await _isar.writeTxn(() async {
+      audio = await purgeNotebookRows(_isar, id);
       await _isar.notePages.filter().notebookIdEqualTo(id).deleteAll();
       await _isar.sceneElementRecords
           .filter()
@@ -103,6 +106,8 @@ class NoteRepository {
       await _isar.pageTextRecords.filter().notebookIdEqualTo(id).deleteAll();
       await _isar.notebooks.delete(id);
     });
+    // After the commit: ink files, imports, recordings and transcripts.
+    await deleteContentFiles(notebookDirId: id, audioRelativePaths: audio);
   }
 
   /// Permanently deletes every trashed notebook whose retention window has

@@ -20,7 +20,9 @@ class ClaudeProvider:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._client = (
-            AsyncAnthropic(api_key=settings.anthropic_api_key)
+            AsyncAnthropic(
+                api_key=settings.anthropic_api_key, timeout=60.0, max_retries=0
+            )
             if settings.claude_enabled
             else None
         )

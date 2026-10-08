@@ -64,8 +64,8 @@ void main() {
       final store = InMemorySceneElementStore();
       final gate = InMemoryMigrationGate(0);
 
-      final ran = await SceneMigratorV2(source: source, store: store, gate: gate)
-          .run();
+      final ran =
+          await SceneMigratorV2(source: source, store: store, gate: gate).run();
 
       expect(ran, isTrue);
       expect(await gate.currentVersion(), SceneMigratorV2.targetVersion);
@@ -86,6 +86,42 @@ void main() {
       expect(await migrator.run(), isTrue);
       expect(await migrator.run(), isFalse); // gated
       expect((await store.loadForPage(42)).length, 3);
+    });
+
+    test('an unreadable page keeps the gate open and is retried next launch',
+        () async {
+      final bad = LegacyPageData(notebookId: 1, pageId: 7, unreadable: true);
+      final store = InMemorySceneElementStore();
+      final gate = InMemoryMigrationGate(0);
+
+      await SceneMigratorV2(
+        source: _FakeSource([_samplePage(), bad]),
+        store: store,
+        gate: gate,
+      ).run();
+
+      expect(await gate.currentVersion(), 0); // not marked migrated
+      expect((await store.loadForPage(42)).length, 3); // good page still done
+      expect(await store.loadForPage(7), isEmpty);
+    });
+
+    test('a rerun never overwrites edits made on an already-migrated page',
+        () async {
+      final store = InMemorySceneElementStore();
+      final gate = InMemoryMigrationGate(0);
+      final bad = LegacyPageData(notebookId: 1, pageId: 7, unreadable: true);
+      final migrator = SceneMigratorV2(
+        source: _FakeSource([_samplePage(), bad]),
+        store: store,
+        gate: gate,
+      );
+      await migrator.run();
+      await store.deleteElements(42, {'100'}); // the user erases a stroke
+
+      await migrator.run(); // gate was still open, so this runs again
+
+      expect((await store.loadForPage(42)).map((e) => e.id),
+          isNot(contains('100')));
     });
 
     test('does not read the source when already at target version', () async {

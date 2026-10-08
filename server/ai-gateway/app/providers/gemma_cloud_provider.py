@@ -30,6 +30,8 @@ class GemmaCloudProvider:
         self._client = AsyncOpenAI(
             api_key=settings.openrouter_api_key or "unset",
             base_url=settings.openrouter_base_url,
+            timeout=60.0,
+            max_retries=0,
         )
 
     def is_available(self) -> bool:

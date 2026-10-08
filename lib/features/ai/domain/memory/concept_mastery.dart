@@ -74,19 +74,29 @@ Duration reviewIntervalFor(MasteryLevel level) => switch (level) {
       MasteryLevel.mastered => const Duration(days: 7),
     };
 
+/// Whether [key] appears in [haystack] as a whole word (an optional plural "s"
+/// is allowed). A bare substring test made "ion" match "function" and "ph"
+/// match "photosynthesis", so a quiz miss demoted unrelated concepts. Works for
+/// any script: boundaries are "not a letter or digit", not ASCII `\b`.
+bool _mentionsWord(String haystack, String key) => RegExp(
+      '(?<![\\p{L}\\p{N}])${RegExp.escape(key)}s?(?![\\p{L}\\p{N}])',
+      unicode: true,
+    ).hasMatch(haystack);
+
 /// Which of [conceptNames] are mentioned in [text], as normalized keys.
 ///
 /// Used to attribute a quiz question to the concepts it actually tests, so a
 /// miss decrements those concepts rather than the whole topic. Matching is a
-/// normalized substring check — deliberately simple and predictable; a question
+/// normalized whole-word check — deliberately simple and predictable; a question
 /// that names no known concept attributes to nothing rather than guessing.
-List<String> conceptKeysMentionedIn(String text, Iterable<String> conceptNames) {
+List<String> conceptKeysMentionedIn(
+    String text, Iterable<String> conceptNames) {
   final haystack = normalizeConceptKey(text);
   if (haystack.isEmpty) return const [];
   final keys = <String>{};
   for (final name in conceptNames) {
     final key = normalizeConceptKey(name);
-    if (key.isNotEmpty && haystack.contains(key)) keys.add(key);
+    if (key.isNotEmpty && _mentionsWord(haystack, key)) keys.add(key);
   }
   return keys.toList();
 }
@@ -105,7 +115,7 @@ List<ConceptMastery> conceptsMentionedIn(
   if (haystack.isEmpty) return const [];
   return [
     for (final c in concepts)
-      if (c.conceptKey.isNotEmpty && haystack.contains(c.conceptKey)) c,
+      if (c.conceptKey.isNotEmpty && _mentionsWord(haystack, c.conceptKey)) c,
   ];
 }
 
@@ -213,14 +223,24 @@ class ConceptMastery {
   /// The learner answered a quiz question about this concept. A correct answer
   /// promotes one step; a miss demotes one step and is counted, so
   /// [weakConcepts]-style queries can rank genuine trouble spots.
-  ConceptMastery afterQuiz({required bool correct, required DateTime at}) =>
-      copyWith(
-        level: correct ? level.promoted : level.demoted,
-        lastReviewedAt: at,
-        lastSeenAt: at,
-        timesReviewed: timesReviewed + 1,
-        timesMissedInQuiz: correct ? timesMissedInQuiz : timesMissedInQuiz + 1,
-      );
+  ///
+  /// Recall is what disproves a weakness: a correct answer clears the
+  /// knowledge-gap flags (the Context Engine re-flags on every re-analysis and
+  /// nothing else ever reset them), and reaching `mastered` clears the miss
+  /// count. Without this a concept stayed weak forever after one mistake.
+  ConceptMastery afterQuiz({required bool correct, required DateTime at}) {
+    final newLevel = correct ? level.promoted : level.demoted;
+    return copyWith(
+      level: newLevel,
+      lastReviewedAt: at,
+      lastSeenAt: at,
+      timesReviewed: timesReviewed + 1,
+      timesMissedInQuiz: !correct
+          ? timesMissedInQuiz + 1
+          : (newLevel == MasteryLevel.mastered ? 0 : timesMissedInQuiz),
+      timesFlaggedAsGap: correct ? 0 : timesFlaggedAsGap,
+    );
+  }
 
   /// The Context Engine flagged this concept inside a knowledge gap. That's a
   /// weakness signal, not a test result: it counts the flag and refreshes
@@ -244,7 +264,8 @@ class ConceptMastery {
   bool isDueForReview(DateTime now) => !now.isBefore(dueAt());
 
   /// A concept the learner is measurably struggling with: below `practiced`,
-  /// missed in a quiz, or flagged as a knowledge gap.
+  /// missed in a quiz, or flagged as a knowledge gap. [afterQuiz] clears the
+  /// flags when the learner proves recall, so weakness is recoverable.
   bool get isWeak =>
       level.rank < MasteryLevel.practiced.rank ||
       timesMissedInQuiz > 0 ||

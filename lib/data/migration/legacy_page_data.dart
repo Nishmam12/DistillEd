@@ -13,11 +13,16 @@ class LegacyPageData {
   final List<ShapeElement> shapes;
   final List<ImportedContent> imported;
 
+  /// The page's ink file exists but could not be read. The migrator must not
+  /// treat this page as empty (and so must not mark the migration complete).
+  final bool unreadable;
+
   const LegacyPageData({
     required this.notebookId,
     required this.pageId,
     this.strokes = const [],
     this.shapes = const [],
     this.imported = const [],
+    this.unreadable = false,
   });
 }

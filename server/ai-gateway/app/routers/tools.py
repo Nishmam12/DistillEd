@@ -9,9 +9,11 @@ reasoning as every other provider key in this gateway — see
 
 from __future__ import annotations
 
+import logging
+
 import httpx
 from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..config import get_settings
 from ..rate_limit import (
@@ -22,12 +24,13 @@ from ..rate_limit import (
 
 router = APIRouter(prefix="/v1/tools")
 
+_log = logging.getLogger(__name__)
 _MAX_RESULTS = 5
 _SNIPPET_MAX_CHARS = 500
 
 
 class SearchRequest(BaseModel):
-    query: str
+    query: str = Field(min_length=1, max_length=400)
 
 
 class SearchResult(BaseModel):
@@ -72,6 +75,7 @@ def _get_search_rate_limiter() -> SearchRateLimiter:
             SearchRateLimitConfig(
                 db_path=settings.rate_limit_db_path,
                 daily_search_cap=settings.daily_search_cap,
+                global_search_cap=settings.global_search_cap,
             )
         )
     return _search_rate_limiter
@@ -97,8 +101,9 @@ async def search(
     try:
         data = await _search_exa(settings, request.query)
     except httpx.HTTPError as exc:
+        _log.warning("exa search failed: %s", exc)
         raise HTTPException(
-            status_code=502, detail=f"Web search failed: {exc}"
+            status_code=502, detail="Web search failed. Try again."
         ) from exc
 
     results = [

@@ -22,8 +22,20 @@ class SceneImageCache extends ChangeNotifier {
 
   final RefCountedCache<ui.Image> _cache =
       RefCountedCache<ui.Image>((img) => img.dispose());
+  // Insertion order doubles as recency: [get] moves a hit to the end, so the
+  // first key is the least recently drawn.
   final Map<String, ui.Image> _ready = {};
   final Set<String> _loading = {};
+  // Paths that failed to read/decode. Without this, build() would retry them
+  // (read + decode) on every frame.
+  final Set<String> _failed = {};
+  bool _disposed = false;
+
+  /// Decoded bitmaps kept at once. A long PDF would otherwise hold every page
+  /// ever shown, at full resolution, until the process dies.
+  // ponytail: count-bounded, not byte-bounded; switch to a byte budget if
+  // mixed huge/small images make the count a poor proxy.
+  static const int maxEntries = 32;
   int _version = 0;
 
   SceneImageCache({
@@ -38,22 +50,41 @@ class SceneImageCache extends ChangeNotifier {
   int get version => _version;
 
   /// The decoded image for [relativePath], or null if not loaded yet.
-  ui.Image? get(String relativePath) => _ready[relativePath];
+  ui.Image? get(String relativePath) {
+    final image = _ready.remove(relativePath);
+    if (image != null) _ready[relativePath] = image; // mark most recent
+    return image;
+  }
 
   /// Ensures every path in [relativePaths] is decoded and cached. Idempotent and
   /// safe to call from build(): in-flight and ready paths are skipped.
   Future<void> ensure(Iterable<String> relativePaths) async {
     for (final p in relativePaths) {
-      if (p.isEmpty || _ready.containsKey(p) || _loading.contains(p)) continue;
+      if (p.isEmpty ||
+          _ready.containsKey(p) ||
+          _loading.contains(p) ||
+          _failed.contains(p)) {
+        continue;
+      }
       _loading.add(p);
       try {
         final bytes = await _readBytes(resolvePath(baseDir, p));
         final image = await _decode(bytes);
+        if (_disposed) {
+          image.dispose(); // finished after the cache went away
+          continue;
+        }
         _ready[p] = _cache.acquire(p, () => image);
+        while (_ready.length > maxEntries) {
+          final oldest = _ready.keys.first;
+          _ready.remove(oldest);
+          _cache.release(oldest); // disposes the bitmap
+        }
         _version++;
         notifyListeners();
       } catch (_) {
         // Leave unloaded; the painter falls back to a placeholder.
+        _failed.add(p);
       } finally {
         _loading.remove(p);
       }
@@ -82,6 +113,7 @@ class SceneImageCache extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _cache.disposeAll();
     _ready.clear();
     super.dispose();

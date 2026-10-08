@@ -1,3 +1,12 @@
+import java.util.Properties
+
+// Release signing comes from android/key.properties (gitignored):
+//   storeFile=/abs/path/release.jks  storePassword=...  keyAlias=...  keyPassword=...
+val keyProps = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -30,11 +39,28 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (keyProps.isNotEmpty()) {
+            create("release") {
+                storeFile = file(keyProps.getProperty("storeFile"))
+                storePassword = keyProps.getProperty("storePassword")
+                keyAlias = keyProps.getProperty("keyAlias")
+                keyPassword = keyProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Without key.properties this falls back to the debug key so local
+            // `flutter run --release` still works. Such an APK is NOT shippable:
+            // Play rejects it and it cannot update a differently signed install.
+            signingConfig = if (keyProps.isNotEmpty()) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn("WARNING: no android/key.properties - release is signed with the DEBUG key")
+                signingConfigs.getByName("debug")
+            }
 
             // R8 shrinking is disabled deliberately. It was failing on optional
             // ML Kit language recognisers we don't bundle (Chinese/Japanese/

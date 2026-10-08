@@ -7,6 +7,7 @@
 import 'package:isar_community/isar.dart';
 
 import 'legacy_models/ink_file_storage.dart';
+import 'legacy_models/stroke.dart';
 import '../../features/home/domain/models/note_page.dart';
 import '../../features/home/domain/models/notebook.dart';
 import '../../shared/isar/isar_service.dart';
@@ -27,13 +28,21 @@ class IsarLegacyPageSource implements LegacyPageSource {
       final notePages =
           await _isar.notePages.filter().notebookIdEqualTo(nb.id).findAll();
       for (final p in notePages) {
-        final strokes = await InkFileStorage.loadStrokes(
-          notebookId: nb.id,
-          pageId: p.id,
-        );
+        var strokes = const <Stroke>[];
+        var unreadable = false;
+        try {
+          strokes = await InkFileStorage.loadStrokes(
+            notebookId: nb.id,
+            pageId: p.id,
+            strict: true,
+          );
+        } on FormatException {
+          unreadable = true;
+        }
         pages.add(LegacyPageData(
           notebookId: nb.id,
           pageId: p.id,
+          unreadable: unreadable,
           strokes: strokes,
           shapes: p.shapes,
           imported: p.importedContents,

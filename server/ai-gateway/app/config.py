@@ -46,6 +46,10 @@ class Settings:
     # Rate limiting (per anonymous device key).
     daily_token_cap: int = int(os.getenv("DAILY_TOKEN_CAP", "200000"))
     daily_request_cap: int = int(os.getenv("DAILY_REQUEST_CAP", "500"))
+    # Global kill switch across all device keys (see rate_limit.py).
+    global_token_cap: int = int(os.getenv("GLOBAL_TOKEN_CAP", "2000000"))
+    global_request_cap: int = int(os.getenv("GLOBAL_REQUEST_CAP", "5000"))
+    global_search_cap: int = int(os.getenv("GLOBAL_SEARCH_CAP", "500"))
     rate_limit_db_path: str = os.getenv(
         "RATE_LIMIT_DB_PATH", "rate_limit.sqlite3"
     )
