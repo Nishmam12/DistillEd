@@ -44,7 +44,7 @@ const FolderSchema = CollectionSchema(
   getId: _folderGetId,
   getLinks: _folderGetLinks,
   attach: _folderAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _folderEstimateSize(

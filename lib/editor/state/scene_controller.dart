@@ -5,6 +5,7 @@
 // read/drive this controller. It is not yet wired into the running editor.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../data/persistence/isar_scene_element_store.dart';
 import '../../data/persistence/scene_element_store.dart';

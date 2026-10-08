@@ -1,7 +1,7 @@
 // A seam over Isar for embedded chunks, so the RAG flow is unit-testable (fake
 // the store) and features/ai never talks to IsarService outside data/.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../../../shared/isar/isar_service.dart';
 import '../../domain/rag/note_chunk.dart';

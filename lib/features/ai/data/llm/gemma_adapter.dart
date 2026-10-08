@@ -1,17 +1,17 @@
-// Thin seams over flutter_gemma's static API so ModelDownloadManager and
+// Thin seams over flutter_edge_ai's static API so ModelDownloadManager and
 // LocalLlmService stay unit-testable (the plugin itself needs a device).
 //
-// FlutterGemma.initialize is performed lazily on first use (single-flight)
+// FlutterEdgeAi.initialize is performed lazily on first use (single-flight)
 // instead of at app startup: nothing AI-related loads unless the user actually
 // touches the Summarize feature, and app boot stays fast.
 
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
-import 'package:flutter_gemma/flutter_gemma.dart';
-import 'package:flutter_gemma_embeddings/flutter_gemma_embeddings.dart';
-import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
-import 'package:flutter_gemma_speech/flutter_gemma_speech.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
+import 'package:flutter_edge_ai_embeddings/flutter_edge_ai_embeddings.dart';
+import 'package:flutter_edge_ai_litertlm/flutter_edge_ai_litertlm.dart';
+import 'package:flutter_edge_ai_speech/flutter_edge_ai_speech.dart';
 
 import '../../domain/compute_backend.dart';
 import 'llm_exceptions.dart';
@@ -40,8 +40,8 @@ class GemmaBootstrap {
   /// `initialize` also accepts a global `huggingFaceToken`, deliberately unused:
   /// it would be captured here, on first use, whereas the token is a per-user
   /// setting the user may paste at any time. Tokens are passed per-download
-  /// instead (see [FlutterGemmaEmbedderInstaller]).
-  static Future<void> ensureInitialized() => _init ??= FlutterGemma.initialize(
+  /// instead (see [EdgeAiEmbedderInstaller]).
+  static Future<void> ensureInitialized() => _init ??= FlutterEdgeAi.initialize(
         inferenceEngines: registrations.inferenceEngines,
         embeddingBackends: registrations.embeddingBackends,
         embeddingTokenizers: registrations.embeddingTokenizers,
@@ -58,7 +58,7 @@ class GemmaBootstrap {
   );
 }
 
-/// Installation seam — implemented by [FlutterGemmaInstaller] in production.
+/// Installation seam — implemented by [EdgeAiInstaller] in production.
 abstract class ModelInstaller {
   Future<bool> isInstalled(String modelId);
 
@@ -77,11 +77,11 @@ abstract class ModelInstaller {
   Future<void> uninstall(String modelId);
 }
 
-class FlutterGemmaInstaller implements ModelInstaller {
+class EdgeAiInstaller implements ModelInstaller {
   @override
   Future<bool> isInstalled(String modelId) async {
     await GemmaBootstrap.ensureInitialized();
-    return FlutterGemma.isModelInstalled(modelId);
+    return FlutterEdgeAi.isModelInstalled(modelId);
   }
 
   @override
@@ -92,7 +92,7 @@ class FlutterGemmaInstaller implements ModelInstaller {
     CancelToken? cancelToken,
   }) async {
     await GemmaBootstrap.ensureInitialized();
-    var builder = FlutterGemma.installModel(
+    var builder = FlutterEdgeAi.installModel(
       modelType: spec.modelType,
       fileType: spec.fileType,
     ).fromNetwork(
@@ -102,7 +102,7 @@ class FlutterGemmaInstaller implements ModelInstaller {
       // whole reason a backgrounded download used to die.
       //
       // The plugin gates its notification setup on `foreground == true`
-      // (SmartDownloader.shouldConfigureForegroundNotification), and on Android
+      // (shouldConfigureForegroundNotification), and on Android
       // background_downloader only calls WorkManager.setForeground() once a
       // `running` notification is configured. So on the auto path the
       // `runInForegroundIfFileLargerThan: 500` it sets is a no-op — no
@@ -111,7 +111,7 @@ class FlutterGemmaInstaller implements ModelInstaller {
       // kills when the app is backgrounded and hard-fails at the documented
       // 9-minute background limit either way.
       //
-      // A kill is not a pause: flutter_gemma disables resume for HuggingFace
+      // A kill is not a pause: flutter_edge_ai disables resume for HuggingFace
       // URLs (weak ETags — see ModelDownloadManager's `_authToken` doc), so
       // every interruption costs the entire file and restarts from zero.
       //
@@ -130,7 +130,7 @@ class FlutterGemmaInstaller implements ModelInstaller {
   @override
   Future<void> uninstall(String modelId) async {
     await GemmaBootstrap.ensureInitialized();
-    await FlutterGemma.uninstallModel(modelId);
+    await FlutterEdgeAi.uninstallModel(modelId);
   }
 }
 
@@ -157,7 +157,7 @@ abstract class LlmSession {
   Future<void> close();
 }
 
-/// Inference seam — implemented by [FlutterGemmaRuntime] in production.
+/// Inference seam — implemented by [EdgeAiRuntime] in production.
 abstract class LlmRuntime {
   /// Opens a loaded model with one session. Set [supportImage] to load the
   /// model's vision encoder and enable [LlmSession.respondWithImage];
@@ -196,7 +196,7 @@ abstract class LlmRuntime {
   ComputeBackend? get activeBackend;
 }
 
-/// What [FlutterGemmaRuntime] asks the plugin for on one load.
+/// What [EdgeAiRuntime] asks the plugin for on one load.
 typedef GemmaLoadRequest = ({
   int maxTokens,
   PreferredBackend preferredBackend,
@@ -213,11 +213,11 @@ typedef GemmaLoadRequest = ({
 typedef GemmaModelLoader = Future<InferenceModel> Function(
     GemmaLoadRequest request);
 
-class FlutterGemmaRuntime implements LlmRuntime {
+class EdgeAiRuntime implements LlmRuntime {
   /// The arguments are seams over the plugin's static API, which needs a
   /// device: production uses the defaults, tests inject fakes so the decisions
   /// below can be exercised without one.
-  FlutterGemmaRuntime({
+  EdgeAiRuntime({
     Future<void> Function(LlmModelSpec spec)? ensureReady,
     GemmaModelLoader? loadModel,
     Future<void> Function()? closeCachedModel,
@@ -231,14 +231,14 @@ class FlutterGemmaRuntime implements LlmRuntime {
 
   static Future<void> _pluginEnsureReady(LlmModelSpec spec) async {
     await GemmaBootstrap.ensureInitialized();
-    if (!FlutterGemma.hasActiveModel() ||
-        !await FlutterGemma.isModelInstalled(spec.filename)) {
+    if (!FlutterEdgeAi.hasActiveModel() ||
+        !await FlutterEdgeAi.isModelInstalled(spec.filename)) {
       throw LlmNotReadyException();
     }
   }
 
   static Future<InferenceModel> _pluginLoadModel(GemmaLoadRequest r) =>
-      FlutterGemma.getActiveModel(
+      FlutterEdgeAi.getActiveModel(
         maxTokens: r.maxTokens,
         preferredBackend: r.preferredBackend,
         // Loads the vision encoder too (Gemma 4 E2B ships one).
@@ -252,7 +252,7 @@ class FlutterGemmaRuntime implements LlmRuntime {
   static Future<void> _pluginCloseCachedModel() async {
     // The plugin owns a single cached instance; closing it fires the internal
     // close-listener that clears the cache, so the next load rebuilds.
-    await FlutterGemmaPlugin.instance.initializedModel?.close();
+    await FlutterEdgeAiPlugin.instance.initializedModel?.close();
   }
 
   /// The construction parameters of the model instance the plugin currently

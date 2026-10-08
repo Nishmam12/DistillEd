@@ -1,6 +1,6 @@
 // Represents one vector shape, text box, or SVG element on a note page.
 import 'package:flutter/material.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import '../../../domain/model/shape_type.dart';
 
 part 'shape_element.g.dart';

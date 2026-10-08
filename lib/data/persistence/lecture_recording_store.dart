@@ -1,7 +1,7 @@
 // Persistence boundary for lecture recordings, with an in-memory twin so the
 // recording flow is testable without Isar or a microphone.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../features/audio/domain/lecture_recording.dart';
 import '../../shared/isar/isar_service.dart';

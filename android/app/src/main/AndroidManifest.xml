@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Model downloads: the on-device LLM (~2.4 GB via flutter_gemma /
+    <!-- Model downloads: the on-device LLM (~2.4 GB via flutter_edge_ai /
          background_downloader) and ML Kit handwriting language models. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -11,14 +11,14 @@
          service does not activate — background_downloader bails out of
          displayNotification() before calling setForeground(), and the 2.4 GB
          model download is then killed as soon as the app is backgrounded.
-         flutter_gemma makes the runtime request, but ONLY because
-         FlutterGemmaInstaller passes `foreground: true`
+         flutter_edge_ai makes the runtime request, but ONLY because
+         EdgeAiInstaller passes `foreground: true`
          (features/ai/data/llm/gemma_adapter.dart) — on the plugin's size-based
          auto path nothing requests it and this declaration alone does nothing. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Android 14+: required together with the SystemForegroundService
          override below for >500 MB foreground downloads (see flutter_gemma
-         README, "Foreground Service" section). -->
+         1.11 README, "Foreground Service" section). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <!-- Lecture recording alongside ink (Tier 4.12). Requested at runtime by

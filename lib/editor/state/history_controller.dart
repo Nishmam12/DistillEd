@@ -1,7 +1,7 @@
 // Undo/redo stacks for one page's scene. Commands apply against the
 // SceneController (a SceneMutator).
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../domain/commands/scene_command.dart';
 import 'scene_controller.dart';

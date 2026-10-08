@@ -124,7 +124,7 @@ const FlashcardRecordSchema = CollectionSchema(
   getId: _flashcardRecordGetId,
   getLinks: _flashcardRecordGetLinks,
   attach: _flashcardRecordAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _flashcardRecordEstimateSize(

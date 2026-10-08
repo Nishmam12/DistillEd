@@ -17,7 +17,7 @@
 /// EmbeddingGemma — like Gecko, E5, and most cloud embedding APIs — is
 /// ASYMMETRIC: it is trained with a different prefix for stored passages than
 /// for search queries, and the runtime prepends that prefix for us
-/// (flutter_gemma's `TaskType.prefix`: `'title: none | text: '` vs
+/// (flutter_edge_ai's `TaskType.prefix`: `'title: none | text: '` vs
 /// `'task: search result | query: '`). Embed a document as a query and you
 /// still get a 768-float vector back — just a worse one, in a subtly different
 /// region of the space. Nothing throws; recall simply degrades.

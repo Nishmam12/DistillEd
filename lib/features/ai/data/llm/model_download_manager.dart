@@ -1,9 +1,9 @@
 // Manages the on-device LLM download: free-space check, progress stream,
-// cancellation, delete. Retry (exponential backoff) comes from flutter_gemma's
+// cancellation, delete. Retry (exponential backoff) comes from flutter_edge_ai's
 // downloader.
 //
 // The download survives the app being backgrounded because
-// [FlutterGemmaInstaller] passes `foreground: true`, which is what actually
+// [EdgeAiInstaller] passes `foreground: true`, which is what actually
 // activates Android's foreground service — the plugin's size-based auto-detect
 // does NOT (see the comment at that call site). It does NOT survive the process
 // being killed: resume is disabled for HuggingFace URLs, so an interrupted
@@ -15,7 +15,7 @@
 
 import 'dart:async';
 
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 import 'device_storage.dart';
 import 'download_failure.dart';
@@ -49,7 +49,7 @@ class ModelDownloadManager {
     ModelInstaller? installer,
     DeviceStorage? storage,
   })  : _authToken = authToken ?? (() => null),
-        _installer = installer ?? FlutterGemmaInstaller(),
+        _installer = installer ?? EdgeAiInstaller(),
         _storage = storage ?? DeviceStorage();
 
   final _progressController = StreamController<int>.broadcast();

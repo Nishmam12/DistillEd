@@ -8,7 +8,7 @@
 
 import 'dart:convert';
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../../../shared/isar/isar_service.dart';
 import '../../domain/figure.dart';

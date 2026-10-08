@@ -91,7 +91,7 @@ class NotesScreen extends ConsumerWidget {
               right: 0,
               bottom: 0,
               child: _BottomBar(
-                count: cards.valueOrNull?.length ?? 0,
+                count: cards.value?.length ?? 0,
                 onFilter: () => _pickSort(context, ref),
                 onCompose: () => _createNotebook(context, ref),
               ),
@@ -380,8 +380,8 @@ class _OrganizeFilterRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final folders = ref.watch(foldersProvider).valueOrNull ?? const [];
-    final tags = ref.watch(tagCountsProvider).valueOrNull ?? const {};
+    final folders = ref.watch(foldersProvider).value ?? const [];
+    final tags = ref.watch(tagCountsProvider).value ?? const {};
     if (folders.isEmpty && tags.isEmpty) return const SizedBox.shrink();
 
     final folderFilter = ref.watch(notesFolderFilterProvider);

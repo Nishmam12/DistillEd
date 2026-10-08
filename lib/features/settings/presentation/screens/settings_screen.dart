@@ -17,7 +17,7 @@ import '../../../ai/data/llm/llm_model_spec.dart';
 import '../../../ai/data/llm/model_storage_cleaner.dart';
 import '../../../ai/domain/compute_backend.dart';
 import '../../../ai/presentation/ai_providers.dart' show localBackendProvider;
-import '../../../audio/data/flutter_gemma_speech.dart';
+import '../../../audio/data/edge_ai_speech.dart';
 import '../../../audio/presentation/speech_model_notifier.dart';
 import '../../../audio/presentation/transcription_providers.dart';
 import '../../../../editor/state/ink_gesture_providers.dart';

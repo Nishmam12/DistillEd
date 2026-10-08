@@ -4,7 +4,7 @@
 // notebook then inserts). Days and tasks are `@embedded` value objects, mirror
 // of the domain; the rules live in `domain/study_planner/`, this only converts.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../domain/study_planner/study_plan.dart';
 

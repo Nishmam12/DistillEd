@@ -1,4 +1,4 @@
-// Translates flutter_gemma's typed download failures into our [LlmException]
+// Translates flutter_edge_ai's typed download failures into our [LlmException]
 // family, so the UI can tell the user what to actually DO.
 //
 // Why this file exists: the plugin already classifies every failure precisely
@@ -10,10 +10,10 @@
 // "Embedding model download failed.", pointing at nothing.
 //
 // The plugin's own `toUserMessage()` is not used: it tells the user to call
-// `FlutterGemma.initialize(huggingFaceToken:)`, an API detail of a package they
+// `FlutterEdgeAi.initialize(huggingFaceToken:)`, an API detail of a package they
 // have never heard of, when the real fix is a screen in this app.
 
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 import 'llm_exceptions.dart';
 

@@ -17,6 +17,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../domain/model/scene_element.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
@@ -61,6 +62,18 @@ String sceneContentSignature(List<SceneElement> elements) {
 }
 
 class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
+  /// The context the panel last showed. Loading and error states carry no value
+  /// of their own, so readers fall back to this to keep the last good context
+  /// on screen during a re-analysis. Riverpod 3 made copyWithPrevious internal.
+  PageContext? _shown;
+
+  /// The context to show now: the current value, or the one shown before a
+  /// loading or error state replaced it.
+  PageContext? get shown => state.value ?? _shown;
+
+  /// Remembers what is on screen before a state with no value replaces it.
+  void _keepShown() => _shown = state.value ?? _shown;
+
   final ContextEngine _engine;
   final PageContentExtractor _extractor;
   final HandwritingRecognitionService _recognition;
@@ -144,7 +157,8 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
     // model passes — or unchanged content), so without this the tap could
     // return with nothing on screen changing at all.
     if (mounted) {
-      state = const AsyncValue<PageContext>.loading().copyWithPrevious(state);
+      _keepShown();
+      state = const AsyncValue<PageContext>.loading();
     }
     await _analyzeIfChanged();
   }
@@ -177,7 +191,8 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       }
 
       if (mounted) {
-        state = const AsyncValue<PageContext>.loading().copyWithPrevious(state);
+        _keepShown();
+        state = const AsyncValue<PageContext>.loading();
       }
       final language = _languageCode();
       await _recognition.ensureModelDownloaded(language);
@@ -220,7 +235,8 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       // Surfaced, not swallowed: the sidebar renders the failure kind
       // (model missing → download hint; anything else → gentle retry).
       if (mounted) {
-        state = AsyncValue<PageContext>.error(e, st).copyWithPrevious(state);
+        _keepShown();
+        state = AsyncValue<PageContext>.error(e, st);
       }
     } finally {
       _running = false;

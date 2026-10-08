@@ -1,6 +1,7 @@
 // StateNotifier that manages the list of notebooks via NoteRepository.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../data/repositories/note_repository.dart';
 import '../domain/models/notebook.dart';

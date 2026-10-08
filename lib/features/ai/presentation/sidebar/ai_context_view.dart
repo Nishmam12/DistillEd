@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderException;
 
 import '../../../../core/theme/ink_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
@@ -31,7 +32,7 @@ class AiContextView extends ConsumerWidget {
 
     // Keep showing the last good context while a re-analysis runs underneath,
     // so the panel never flickers back to a spinner mid-edit.
-    final previous = async.valueOrNull;
+    final previous = ref.read(pageContextProvider(pageKey).notifier).shown;
 
     // Tapping a knowledge-gap flag explains that undefined term in context —
     // the second Explain trigger (the first is the selection launcher).
@@ -64,7 +65,6 @@ class AiContextView extends ConsumerWidget {
         ),
       AsyncLoading() => const _ReadingState(),
       AsyncError(:final error) => _ErrorState(pageKey: pageKey, error: error),
-      _ => const _ReadingState(),
     };
   }
 }
@@ -72,7 +72,7 @@ class AiContextView extends ConsumerWidget {
 /// Content sent when a knowledge-gap flag is tapped: explain the flagged term,
 /// grounded in the page's detected topic when there is one.
 ///
-/// [Explainer] always wraps this as "PASSAGE:\n<content>" with a system
+/// [Explainer] always wraps this as "PASSAGE:\n`<content>`" with a system
 /// prompt that says "explain the passage below" — so this must read as the
 /// term itself (like a normal Explain selection), NOT as an instruction
 /// sentence. An earlier version read "Explain this concept, which the notes
@@ -120,7 +120,9 @@ class _ErrorState extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (error is AiModelNotReadyException) {
+    final raw = error;
+    final cause = raw is ProviderException ? raw.exception : raw;
+    if (cause is AiModelNotReadyException) {
       return _ModelNotReady(pageKey: pageKey);
     }
     return Column(

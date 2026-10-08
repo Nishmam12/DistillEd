@@ -2,7 +2,7 @@
 // the app documents directory (same arrangement as imported images); this row
 // holds only the pointer and the timeline metadata.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../features/audio/domain/lecture_recording.dart';
 

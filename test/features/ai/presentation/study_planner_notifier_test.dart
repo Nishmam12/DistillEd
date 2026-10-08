@@ -109,7 +109,7 @@ void main() {
     final n = _notifier(_FakeMemory(), _FakeStore());
     await settle();
     expect(n.state.hasValue, isTrue);
-    expect(n.state.valueOrNull, isNull);
+    expect(n.state.value, isNull);
   });
 
   test('a saved plan is loaded on open', () async {
@@ -117,7 +117,7 @@ void main() {
       ..saved = buildPlanStub();
     final n = _notifier(_FakeMemory(), store);
     await settle();
-    expect(n.state.valueOrNull, isNotNull);
+    expect(n.state.value, isNotNull);
   });
 
   test('generate builds a plan from weak/due signals and persists it', () async {
@@ -131,7 +131,7 @@ void main() {
 
     await n.generate(_week());
 
-    final plan = n.state.valueOrNull!;
+    final plan = n.state.value!;
     final names = [for (final d in plan.days) for (final t in d.tasks) t.conceptName];
     expect(names, containsAll(['Osmosis', 'Diffusion']));
     expect(store.saved, isNotNull, reason: 'the plan must be persisted');
@@ -150,7 +150,7 @@ void main() {
     await settle();
     await n.generate(_week());
 
-    final tasks = [for (final d in n.state.valueOrNull!.days) ...d.tasks];
+    final tasks = [for (final d in n.state.value!.days) ...d.tasks];
     final regression =
         tasks.where((t) => t.conceptName == 'Regression').toList();
     expect(regression, hasLength(1));
@@ -164,10 +164,10 @@ void main() {
     await settle();
     await n.generate(_week());
 
-    final workIndex = n.state.valueOrNull!.days.indexWhere((d) => !d.isRest);
+    final workIndex = n.state.value!.days.indexWhere((d) => !d.isRest);
     await n.setDayCompleted(workIndex, true);
 
-    expect(n.state.valueOrNull!.days[workIndex].completed, isTrue);
+    expect(n.state.value!.days[workIndex].completed, isTrue);
     expect(store.saved!.days[workIndex].completed, isTrue);
   });
 
@@ -177,7 +177,7 @@ void main() {
     await settle();
 
     await n.clear();
-    expect(n.state.valueOrNull, isNull);
+    expect(n.state.value, isNull);
     expect(store.deletes, 1);
   });
 }

@@ -1,6 +1,6 @@
 // Isar database singleton — opens and provides a shared Isar instance.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
 class IsarService {

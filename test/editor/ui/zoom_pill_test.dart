@@ -6,7 +6,7 @@ import 'package:inkflow/editor/ui/zoom_pill.dart';
 
 void main() {
   Future<ProviderContainer> pump(WidgetTester tester) async {
-    final container = ProviderContainer();
+    final container = ProviderContainer(retry: (_, __) => null);
     addTearDown(container.dispose);
     await tester.pumpWidget(
       UncontrolledProviderScope(

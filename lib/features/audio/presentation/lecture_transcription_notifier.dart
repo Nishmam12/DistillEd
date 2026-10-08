@@ -7,7 +7,7 @@
 // is background work — nothing here ever blocks the editor, and a failure costs
 // that lecture's transcript, never the recording.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../data/transcript_store.dart';
 import '../domain/lecture_recording.dart';

@@ -10,7 +10,7 @@
 // NOTE: multiple `@Index()` fields means `.where()` loses findAll()/deleteAll()
 // — use `.filter()` throughout (same gotcha as NoteChunkRecord).
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 part 'page_text_record.g.dart';
 

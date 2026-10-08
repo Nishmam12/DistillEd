@@ -24,10 +24,10 @@
 @import file_picker;
 #endif
 
-#if __has_include(<flutter_gemma/FlutterGemmaPlugin.h>)
-#import <flutter_gemma/FlutterGemmaPlugin.h>
+#if __has_include(<flutter_edge_ai/FlutterEdgeAiPlugin.h>)
+#import <flutter_edge_ai/FlutterEdgeAiPlugin.h>
 #else
-@import flutter_gemma;
+@import flutter_edge_ai;
 #endif
 
 #if __has_include(<google_mlkit_commons/GoogleMlKitCommonsPlugin.h>)
@@ -72,10 +72,16 @@
 @import image_picker_ios;
 #endif
 
-#if __has_include(<isar_flutter_libs/IsarFlutterLibsPlugin.h>)
-#import <isar_flutter_libs/IsarFlutterLibsPlugin.h>
+#if __has_include(<integration_test/IntegrationTestPlugin.h>)
+#import <integration_test/IntegrationTestPlugin.h>
 #else
-@import isar_flutter_libs;
+@import integration_test;
+#endif
+
+#if __has_include(<isar_community_flutter_libs/IsarFlutterLibsPlugin.h>)
+#import <isar_community_flutter_libs/IsarFlutterLibsPlugin.h>
+#else
+@import isar_community_flutter_libs;
 #endif
 
 #if __has_include(<just_audio/JustAudioPlugin.h>)
@@ -114,10 +120,10 @@
 @import printing;
 #endif
 
-#if __has_include(<record_darwin/RecordPlugin.h>)
-#import <record_darwin/RecordPlugin.h>
+#if __has_include(<record_ios/RecordIosPlugin.h>)
+#import <record_ios/RecordIosPlugin.h>
 #else
-@import record_darwin;
+@import record_ios;
 #endif
 
 #if __has_include(<share_plus/FPPSharePlusPlugin.h>)
@@ -144,7 +150,7 @@
   [AudioSessionPlugin registerWithRegistrar:[registry registrarForPlugin:@"AudioSessionPlugin"]];
   [BackgroundDownloaderPlugin registerWithRegistrar:[registry registrarForPlugin:@"BackgroundDownloaderPlugin"]];
   [FilePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FilePickerPlugin"]];
-  [FlutterGemmaPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterGemmaPlugin"]];
+  [FlutterEdgeAiPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterEdgeAiPlugin"]];
   [GoogleMlKitCommonsPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitCommonsPlugin"]];
   [GoogleMlKitDigitalInkRecognitionPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitDigitalInkRecognitionPlugin"]];
   [GoogleMlKitDocumentScannerPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitDocumentScannerPlugin"]];
@@ -152,6 +158,7 @@
   [GoogleMlKitLanguageIdPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitLanguageIdPlugin"]];
   [GoogleMlKitTextRecognitionPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitTextRecognitionPlugin"]];
   [FLTImagePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTImagePickerPlugin"]];
+  [IntegrationTestPlugin registerWithRegistrar:[registry registrarForPlugin:@"IntegrationTestPlugin"]];
   [IsarFlutterLibsPlugin registerWithRegistrar:[registry registrarForPlugin:@"IsarFlutterLibsPlugin"]];
   [JustAudioPlugin registerWithRegistrar:[registry registrarForPlugin:@"JustAudioPlugin"]];
   [LargeFileHandlerPlugin registerWithRegistrar:[registry registrarForPlugin:@"LargeFileHandlerPlugin"]];
@@ -159,7 +166,7 @@
   [PDFiumFlutterPlugin registerWithRegistrar:[registry registrarForPlugin:@"PDFiumFlutterPlugin"]];
   [PdfxPlugin registerWithRegistrar:[registry registrarForPlugin:@"PdfxPlugin"]];
   [PrintingPlugin registerWithRegistrar:[registry registrarForPlugin:@"PrintingPlugin"]];
-  [RecordPlugin registerWithRegistrar:[registry registrarForPlugin:@"RecordPlugin"]];
+  [RecordIosPlugin registerWithRegistrar:[registry registrarForPlugin:@"RecordIosPlugin"]];
   [FPPSharePlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPSharePlusPlugin"]];
   [SharedPreferencesPlugin registerWithRegistrar:[registry registrarForPlugin:@"SharedPreferencesPlugin"]];
   [URLLauncherPlugin registerWithRegistrar:[registry registrarForPlugin:@"URLLauncherPlugin"]];

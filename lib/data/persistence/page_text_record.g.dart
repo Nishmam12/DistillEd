@@ -76,7 +76,7 @@ const PageTextRecordSchema = CollectionSchema(
   getId: _pageTextRecordGetId,
   getLinks: _pageTextRecordGetLinks,
   attach: _pageTextRecordAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _pageTextRecordEstimateSize(

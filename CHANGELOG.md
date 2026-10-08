@@ -119,6 +119,11 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   make the on-device model talk about the prompt itself instead of teaching
   the concept. Reworded the instructions so it stays focused on the subject.
 
+### Changed
+- **On-device AI packages replaced.** The `flutter_gemma` packages were discontinued on 5 October 2026, so the on-device model stack now runs on their maintained successors: `flutter_edge_ai` 2.1.0, `flutter_edge_ai_litertlm` 1.9.0, `flutter_edge_ai_speech` 0.5.4 and `flutter_edge_ai_embeddings` 2.2.2. No user-visible change is intended. The Phase 1 device checks in `docs/TECH_MIGRATION_PLAN.md` are still to be run.
+- **Local database library replaced.** The Isar database now uses `isar_community` 3.3.2, the maintained fork of the Isar 3.x line, because plain `isar` was last released in April 2023. The collection and property layout is unchanged, so existing data should still open. A debug build logs the row count of each collection at startup. The device checks for this upgrade are still to be run.
+- **Dependencies refreshed.** Riverpod 3.4, go_router 18, record 7.1, just_audio 0.10, pdfx 2.11, image_picker 1.2, file_picker 10.3 and package_info_plus 9, with flutter_lints 6. file_picker 11 does not build for Android yet. file_picker 12 and later, and package_info_plus 10 and later, need a newer win32 than the pinned share_plus 12.0.2 allows. The device checks for navigation, background indexing, downloads and recording are still to be run.
+
 ## [4.0.0] - 2026-07-31
 ### Fixed
 - **The AI could only ever read the page you had open.** Importing a PDF and

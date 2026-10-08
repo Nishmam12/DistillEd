@@ -5,9 +5,9 @@
 
 import 'dart:typed_data';
 
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/audio/data/flutter_gemma_speech.dart';
+import 'package:inkflow/features/audio/data/edge_ai_speech.dart';
 import 'package:inkflow/features/audio/domain/lecture_transcriber.dart';
 
 class _FakeRecognizer implements SpeechRecognizer {
@@ -39,7 +39,7 @@ void main() {
   group('what counts as installed', () {
     const spec = SpeechModelSpec.whisperBase;
 
-    Future<bool> installedWith(Set<String> files) => FlutterGemmaSpeechInstaller(
+    Future<bool> installedWith(Set<String> files) => EdgeAiSpeechInstaller(
           isFileInstalled: (name) async => files.contains(name),
         ).isInstalled(spec);
 
@@ -83,7 +83,7 @@ void main() {
 
   test('asks the model for the language it was told', () async {
     final recognizer = _FakeRecognizer();
-    final speech = FlutterGemmaSpeechToText(open: () async => recognizer);
+    final speech = EdgeAiSpeechToText(open: () async => recognizer);
 
     final text = await speech.transcribe(pcm, language: 'bn');
 
@@ -94,7 +94,7 @@ void main() {
   test('opens the model once for a whole job', () async {
     var opened = 0;
     final recognizer = _FakeRecognizer();
-    final speech = FlutterGemmaSpeechToText(open: () async {
+    final speech = EdgeAiSpeechToText(open: () async {
       opened++;
       return recognizer;
     });
@@ -108,7 +108,7 @@ void main() {
 
   test('two windows asked for at once still open it once', () async {
     var opened = 0;
-    final speech = FlutterGemmaSpeechToText(open: () async {
+    final speech = EdgeAiSpeechToText(open: () async {
       opened++;
       await Future<void>.delayed(const Duration(milliseconds: 10));
       return _FakeRecognizer();
@@ -125,7 +125,7 @@ void main() {
   test('closing frees the model, and the next call opens it again', () async {
     var opened = 0;
     final made = <_FakeRecognizer>[];
-    final speech = FlutterGemmaSpeechToText(open: () async {
+    final speech = EdgeAiSpeechToText(open: () async {
       opened++;
       final recognizer = _FakeRecognizer();
       made.add(recognizer);
@@ -141,11 +141,11 @@ void main() {
   });
 
   test('closing a model that was never opened is a no-op', () async {
-    await FlutterGemmaSpeechToText(open: () async => _FakeRecognizer()).close();
+    await EdgeAiSpeechToText(open: () async => _FakeRecognizer()).close();
   });
 
   test('no speech model installed is "unavailable"', () async {
-    final speech = FlutterGemmaSpeechToText(
+    final speech = EdgeAiSpeechToText(
         open: () async => throw StateError('No active STT model set.'));
 
     await expectLater(speech.transcribe(pcm, language: 'en'),
@@ -155,7 +155,7 @@ void main() {
   test('a native library that will not load is "unavailable" too', () async {
     // The speech runtime needs Android 11; below that the library fails to load
     // at runtime, whatever the build says.
-    final speech = FlutterGemmaSpeechToText(
+    final speech = EdgeAiSpeechToText(
         open: () async => throw ArgumentError('Failed to load dynamic library'));
 
     await expectLater(speech.transcribe(pcm, language: 'en'),
@@ -164,7 +164,7 @@ void main() {
 
   test('a failed open is retried next time, not remembered', () async {
     var attempts = 0;
-    final speech = FlutterGemmaSpeechToText(open: () async {
+    final speech = EdgeAiSpeechToText(open: () async {
       attempts++;
       if (attempts == 1) throw StateError('not yet');
       return _FakeRecognizer();
@@ -178,7 +178,7 @@ void main() {
   test('an error while transcribing one window is the caller\'s to handle',
       () async {
     final recognizer = _FakeRecognizer()..failWith = StateError('bad window');
-    final speech = FlutterGemmaSpeechToText(open: () async => recognizer);
+    final speech = EdgeAiSpeechToText(open: () async => recognizer);
 
     await expectLater(speech.transcribe(pcm, language: 'en'),
         throwsA(isA<StateError>()));

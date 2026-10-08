@@ -8,7 +8,7 @@
 // Enums are stored as text and parsed tolerantly — an unknown value reads back
 // as null (fall back to the caller's default) rather than throwing.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../domain/context_engine/page_context.dart';
 import '../../domain/features/explainer.dart';

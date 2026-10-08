@@ -58,7 +58,7 @@ const ReadCacheRecordSchema = CollectionSchema(
   getId: _readCacheRecordGetId,
   getLinks: _readCacheRecordGetLinks,
   attach: _readCacheRecordAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _readCacheRecordEstimateSize(

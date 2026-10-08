@@ -7,7 +7,7 @@ import 'package:inkflow/editor/ui/universal_color_palette.dart';
 
 void main() {
   Future<ProviderContainer> pumpPalette(WidgetTester tester) async {
-    final container = ProviderContainer();
+    final container = ProviderContainer(retry: (_, __) => null);
     addTearDown(container.dispose);
     await tester.pumpWidget(
       UncontrolledProviderScope(

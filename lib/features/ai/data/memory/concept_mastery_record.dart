@@ -10,7 +10,7 @@
 // the repository uses `.filter()` throughout (same gotcha as FlashcardRecord
 // and SummaryCache).
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../domain/memory/concept_mastery.dart';
 

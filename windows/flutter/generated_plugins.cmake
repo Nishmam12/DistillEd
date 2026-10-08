@@ -4,8 +4,8 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
-  flutter_gemma
-  isar_flutter_libs
+  flutter_edge_ai
+  isar_community_flutter_libs
   pdfx
   printing
   record_windows

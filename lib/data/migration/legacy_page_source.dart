@@ -4,7 +4,7 @@
 // production reads notebooks/pages from Isar and strokes from the existing
 // `.ink` files via [InkFileStorage].
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import 'legacy_models/ink_file_storage.dart';
 import '../../features/home/domain/models/note_page.dart';

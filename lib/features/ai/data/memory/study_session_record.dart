@@ -4,7 +4,7 @@
 // Duration is stored as whole seconds — this log is coarse by design and
 // integers keep it trivially portable to any future sync target.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../domain/memory/study_session.dart';
 

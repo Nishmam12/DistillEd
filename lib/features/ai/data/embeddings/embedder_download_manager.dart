@@ -6,7 +6,7 @@
 
 import 'dart:async';
 
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 import '../llm/device_storage.dart';
 import '../llm/download_failure.dart';
@@ -47,7 +47,7 @@ class EmbedderDownloadManager {
     HuggingFaceAccess? access,
     HuggingFaceIdentity? identity,
   })  : _authToken = authToken,
-        _installer = installer ?? FlutterGemmaEmbedderInstaller(),
+        _installer = installer ?? EdgeAiEmbedderInstaller(),
         _storage = storage ?? DeviceStorage(),
         _access = access ?? DioHuggingFaceAccess(),
         _identity = identity ?? DioHuggingFaceIdentity();

@@ -15,7 +15,7 @@
 // thrown — a page that wouldn't index is a page that isn't searchable, which is
 // worth saying plainly and is never worth interrupting the editor over.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../domain/rag/bulk_indexer.dart';
 

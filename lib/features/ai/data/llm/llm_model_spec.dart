@@ -2,7 +2,7 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 import '../../domain/device_state.dart';
 
@@ -11,12 +11,12 @@ import '../../domain/device_state.dart';
 class LlmModelSpec {
   final String displayName;
 
-  /// Model file name — doubles as flutter_gemma's modelId for
+  /// Model file name — doubles as flutter_edge_ai's modelId for
   /// isModelInstalled/uninstallModel.
   final String filename;
 
   /// Direct download URL. The litert-community HuggingFace repos are ungated
-  /// (needsAuth: false in the flutter_gemma catalog) — no token required. If
+  /// (needsAuth: false in the flutter_edge_ai catalog) — no token required. If
   /// the model is ever swapped to a gated repo, pass a token via
   /// [authToken] instead of hardcoding one.
   final String downloadUrl;
@@ -46,7 +46,7 @@ class LlmModelSpec {
   /// drafter inside the `.litertlm` file (an older file ignores the flag) and
   /// the drafter costs memory — so peak memory should be measured with it on
   /// and off before keeping it. Never enabled on the CPU, where running the
-  /// drafter is overhead; see `FlutterGemmaRuntime.open`.
+  /// drafter is overhead; see `EdgeAiRuntime.open`.
   final bool speculativeDecodingOnGpu;
 
   /// Load the vision encoder for EVERY call, text ones included, so text and

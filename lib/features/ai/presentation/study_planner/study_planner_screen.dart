@@ -35,7 +35,7 @@ class StudyPlannerScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Study plan'),
         actions: [
-          if (planAsync.valueOrNull != null)
+          if (planAsync.value != null)
             IconButton(
               tooltip: 'New plan',
               icon: const Icon(Icons.refresh),

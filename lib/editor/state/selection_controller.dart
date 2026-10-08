@@ -1,6 +1,6 @@
 // Holds the set of selected element ids for the unified canvas.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 class SelectionController extends StateNotifier<Set<String>> {
   SelectionController() : super(const {});

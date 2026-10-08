@@ -9,7 +9,7 @@
 // NOTE: multiple `@Index()` fields means `.where()` loses findAll()/deleteAll()
 // — the store uses `.filter()` (same gotcha as ConceptMasteryRecord).
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../domain/knowledge_graph/concept_relation.dart';
 

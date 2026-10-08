@@ -14,7 +14,8 @@
 // decision being invisible inside the provider — "never silently send to
 // cloud" has to be enforced here, at the one place that can show UI.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderException;
 
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/llm_exceptions.dart';
@@ -346,7 +347,9 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
     if (!_running) state = const ExplainIdle();
   }
 
-  ExplainState _mapError(Object e) {
+  ExplainState _mapError(Object error) {
+    // Riverpod 3 wraps an error thrown while a provider is built in ProviderException.
+    final e = error is ProviderException ? error.exception : error;
     return switch (e) {
       AiModelNotReadyException _ => const ExplainError(
           'The on-device model needs to be downloaded first.',

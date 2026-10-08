@@ -6,13 +6,14 @@
 // recording side must not depend on that.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/providers/search_providers.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../editor/state/scene_controller.dart' show appDocsPathProvider;
 import '../../ai/data/providers/local_gemma_provider.dart';
 import '../../ai/presentation/ai_providers.dart';
-import '../data/flutter_gemma_speech.dart';
+import '../data/edge_ai_speech.dart';
 import '../domain/lecture_language.dart';
 import '../domain/lecture_transcriber.dart';
 import 'audio_providers.dart';
@@ -20,7 +21,7 @@ import 'lecture_transcription_notifier.dart';
 import 'speech_model_notifier.dart';
 
 final speechModelInstallerProvider =
-    Provider<SpeechModelInstaller>((ref) => FlutterGemmaSpeechInstaller());
+    Provider<SpeechModelInstaller>((ref) => EdgeAiSpeechInstaller());
 
 /// Whether the speech model is on the device, and downloading it.
 final speechModelProvider =
@@ -29,7 +30,7 @@ final speechModelProvider =
 });
 
 final speechToTextProvider = Provider<SpeechToText>((ref) {
-  final speech = FlutterGemmaSpeechToText();
+  final speech = EdgeAiSpeechToText();
   ref.onDispose(speech.close);
   return speech;
 });

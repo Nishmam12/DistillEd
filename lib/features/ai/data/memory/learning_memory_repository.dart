@@ -7,7 +7,7 @@
 // due) filter in Dart rather than in Isar, so the definition of "weak" lives in
 // exactly one place — the domain — and notebook-scale data makes that free.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../../../shared/isar/isar_service.dart';
 import '../../domain/knowledge_graph/concept_relation.dart';

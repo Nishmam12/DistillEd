@@ -1,10 +1,10 @@
-// What the app calls its embedding files has to be what flutter_gemma records
+// What the app calls its embedding files has to be what flutter_edge_ai records
 // them as: "is the model installed?" is answered by those names. From
 // flutter_gemma 1.5 the tokenizer is filed under a name that carries its model's
 // id (`<model>__sentencepiece.model`), so a hand-derived `sentencepiece.model`
 // reads "not installed" for a model that is sitting on the disk.
 
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
 

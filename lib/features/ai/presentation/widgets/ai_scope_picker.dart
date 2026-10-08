@@ -80,7 +80,7 @@ class AiScopePicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final group = ref.watch(pageImportGroupProvider(pageKey)).valueOrNull;
+    final group = ref.watch(pageImportGroupProvider(pageKey)).value;
     final choices = scopeChoicesFor(hasImportGroup: group != null);
     final fg = enabled ? context.ink.textSecondary : context.ink.textMuted;
 

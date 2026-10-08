@@ -9,7 +9,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderException;
 
 import '../../ai/data/llm/llm_exceptions.dart';
 import '../../ai/domain/ai_exception.dart';
@@ -214,7 +215,9 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
     if (!_running) state = const SummarizeIdle();
   }
 
-  SummarizeState _mapError(Object e) {
+  SummarizeState _mapError(Object error) {
+    // Riverpod 3 wraps an error thrown while a provider is built in ProviderException.
+    final e = error is ProviderException ? error.exception : error;
     return switch (e) {
       NotMeaningfulException _ =>
         SummarizeError(e.message, retryable: false),

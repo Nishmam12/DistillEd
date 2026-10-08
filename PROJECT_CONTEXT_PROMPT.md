@@ -19,17 +19,17 @@ DistillEd merges the infinite/flexible drawing canvas capabilities of **Excalidr
 | Domain | Technology / Package | Notes |
 |---|---|---|
 | **Framework** | Flutter (SDK `>=3.0.0 <4.0.0`) | Material Design 3 enabled |
-| **State Management** | `flutter_riverpod` (`^2.5.1`) | Pure Riverpod provider tree (no `get_it`, no static singletons) |
-| **Routing** | `go_router` (`^14.2.0`) | Declarative navigation (`/`, `/note/:id`, `/note/:id/book`, `/settings`, etc.) |
-| **Database** | `isar` (`^3.1.0+1`) + `isar_generator` | Embedded NoSQL database with code generation via `build_runner` |
+| **State Management** | `flutter_riverpod` (`^3.4.3`) | Pure Riverpod provider tree (no `get_it`, no static singletons) |
+| **Routing** | `go_router` (`^18.0.2`) | Declarative navigation (`/`, `/note/:id`, `/note/:id/book`, `/settings`, etc.) |
+| **Database** | `isar_community` (`^3.3.2`) + `isar_community_generator` | Embedded NoSQL database with code generation via `build_runner` |
 | **Stroke Rendering** | `perfect_freehand` (`^2.5.1`) | Pressure-sensitive, variable-width freehand ink |
 | **Vector & Shapes** | `flutter_svg` (`^2.3.0`) + Custom Rough renderer | Seeded two-pass wobble + 45° hachure fill |
 | **Math Rendering** | `flutter_math_fork` (`^0.7.3`) | Pure Dart LaTeX `$…$` / `$$…$$` rendering in tutor and note UI |
-| **PDF & Documents** | `pdfx` (`^2.6.0`), `pdf` (`^3.12.0`), `printing` (`^5.13.1`) | Multi-page PDF import, annotation, and 300 DPI A4 export |
+| **PDF & Documents** | `pdfx` (`^2.11.0`), `pdf` (`^3.12.0`), `printing` (`^5.13.1`) | Multi-page PDF import, annotation, and 300 DPI A4 export |
 | **Media & Audio** | `image_picker`, `image`, `record`, `just_audio` | PDF/photo import + synchronized lecture voice recording |
 | **Flashcards / Anki** | `sqlite3` (`^3.4.0`) + `archive` (`^4.0.9`) | Native compilation of Anki `.apkg` packages |
 | **On-Device OCR & Ink** | `google_mlkit_digital_ink_recognition` (`0.14.2`), `google_mlkit_text_recognition` (`0.15.1`) | Pinned for Android stability; line-grouped, normalized OCR |
-| **On-Device LLM & RAG** | `flutter_gemma` (`1.3.0`), `flutter_gemma_litertlm`, `flutter_gemma_embeddings` (`1.0.2`) | Local Gemma LLM + EmbeddingGemma 300M offline semantic search |
+| **On-Device LLM & RAG** | `flutter_edge_ai` (`2.1.0`), `flutter_edge_ai_litertlm` (`1.9.0`), `flutter_edge_ai_speech` (`0.5.4`), `flutter_edge_ai_embeddings` (`2.2.2`) | Local Gemma LLM + EmbeddingGemma 300M offline semantic search |
 | **Cloud AI Gateway** | Python FastAPI (`server/ai-gateway/`) + `dio` (`^5.7.0`) | Stateless SSE streaming, deployed on Render, tool calling & web search |
 | **Testing** | `flutter_test`, `mocktail` | >1,380 passing unit, domain, repository, and widget tests |
 

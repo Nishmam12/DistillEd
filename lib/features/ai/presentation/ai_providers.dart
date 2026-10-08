@@ -8,6 +8,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/constants/storage_paths.dart';
 import '../../../core/providers/search_providers.dart';
@@ -24,7 +25,7 @@ import '../data/embeddings/local_text_embedder.dart';
 import '../data/flashcards/flashcard_store.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/llm/cloud_llm_client.dart';
-import '../data/llm/gemma_adapter.dart' show FlutterGemmaRuntime, LlmRuntime;
+import '../data/llm/gemma_adapter.dart' show EdgeAiRuntime, LlmRuntime;
 import '../data/llm/hf_token_check.dart';
 import '../data/llm/llm_model_spec.dart' show LlmModelSpec;
 import '../data/llm/model_download_manager.dart';
@@ -119,11 +120,11 @@ final llmDownloadProvider =
 /// — see [ModelStorageCleaner] for how these arise and why the delete is
 /// guarded.
 final modelStorageCleanerProvider =
-    Provider<ModelStorageCleaner>((ref) => FlutterGemmaStorageCleaner());
+    Provider<ModelStorageCleaner>((ref) => EdgeAiStorageCleaner());
 
 /// The inference runtime behind [localAiProvider]. A provider only so the
 /// wiring around it can be tested with a fake — nothing else needs to swap it.
-final llmRuntimeProvider = Provider<LlmRuntime>((ref) => FlutterGemmaRuntime());
+final llmRuntimeProvider = Provider<LlmRuntime>((ref) => EdgeAiRuntime());
 
 /// Where the on-device model last loaded actually ran — null until it has
 /// loaded once.

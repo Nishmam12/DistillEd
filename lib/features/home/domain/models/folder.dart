@@ -6,7 +6,7 @@
 // than the folder holding a list, so deleting a folder leaves its notes intact
 // and simply unfiled.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 part 'folder.g.dart';
 

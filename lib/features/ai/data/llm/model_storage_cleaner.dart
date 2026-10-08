@@ -1,6 +1,6 @@
 // Finds and reclaims model files that are on disk but not tracked as installed.
 //
-// These exist because flutter_gemma records a model as installed only AFTER the
+// These exist because flutter_edge_ai records a model as installed only AFTER the
 // downloaded file has landed (`NetworkSourceHandler` downloads, then calls
 // `repository.saveModel`). A process death in that window — or a failure part
 // way through the embedder's two-file install, which has no transaction around
@@ -12,11 +12,11 @@
 // `_getProtectedFiles()`, which swallows its own errors and returns a PARTIAL
 // list when something inside it throws. A degraded list means installed models
 // stop being protected and get deleted — silently, since cleanupStorage only
-// returns a count. [FlutterGemmaStorageCleaner.cleanup] therefore refuses to
+// returns a count. [EdgeAiStorageCleaner.cleanup] therefore refuses to
 // run unless it has independently confirmed the plugin's view of "orphaned"
 // still agrees with ours. See [_assertSafeToDelete].
 
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 import '../embeddings/embedder_spec.dart';
 import 'gemma_adapter.dart';
@@ -37,7 +37,7 @@ class OrphanedModelFile {
 /// Pure and top-level so the rule can be tested directly rather than through a
 /// fake that restates it. Throws [StorageCleanupUnsafeException] when any
 /// installed model appears in the orphan list — see
-/// [FlutterGemmaStorageCleaner.cleanup] for why that combination means the
+/// [EdgeAiStorageCleaner.cleanup] for why that combination means the
 /// plugin's protected-file bookkeeping came back degraded.
 ///
 /// One bad entry vetoes the whole batch: `cleanupStorage()` is all-or-nothing
@@ -53,7 +53,7 @@ void assertSafeToDelete({
   }
 }
 
-/// Seam over the plugin's storage APIs — see [FlutterGemmaStorageCleaner].
+/// Seam over the plugin's storage APIs — see [EdgeAiStorageCleaner].
 abstract class ModelStorageCleaner {
   /// Read-only. Returns an empty list when nothing is reclaimable, and also
   /// when the plugin cannot answer — it fails closed rather than guessing.
@@ -66,7 +66,7 @@ abstract class ModelStorageCleaner {
   Future<int> cleanup();
 }
 
-class FlutterGemmaStorageCleaner implements ModelStorageCleaner {
+class EdgeAiStorageCleaner implements ModelStorageCleaner {
   /// Every file this app legitimately installs. Used as a tripwire: not one of
   /// these may EVER be listed as orphaned while it is installed.
   static Set<String> get _knownModelFiles => {
@@ -79,7 +79,7 @@ class FlutterGemmaStorageCleaner implements ModelStorageCleaner {
   Future<List<OrphanedModelFile>> findOrphans() async {
     await GemmaBootstrap.ensureInitialized();
     final orphans =
-        await FlutterGemmaPlugin.instance.modelManager.getOrphanedFiles();
+        await FlutterEdgeAiPlugin.instance.modelManager.getOrphanedFiles();
     return [
       for (final o in orphans)
         OrphanedModelFile(filename: o.filename, sizeBytes: o.sizeBytes),
@@ -108,14 +108,16 @@ class FlutterGemmaStorageCleaner implements ModelStorageCleaner {
       installedKnownFiles: await _installedKnownFiles(),
     );
 
-    return FlutterGemmaPlugin.instance.modelManager.cleanupStorage();
+    return FlutterEdgeAiPlugin.instance.modelManager.cleanupStorage();
   }
 
   /// Which of this app's own model files are currently recorded as installed.
   Future<Set<String>> _installedKnownFiles() async {
     final installed = <String>{};
     for (final filename in _knownModelFiles) {
-      if (await FlutterGemma.isModelInstalled(filename)) installed.add(filename);
+      if (await FlutterEdgeAi.isModelInstalled(filename)) {
+        installed.add(filename);
+      }
     }
     return installed;
   }

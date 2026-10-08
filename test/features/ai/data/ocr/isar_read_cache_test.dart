@@ -2,7 +2,7 @@
 //
 // The replace-by-key and trim-the-oldest rules live in the store's queries, so a
 // fake would test nothing. Isar needs its native library; this finds the one
-// shipped by isar_flutter_libs through the package config (so it works on any
+// shipped by isar_community_flutter_libs through the package config (so it works on any
 // machine where the package is resolved) and skips itself if it can't.
 
 import 'dart:convert';
@@ -10,7 +10,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import 'package:inkflow/features/ai/data/ocr/isar_read_cache.dart';
 import 'package:inkflow/features/ai/data/ocr/read_cache_record.dart';
@@ -24,7 +24,9 @@ Future<String?> _nativeLibrary() async {
   if (!config.existsSync()) return null;
   final packages =
       (jsonDecode(await config.readAsString()) as Map)['packages'] as List;
-  final entry = packages.cast<Map>().where((p) => p['name'] == 'isar_flutter_libs');
+  final entry = packages
+      .cast<Map>()
+      .where((p) => p['name'] == 'isar_community_flutter_libs');
   if (entry.isEmpty) return null;
   final rootUri = Uri.parse(entry.first['rootUri'] as String);
   final root = rootUri.isAbsolute

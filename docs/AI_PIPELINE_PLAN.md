@@ -21,7 +21,7 @@ Found by reading the AI code paths. The numbers in the first two items come from
 |---|---|---|
 | Every Gemma load costs 3.6–17.2 s | The 30-second idle residency helped, but the first call after opening the sidebar still pays the full load while the user waits. | `local_gemma_provider.dart` |
 | A deep page read made ~19 vision passes at ~2,300 patches each | The merged OCR+figure call cut some of this, but ink, every image and the drawn layer each still get their own vision call, at full resolution. | `page_content_extractor.dart` |
-| Switching between text and vision calls reloads the whole model | Text calls open Gemma without the vision encoder and image calls open it with one. `FlutterGemmaRuntime.open` tears the engine down whenever that changes, so a deep page read (image reads, then a text analysis) pays the 3.6–17 s load at least twice. | `gemma_adapter.dart`, `local_gemma_provider.dart` |
+| Switching between text and vision calls reloads the whole model | Text calls open Gemma without the vision encoder and image calls open it with one. `EdgeAiRuntime.open` tears the engine down whenever that changes, so a deep page read (image reads, then a text analysis) pays the 3.6–17 s load at least twice. | `gemma_adapter.dart`, `local_gemma_provider.dart` |
 | Imported PDFs are always rasterized and OCR'd | Most lecture slides and papers already contain real text. The app throws it away, then spends a model call trying to read it back. | `features/import/pdf_service.dart` |
 | Vision results are only cached for the session | `_visionReadDone` and `PageContextCache` reset on restart, so reopening a notebook repeats the heavy reads for pages that haven't changed. | `context_engine_notifier.dart` |
 | The embedder loads and unloads on every call, including every question | Each "Ask your notes" query pays a model load before it can search. | `local_text_embedder.dart` |
@@ -64,7 +64,7 @@ The app doesn't pass `enableSpeculativeDecoding`, so the plugin leaves it to the
 
 Check first that the `.litertlm` file you download includes the MTP drafter. If it doesn't, this is a no-op until you switch to a file that does. The drafter also costs memory (LiteRT-LM maintainers suggest skipping its signature when you aren't using it), so measure peak memory with it on and off before keeping it.
 
-- **Where:** `gemma_adapter.dart` → `FlutterGemmaRuntime.open`
+- **Where:** `gemma_adapter.dart` → `EdgeAiRuntime.open`
 - **Impact:** faster streamed answers
 - **Effort:** S
 
@@ -156,7 +156,7 @@ Add a `ReadCacheRecord` keyed by content hash plus recognizer and model id. Impo
 
 ### 11. Size each vision call's image to its task
 
-Gemma 4 supports image budgets of 70, 140, 280, 560 or 1,120 tokens. Use a low budget to decide whether an image is a figure worth analysing, and a high one only for dense OCR. If `flutter_gemma` doesn't expose the budget, get the same effect by downscaling the image before sending it. Image prefill is the cost behind those 2,300-patch passes.
+Gemma 4 supports image budgets of 70, 140, 280, 560 or 1,120 tokens. Use a low budget to decide whether an image is a figure worth analysing, and a high one only for dense OCR. If `flutter_edge_ai` doesn't expose the budget, get the same effect by downscaling the image before sending it. Image prefill is the cost behind those 2,300-patch passes.
 
 - **Where:** `figure_analyzer.dart`, `gemma_vision_ocr_service.dart`, ink render seam
 - **Impact:** much shorter vision prefill
@@ -186,7 +186,7 @@ What lifts the app beyond an AI sidebar.
 
 ### 14. Searchable lecture transcripts, synced to the ink
 
-After a recording stops, transcribe it on-device with `flutter_gemma_speech`: Whisper for Bangla or mixed-language lectures, Moonshine for faster English. It takes 16 kHz mono PCM, which the `record` package can capture directly. Index the transcript segments into RAG with their timestamps. Since recordings already line up with the ink timeline, an answer can then cite "minute 23 of Tuesday's lecture" and jump there.
+After a recording stops, transcribe it on-device with `flutter_edge_ai_speech`: Whisper for Bangla or mixed-language lectures, Moonshine for faster English. It takes 16 kHz mono PCM, which the `record` package can capture directly. Index the transcript segments into RAG with their timestamps. Since recordings already line up with the ink timeline, an answer can then cite "minute 23 of Tuesday's lecture" and jump there.
 
 Run it as a queued background job after recording ends, never alongside a Gemma call. Needs the `flutter_gemma` upgrade (item 19).
 
@@ -314,7 +314,7 @@ The team's Executive Summary on lightweight Android models targets about 3 GB of
 | NNAPI is deprecated in Android 15 | Confirms staying on LiteRT's GPU path, with NPU only where tested |
 | Use already-quantized community models instead of quantizing your own | Already the case: the `litert-community` builds are pre-quantized |
 
-**Set aside:** MobileNet and EfficientNet-Lite (the app has no camera classification or detection task), DistilBERT and MobileBERT (EmbeddingGemma covers that role), and Gemma 2B, Falcon-1B, StableLM-3B and GPT-2 (superseded by Gemma 4 E2B). The summary's MediaPipe LLM Inference API is now in maintenance-only mode, and Google points to LiteRT-LM, which `flutter_gemma` already uses. Its Gemma licence note no longer applies to Gemma 4, which is Apache 2.0. Its citation markers (for example 【3†L242-L250】) don't point to retrievable sources, so check the figures against primary sources before reusing them in a report.
+**Set aside:** MobileNet and EfficientNet-Lite (the app has no camera classification or detection task), DistilBERT and MobileBERT (EmbeddingGemma covers that role), and Gemma 2B, Falcon-1B, StableLM-3B and GPT-2 (superseded by Gemma 4 E2B). The summary's MediaPipe LLM Inference API is now in maintenance-only mode, and Google points to LiteRT-LM, which `flutter_edge_ai` already uses. Its Gemma licence note no longer applies to Gemma 4, which is Apache 2.0. Its citation markers (for example 【3†L242-L250】) don't point to retrievable sources, so check the figures against primary sources before reusing them in a report.
 
 ---
 

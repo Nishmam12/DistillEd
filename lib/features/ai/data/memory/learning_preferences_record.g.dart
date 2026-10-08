@@ -40,7 +40,7 @@ const LearningPreferencesRecordSchema = CollectionSchema(
   getId: _learningPreferencesRecordGetId,
   getLinks: _learningPreferencesRecordGetLinks,
   attach: _learningPreferencesRecordAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _learningPreferencesRecordEstimateSize(

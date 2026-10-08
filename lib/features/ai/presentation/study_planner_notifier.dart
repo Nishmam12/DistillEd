@@ -9,6 +9,7 @@
 // storage-free.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../data/memory/learning_memory_repository.dart';
 import '../data/study_planner/study_plan_store.dart';
@@ -78,7 +79,7 @@ class StudyPlannerNotifier extends StateNotifier<AsyncValue<StudyPlan?>> {
 
   /// Marks the day at [index] done (or not) and persists the change.
   Future<void> setDayCompleted(int index, bool completed) async {
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     final updated = current.toggleDay(index, completed);
     state = AsyncValue.data(updated); // optimistic — the toggle should feel instant

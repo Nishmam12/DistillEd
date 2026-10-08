@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gemma/flutter_gemma.dart' show CancelToken;
+import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -153,6 +153,7 @@ void main() {
   Future<void> openSheet(WidgetTester tester, {_FakeMemory? memory}) async {
     await tester.pumpWidget(
       ProviderScope(
+        retry: (_, __) => null,
         overrides: [
           quizNotifierProvider.overrideWith((ref) => _FixedQuiz(questions)),
           learningMemoryProvider.overrideWithValue(memory ?? _FakeMemory()),

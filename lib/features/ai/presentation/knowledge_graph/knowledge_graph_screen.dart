@@ -107,7 +107,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen> {
   Widget _scopeMenu(BuildContext context) {
     final ScenePageKey key =
         (notebookId: widget.notebookId, pageId: widget.pageId!);
-    final group = ref.watch(pageImportGroupProvider(key)).valueOrNull;
+    final group = ref.watch(pageImportGroupProvider(key)).value;
     final choices = scopeChoicesFor(hasImportGroup: group != null);
 
     return PopupMenuButton<AiScopeKind>(

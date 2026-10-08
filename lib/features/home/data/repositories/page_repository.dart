@@ -1,6 +1,6 @@
 // Manages CRUD operations for NotePages, maintaining strictly contiguous indexes.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../../../data/persistence/page_text_record.dart';
 import '../../domain/models/note_page.dart';

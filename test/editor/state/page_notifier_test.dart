@@ -6,7 +6,7 @@
 // interface. The scene side uses the real [InMemorySceneElementStore].
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import 'package:inkflow/data/persistence/scene_element_store.dart';
 import 'package:inkflow/domain/model/scene_element.dart';

@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_gemma/flutter_gemma.dart' show CancelToken;
+import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -93,6 +93,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
+        retry: (_, __) => null,
         overrides: [
           flashcardNotifierProvider.overrideWith((ref) => _FixedFlashcards([
                 card('What is the function of mitochondria?',

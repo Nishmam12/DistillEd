@@ -1,6 +1,6 @@
 // Isar collection representing a notebook with metadata.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 part 'notebook.g.dart';
 

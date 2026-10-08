@@ -2,7 +2,7 @@
 // unit-testable (fake the store) and features/ai never touches IsarService
 // outside data/.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../../../shared/isar/isar_service.dart';
 import '../../domain/study_planner/study_plan.dart';

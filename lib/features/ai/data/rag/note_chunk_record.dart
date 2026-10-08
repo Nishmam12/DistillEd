@@ -14,7 +14,7 @@
 // — the store uses `.filter()` throughout (same gotcha as FlashcardRecord,
 // ConceptMasteryRecord, and SummaryCache).
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../domain/rag/note_chunk.dart';
 

@@ -45,7 +45,7 @@ void main() {
   Future<(List<InkPalette>, ProviderContainer)> boot(
       WidgetTester tester) async {
     final seen = <InkPalette>[];
-    final container = ProviderContainer();
+    final container = ProviderContainer(retry: (_, __) => null);
     addTearDown(container.dispose);
 
     await tester.pumpWidget(UncontrolledProviderScope(

@@ -2,7 +2,7 @@
 // transient; flashcards are a deck you keep). The pure domain model lives in
 // `domain/models/flashcard.dart`; this entity converts to/from it.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../domain/flashcards/spaced_repetition.dart';
 import '../../domain/models/flashcard.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter_gemma/flutter_gemma.dart' show CancelToken;
+import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/features/ai/data/llm/device_storage.dart';

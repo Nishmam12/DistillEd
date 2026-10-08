@@ -271,7 +271,7 @@ class _SummarizeBar extends ConsumerWidget {
     // "Whole PDF" appears only when this page came from an import — the same
     // rule the Ask surface's scope picker uses, so the two never disagree about
     // whether there is a PDF to summarize.
-    final group = ref.watch(pageImportGroupProvider(pageKey)).valueOrNull;
+    final group = ref.watch(pageImportGroupProvider(pageKey)).value;
     return PopupMenuButton<SummarizeScopeChoice>(
       tooltip: 'Summarize',
       position: PopupMenuPosition.under,
@@ -393,7 +393,7 @@ class _QuizBar extends ConsumerWidget {
     final languageCode = ref.read(settingsProvider).recognitionLanguage;
     final pageId = pageKey.pageId;
 
-    final context0 = ref.read(pageContextProvider(pageKey)).valueOrNull;
+    final context0 = ref.read(pageContextProvider(pageKey).notifier).shown;
     final level = context0?.estimatedLevel ?? KnowledgeLevel.intermediate;
     final allowCoding =
         context0 != null && QuizGenerator.looksLikeProgramming(context0);
@@ -442,8 +442,8 @@ class _FlashcardBar extends ConsumerWidget {
     final extractor = ref.read(pageContentExtractorProvider);
     final recognition = ref.read(handwritingRecognitionServiceProvider);
     final languageCode = ref.read(settingsProvider).recognitionLanguage;
-    final pageContext =
-        ref.read(pageContextProvider(pageKey)).valueOrNull ?? PageContext.empty;
+    final pageContext = ref.read(pageContextProvider(pageKey).notifier).shown ??
+        PageContext.empty;
     final pageId = pageKey.pageId;
 
     ref.read(flashcardNotifierProvider.notifier).generate(FlashcardRequest(

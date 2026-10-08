@@ -12,7 +12,7 @@
 //     as orphans and would be deleted.
 //
 // What is NOT covered here: the plugin round trips in
-// FlutterGemmaStorageCleaner (getOrphanedFiles/isModelInstalled/cleanupStorage)
+// EdgeAiStorageCleaner (getOrphanedFiles/isModelInstalled/cleanupStorage)
 // need a device.
 
 import 'package:flutter_test/flutter_test.dart';
@@ -30,7 +30,7 @@ void check(List<String> orphans, {Set<String> installed = const {}}) =>
     assertSafeToDelete(
       orphanFilenames: orphans,
       // Only files BOTH known to this app and currently installed are passed —
-      // this mirrors FlutterGemmaStorageCleaner._installedKnownFiles().
+      // this mirrors EdgeAiStorageCleaner._installedKnownFiles().
       installedKnownFiles: installed.intersection(_known),
     );
 

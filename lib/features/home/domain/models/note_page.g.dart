@@ -101,7 +101,7 @@ const NotePageSchema = CollectionSchema(
   getId: _notePageGetId,
   getLinks: _notePageGetLinks,
   attach: _notePageAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _notePageEstimateSize(

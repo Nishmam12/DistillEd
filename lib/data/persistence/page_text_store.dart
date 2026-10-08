@@ -4,7 +4,7 @@
 // an in-memory implementation and no native Isar, with the Isar-backed one used
 // in production.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../shared/isar/isar_service.dart';
 import 'page_text_record.dart';

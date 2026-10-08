@@ -84,7 +84,7 @@ const QuizAttemptRecordSchema = CollectionSchema(
   getId: _quizAttemptRecordGetId,
   getLinks: _quizAttemptRecordGetLinks,
   attach: _quizAttemptRecordAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _quizAttemptRecordEstimateSize(

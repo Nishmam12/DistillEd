@@ -265,7 +265,7 @@ const SceneElementRecordSchema = CollectionSchema(
   getId: _sceneElementRecordGetId,
   getLinks: _sceneElementRecordGetLinks,
   attach: _sceneElementRecordAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _sceneElementRecordEstimateSize(
@@ -5691,7 +5691,7 @@ const AppMetaSchema = CollectionSchema(
   getId: _appMetaGetId,
   getLinks: _appMetaGetLinks,
   attach: _appMetaAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _appMetaEstimateSize(

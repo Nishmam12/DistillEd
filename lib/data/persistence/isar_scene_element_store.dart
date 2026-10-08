@@ -3,7 +3,7 @@
 // exercised once the editor/migration runtime is wired (a later phase registers
 // SceneElementRecordSchema in the Isar open call).
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../domain/model/scene_element.dart';
 import '../../shared/isar/isar_service.dart';

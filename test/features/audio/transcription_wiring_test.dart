@@ -9,6 +9,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -152,13 +153,14 @@ void main() {
   ProviderContainer container({
     String? detectedLanguage,
     List<Override> extra = const [],
+    InMemoryPageTextStore? pageStore,
   }) {
-    final c = ProviderContainer(overrides: [
+    final c = ProviderContainer(retry: (_, __) => null, overrides: [
       appDocsPathProvider.overrideWithValue(docs.path),
       lectureTranscriberProvider.overrideWithValue(transcriber),
       speechToTextProvider.overrideWithValue(speech),
       transcriptStoreProvider.overrideWithValue(transcripts),
-      pageTextStoreProvider.overrideWithValue(pageTexts),
+      pageTextStoreProvider.overrideWithValue(pageStore ?? pageTexts),
       languageDetectorProvider.overrideWithValue(_Detector(detectedLanguage)),
       notebookIndexProvider(1).overrideWith((ref) => index),
       ...extra,
@@ -216,9 +218,7 @@ void main() {
   test('notes that cannot be read fall back to the setting — the lecture is '
       'still transcribed', () async {
     SharedPreferences.setMockInitialValues({'ai.recognitionLanguage': 'bn'});
-    final c = container(extra: [
-      pageTextStoreProvider.overrideWithValue(_BrokenPageTexts()),
-    ]);
+    final c = container(pageStore: _BrokenPageTexts());
     c.read(settingsProvider);
     await settle();
 

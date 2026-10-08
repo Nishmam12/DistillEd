@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter_gemma/flutter_gemma.dart' show ModelFileType, ModelType;
+import 'package:flutter_edge_ai/flutter_edge_ai.dart'
+    show ModelFileType, ModelType;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
 import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';

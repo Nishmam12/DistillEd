@@ -150,7 +150,7 @@ const NotebookSchema = CollectionSchema(
   getId: _notebookGetId,
   getLinks: _notebookGetLinks,
   attach: _notebookAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _notebookEstimateSize(

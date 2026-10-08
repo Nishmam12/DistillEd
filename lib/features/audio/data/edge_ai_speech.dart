@@ -1,6 +1,6 @@
 // The speech model behind lecture transcripts (docs/AI_PIPELINE_PLAN.md, item
 // 14): which model, how it is installed, and a [SpeechToText] over
-// flutter_gemma_speech.
+// flutter_edge_ai_speech.
 //
 // One multilingual model rather than a fast English one beside a Bangla one:
 // Whisper does both, a second download and a model switch would be a lot of
@@ -13,7 +13,7 @@
 
 import 'dart:typed_data';
 
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 import '../../ai/data/llm/gemma_adapter.dart' show GemmaBootstrap;
 import '../domain/lecture_transcriber.dart';
@@ -64,7 +64,7 @@ class SpeechModelSpec {
       ).files[1].filename;
 }
 
-/// Installation seam — [FlutterGemmaSpeechInstaller] in production.
+/// Installation seam — [EdgeAiSpeechInstaller] in production.
 abstract class SpeechModelInstaller {
   Future<bool> isInstalled(SpeechModelSpec spec);
 
@@ -78,9 +78,9 @@ abstract class SpeechModelInstaller {
   Future<void> uninstall(SpeechModelSpec spec);
 }
 
-class FlutterGemmaSpeechInstaller implements SpeechModelInstaller {
+class EdgeAiSpeechInstaller implements SpeechModelInstaller {
   /// [isFileInstalled] is a seam over the plugin, which needs a device.
-  FlutterGemmaSpeechInstaller(
+  EdgeAiSpeechInstaller(
       {Future<bool> Function(String filename)? isFileInstalled})
       : _isFileInstalled = isFileInstalled ?? _pluginHas;
 
@@ -88,7 +88,7 @@ class FlutterGemmaSpeechInstaller implements SpeechModelInstaller {
 
   static Future<bool> _pluginHas(String filename) async {
     await GemmaBootstrap.ensureInitialized();
-    return FlutterGemma.isModelInstalled(filename);
+    return FlutterEdgeAi.isModelInstalled(filename);
   }
 
   /// The model is ~97% of the download (the tokenizer is a couple of MB), so its
@@ -110,7 +110,7 @@ class FlutterGemmaSpeechInstaller implements SpeechModelInstaller {
     CancelToken? cancelToken,
   }) async {
     await GemmaBootstrap.ensureInitialized();
-    var builder = FlutterGemma.installStt()
+    var builder = FlutterEdgeAi.installStt()
         .modelFromNetwork(spec.modelUrl)
         .tokenizerFromNetwork(spec.tokenizerUrl)
         .ofType(SttModelType.whisper);
@@ -127,7 +127,7 @@ class FlutterGemmaSpeechInstaller implements SpeechModelInstaller {
   @override
   Future<void> uninstall(SpeechModelSpec spec) async {
     await GemmaBootstrap.ensureInitialized();
-    await FlutterGemma.uninstallStt();
+    await FlutterEdgeAi.uninstallStt();
   }
 }
 
@@ -135,9 +135,9 @@ class FlutterGemmaSpeechInstaller implements SpeechModelInstaller {
 ///
 /// Keeps one recogniser open between windows — opening it is the slow part — and
 /// frees it on [close], which the caller does when a lecture is done.
-class FlutterGemmaSpeechToText implements SpeechToText {
+class EdgeAiSpeechToText implements SpeechToText {
   /// [open] is a seam over the plugin, which needs a device.
-  FlutterGemmaSpeechToText({Future<SpeechRecognizer> Function()? open})
+  EdgeAiSpeechToText({Future<SpeechRecognizer> Function()? open})
       : _open = open ?? _pluginOpen;
 
   final Future<SpeechRecognizer> Function() _open;
@@ -145,7 +145,7 @@ class FlutterGemmaSpeechToText implements SpeechToText {
 
   static Future<SpeechRecognizer> _pluginOpen() async {
     await GemmaBootstrap.ensureInitialized();
-    return FlutterGemma.getActiveStt();
+    return FlutterEdgeAi.getActiveStt();
   }
 
   /// One open, however many windows ask at once; a failed open is forgotten so

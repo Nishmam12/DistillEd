@@ -1,5 +1,5 @@
 // Represents one piece of imported content on a note page (PDF background or free image).
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 part 'imported_content.g.dart';
 

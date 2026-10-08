@@ -21,7 +21,7 @@
 
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../data/llm/llm_exceptions.dart';
 import '../data/llm/model_download_manager.dart';

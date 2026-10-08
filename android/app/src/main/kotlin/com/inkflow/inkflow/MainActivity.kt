@@ -13,7 +13,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     // Free-space check used before downloading the on-device LLM (~2.4 GB).
     // Reports the available bytes on the volume backing the app's files dir —
-    // the same volume flutter_gemma installs models to.
+    // the same volume flutter_edge_ai installs models to.
     private val storageChannel = "com.inkflow.inkflow/storage"
 
     // RAM, thermal state and battery — what the AI pipeline needs to pick a

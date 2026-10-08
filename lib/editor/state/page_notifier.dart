@@ -1,6 +1,7 @@
 import 'dart:ui' show Offset;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../data/persistence/scene_element_store.dart';
 import '../../domain/model/element_id.dart';

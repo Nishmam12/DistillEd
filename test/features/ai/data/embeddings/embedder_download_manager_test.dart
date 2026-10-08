@@ -1,4 +1,4 @@
-import 'package:flutter_gemma/flutter_gemma.dart'
+import 'package:flutter_edge_ai/flutter_edge_ai.dart'
     show CancelToken, DownloadError, DownloadException;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -213,7 +213,7 @@ void main() {
   });
 
   group('half-finished installs', () {
-    // flutter_gemma installs the model and tokenizer as two independent,
+    // flutter_edge_ai installs the model and tokenizer as two independent,
     // separately-recorded steps with no transaction and no cleanup on the
     // embedding path, so a failure on the second leg strands the first.
     test('a stranded file is reported as partial, not as absent', () async {

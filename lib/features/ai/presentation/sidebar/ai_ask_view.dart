@@ -94,7 +94,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
     final q = _controller.text.trim();
     if (q.isEmpty) return;
 
-    final group = ref.read(pageImportGroupProvider(widget.pageKey)).valueOrNull;
+    final group = ref.read(pageImportGroupProvider(widget.pageKey)).value;
     // Resolved to concrete page ids ONCE, here, and carried with the question:
     // re-deriving it later could widen what an in-flight answer was allowed to
     // read (see domain/ai_scope.dart).
@@ -137,7 +137,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
             child: AiScopePicker(
               pageKey: widget.pageKey,
               value: _kindFor(
-                  ref.watch(pageImportGroupProvider(widget.pageKey)).valueOrNull),
+                  ref.watch(pageImportGroupProvider(widget.pageKey)).value),
               enabled: !busy,
               onChanged: (kind) => setState(() => _chosenKind = kind),
             ),

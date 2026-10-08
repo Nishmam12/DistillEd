@@ -82,7 +82,7 @@ const LectureRecordingRecordSchema = CollectionSchema(
   getId: _lectureRecordingRecordGetId,
   getLinks: _lectureRecordingRecordGetLinks,
   attach: _lectureRecordingRecordAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _lectureRecordingRecordEstimateSize(

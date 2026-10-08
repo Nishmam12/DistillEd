@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'app/app.dart';
@@ -33,6 +34,36 @@ import 'features/home/domain/models/folder.dart';
 import 'features/home/domain/models/notebook.dart';
 import 'features/home/domain/models/note_page.dart';
 import 'core/theme/ink_palette.dart';
+
+/// Debug only: prints how many rows each collection holds, so an Isar upgrade
+/// can be checked against the old build on the same device (plan, phase 2.2).
+/// Phase 4.5 reuses it.
+Future<void> _logCollectionCounts(Isar isar) async {
+  final counts = <String, int>{
+    'Notebook': await isar.collection<Notebook>().count(),
+    'NotePage': await isar.collection<NotePage>().count(),
+    'SceneElementRecord': await isar.collection<SceneElementRecord>().count(),
+    'AppMeta': await isar.collection<AppMeta>().count(),
+    'SummaryCache': await isar.collection<SummaryCache>().count(),
+    'FlashcardRecord': await isar.collection<FlashcardRecord>().count(),
+    'ConceptMasteryRecord':
+        await isar.collection<ConceptMasteryRecord>().count(),
+    'QuizAttemptRecord': await isar.collection<QuizAttemptRecord>().count(),
+    'LearningPreferencesRecord':
+        await isar.collection<LearningPreferencesRecord>().count(),
+    'StudySessionRecord': await isar.collection<StudySessionRecord>().count(),
+    'NoteChunkRecord': await isar.collection<NoteChunkRecord>().count(),
+    'ConceptRelationRecord':
+        await isar.collection<ConceptRelationRecord>().count(),
+    'StudyPlanRecord': await isar.collection<StudyPlanRecord>().count(),
+    'PageTextRecord': await isar.collection<PageTextRecord>().count(),
+    'Folder': await isar.collection<Folder>().count(),
+    'LectureRecordingRecord':
+        await isar.collection<LectureRecordingRecord>().count(),
+    'ReadCacheRecord': await isar.collection<ReadCacheRecord>().count(),
+  };
+  debugPrint('[IsarCounts] $counts');
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -104,7 +135,7 @@ void main() async {
   // unified collections (SceneElementRecord/AppMeta) are additive — Isar
   // auto-migrates the on-disk schema and existing Notebook/NotePage data is
   // untouched.
-  await IsarService.openDatabase([
+  final isar = await IsarService.openDatabase([
     NotebookSchema,
     NotePageSchema,
     SceneElementRecordSchema,
@@ -125,6 +156,7 @@ void main() async {
     // existing data is touched and nothing needs migrating.
     ReadCacheRecordSchema,
   ]);
+  if (kDebugMode) await _logCollectionCounts(isar);
 
   // One-time, gated, non-destructive migration of legacy page content into the
   // unified store. Never throws (legacy data and the old screens keep working).
@@ -141,6 +173,7 @@ void main() async {
 
   runApp(
     ProviderScope(
+      retry: (_, __) => null,
       overrides: [
         deviceProfileProvider.overrideWithValue(profile),
         appDocsPathProvider.overrideWithValue(appDocsPath),

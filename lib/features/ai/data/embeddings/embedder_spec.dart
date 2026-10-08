@@ -1,12 +1,12 @@
 // The on-device embedding model used for RAG — one constant to swap models,
 // mirroring `llm_model_spec.dart`.
 //
-// NAMING: this is deliberately NOT called `EmbeddingModelSpec` — flutter_gemma
+// NAMING: this is deliberately NOT called `EmbeddingModelSpec` — flutter_edge_ai
 // already exports a type by that name (`core/model_management/model_specs.dart`),
 // and the installer builds one internally from what we pass it. Two types with
 // one name would force an aliased import at every call site.
 
-import 'package:flutter_gemma/flutter_gemma.dart'
+import 'package:flutter_edge_ai/flutter_edge_ai.dart'
     show EmbeddingModelSpec, ModelSource;
 
 /// Identity, source, and shape of the embedding model.
@@ -49,7 +49,7 @@ class EmbedderSpec {
     required this.needsAuth,
   });
 
-  /// On-disk name of the model file, and flutter_gemma's id for it.
+  /// On-disk name of the model file, and flutter_edge_ai's id for it.
   ///
   /// Derived from the URL rather than stored separately because the plugin
   /// derives it the same way (`path.basename(Uri.parse(url).path)`) when it

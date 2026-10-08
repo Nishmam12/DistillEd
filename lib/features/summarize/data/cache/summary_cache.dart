@@ -1,7 +1,7 @@
 // Isar collection caching one summary per notebook, keyed by a SHA-256 hash
 // of the recognized text — unchanged note → instant cached summary.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 part 'summary_cache.g.dart';
 

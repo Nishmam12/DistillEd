@@ -102,7 +102,7 @@ const ConceptRelationRecordSchema = CollectionSchema(
   getId: _conceptRelationRecordGetId,
   getLinks: _conceptRelationRecordGetLinks,
   attach: _conceptRelationRecordAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _conceptRelationRecordEstimateSize(

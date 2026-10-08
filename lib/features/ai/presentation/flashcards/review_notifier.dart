@@ -5,7 +5,7 @@
 // would drop it mid-session, and one graded `good` would otherwise let the
 // list shift under the learner between taps.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../data/flashcards/flashcard_store.dart';
 import '../../domain/flashcards/spaced_repetition.dart';

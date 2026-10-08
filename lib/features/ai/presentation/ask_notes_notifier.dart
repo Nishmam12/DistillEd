@@ -9,7 +9,8 @@
 // explicit offer rather than a silent fetch. The question is held so a retry or
 // a model-download re-runs the whole thing.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderException;
 
 import '../data/embeddings/embedder_download_manager.dart';
 import '../data/llm/llm_exceptions.dart';
@@ -409,7 +410,9 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
         text.length < NotesQa.notFoundReply.length + 40;
   }
 
-  AskNotesState _mapError(Object e) {
+  AskNotesState _mapError(Object error) {
+    // Riverpod 3 wraps an error thrown while a provider is built in ProviderException.
+    final e = error is ProviderException ? error.exception : error;
     return switch (e) {
       // A missing embedder surfaces during retrieval; a missing LLM during the
       // answer. Both offer their own download.

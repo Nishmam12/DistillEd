@@ -1,6 +1,6 @@
 // Isar collection representing a single page within a notebook.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../../../data/migration/legacy_models/imported_content.dart';
 import '../../../../data/migration/legacy_models/shape_element.dart';

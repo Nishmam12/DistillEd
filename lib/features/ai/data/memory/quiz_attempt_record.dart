@@ -5,7 +5,7 @@
 // Per-question outcomes are stored as an Isar `@embedded` list, so an attempt
 // stays one row and the concept attribution travels with the questions.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../domain/memory/quiz_attempt.dart';
 

@@ -18,25 +18,28 @@ dependencies:
     sdk: flutter
 
   # ── State Management ─────────────────────────────────────
-  flutter_riverpod: ^2.5.1
+  flutter_riverpod: ^3.4.3
 
 
   # ── Navigation ───────────────────────────────────────────
-  go_router: ^14.2.0
+  go_router: ^18.0.2
 
   # ── Database (note metadata) ─────────────────────────────
-  isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0+1
+  #    isar_community: the maintained fork of the Isar 3.x line. Plain isar was
+  #    last released in April 2023, and its native library predates Android 16 KB
+  #    page support, which Google Play requires (docs/TECH_MIGRATION_PLAN.md, phase 2).
+  isar_community: ^3.3.2
+  isar_community_flutter_libs: ^3.3.2
   path_provider: ^2.1.3
 
   # ── App metadata (reads version/build from pubspec at runtime) ──
-  package_info_plus: ^8.0.0
+  package_info_plus: ^9.0.0
 
   # ── Stroke Rendering (Phase 1) ───────────────────────────
   perfect_freehand: ^2.5.1
 
   # ── PDF Rendering (Phase 4) ──────────────────────────────
-  pdfx: ^2.6.0
+  pdfx: ^2.11.0
 
   # ── PDF text layer (docs/AI_PIPELINE_PLAN.md, item 8) ────
   #    Most lecture slides and papers already contain real text; PDFium reads it
@@ -49,7 +52,7 @@ dependencies:
   pdfium_flutter: ^0.3.1
 
   # ── Image Import (Phase 4) ───────────────────────────────
-  image_picker: ^1.1.2
+  image_picker: ^1.2.4
   image: ^4.2.0
 
   # ── Vector Shapes (Phase 5) ──────────────────────────────
@@ -58,12 +61,12 @@ dependencies:
   # ── Export & Share (Phase 2) ─────────────────────────────
   printing: ^5.13.1
   share_plus: 12.0.2
-  file_picker: ^8.3.7
+  file_picker: ^10.0.0
   pdf: ^3.12.0
 
   # ── AI (ported from main's summarize feature — see AI_PROGRESS.md
   #    and ai_prompts/INTEGRATION_ROADMAP.md for justifications).
-  #    flutter_gemma pinned exact: the 1.x API is still moving.
+  #    flutter_edge_ai pinned exact: the 2.x API is still moving.
   # Held at 0.14.2 until 0.16.0: the 0.15.0 Java→Kotlin migration made the Dart
   # MethodChannel name disagree with the one the native plugin registered, so
   # every call threw MissingPluginException on Android. 0.16.0 fixed it (Dart
@@ -73,14 +76,16 @@ dependencies:
   # Flutter >=3.44. Re-run the handwriting checks on a device after bumping.
   google_mlkit_digital_ink_recognition: ^0.16.1
   # 1.3.0 → 1.11.3 (docs/AI_PIPELINE_PLAN.md, item 19), the three packages in
-  # lockstep. Brings speech-to-text (flutter_gemma_speech, below), a per-encoder
-  # backend (the vision encoder now defaults to the CPU, so the app asks for the
-  # GPU explicitly — see FlutterGemmaRuntime), and activationDataType. Since 1.9.0
-  # FlutterGemma.initialize must be given the embedding tokenizers.
-  flutter_gemma: 1.11.3
-  flutter_gemma_litertlm: 1.8.5
+  # lockstep. Renamed to flutter_edge_ai (docs/TECH_MIGRATION_PLAN.md, phase 1)
+  # because flutter_gemma is discontinued; 1.11.4 was its last release. Brings
+  # speech-to-text (flutter_edge_ai_speech, below), a per-encoder backend (the
+  # vision encoder now defaults to the CPU, so the app asks for the GPU
+  # explicitly — see EdgeAiRuntime), and activationDataType. Since flutter_gemma
+  # 1.9.0 FlutterEdgeAi.initialize must be given the embedding tokenizers.
+  flutter_edge_ai: 2.1.0
+  flutter_edge_ai_litertlm: 1.9.0
   # Whisper / Moonshine on the same LiteRT runtime — lecture transcripts (item 14).
-  flutter_gemma_speech: 0.5.2
+  flutter_edge_ai_speech: 0.5.4
   crypto: ^3.0.7
   shared_preferences: ^2.5.5
 
@@ -92,7 +97,7 @@ dependencies:
   #    EmbeddingGemma 300M on the same LiteRT+FFI stack as the LLM above, so
   #    there is no second native inference runtime. NOT flutter_gemma_embedder
   #    (singular) — that package is DISCONTINUED.
-  flutter_gemma_embeddings: 2.2.1
+  flutter_edge_ai_embeddings: 2.2.2
 
   # ── Flashcard → Anki .apkg export ────────────────────────
   #    sqlite3 builds the Anki collection DB via native assets (no prebuilt
@@ -125,8 +130,8 @@ dependencies:
   #    plugin-agnostic and unit-tested with fakes. Neither shares a transitive
   #    dependency with the pinned ML Kit plugins — verified by `pub get`
   #    resolving without touching google_mlkit_commons.
-  record: ^5.1.2
-  just_audio: ^0.9.42
+  record: ^7.1.1
+  just_audio: ^0.10.6
 
   # ── Rendering the maths the tutor writes ─────────────────
   #    The models are instructed to emit LaTeX in $…$ / $$…$$ delimiters
@@ -165,17 +170,18 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^6.0.0
 
   # ── Code generation ───────────────────────────────────────
-  build_runner: ^2.4.11
-  isar_generator: ^3.1.0+1
+  build_runner: ^2.15.1
+  isar_community_generator: ^3.3.2
 
   # ── Testing ───────────────────────────────────────────────
   mocktail: ^1.0.4
 
-dependency_overrides:
-  record_platform_interface: 1.1.0
+  # ── Device-only checks (docs/TECH_MIGRATION_PLAN.md, phase 4.1) ──
+  integration_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true

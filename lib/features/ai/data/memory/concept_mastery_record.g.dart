@@ -107,7 +107,7 @@ const ConceptMasteryRecordSchema = CollectionSchema(
   getId: _conceptMasteryRecordGetId,
   getLinks: _conceptMasteryRecordGetLinks,
   attach: _conceptMasteryRecordAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _conceptMasteryRecordEstimateSize(

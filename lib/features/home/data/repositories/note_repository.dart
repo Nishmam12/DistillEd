@@ -1,6 +1,6 @@
 // Repository providing CRUD operations for Notebook and NotePage collections.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../../../data/persistence/page_text_record.dart';
 import '../../../../data/persistence/scene_element_record.dart';

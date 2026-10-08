@@ -1,7 +1,7 @@
 // The trash list. Kept separate from [HomeNotifier] so the home screen never
 // pays for loading deleted notebooks, and so restoring can refresh both lists.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../data/repositories/note_repository.dart';
 import '../domain/models/notebook.dart';

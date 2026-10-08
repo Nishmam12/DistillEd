@@ -5,9 +5,9 @@
 // it starts from that tap and nowhere else; nothing here ever downloads on its
 // own.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
-import '../data/flutter_gemma_speech.dart';
+import '../data/edge_ai_speech.dart';
 
 enum SpeechModelPhase { unknown, missing, downloading, ready, failed }
 

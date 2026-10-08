@@ -21,7 +21,7 @@ class InsufficientStorageException extends LlmException {
 }
 
 /// The user cancelled an in-progress model download. (Named to avoid clashing
-/// with flutter_gemma's own DownloadCancelledException export.)
+/// with flutter_edge_ai's own DownloadCancelledException export.)
 class ModelDownloadCancelledException extends LlmException {
   ModelDownloadCancelledException() : super('Model download cancelled.');
 }

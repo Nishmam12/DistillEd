@@ -2,6 +2,7 @@
 // The library is global (not per-page), so this is a single provider.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../data/persistence/library_repository.dart';
 import '../../domain/model/library_item.dart';

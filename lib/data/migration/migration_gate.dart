@@ -1,6 +1,6 @@
 // Gates one-time data migrations by persisting a schema version.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../shared/isar/isar_service.dart';
 import '../persistence/scene_element_record.dart';

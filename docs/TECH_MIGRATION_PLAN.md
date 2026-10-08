@@ -429,16 +429,16 @@ Keep `needsAuth` on the spec type itself so a future gated model still works; ju
 
 Tick each item with the date and a one-line summary when it's done. Note anything skipped or deferred and why.
 
-- [ ] Phase 1 — code
+- [x] Phase 1 — code (2026-10-08: flutter_gemma* replaced by flutter_edge_ai* 2.1.0 / 1.9.0 / 0.5.4 / 2.2.2; imports, classes, speech file and comments renamed; analyze at baseline (3 infos), 2084 tests pass, release APK builds (285.6 MB). Skipped: repo-wide `dart format .` (274 files were already unformatted at baseline))
 - [ ] Phase 1 — device checks (user)
-- [ ] Phase 2 — code
+- [x] Phase 2 — code (2026-10-08: isar → isar_community 3.3.2 with flutter_libs and generator; imports rewritten in 34 files; build_runner 2.15.1 is the newest that resolves with source_gen 4; regenerated .g.dart files differ only in the generator version line, so collection, property and index definitions are unchanged; debug-only row counts logged at startup; analyze at baseline (3 infos), 2084 tests pass. Skipped: the plan's --delete-conflicting-outputs, which repo memory forbids)
 - [ ] Phase 2 — device checks (user)
-- [ ] Phase 3 — code (3.1 / 3.2 / 3.3 / 3.4 / 3.5)
+- [x] Phase 3 — code (2026-10-08: flutter_lints 6.0.0; flutter_riverpod 3.4.3 with legacy imports, valueOrNull to value, the context panel's last shown value replacing the internal copyWithPrevious, ProviderException unwrapped in the five error mappers, retry disabled in every scope; go_router 18.0.2 with routes checked; record 7.1.1 and just_audio 0.10.6 with the record_platform_interface override dropped; pdfx 2.11.0, image_picker 1.2.4, file_picker 10.3.10 (11.0.3 fails the Android release build; the cause is not isolated) and package_info_plus 9.0.1 (10.x needs win32 6, which share_plus 12.0.2 blocks); analyze clean; 2084 tests pass. Skipped: build_runner 2.16.2, which needs analyzer above what isar_community_generator allows)
 - [ ] Phase 3 — device checks (user)
 - [ ] Phase 4 — golden file generated on device (user, before 4.2+)
-- [ ] Phase 4 — code (4.1 – 4.9)
+- [ ] Phase 4 — code (4.1 – 4.9): 4.1 harness written 2026-10-08 (integration_test/embedding_golden_test.dart, integration_test dev dependency); not run. 4.2 onward waits for the golden file generated on the Pad 7.
 - [ ] Phase 4 — device checks (user)
-- [ ] Phase 5 — condition met: route ___, checked on ___
+- [ ] Phase 5 — condition met: route B looks available (libLiteRtLm exports litert_lm_embedding_engine_create, _compute_embedding and _compute_embedding_batch); route A not met (no flutter_edge_ai release loads .litertlm embedding models); checked 2026-10-08; spike not started
 - [ ] Phase 5 — evaluation results recorded
 - [ ] Phase 5 — code
 - [ ] Phase 5 — device checks (user)

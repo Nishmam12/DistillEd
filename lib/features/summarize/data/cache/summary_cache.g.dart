@@ -68,7 +68,7 @@ const SummaryCacheSchema = CollectionSchema(
   getId: _summaryCacheGetId,
   getLinks: _summaryCacheGetLinks,
   attach: _summaryCacheAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _summaryCacheEstimateSize(

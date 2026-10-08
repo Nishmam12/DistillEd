@@ -4,7 +4,7 @@
 // and shapes; the remaining fields style new shapes. Editing the style of an
 // existing selected element comes with selection in Phase 4.
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../domain/model/scene_element.dart';
 

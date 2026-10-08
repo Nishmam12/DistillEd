@@ -72,7 +72,7 @@ const StudyPlanRecordSchema = CollectionSchema(
   getId: _studyPlanRecordGetId,
   getLinks: _studyPlanRecordGetLinks,
   attach: _studyPlanRecordAttach,
-  version: '3.1.0+1',
+  version: '3.3.2',
 );
 
 int _studyPlanRecordEstimateSize(

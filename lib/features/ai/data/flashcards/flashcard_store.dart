@@ -1,7 +1,7 @@
 // A small seam over Isar so the flashcard flow is unit-testable (fake the
 // store) and features/ai never talks to IsarService directly outside data/.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../../../shared/isar/isar_service.dart';
 import '../../domain/models/flashcard.dart';

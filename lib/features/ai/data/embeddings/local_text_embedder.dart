@@ -35,7 +35,7 @@ class LocalTextEmbedder implements TextEmbedder {
     this.spec = EmbedderSpec.active,
     EmbeddingRuntime? runtime,
     this.idleUnloadDelay = defaultIdleUnloadDelay,
-  }) : _runtime = runtime ?? FlutterGemmaEmbeddingRuntime();
+  }) : _runtime = runtime ?? EdgeAiEmbeddingRuntime();
 
   /// Mutex: chain of futures; each call awaits the previous one.
   Future<void> _lock = Future.value();

@@ -14,7 +14,7 @@
 
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/providers/settings_provider.dart' show CloudPrivacy;
 import '../domain/ai_provider.dart' show AiException;

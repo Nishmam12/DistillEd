@@ -1,4 +1,4 @@
-// The decisions FlutterGemmaRuntime makes around the plugin — which backend to
+// The decisions EdgeAiRuntime makes around the plugin — which backend to
 // ask for, whether multi-token prediction is worth enabling, when a loaded
 // engine must be rebuilt. The plugin itself needs a device, so these run
 // against fakes injected through the runtime's three seams; the harness below
@@ -6,7 +6,7 @@
 // is keyed on the model NAME only, so a second request silently receives the
 // first instance whatever parameters it carries.
 
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
 import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
@@ -54,7 +54,7 @@ class _Harness {
     this.cpuThrows = false,
     this.notReady = false,
   }) {
-    runtime = FlutterGemmaRuntime(
+    runtime = EdgeAiRuntime(
       ensureReady: (_) async {
         if (!installed) throw LlmNotReadyException();
       },
@@ -79,7 +79,7 @@ class _Harness {
   /// The plugin says there is no active model (a StateError).
   final bool notReady;
 
-  late final FlutterGemmaRuntime runtime;
+  late final EdgeAiRuntime runtime;
   final loads = <GemmaLoadRequest>[];
   final models = <_FakeModel>[];
 

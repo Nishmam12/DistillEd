@@ -1,13 +1,13 @@
-// Thin seams over flutter_gemma's embedding API, mirroring `gemma_adapter.dart`
+// Thin seams over flutter_edge_ai's embedding API, mirroring `gemma_adapter.dart`
 // so the embedder is unit-testable without a device (the plugin needs one).
 //
 // The install/inference split is deliberate and matches the LLM stack:
 // downloading ~175 MB is an explicit, user-triggered act, while opening the
 // model is a background nicety that must FAIL rather than quietly start a
-// download over mobile data. [FlutterGemmaEmbeddingRuntime.open] therefore
+// download over mobile data. [EdgeAiEmbeddingRuntime.open] therefore
 // refuses to install anything.
 
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 import '../../domain/rag/text_embedder.dart';
 import '../llm/gemma_adapter.dart';
@@ -26,7 +26,7 @@ class EmbedderTokenRequiredException extends LlmException {
             'Settings → AI.');
 }
 
-/// Installation seam — [FlutterGemmaEmbedderInstaller] in production.
+/// Installation seam — [EdgeAiEmbedderInstaller] in production.
 abstract class EmbedderInstaller {
   /// True only when BOTH the model and its tokenizer are present.
   Future<bool> isInstalled(EmbedderSpec spec);
@@ -34,7 +34,7 @@ abstract class EmbedderInstaller {
   /// True when EXACTLY ONE of the two files is present — a half-finished
   /// install.
   ///
-  /// This state is reachable and is not self-clearing. flutter_gemma installs
+  /// This state is reachable and is not self-clearing. flutter_edge_ai installs
   /// the two files as separate, independently-recorded steps with no
   /// transaction around them (`EmbeddingInstallationBuilder.install` has no
   /// try/catch and never calls the plugin's own `cleanupFailedDownload` —
@@ -60,7 +60,7 @@ abstract class EmbedderInstaller {
   Future<void> uninstall(EmbedderSpec spec);
 }
 
-class FlutterGemmaEmbedderInstaller implements EmbedderInstaller {
+class EdgeAiEmbedderInstaller implements EmbedderInstaller {
   /// The model dominates the download (~171 MB vs ~4.5 MB), so its progress
   /// owns almost the whole bar. Files install in this order, so a single
   /// monotonic 0–100 is honest.
@@ -69,16 +69,16 @@ class FlutterGemmaEmbedderInstaller implements EmbedderInstaller {
   @override
   Future<bool> isInstalled(EmbedderSpec spec) async {
     await GemmaBootstrap.ensureInitialized();
-    return await FlutterGemma.isModelInstalled(spec.modelFilename) &&
-        await FlutterGemma.isModelInstalled(spec.tokenizerFilename);
+    return await FlutterEdgeAi.isModelInstalled(spec.modelFilename) &&
+        await FlutterEdgeAi.isModelInstalled(spec.tokenizerFilename);
   }
 
   @override
   Future<bool> isPartiallyInstalled(EmbedderSpec spec) async {
     await GemmaBootstrap.ensureInitialized();
-    final model = await FlutterGemma.isModelInstalled(spec.modelFilename);
+    final model = await FlutterEdgeAi.isModelInstalled(spec.modelFilename);
     final tokenizer =
-        await FlutterGemma.isModelInstalled(spec.tokenizerFilename);
+        await FlutterEdgeAi.isModelInstalled(spec.tokenizerFilename);
     return model != tokenizer;
   }
 
@@ -94,7 +94,7 @@ class FlutterGemmaEmbedderInstaller implements EmbedderInstaller {
     // The token guard gates DOWNLOADS, not activations. install() is also the
     // only way to (re)set the active embedding spec — [open] calls it with a
     // null token purely to re-activate an already-downloaded model after a
-    // restart. In that case flutter_gemma's install() skips the network
+    // restart. In that case flutter_edge_ai's install() skips the network
     // entirely, so demanding a token there would wrongly kill embedding on a
     // model already sitting on disk. Guard only when a real download impends.
     final token = authToken?.trim();
@@ -104,7 +104,7 @@ class FlutterGemmaEmbedderInstaller implements EmbedderInstaller {
       throw EmbedderTokenRequiredException(spec);
     }
 
-    var builder = FlutterGemma.installEmbedder()
+    var builder = FlutterEdgeAi.installEmbedder()
         .modelFromNetwork(spec.modelUrl, token: token)
         .tokenizerFromNetwork(spec.tokenizerUrl, token: token);
     if (onProgress != null) {
@@ -128,16 +128,16 @@ class FlutterGemmaEmbedderInstaller implements EmbedderInstaller {
 
   /// Removes one file, tolerating its absence.
   ///
-  /// `FlutterGemma.uninstallModel` THROWS a bare `Exception('Model not found')`
+  /// `FlutterEdgeAi.uninstallModel` THROWS a bare `Exception('Model not found')`
   /// when the file has no metadata rather than treating a delete of something
   /// absent as a no-op. Calling it blind for both files means that cleaning up
   /// a half-installed model — the exact case cleanup exists for — deletes the
   /// first file and then throws on the second, so the caller sees a failure
   /// after a partial success. Each file is therefore isolated.
   static Future<void> _uninstallIfPresent(String filename) async {
-    if (!await FlutterGemma.isModelInstalled(filename)) return;
+    if (!await FlutterEdgeAi.isModelInstalled(filename)) return;
     try {
-      await FlutterGemma.uninstallModel(filename);
+      await FlutterEdgeAi.uninstallModel(filename);
     } catch (_) {
       // Lost a race with another delete, or the metadata vanished underneath
       // us. Either way the file is gone or unreachable; nothing to report.
@@ -156,17 +156,17 @@ abstract class EmbeddingSession {
   Future<void> close();
 }
 
-/// Inference seam — [FlutterGemmaEmbeddingRuntime] in production.
+/// Inference seam — [EdgeAiEmbeddingRuntime] in production.
 abstract class EmbeddingRuntime {
   /// Throws [LlmNotReadyException] if [spec] isn't installed.
   Future<EmbeddingSession> open(EmbedderSpec spec);
 }
 
-class FlutterGemmaEmbeddingRuntime implements EmbeddingRuntime {
+class EdgeAiEmbeddingRuntime implements EmbeddingRuntime {
   final EmbedderInstaller _installer;
 
-  FlutterGemmaEmbeddingRuntime({EmbedderInstaller? installer})
-      : _installer = installer ?? FlutterGemmaEmbedderInstaller();
+  EdgeAiEmbeddingRuntime({EmbedderInstaller? installer})
+      : _installer = installer ?? EdgeAiEmbedderInstaller();
 
   @override
   Future<EmbeddingSession> open(EmbedderSpec spec) async {
@@ -183,7 +183,7 @@ class FlutterGemmaEmbeddingRuntime implements EmbeddingRuntime {
 
     final EmbeddingModel model;
     try {
-      model = await FlutterGemma.getActiveEmbedder(
+      model = await FlutterEdgeAi.getActiveEmbedder(
         // CPU, stated outright. The LiteRT embedding backend (flutter_gemma_
         // litertlm 1.8) runs on the CPU by decision, because its GPU delegate
         // compiles and then returns all-zero vectors for EmbeddingGemma's int4

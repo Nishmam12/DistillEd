@@ -79,7 +79,7 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
     TextEmbedder? embedder,
     this.idleUnloadDelay = defaultIdleUnloadDelay,
     this.onBackendChanged,
-  })  : _runtime = runtime ?? FlutterGemmaRuntime(),
+  })  : _runtime = runtime ?? EdgeAiRuntime(),
         _embedder = embedder;
 
   /// Mutex: chain of futures; each call awaits the previous one. Held for the

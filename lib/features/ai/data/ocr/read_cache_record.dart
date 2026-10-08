@@ -7,7 +7,7 @@
 // — so a save deletes any row for the key and inserts a fresh one in a single
 // transaction instead.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 part 'read_cache_record.g.dart';
 

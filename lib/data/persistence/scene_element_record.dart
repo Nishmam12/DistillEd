@@ -8,7 +8,7 @@
 // [kind]; the rest stay at their defaults. Conversion to/from the in-memory
 // [SceneElement] model lives in `data/migration/legacy_adapters.dart`.
 
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 
 import '../../domain/model/scene_element.dart';
 
