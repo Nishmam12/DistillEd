@@ -2,11 +2,24 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
 import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
+import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+    show kChunkOverlapWords, kChunkWords;
+import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
 import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
 
 /// Records what it was asked to embed, so tests can assert the EXPENSIVE call
 /// was skipped — the whole point of incremental indexing.
 class _FakeEmbedder implements TextEmbedder {
+
+  @override
+  PromptContract get promptContract => PromptContract.pluginGemma300m;
+
+  @override
+  int get chunkWords => kChunkWords;
+
+  @override
+  int get chunkOverlapWords => kChunkOverlapWords;
+
   _FakeEmbedder({this.modelId = 'fake-v1'});
 
   @override

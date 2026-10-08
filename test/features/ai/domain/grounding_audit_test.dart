@@ -26,6 +26,9 @@ import 'package:inkflow/features/ai/domain/features/notes_qa.dart';
 import 'package:inkflow/features/ai/domain/page_content.dart';
 import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
 import 'package:inkflow/features/ai/domain/rag/rag_retriever.dart';
+import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+    show kChunkOverlapWords, kChunkWords;
+import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
 import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
 
 /// Records exactly what reached the model.
@@ -60,6 +63,16 @@ class _RecordingProvider implements AiProvider {
 }
 
 class _EmptyEmbedder implements TextEmbedder {
+
+  @override
+  PromptContract get promptContract => PromptContract.pluginGemma300m;
+
+  @override
+  int get chunkWords => kChunkWords;
+
+  @override
+  int get chunkOverlapWords => kChunkOverlapWords;
+
   @override
   String get modelId => 'recorder';
   @override

@@ -22,6 +22,9 @@ import 'package:inkflow/features/ai/data/providers/local_gemma_provider.dart';
 import 'package:inkflow/features/ai/domain/language/language_detector.dart';
 import 'package:inkflow/features/ai/domain/rag/bulk_indexer.dart';
 import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
+import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+    show kChunkOverlapWords, kChunkWords;
+import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
 import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
 import 'package:inkflow/features/ai/presentation/ai_providers.dart';
 import 'package:inkflow/features/ai/presentation/notebook_index_notifier.dart';
@@ -82,6 +85,16 @@ class _Detector implements LanguageDetector {
 }
 
 class _NoEmbedder implements TextEmbedder {
+
+  @override
+  PromptContract get promptContract => PromptContract.pluginGemma300m;
+
+  @override
+  int get chunkWords => kChunkWords;
+
+  @override
+  int get chunkOverlapWords => kChunkOverlapWords;
+
   @override
   String get modelId => 'none';
   @override

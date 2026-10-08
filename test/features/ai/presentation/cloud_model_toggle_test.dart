@@ -15,6 +15,9 @@ import 'package:inkflow/features/ai/domain/ai_provider.dart';
 import 'package:inkflow/features/ai/domain/chat_commands.dart';
 import 'package:inkflow/features/ai/domain/features/notes_qa.dart';
 import 'package:inkflow/features/ai/domain/rag/rag_retriever.dart';
+import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+    show kChunkOverlapWords, kChunkWords;
+import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
 import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
 import 'package:inkflow/features/ai/presentation/ask_notes_notifier.dart';
 import 'package:inkflow/features/ai/presentation/sidebar/ai_sidebar.dart';
@@ -39,6 +42,16 @@ class _NoopProvider implements AiProvider {
 }
 
 class _NoopEmbedder implements TextEmbedder {
+
+  @override
+  PromptContract get promptContract => PromptContract.pluginGemma300m;
+
+  @override
+  int get chunkWords => kChunkWords;
+
+  @override
+  int get chunkOverlapWords => kChunkOverlapWords;
+
   @override
   String get modelId => 'noop';
   @override

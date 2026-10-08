@@ -66,12 +66,6 @@ class RagIndexer {
     }
   }
 
-  /// The text the model embeds for [passage]: the title first, then the passage.
-  /// The STORED chunk keeps the bare passage — a source card should quote what
-  /// the student wrote, not which notebook it was in.
-  static String _embeddingInput(String? title, String passage) =>
-      title == null ? passage : '$title\n\n$passage';
-
   /// Brings [pageId]'s chunks in line with [text].
   ///
   /// Throws whatever [TextEmbedder] throws (typically
@@ -84,7 +78,13 @@ class RagIndexer {
     required int pageId,
     required String text,
   }) async {
-    final drafts = chunkPage(text: text, notebookId: notebookId, pageId: pageId);
+    final drafts = chunkPage(
+      text: text,
+      notebookId: notebookId,
+      pageId: pageId,
+      maxWords: _embedder.chunkWords,
+      overlapWords: _embedder.chunkOverlapWords,
+    );
     if (drafts.isEmpty) {
       // Emptied pages must lose their chunks, or deleted content stays
       // searchable — and would be quoted back as if it were still on the page.
@@ -96,7 +96,9 @@ class RagIndexer {
     // The title is part of what the vectors were built from, so a rename must
     // re-embed a page whose own text never changed. With no title this is the
     // same signature as before titles existed.
-    final signature = pageTextSignature(_embeddingInput(title, text));
+    final signature = pageTextSignature(
+      _embedder.promptContract.embeddingInput(title, text),
+    );
     final state = await _indexStateOf(pageId);
     // The model check is as load-bearing as the signature: after a model swap
     // the old vectors are unusable, and RagRetriever ignores them, so a page
@@ -108,7 +110,10 @@ class RagIndexer {
     }
 
     final vectors = await _embedder.embedAll(
-      [for (final draft in drafts) _embeddingInput(title, draft.text)],
+      [
+        for (final draft in drafts)
+          _embedder.promptContract.embeddingInput(title, draft.text),
+      ],
       taskType: EmbedTaskType.document,
     );
 

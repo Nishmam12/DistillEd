@@ -9,12 +9,19 @@ import 'package:inkflow/features/ai/data/llm/device_storage.dart';
 import 'package:inkflow/features/ai/data/llm/hf_access_check.dart';
 import 'package:inkflow/features/ai/data/llm/hf_token_check.dart';
 import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
+import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
 
 const _spec = EmbedderSpec(
   displayName: 'Fake Embedder',
-  modelId: 'fake-v1',
+  modelId: 'fake-v1-titled',
   modelUrl: 'https://example.com/model.tflite',
   tokenizerUrl: 'https://example.com/sentencepiece.model',
+  format: EmbedderFormat.tfliteWithTokenizer,
+  maxInputTokens: 512,
+  chunkWords: 250,
+  chunkOverlapWords: 30,
+  promptContract: PromptContract.pluginGemma300m,
+  runtimeSupported: true,
   approxSizeBytes: 100 * 1024 * 1024,
   dimensions: 3,
   needsAuth: true,

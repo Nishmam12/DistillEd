@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +18,7 @@ import '../../../ai/data/llm/llm_model_spec.dart';
 import '../../../ai/data/llm/model_storage_cleaner.dart';
 import '../../../ai/domain/compute_backend.dart';
 import '../../../ai/presentation/ai_providers.dart' show localBackendProvider;
+import '../../../ai/presentation/rag_corpus_export.dart';
 import '../../../audio/data/edge_ai_speech.dart';
 import '../../../audio/presentation/speech_model_notifier.dart';
 import '../../../audio/presentation/transcription_providers.dart';
@@ -808,6 +810,19 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
   final Set<String> _downloading = {};
   final Map<String, int> _percent = {};
 
+  /// Debug builds only: shares the notes as the corpus the embedding evaluation
+  /// reads. A failure is shown, since this is a button and not a background job.
+  Future<void> _exportCorpus() async {
+    try {
+      await shareRagCorpus(ref);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Couldn't export the corpus: $e")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final downloads = ref.read(modelDownloadManagerProvider);
@@ -889,6 +904,19 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           key: ValueKey('reclaim-$_refresh'),
           onChanged: () => setState(() => _refresh++),
         ),
+        // Debug builds only: the notes as the corpus tool/embedding_eval reads.
+        if (kDebugMode)
+          // A transparent Material gives the tile its ink over the card's own
+          // background, which a bare ListTile refuses to paint over.
+          Material(
+            type: MaterialType.transparency,
+            child: ListTile(
+              key: const ValueKey('export-rag-corpus'),
+              title: const Text('Export RAG corpus'),
+              subtitle: const Text('Debug build: notes for the embedding eval'),
+              onTap: _exportCorpus,
+            ),
+          ),
       ],
     );
   }

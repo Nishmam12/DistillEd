@@ -11,6 +11,7 @@ import 'dart:io';
 
 import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
+import '../../domain/rag/prompt_contract.dart';
 import '../../domain/rag/text_embedder.dart';
 import '../llm/gemma_adapter.dart';
 import '../llm/llm_exceptions.dart';
@@ -26,6 +27,14 @@ class EmbedderTokenRequiredException extends LlmException {
       : super('${spec.displayName} needs a HuggingFace token. Accept the '
             'licence for the model, create a read token, and add it in '
             'Settings → AI.');
+}
+
+/// The model's files form a single bundle, and this build has no runtime for one
+/// (phase 5 writes it). The UI never offers such a spec, so this is reached only
+/// by a spec wired in by hand.
+class EmbedderRuntimeUnsupportedException extends LlmException {
+  EmbedderRuntimeUnsupportedException(EmbedderSpec spec)
+      : super('${spec.displayName} cannot run in this version of the app yet.');
 }
 
 /// Installation seam — [EdgeAiEmbedderInstaller] in production.
@@ -101,17 +110,20 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
   /// without the model files keeps the records; counting them as installed made
   /// the download a no-op, so the Download button did nothing.
   @override
-  Future<bool> isInstalled(EmbedderSpec spec) async =>
-      await _isFileInstalled(spec.modelFilename) &&
-      await _isFileInstalled(spec.tokenizerFilename) &&
-      await _isFileOnDisk(spec.modelFilename) &&
-      await _isFileOnDisk(spec.tokenizerFilename);
+  Future<bool> isInstalled(EmbedderSpec spec) async {
+    for (final name in spec.files) {
+      if (!await _isFileInstalled(name) || !await _isFileOnDisk(name)) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   /// The plugin's install skips a file whose record exists, file or no file, so
   /// a record that outlived its file is forgotten first and the download runs.
   /// A file that is on disk is never touched.
   Future<void> forgetStaleRecords(EmbedderSpec spec) async {
-    for (final name in [spec.modelFilename, spec.tokenizerFilename]) {
+    for (final name in spec.files) {
       if (await _isFileInstalled(name) && !await _isFileOnDisk(name)) {
         await _forgetFile(name);
       }
@@ -121,9 +133,11 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
   @override
   Future<bool> isPartiallyInstalled(EmbedderSpec spec) async {
     await GemmaBootstrap.ensureInitialized();
-    final model = await _isFileInstalled(spec.modelFilename);
-    final tokenizer = await _isFileInstalled(spec.tokenizerFilename);
-    return model != tokenizer;
+    var recorded = 0;
+    for (final name in spec.files) {
+      if (await _isFileInstalled(name)) recorded++;
+    }
+    return recorded > 0 && recorded < spec.files.length;
   }
 
   @override
@@ -148,10 +162,14 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
       throw EmbedderTokenRequiredException(spec);
     }
 
+    final tokenizerUrl = spec.tokenizerUrl;
+    if (tokenizerUrl == null) {
+      throw StateError('${spec.displayName} is not a model with a tokenizer');
+    }
     await forgetStaleRecords(spec);
     var builder = FlutterEdgeAi.installEmbedder()
         .modelFromNetwork(spec.modelUrl, token: token)
-        .tokenizerFromNetwork(spec.tokenizerUrl, token: token);
+        .tokenizerFromNetwork(tokenizerUrl, token: token);
     if (onProgress != null) {
       builder = builder
           .withModelProgress((p) => onProgress(p * _modelShare ~/ 100))
@@ -167,8 +185,9 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
     await GemmaBootstrap.ensureInitialized();
     // Two files, one model: leaving the tokenizer behind would strand ~4.5 MB
     // and leave [isInstalled] reporting a half-present model.
-    await _uninstallIfPresent(spec.modelFilename);
-    await _uninstallIfPresent(spec.tokenizerFilename);
+    for (final name in spec.files) {
+      await _uninstallIfPresent(name);
+    }
   }
 
   /// Removes one file, tolerating its absence.
@@ -215,6 +234,14 @@ class EdgeAiEmbeddingRuntime implements EmbeddingRuntime {
 
   @override
   Future<EmbeddingSession> open(EmbedderSpec spec) async {
+    // flutter_edge_ai always prepends its own prefix for a TaskType, and has no
+    // way to embed raw text, so an app-owned prompt would be doubled. Refused
+    // before the plugin is touched. Phase 5 decides whether this is needed.
+    if (spec.promptContract.appliedBy == PromptAppliedBy.app) {
+      throw UnsupportedError(
+        '${spec.displayName}: app-owned prompts are not supported',
+      );
+    }
     await GemmaBootstrap.ensureInitialized();
 
     // Guard BEFORE the install() below, which would otherwise download 175 MB
@@ -245,6 +272,56 @@ class EdgeAiEmbeddingRuntime implements EmbeddingRuntime {
     }
     return _GemmaEmbeddingSession(model);
   }
+}
+
+/// The runtime for [spec]'s format. The format picks it, and nothing else about
+/// the spec does.
+EmbeddingRuntime embeddingRuntimeFor(EmbedderSpec spec) =>
+    switch (spec.format) {
+      EmbedderFormat.tfliteWithTokenizer => EdgeAiEmbeddingRuntime(),
+      EmbedderFormat.litertlmBundle => const LiteRtLmBundleEmbeddingRuntime(),
+    };
+
+/// The installer for [spec]'s format, chosen the same way as [embeddingRuntimeFor].
+EmbedderInstaller embedderInstallerFor(EmbedderSpec spec) =>
+    switch (spec.format) {
+      EmbedderFormat.tfliteWithTokenizer => EdgeAiEmbedderInstaller(),
+      EmbedderFormat.litertlmBundle => const LiteRtLmBundleEmbedderInstaller(),
+    };
+
+/// Stands in for the bundle runtime until phase 5 writes it.
+class LiteRtLmBundleEmbeddingRuntime implements EmbeddingRuntime {
+  const LiteRtLmBundleEmbeddingRuntime();
+
+  @override
+  Future<EmbeddingSession> open(EmbedderSpec spec) async {
+    throw EmbedderRuntimeUnsupportedException(spec);
+  }
+}
+
+/// Stands in for the bundle installer until phase 5 writes it. It reports
+/// nothing installed and refuses to install, so no download can start for it.
+class LiteRtLmBundleEmbedderInstaller implements EmbedderInstaller {
+  const LiteRtLmBundleEmbedderInstaller();
+
+  @override
+  Future<bool> isInstalled(EmbedderSpec spec) async => false;
+
+  @override
+  Future<bool> isPartiallyInstalled(EmbedderSpec spec) async => false;
+
+  @override
+  Future<void> install({
+    required EmbedderSpec spec,
+    String? authToken,
+    void Function(int percent)? onProgress,
+    CancelToken? cancelToken,
+  }) async {
+    throw EmbedderRuntimeUnsupportedException(spec);
+  }
+
+  @override
+  Future<void> uninstall(EmbedderSpec spec) async {}
 }
 
 class _GemmaEmbeddingSession implements EmbeddingSession {

@@ -18,6 +18,7 @@
 import 'dart:async';
 
 import '../../domain/ai_provider.dart';
+import '../../domain/rag/prompt_contract.dart';
 import '../../domain/rag/text_embedder.dart';
 import '../llm/llm_exceptions.dart';
 import 'embedder_adapter.dart';
@@ -35,7 +36,7 @@ class LocalTextEmbedder implements TextEmbedder {
     this.spec = EmbedderSpec.active,
     EmbeddingRuntime? runtime,
     this.idleUnloadDelay = defaultIdleUnloadDelay,
-  }) : _runtime = runtime ?? EdgeAiEmbeddingRuntime();
+  }) : _runtime = runtime ?? embeddingRuntimeFor(spec);
 
   /// Mutex: chain of futures; each call awaits the previous one.
   Future<void> _lock = Future.value();
@@ -92,6 +93,15 @@ class LocalTextEmbedder implements TextEmbedder {
   int get dimensions => spec.dimensions;
 
   @override
+  PromptContract get promptContract => spec.promptContract;
+
+  @override
+  int get chunkWords => spec.chunkWords;
+
+  @override
+  int get chunkOverlapWords => spec.chunkOverlapWords;
+
+  @override
   Future<List<double>> embedOne(
     String text, {
     required EmbedTaskType taskType,
@@ -126,6 +136,8 @@ class LocalTextEmbedder implements TextEmbedder {
         '${spec.displayName} is not downloaded yet.',
         cause: e,
       );
+    } on EmbedderRuntimeUnsupportedException catch (e) {
+      throw AiModelNotReadyException(e.message, cause: e);
     } on LlmException catch (e) {
       throw AiGenerationException(
         '${spec.displayName} failed to start.',

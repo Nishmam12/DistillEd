@@ -12,6 +12,8 @@
 // seam and never on the router. `AiProvider.embed` stays for the platform
 // contract's sake (see its doc comment) and delegates here.
 
+import 'prompt_contract.dart';
+
 /// Which side of a retrieval pair some text is being embedded for.
 ///
 /// EmbeddingGemma — like Gecko, E5, and most cloud embedding APIs — is
@@ -48,6 +50,16 @@ abstract class TextEmbedder {
   /// Length of the vectors this embedder produces. Lets callers reject a
   /// dimension mismatch before it reaches the math.
   int get dimensions;
+
+  /// What the model is fed: the title and the passage, in the form its vectors
+  /// were built from. Part of the vector space, so a change here is a new
+  /// [modelId].
+  PromptContract get promptContract;
+
+  /// Words per chunk, and the overlap between chunks, for this model. Chunks are
+  /// cut to the model's own window; see [chunkPage].
+  int get chunkWords;
+  int get chunkOverlapWords;
 
   /// Embeds [texts] in one pass, returning one vector per input, in order.
   ///

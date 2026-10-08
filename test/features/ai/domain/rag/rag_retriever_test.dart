@@ -3,11 +3,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/features/ai/domain/ai_exception.dart';
 import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
 import 'package:inkflow/features/ai/domain/rag/rag_retriever.dart';
+import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+    show kChunkOverlapWords, kChunkWords;
+import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
 import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
 
 /// Maps canned text → canned vectors, and counts calls so tests can prove the
 /// retriever avoided a ~175 MB model load.
 class _FakeEmbedder implements TextEmbedder {
+
+  @override
+  PromptContract get promptContract => PromptContract.pluginGemma300m;
+
+  @override
+  int get chunkWords => kChunkWords;
+
+  @override
+  int get chunkOverlapWords => kChunkOverlapWords;
+
   _FakeEmbedder({this.modelId = 'fake-v1', Map<String, List<double>>? vectors})
       : _vectors = vectors ?? const {};
 
@@ -43,6 +56,16 @@ typedef Page = ({int pageId, String text});
 
 /// An embedder whose model is not downloaded.
 class _NotReadyEmbedder implements TextEmbedder {
+
+  @override
+  PromptContract get promptContract => PromptContract.pluginGemma300m;
+
+  @override
+  int get chunkWords => kChunkWords;
+
+  @override
+  int get chunkOverlapWords => kChunkOverlapWords;
+
   @override
   final String modelId = 'fake-v1';
 

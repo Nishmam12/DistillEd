@@ -14,10 +14,9 @@
 //     Each chunk after the first is prefixed with the tail of the previous one.
 //
 // Sizing is in WORDS, like every other budget in this codebase (see
-// `text_budget.dart`); the words↔tokens math lives in [AiRouter]. ~250 words is
-// roughly 330 tokens at the usual ~0.75 words/token, which sits inside the
-// phase spec's 200–400 token target AND inside EmbeddingGemma's 512-token
-// sequence variant with headroom.
+// `text_budget.dart`); the words↔tokens math lives in [AiRouter]. Each model
+// sets its own window (`EmbedderSpec.chunkWords`); the constants below are the
+// EmbeddingGemma 300M values, inside the phase spec's 200–400 token target.
 
 import 'dart:math' as math;
 

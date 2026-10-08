@@ -47,7 +47,7 @@ class EmbedderDownloadManager {
     HuggingFaceAccess? access,
     HuggingFaceIdentity? identity,
   })  : _authToken = authToken,
-        _installer = installer ?? EdgeAiEmbedderInstaller(),
+        _installer = installer ?? embedderInstallerFor(spec),
         _storage = storage ?? DeviceStorage(),
         _access = access ?? DioHuggingFaceAccess(),
         _identity = identity ?? DioHuggingFaceIdentity();

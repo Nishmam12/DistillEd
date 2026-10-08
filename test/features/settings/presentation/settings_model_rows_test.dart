@@ -355,4 +355,13 @@ void main() {
     expect(cleaner.cleaned, isTrue);
     expect(find.text('Leftover download files'), findsNothing);
   });
+
+  testWidgets('the corpus export is offered in debug builds, where tests run',
+      (tester) async {
+    await _pumpSettings(tester,
+        embedder: _FakeEmbedder(installed: true),
+        cleaner: _FakeCleaner(const []));
+
+    expect(find.byKey(const ValueKey('export-rag-corpus')), findsOneWidget);
+  });
 }

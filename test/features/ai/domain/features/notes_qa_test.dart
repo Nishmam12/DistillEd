@@ -4,6 +4,9 @@ import 'package:inkflow/features/ai/domain/ai_provider.dart';
 import 'package:inkflow/features/ai/domain/features/notes_qa.dart';
 import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
 import 'package:inkflow/features/ai/domain/rag/rag_retriever.dart';
+import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+    show kChunkOverlapWords, kChunkWords;
+import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
 import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
 
 /// Records what it was asked and replays scripted chunks.
@@ -45,6 +48,16 @@ class _ScriptedProvider implements AiProvider {
 
 /// Returns a fixed query vector so canned chunks with the same vector score 1.0.
 class _FixedEmbedder implements TextEmbedder {
+
+  @override
+  PromptContract get promptContract => PromptContract.pluginGemma300m;
+
+  @override
+  int get chunkWords => kChunkWords;
+
+  @override
+  int get chunkOverlapWords => kChunkOverlapWords;
+
   @override
   final String modelId = 'fake-v1';
   @override

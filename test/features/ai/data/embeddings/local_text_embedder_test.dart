@@ -7,13 +7,20 @@ import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
 import 'package:inkflow/features/ai/data/embeddings/local_text_embedder.dart';
 import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
 import 'package:inkflow/features/ai/domain/ai_provider.dart';
+import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
 import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
 
 const _spec = EmbedderSpec(
   displayName: 'Fake Embedder',
-  modelId: 'fake-v1',
+  modelId: 'fake-v1-titled',
   modelUrl: 'https://example.com/model.tflite',
   tokenizerUrl: 'https://example.com/sentencepiece.model',
+  format: EmbedderFormat.tfliteWithTokenizer,
+  maxInputTokens: 512,
+  chunkWords: 250,
+  chunkOverlapWords: 30,
+  promptContract: PromptContract.pluginGemma300m,
+  runtimeSupported: true,
   approxSizeBytes: 1024,
   dimensions: 3,
   needsAuth: true,
@@ -308,7 +315,7 @@ void main() {
 
   test('modelId and dimensions come from the spec', () {
     final embedder = LocalTextEmbedder(spec: _spec, runtime: _FakeRuntime());
-    expect(embedder.modelId, 'fake-v1');
+    expect(embedder.modelId, 'fake-v1-titled');
     expect(embedder.dimensions, 3);
   });
 }

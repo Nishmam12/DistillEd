@@ -9,6 +9,21 @@
 import 'package:flutter_edge_ai/flutter_edge_ai.dart'
     show EmbeddingModelSpec, ModelSource;
 
+import '../../domain/rag/page_chunker.dart'
+    show kChunkOverlapWords, kChunkWords;
+import '../../domain/rag/prompt_contract.dart';
+
+/// How a model's files reach the device, and how they run.
+enum EmbedderFormat {
+  /// A .tflite weights file and a sentencepiece tokenizer, run by flutter_edge_ai's
+  /// TFLite embedding backend.
+  tfliteWithTokenizer,
+
+  /// A single .litertlm bundle with its tokenizer inside. Not runnable yet
+  /// (phase 5).
+  litertlmBundle,
+}
+
 /// Identity, source, and shape of the embedding model.
 class EmbedderSpec {
   final String displayName;
@@ -26,7 +41,28 @@ class EmbedderSpec {
   final String modelId;
 
   final String modelUrl;
-  final String tokenizerUrl;
+
+  /// Null for a single-file bundle. A [EmbedderFormat.tfliteWithTokenizer] model
+  /// has one; the constructor asserts it.
+  final String? tokenizerUrl;
+
+  /// How the files reach the device and how they run.
+  final EmbedderFormat format;
+
+  /// The input window this build uses for the model.
+  final int maxInputTokens;
+
+  /// Words per chunk, and the overlap between chunks, for this model.
+  final int chunkWords;
+  final int chunkOverlapWords;
+
+  /// Who adds the task prefixes, and what text the model sees. Part of the
+  /// vector space, so part of [modelId].
+  final PromptContract promptContract;
+
+  /// False for a spec the app knows about but cannot run yet. The UI never offers
+  /// such a spec for download or rollout.
+  final bool runtimeSupported;
 
   /// Combined download size, for the free-space check and download UI.
   final int approxSizeBytes;
@@ -39,15 +75,27 @@ class EmbedderSpec {
   /// "add your token in Settings" prompt instead of an opaque 401.
   final bool needsAuth;
 
+  /// A modelId must name its [promptContract]. That is checked by
+  /// embedder_spec_identity_test.dart, because a const constructor cannot call
+  /// `String.contains`.
   const EmbedderSpec({
     required this.displayName,
     required this.modelId,
     required this.modelUrl,
-    required this.tokenizerUrl,
+    required this.format,
+    this.tokenizerUrl,
+    required this.maxInputTokens,
+    required this.chunkWords,
+    required this.chunkOverlapWords,
+    required this.promptContract,
+    required this.runtimeSupported,
     required this.approxSizeBytes,
     required this.dimensions,
     required this.needsAuth,
-  });
+  }) : assert(
+          format != EmbedderFormat.tfliteWithTokenizer || tokenizerUrl != null,
+          'a tflite model needs its tokenizer',
+        );
 
   /// On-disk name of the model file, and flutter_edge_ai's id for it.
   ///
@@ -63,11 +111,33 @@ class EmbedderSpec {
   /// start. Asked of the plugin's own spec — the one its installer records from —
   /// so it cannot drift; a hand-built `sentencepiece.model` reads "not installed"
   /// for a model that is on the disk.
-  String get tokenizerFilename => EmbeddingModelSpec(
-        name: modelFilename,
-        modelSource: ModelSource.network(modelUrl),
-        tokenizerSource: ModelSource.network(tokenizerUrl),
-      ).files[1].filename;
+  String get tokenizerFilename {
+    final url = tokenizerUrl;
+    if (url == null) throw StateError('$displayName has no tokenizer');
+    return EmbeddingModelSpec(
+      name: modelFilename,
+      modelSource: ModelSource.network(modelUrl),
+      tokenizerSource: ModelSource.network(url),
+    ).files[1].filename;
+  }
+
+  /// Every on-disk file this spec installs. Install, uninstall, the installed
+  /// check and the storage cleaner all read this list, not the two names.
+  List<String> get files => [
+        modelFilename,
+        if (tokenizerUrl != null) tokenizerFilename,
+      ];
+
+  /// Everything that defines the vector space, as one key. Two specs with the same
+  /// key must share a modelId, and two with different keys must not (see
+  /// embedder_spec_identity_test.dart).
+  String get identityKey => [
+        maxInputTokens,
+        chunkWords,
+        chunkOverlapWords,
+        promptContract.id,
+        modelFilename,
+      ].join('|');
 
   static String _basename(String url) => Uri.parse(url).pathSegments.last;
 
@@ -116,8 +186,42 @@ class EmbedderSpec {
         'resolve/main/embeddinggemma-300M_seq512_mixed-precision.tflite',
     tokenizerUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/'
         'resolve/main/sentencepiece.model',
+    format: EmbedderFormat.tfliteWithTokenizer,
+    maxInputTokens: 512,
+    // ~330 tokens at ~0.75 words per token, inside the 512 window.
+    chunkWords: kChunkWords,
+    chunkOverlapWords: kChunkOverlapWords,
+    promptContract: PromptContract.pluginGemma300m,
+    runtimeSupported: true,
     approxSizeBytes: 185 * 1024 * 1024, // 170.8 + 4.5 MB, rounded up
     dimensions: 768,
     needsAuth: true,
   );
+
+  /// EmbeddingGemma 2, LiteRT-LM bundle. NOT RUNNABLE YET: its window, chunk sizes
+  /// and prompt contract are decided in phase 5 from the evaluation. The values
+  /// marked TODO are placeholders, and the modelId says so.
+  static const EmbedderSpec embeddingGemma2 = EmbedderSpec(
+    displayName: 'EmbeddingGemma 2 (740M)',
+    modelId: 'embeddinggemma-2-740m-UNSET',
+    modelUrl: 'https://huggingface.co/litert-community/'
+        'embeddinggemma-2-740m-litert-lm/resolve/main/embeddinggemma-2-740m.litertlm',
+    format: EmbedderFormat.litertlmBundle,
+    maxInputTokens: 512, // TODO(phase 5): decide from the evaluation
+    chunkWords: 250, // TODO(phase 5): decide from the evaluation
+    chunkOverlapWords: 30, // TODO(phase 5): decide from the evaluation
+    promptContract: PromptContract.undecided,
+    runtimeSupported: false,
+    approxSizeBytes: 484622336,
+    dimensions: 768,
+    needsAuth: false,
+  );
+
+  /// Every spec the app knows about. Each one's identity is checked by
+  /// embedder_spec_identity_test.dart.
+  static const List<EmbedderSpec> all = [embeddingGemma300m, embeddingGemma2];
+
+  /// Specs whose files are removed once a rollout to another spec has completed
+  /// (phase 4.6). Empty until a swap is made.
+  static const List<EmbedderSpec> retired = [];
 }

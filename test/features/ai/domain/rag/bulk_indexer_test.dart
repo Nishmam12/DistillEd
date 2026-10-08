@@ -6,12 +6,25 @@ import 'package:inkflow/features/ai/domain/rag/bulk_indexer.dart';
 import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
 import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
 import 'package:inkflow/features/ai/domain/rag/rag_retriever.dart';
+import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+    show kChunkOverlapWords, kChunkWords;
+import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
 import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
 
 /// Deterministic stand-in: each distinct text gets its own axis, so cosine
 /// similarity is 1.0 for the same text and 0.0 for any other. Enough to prove
 /// which PAGE a hit came from, which is what these tests are about.
 class _AxisEmbedder implements TextEmbedder {
+
+  @override
+  PromptContract get promptContract => PromptContract.pluginGemma300m;
+
+  @override
+  int get chunkWords => kChunkWords;
+
+  @override
+  int get chunkOverlapWords => kChunkOverlapWords;
+
   @override
   final String modelId = 'fake-v1';
 
@@ -44,6 +57,16 @@ class _AxisEmbedder implements TextEmbedder {
 /// Logs each page it embeds as `embed:<first word's page id>` — the text starts
 /// with nothing page-specific, so it identifies pages by the order they arrive.
 class _LoggingEmbedder implements TextEmbedder {
+
+  @override
+  PromptContract get promptContract => PromptContract.pluginGemma300m;
+
+  @override
+  int get chunkWords => kChunkWords;
+
+  @override
+  int get chunkOverlapWords => kChunkOverlapWords;
+
   _LoggingEmbedder(this.events, {this.missing = false});
 
   final List<String> events;

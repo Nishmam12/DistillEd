@@ -220,6 +220,8 @@ class RagRetriever {
         text: page.text,
         notebookId: notebookId,
         pageId: page.pageId,
+        maxWords: _embedder.chunkWords,
+        overlapWords: _embedder.chunkOverlapWords,
       )) {
         pool.add(NoteChunk.fromDraft(
           draft,
