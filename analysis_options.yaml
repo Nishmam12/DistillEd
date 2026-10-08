@@ -10,6 +10,7 @@
 analyzer:
   exclude:
     - build/**
+    - integration_test/**
     - android/**
     - ios/**
     - windows/**

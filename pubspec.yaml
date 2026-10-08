@@ -181,9 +181,8 @@ dev_dependencies:
   # ── Testing ───────────────────────────────────────────────
   mocktail: ^1.0.4
 
-  # ── Device-only checks (docs/TECH_MIGRATION_PLAN.md, phase 4.1) ──
-  integration_test:
-    sdk: flutter
+  # integration_test is NOT listed here: a dev dependency in the app's pubspec
+  # breaks release builds. tool/run_golden.sh adds it for one run and restores this file.
 
 flutter:
   uses-material-design: true

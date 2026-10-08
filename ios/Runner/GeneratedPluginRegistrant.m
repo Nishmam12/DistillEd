@@ -72,12 +72,6 @@
 @import image_picker_ios;
 #endif
 
-#if __has_include(<integration_test/IntegrationTestPlugin.h>)
-#import <integration_test/IntegrationTestPlugin.h>
-#else
-@import integration_test;
-#endif
-
 #if __has_include(<isar_community_flutter_libs/IsarFlutterLibsPlugin.h>)
 #import <isar_community_flutter_libs/IsarFlutterLibsPlugin.h>
 #else
@@ -158,7 +152,6 @@
   [GoogleMlKitLanguageIdPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitLanguageIdPlugin"]];
   [GoogleMlKitTextRecognitionPlugin registerWithRegistrar:[registry registrarForPlugin:@"GoogleMlKitTextRecognitionPlugin"]];
   [FLTImagePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTImagePickerPlugin"]];
-  [IntegrationTestPlugin registerWithRegistrar:[registry registrarForPlugin:@"IntegrationTestPlugin"]];
   [IsarFlutterLibsPlugin registerWithRegistrar:[registry registrarForPlugin:@"IsarFlutterLibsPlugin"]];
   [JustAudioPlugin registerWithRegistrar:[registry registrarForPlugin:@"JustAudioPlugin"]];
   [LargeFileHandlerPlugin registerWithRegistrar:[registry registrarForPlugin:@"LargeFileHandlerPlugin"]];
