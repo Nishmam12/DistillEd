@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/editor/state/editor_tool_controller.dart';
-import 'package:inkflow/core/constants/editor_constants.dart' show kFavoritePickerColors;
-import 'package:inkflow/editor/ui/universal_color_palette.dart';
+import 'package:distill_ed/editor/state/editor_tool_controller.dart';
+import 'package:distill_ed/editor/ui/editor_constants.dart' show kFavoritePickerColors;
+import 'package:distill_ed/editor/ui/universal_color_palette.dart';
 
 void main() {
   Future<ProviderContainer> pumpPalette(WidgetTester tester) async {

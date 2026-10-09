@@ -10,11 +10,11 @@ import 'package:flutter_edge_ai/flutter_edge_ai.dart'
     show CancelToken, ModelFileType, ModelType;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/llm/device_storage.dart';
-import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
-import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
+import 'package:distill_ed/features/ai/data/llm/device_storage.dart';
+import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_exceptions.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
+import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
 
 const _spec = LlmModelSpec(
   displayName: 'Fake Gemma',

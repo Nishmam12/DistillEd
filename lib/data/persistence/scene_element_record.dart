@@ -1,4 +1,4 @@
-// Unified on-disk representation of a scene element (InkFlow 2.0).
+// Unified on-disk representation of a scene element (DistillEd 2.0).
 //
 // One Isar row per element, indexed by [pageId], replacing the legacy split
 // storage (per-page `.ink` JSON + embedded NotePage.shapes/importedContents).

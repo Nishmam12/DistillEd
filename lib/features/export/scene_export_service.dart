@@ -3,6 +3,7 @@
 // export. Sharing itself is delegated to the existing [ExportShareService].
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -30,7 +31,7 @@ class SceneExportService {
 
   static Future<bool> sharePng(
     List<SceneElement> elements, {
-    String title = 'inkflow',
+    String title = 'DistillEd',
     Color background = Colors.white,
     SceneImageCache? imageCache,
   }) async {
@@ -44,7 +45,7 @@ class SceneExportService {
 
   static Future<bool> sharePdf(
     List<SceneElement> elements, {
-    String title = 'inkflow',
+    String title = 'DistillEd',
     Color background = Colors.white,
     SceneImageCache? imageCache,
   }) async {
@@ -60,7 +61,7 @@ class SceneExportService {
   /// notebook is empty.
   static Future<bool> shareNotebookPdf(
     List<List<SceneElement>> pages, {
-    String title = 'inkflow',
+    String title = 'DistillEd',
     Color background = Colors.white,
     SceneImageCache? imageCache,
     void Function(int done, int total)? onProgress,
@@ -79,17 +80,46 @@ class SceneExportService {
     return true;
   }
 
+  /// Shares the page as an SVG with its pictures embedded, so the file opens
+  /// correctly outside the app. A picture whose file cannot be read is drawn as
+  /// the canvas placeholder.
   static Future<bool> shareSvg(
     List<SceneElement> elements, {
-    String title = 'inkflow',
+    String title = 'DistillEd',
+    SceneImageCache? imageCache,
   }) async {
     if (elements.isEmpty) return false;
-    final svg = SceneExporter.toSvg(elements);
+    final svg = SceneExporter.toSvg(
+      elements,
+      images: await _pictureBytes(elements, imageCache?.baseDir),
+    );
     await ExportShareService.shareFile(
       bytes: Uint8List.fromList(utf8.encode(svg)),
       filename: '${title}_${DateTime.now().millisecondsSinceEpoch}.svg',
       mimeType: 'image/svg+xml',
     );
     return true;
+  }
+
+  /// The bytes of each picture on the page, read from [baseDir], keyed by the
+  /// relative path the element stores. A picture that cannot be read is left out.
+  static Future<Map<String, Uint8List>> _pictureBytes(
+    List<SceneElement> elements,
+    String? baseDir,
+  ) async {
+    if (baseDir == null) return const {};
+    final bytes = <String, Uint8List>{};
+    for (final e in elements) {
+      if (e is! ImageElement || e.relativeImagePath.isEmpty) continue;
+      if (bytes.containsKey(e.relativeImagePath)) continue;
+      try {
+        bytes[e.relativeImagePath] = await File(
+          SceneImageCache.resolvePath(baseDir, e.relativeImagePath),
+        ).readAsBytes();
+      } catch (_) {
+        // Left out: the element is drawn as a placeholder.
+      }
+    }
+    return bytes;
   }
 }

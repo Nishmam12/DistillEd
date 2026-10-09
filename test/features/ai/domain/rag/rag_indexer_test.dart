@@ -1,11 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
-import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_indexer.dart';
+import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart'
     show kChunkOverlapWords, kChunkWords;
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
 
 /// Records what it was asked to embed, so tests can assert the EXPENSIVE call
 /// was skipped — the whole point of incremental indexing.
@@ -45,6 +47,25 @@ class _FakeEmbedder implements TextEmbedder {
   Future<List<double>> embedOne(String text,
           {required EmbedTaskType taskType}) async =>
       (await embedAll([text], taskType: taskType)).first;
+}
+
+/// An embedder whose calls finish only when the test releases them.
+class _GatedEmbedder extends _FakeEmbedder {
+  final gates = <Completer<void>>[];
+
+  @override
+  Future<List<List<double>>> embedAll(
+    List<String> texts, {
+    required EmbedTaskType taskType,
+  }) async {
+    calls.add((texts: texts, taskType: taskType));
+    final gate = Completer<void>();
+    gates.add(gate);
+    await gate.future;
+    return [
+      for (var i = 0; i < texts.length; i++) [i.toDouble(), 0.0, 0.0]
+    ];
+  }
 }
 
 class _FakeStore {
@@ -266,5 +287,31 @@ void main() {
           reason: 'the old vectors were built with the old title');
       expect(embedder.calls.last.texts, ['Cell Biology\n\n$text']);
     });
+  });
+
+  test('writes for one page never overlap: a newer text waits for the older',
+      () async {
+    final gated = _GatedEmbedder();
+    final gatedStore = _FakeStore();
+    final gatedIndexer = _buildIndexer(gated, gatedStore);
+
+    final older = gatedIndexer.indexPage(
+        notebookId: 1, pageId: 7, text: 'old words');
+    final newer = gatedIndexer.indexPage(
+        notebookId: 1, pageId: 7, text: 'new words');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(gated.calls, hasLength(1),
+        reason: 'the newer write must not start while the older one is running');
+
+    gated.gates[0].complete();
+    await older;
+    await Future<void>.delayed(Duration.zero);
+    expect(gated.calls, hasLength(2));
+
+    gated.gates[1].complete();
+    await newer;
+    expect(gatedStore.saved[7]!.single.text, 'new words',
+        reason: 'the last write to land must be the newest text');
   });
 }

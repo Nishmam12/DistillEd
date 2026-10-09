@@ -3,9 +3,9 @@
 // runner asked of it, so the tests can check the order of the steps.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/rag/embedder_rollout.dart';
-import 'package:inkflow/features/ai/domain/rag/embedder_rollout_runner.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/domain/rag/embedder_rollout.dart';
+import 'package:distill_ed/features/ai/domain/rag/embedder_rollout_runner.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
 
 final _now = DateTime(2026, 10, 9, 0, 10);
 

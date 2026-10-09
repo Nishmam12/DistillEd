@@ -221,7 +221,7 @@ class PageRepository {
 
   /// Returns all pages for [notebookId] sorted by pageIndex ascending.
   Future<List<NotePage>> getPagesForNotebook(int notebookId) async {
-    return await _isar.notePages
+    return _isar.notePages
         .filter()
         .notebookIdEqualTo(notebookId)
         .sortByPageIndex()

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/state/editor_tool_controller.dart';
-import 'package:inkflow/core/constants/editor_constants.dart';
-import 'package:inkflow/editor/ui/controls/editor_tool_options_overlay.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/state/editor_tool_controller.dart';
+import 'package:distill_ed/editor/ui/editor_constants.dart';
+import 'package:distill_ed/editor/ui/controls/editor_tool_options_overlay.dart';
 
 void main() {
   Future<ProviderContainer> pumpOverlay(

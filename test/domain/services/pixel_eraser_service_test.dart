@@ -1,9 +1,9 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/domain/services/pixel_eraser_service.dart';
-import 'package:inkflow/editor/render/freehand_path.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/domain/services/pixel_eraser_service.dart';
+import 'package:distill_ed/editor/render/freehand_path.dart';
 
 /// Builds the eraser hole exactly like the canvas call site does.
 Path eraserHole(List<StrokePoint> points, double size) =>

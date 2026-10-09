@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../ai_providers.dart';
 import '../research_notifier.dart';
 
@@ -73,7 +73,7 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
   Widget _header({required bool fromCloud}) {
     return Row(
       children: [
-        Icon(Icons.manage_search, size: 18, color: context.ink.accent),
+        Icon(Icons.manage_search, size: 18, color: context.colors.accent),
         const SizedBox(width: 8),
         Expanded(
           child: Text('Research',
@@ -82,7 +82,7 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: context.ink.textPrimary,
+                color: context.colors.textPrimary,
               )),
         ),
         if (fromCloud) const _CloudBadge(),
@@ -91,7 +91,7 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
           visualDensity: VisualDensity.compact,
           constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           padding: EdgeInsets.zero,
-          icon: Icon(Icons.close, size: 18, color: context.ink.textSecondary),
+          icon: Icon(Icons.close, size: 18, color: context.colors.textSecondary),
           onPressed: () => ref.read(researchNotifierProvider.notifier).reset(),
         ),
       ],
@@ -107,12 +107,12 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
       onSubmitted: (_) => _submit(),
       minLines: 1,
       maxLines: 3,
-      style: TextStyle(fontSize: 14, color: context.ink.textPrimary),
+      style: TextStyle(fontSize: 14, color: context.colors.textPrimary),
       decoration: InputDecoration(
         hintText: 'e.g. What\'s 18% of 245?',
-        hintStyle: TextStyle(color: context.ink.textMuted, fontSize: 13),
+        hintStyle: TextStyle(color: context.colors.textSecondary, fontSize: 13),
         filled: true,
-        fillColor: context.ink.surfaceHighlight,
+        fillColor: context.colors.surfaceSubtle,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -121,7 +121,7 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
         suffixIcon: IconButton(
           tooltip: 'Ask',
           icon: Icon(Icons.arrow_upward,
-              size: 20, color: enabled ? context.ink.accent : context.ink.textMuted),
+              size: 20, color: enabled ? context.colors.accent : context.colors.textSecondary),
           onPressed: enabled ? _submit : null,
         ),
       ),
@@ -207,7 +207,7 @@ class _Answer extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     height: 1.5,
-                    color: context.ink.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
                 if (toolsUsed.isNotEmpty) ...[
@@ -241,12 +241,12 @@ class _Answer extends StatelessWidget {
             width: 14,
             height: 14,
             child: CircularProgressIndicator(
-                strokeWidth: 2, color: context.ink.accentSoft),
+                strokeWidth: 2, color: context.colors.accent),
           ),
           const SizedBox(width: 8),
           Text('Researching…',
               style:
-                  TextStyle(fontSize: 12, color: context.ink.textSecondary)),
+                  TextStyle(fontSize: 12, color: context.colors.textSecondary)),
           const Spacer(),
           TextButton.icon(
             onPressed: onStop,
@@ -255,9 +255,9 @@ class _Answer extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10),
             ),
             icon: Icon(Icons.stop_circle_outlined,
-                size: 18, color: context.ink.accent),
+                size: 18, color: context.colors.accent),
             label: Text('Stop',
-                style: TextStyle(color: context.ink.accent)),
+                style: TextStyle(color: context.colors.accent)),
           ),
         ],
       );
@@ -278,19 +278,19 @@ class _Answer extends StatelessWidget {
                   );
                 },
           icon: Icon(Icons.copy_outlined,
-              size: 18, color: context.ink.textSecondary),
+              size: 18, color: context.colors.textSecondary),
         ),
         const Spacer(),
         Flexible(
           child: FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
             onPressed:
                 trimmed.isEmpty ? null : () => onInsertNote(trimmed),
             icon: Icon(Icons.note_add_outlined,
-                size: 18, color: context.ink.textOnAccent),
+                size: 18, color: context.colors.onAccent),
             label: Text('Insert as note',
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: context.ink.textOnAccent)),
+                style: TextStyle(color: context.colors.onAccent)),
           ),
         ),
       ],
@@ -319,19 +319,19 @@ class _ToolUsedChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: context.ink.surfaceHighlight,
+        color: context.colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: context.ink.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(_icons[toolName] ?? Icons.build_outlined,
-              size: 12, color: context.ink.textSecondary),
+              size: 12, color: context.colors.textSecondary),
           const SizedBox(width: 4),
           Text(_labels[toolName] ?? toolName,
               style: TextStyle(
-                  fontSize: 11, color: context.ink.textSecondary)),
+                  fontSize: 11, color: context.colors.textSecondary)),
         ],
       ),
     );
@@ -349,20 +349,20 @@ class _CloudBadge extends StatelessWidget {
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: context.ink.accentWash,
+        color: context.colors.accentMuted,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: context.ink.accentSoft),
+        border: Border.all(color: context.colors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.cloud_outlined, size: 13, color: context.ink.accentStrong),
+          Icon(Icons.cloud_outlined, size: 13, color: context.colors.accent),
           const SizedBox(width: 4),
           Text('Cloud',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: context.ink.accentStrong,
+                color: context.colors.accent,
               )),
         ],
       ),
@@ -404,14 +404,14 @@ class _ConfirmCloudBody extends ConsumerWidget {
             TextButton(
               onPressed: notifier.cancelCloud,
               child: Text('Cancel',
-                  style: TextStyle(color: context.ink.textSecondary)),
+                  style: TextStyle(color: context.colors.textSecondary)),
             ),
             const SizedBox(width: 8),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+              style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
               onPressed: notifier.confirmCloudAndAsk,
               child: Text('Send',
-                  style: TextStyle(color: context.ink.textOnAccent)),
+                  style: TextStyle(color: context.colors.onAccent)),
             ),
           ],
         ),
@@ -439,9 +439,9 @@ class _ErrorBody extends ConsumerWidget {
         if (state.retryable)
           TextButton.icon(
             onPressed: notifier.retry,
-            icon: Icon(Icons.refresh, size: 18, color: context.ink.accent),
+            icon: Icon(Icons.refresh, size: 18, color: context.colors.accent),
             label: Text('Try again',
-                style: TextStyle(color: context.ink.accent)),
+                style: TextStyle(color: context.colors.accent)),
           ),
       ],
     );
@@ -461,7 +461,7 @@ class _Centered extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 34, color: context.ink.accentSoft),
+          Icon(icon, size: 34, color: context.colors.textSecondary),
           const SizedBox(height: 14),
           Text(title,
               textAlign: TextAlign.center,
@@ -469,14 +469,14 @@ class _Centered extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: context.ink.textPrimary,
+                color: context.colors.textPrimary,
               )),
           if (subtitle != null) ...[
             const SizedBox(height: 6),
             Text(subtitle!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 13, height: 1.4, color: context.ink.textSecondary)),
+                    fontSize: 13, height: 1.4, color: context.colors.textSecondary)),
           ],
         ],
       ),

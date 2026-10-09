@@ -4,8 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/ui/text_input_dialog.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/ui/text_input_dialog.dart';
 
 /// Opens the dialog and hands back whatever it returned.
 Future<SceneTextResult?> _open(

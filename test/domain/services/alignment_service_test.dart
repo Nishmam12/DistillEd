@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/domain/services/alignment_service.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/domain/services/alignment_service.dart';
 
 SceneShapeElement _rect(String id, List<double> g) => SceneShapeElement(
       id: id,

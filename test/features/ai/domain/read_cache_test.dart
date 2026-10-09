@@ -7,8 +7,8 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/figure.dart';
-import 'package:inkflow/features/ai/domain/read_cache.dart';
+import 'package:distill_ed/features/ai/domain/figure.dart';
+import 'package:distill_ed/features/ai/domain/read_cache.dart';
 
 void main() {
   final bytes = Uint8List.fromList(const [1, 2, 3, 4]);

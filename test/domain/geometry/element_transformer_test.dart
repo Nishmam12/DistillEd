@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/geometry/element_transformer.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
+import 'package:distill_ed/domain/geometry/element_transformer.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
 
 SceneShapeElement _rect(List<double> g) => SceneShapeElement(
       id: 'r',

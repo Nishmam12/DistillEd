@@ -86,6 +86,11 @@ class RagIndexer {
         state.embeddingModelId == _embedder.modelId;
   }
 
+  /// The last write queued for each page. A page's writes run one after another,
+  /// whichever caller made them — the live scheduler or a bulk run — so an older
+  /// text that is slow to embed can never be saved over the chunks of a newer one.
+  final _queued = <int, Future<void>>{};
+
   /// Brings [pageId]'s chunks in line with [text].
   ///
   /// Throws whatever [TextEmbedder] throws (typically
@@ -94,6 +99,19 @@ class RagIndexer {
   /// wiring treats it as fire-and-forget; nothing is stored on failure, so the
   /// next attempt simply retries.
   Future<RagIndexOutcome> indexPage({
+    required int notebookId,
+    required int pageId,
+    required String text,
+  }) {
+    final previous = _queued[pageId] ?? Future<void>.value();
+    final run = previous.then(
+        (_) => _indexNow(notebookId: notebookId, pageId: pageId, text: text));
+    // The queue carries on past a failed write: the next one has its own text.
+    _queued[pageId] = run.then<void>((_) {}, onError: (_) {});
+    return run;
+  }
+
+  Future<RagIndexOutcome> _indexNow({
     required int notebookId,
     required int pageId,
     required String text,

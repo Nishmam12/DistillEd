@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to InkFlow are recorded here. The running app shows its
+All notable changes to DistillEd are recorded here. The running app shows its
 version on **Settings → About**, so you can confirm which build is installed on
 any device.
 
@@ -120,6 +120,7 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   the concept. Reworded the instructions so it stays focused on the subject.
 
 ### Changed
+- **Navy and gold theme.** The whole app now uses the navy and gold design, in place of the warm coral skin: navy on warm off-white in light mode, gold and cream on near-black in dark mode. Paper and pen colours are unchanged, so your drawings look the same. Error messages and the recording indicator use the standard Material red. The old green, honey and periwinkle highlights are now navy or gold, so a few status colours are harder to tell apart: the study planner's task kinds, and the knowledge graph's practiced and mastered levels.
 - **On-device AI packages replaced.** The `flutter_gemma` packages were discontinued on 5 October 2026, so the on-device model stack now runs on their maintained successors: `flutter_edge_ai` 2.1.0, `flutter_edge_ai_litertlm` 1.9.0, `flutter_edge_ai_speech` 0.5.4 and `flutter_edge_ai_embeddings` 2.2.2. No user-visible change is intended. The Phase 1 device checks in `docs/TECH_MIGRATION_PLAN.md` are still to be run.
 - **Local database library replaced.** The Isar database now uses `isar_community` 3.3.2, the maintained fork of the Isar 3.x line, because plain `isar` was last released in April 2023. The collection and property layout is unchanged, so existing data should still open. A debug build logs the row count of each collection at startup. The device checks for this upgrade are still to be run.
 - **Dependencies refreshed.** Riverpod 3.4, go_router 18, record 7.1, just_audio 0.10, pdfx 2.11, image_picker 1.2, file_picker 10.3 and package_info_plus 9, with flutter_lints 6. file_picker 11 does not build for Android yet. file_picker 12 and later, and package_info_plus 10 and later, need a newer win32 than the pinned share_plus 12.0.2 allows. The device checks for navigation, background indexing, downloads and recording are still to be run.

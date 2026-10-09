@@ -1,7 +1,7 @@
-// Unified scene element model for InkFlow 2.0.
+// Unified scene element model for DistillEd 2.0.
 //
 // Excalidraw treats every drawable (freehand ink, shape, text, image) as one
-// element type sharing transform, z-order, opacity and lock state. InkFlow 2.0
+// element type sharing transform, z-order, opacity and lock state. DistillEd 2.0
 // adopts the same: selection, transform, snapping, grouping, z-order and
 // alignment all operate on [SceneElement], so they behave identically across
 // ink and shapes.

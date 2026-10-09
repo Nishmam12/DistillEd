@@ -14,16 +14,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:inkflow/core/providers/settings_provider.dart';
-import 'package:inkflow/data/persistence/scene_element_store.dart';
-import 'package:inkflow/domain/commands/scene_command.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/state/history_controller.dart';
-import 'package:inkflow/editor/state/ink_gesture_providers.dart';
-import 'package:inkflow/editor/state/scene_controller.dart';
-import 'package:inkflow/editor/state/viewport_controller.dart';
-import 'package:inkflow/editor/tools/ink_gestures.dart';
-import 'package:inkflow/editor/ui/scene_canvas.dart';
+import 'package:distill_ed/core/providers/settings_provider.dart';
+import 'package:distill_ed/data/persistence/scene_element_store.dart';
+import 'package:distill_ed/domain/commands/scene_command.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/state/history_controller.dart';
+import 'package:distill_ed/editor/state/ink_gesture_providers.dart';
+import 'package:distill_ed/editor/state/scene_controller.dart';
+import 'package:distill_ed/editor/state/viewport_controller.dart';
+import 'package:distill_ed/editor/tools/ink_gestures.dart';
+import 'package:distill_ed/editor/ui/scene_canvas.dart';
 
 const ScenePageKey _key = (notebookId: 0, pageId: 0);
 

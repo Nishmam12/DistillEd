@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/presentation/ai_providers.dart';
-import 'package:inkflow/features/ai/presentation/sidebar/ai_ask_view.dart';
-import 'package:inkflow/features/ai/presentation/widgets/ai_scope_picker.dart';
+import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
+import 'package:distill_ed/features/ai/presentation/sidebar/ai_ask_view.dart';
+import 'package:distill_ed/features/ai/presentation/widgets/ai_scope_picker.dart';
 
 void main() {
   const key = (notebookId: 1, pageId: 7);

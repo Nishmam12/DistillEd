@@ -36,7 +36,8 @@ import 'shared/isar/isar_service.dart';
 import 'features/home/domain/models/folder.dart';
 import 'features/home/domain/models/notebook.dart';
 import 'features/home/domain/models/note_page.dart';
-import 'core/theme/ink_palette.dart';
+import 'core/theme/app_colors.dart';
+import 'core/theme/distill_theme.dart';
 
 /// Debug only: prints how many rows each collection holds, so an Isar upgrade
 /// can be checked against the old build on the same device (plan, phase 2.2).
@@ -98,33 +99,34 @@ void main() async {
   // instead, which is the one thing still guaranteed to be available, so a
   // crash screen in dark mode isn't a flash of cream.
   ErrorWidget.builder = (FlutterErrorDetails details) {
-    final p =
+    final theme =
         PlatformDispatcher.instance.platformBrightness == Brightness.dark
-            ? InkPalette.dark
-            : InkPalette.light;
+            ? DistillTheme.dark
+            : DistillTheme.light;
+    final c = theme.extension<AppColors>()!;
     return Material(
-      color: p.background,
+      color: c.bgPrimary,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline, color: p.accentRed, size: 48),
+              Icon(Icons.error_outline, color: theme.colorScheme.error, size: 48),
               const SizedBox(height: 16),
               Text(
                 'Something went wrong',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: p.textPrimary,
+                  color: c.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 kDebugMode ? details.exception.toString() : 'An unexpected error occurred. The app will try to recover.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: p.textSecondary),
+                style: TextStyle(color: c.textSecondary),
               ),
             ],
           ),
@@ -214,7 +216,7 @@ Future<void> _openAndRun() async {
           FileLibraryRepository(File('$appDocsPath/inkflow_library.json')),
         ),
       ],
-      child: const InkFlowApp(),
+      child: const DistillEdApp(),
     ),
   );
 }

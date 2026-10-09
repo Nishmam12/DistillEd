@@ -4,9 +4,9 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/data/persistence/page_text_store.dart';
-import 'package:inkflow/features/home/domain/models/notebook.dart';
-import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
+import 'package:distill_ed/data/persistence/page_text_store.dart';
+import 'package:distill_ed/features/home/domain/models/notebook.dart';
+import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
 
 Notebook _notebook(int id, String title) => Notebook()
   ..id = id

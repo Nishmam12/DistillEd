@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/ai_router.dart';
-import 'package:inkflow/features/ai/domain/features/writing_assistant.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/ai_router.dart';
+import 'package:distill_ed/features/ai/domain/features/writing_assistant.dart';
 
 /// Replays one scripted response per generate call and records the inputs.
 class _ScriptedProvider implements AiProvider {

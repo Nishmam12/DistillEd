@@ -11,7 +11,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../domain/ai_scope.dart';
 import '../ai_providers.dart';
@@ -72,7 +72,7 @@ class AiScopePicker extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final group = ref.watch(pageImportGroupProvider(pageKey)).value;
     final choices = scopeChoicesFor(hasImportGroup: group != null);
-    final fg = enabled ? context.ink.textSecondary : context.ink.textMuted;
+    final fg = enabled ? context.colors.textSecondary : context.colors.textSecondary;
 
     return PopupMenuButton<AiScopeKind>(
       tooltip: 'What to search',
@@ -90,7 +90,7 @@ class AiScopePicker extends ConsumerWidget {
                       ? Icons.radio_button_checked
                       : Icons.radio_button_unchecked,
                   size: 16,
-                  color: context.ink.accent,
+                  color: context.colors.accent,
                 ),
                 const SizedBox(width: 10),
                 Flexible(

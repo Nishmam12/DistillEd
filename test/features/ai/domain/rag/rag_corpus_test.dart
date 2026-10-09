@@ -6,7 +6,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_corpus.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_corpus.dart';
 
 List<Map<String, dynamic>> _lines(String jsonl) => [
       for (final line in const LineSplitter().convert(jsonl))

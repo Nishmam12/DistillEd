@@ -81,7 +81,8 @@ class RoughRenderer {
     double gap, {
     required bool mirror,
   }) {
-    if (bounds.isEmpty) return;
+    // A gap that does not advance would never reach the far edge.
+    if (bounds.isEmpty || gap <= 0) return;
     canvas.save();
     canvas.clipPath(clipPath);
     final rng = math.Random(seed ^ 0x9E3779B9);

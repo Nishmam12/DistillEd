@@ -1,6 +1,6 @@
 // Brings PDFs and photos into the editor as ordinary [ImageElement]s.
 //
-// Reuses [PDFService.renderAll], which already renders every page in a
+// Reuses [PdfService.renderAll], which already renders every page in a
 // background isolate and caches it on disk under a content hash, so re-importing
 // the same PDF costs nothing and cannot collide with a different one.
 
@@ -38,7 +38,7 @@ typedef ImportedImage = ({
 const int kMaxImportedImageEdge = 2048;
 
 class SceneImportService {
-  final PDFService _pdf;
+  final PdfService _pdf;
   final ImagePicker _picker;
   final DocumentScannerPort? _scanner;
   final Future<String> Function() _documentsDir;
@@ -47,11 +47,11 @@ class SceneImportService {
   /// camera entry is a plain photo. [documentsDir] exists so tests need no
   /// platform channel.
   SceneImportService({
-    PDFService? pdf,
+    PdfService? pdf,
     ImagePicker? picker,
     this._scanner,
     Future<String> Function()? documentsDir,
-  })  : _pdf = pdf ?? PDFService(),
+  })  : _pdf = pdf ?? PdfService(),
         _picker = picker ?? ImagePicker(),
         _documentsDir = documentsDir ??
             (() async => (await getApplicationDocumentsDirectory()).path);

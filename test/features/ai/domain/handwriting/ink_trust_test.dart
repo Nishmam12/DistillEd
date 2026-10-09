@@ -8,7 +8,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/handwriting/ink_trust.dart';
+import 'package:distill_ed/features/ai/domain/handwriting/ink_trust.dart';
 
 void main() {
   bool needs(

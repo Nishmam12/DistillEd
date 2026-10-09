@@ -100,7 +100,8 @@ class NoteSearch {
     if (needle.isEmpty) return 0;
     var total = 0;
     for (final page in pages) {
-      final haystack = page.text.toLowerCase();
+      // The same folding as [search], so the counter and the hits agree.
+      final haystack = _fold(page.text).text;
       var from = 0;
       while (true) {
         final at = haystack.indexOf(needle, from);

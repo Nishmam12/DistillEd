@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -20,11 +20,11 @@ class _AboutScreenState extends State<AboutScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('About DistillEd'),
-        backgroundColor: context.ink.surface,
-        foregroundColor: context.ink.textPrimary,
+        backgroundColor: context.colors.surface,
+        foregroundColor: context.colors.textPrimary,
         elevation: 0,
       ),
-      backgroundColor: context.ink.background,
+      backgroundColor: context.colors.bgPrimary,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -33,13 +33,13 @@ class _AboutScreenState extends State<AboutScreen> {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: context.ink.accent.withValues(alpha: 0.1),
+                color: context.colors.accent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.draw,
                 size: 64,
-                color: context.ink.accent,
+                color: context.colors.accent,
               ),
             ),
             const SizedBox(height: 24),
@@ -54,11 +54,11 @@ class _AboutScreenState extends State<AboutScreen> {
                 children: [
                   TextSpan(
                     text: 'Distill',
-                    style: TextStyle(color: context.ink.accent),
+                    style: TextStyle(color: context.colors.accent),
                   ),
                   TextSpan(
                     text: 'Ed',
-                    style: TextStyle(color: context.ink.textPrimary),
+                    style: TextStyle(color: context.colors.textPrimary),
                   ),
                 ],
               ),
@@ -75,7 +75,7 @@ class _AboutScreenState extends State<AboutScreen> {
                   label,
                   style: TextStyle(
                     fontSize: 16,
-                    color: context.ink.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
                 );
               },
@@ -88,7 +88,7 @@ class _AboutScreenState extends State<AboutScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
-                  color: context.ink.textSecondary,
+                  color: context.colors.textSecondary,
                   height: 1.5,
                 ),
               ),

@@ -90,14 +90,19 @@ class LectureTranscriptionNotifier
     if (_pumping) return;
     _pumping = true;
     try {
-      while (_queue.isNotEmpty && mounted) {
-        await _run(_queue.removeAt(0));
-      }
-      // The model is only worth keeping open while there is more to do. Still
-      // pumping until closed, so a new run cannot start on a closing model.
-      try {
-        await _speech.close();
-      } catch (_) {}
+      // Closing the model is awaited while this pump still holds the lock, so a
+      // recording queued meanwhile is turned away by [enqueue]'s _pump call. It
+      // is picked up by checking the queue again after the close, not by a second
+      // pump.
+      do {
+        while (_queue.isNotEmpty && mounted) {
+          await _run(_queue.removeAt(0));
+        }
+        // The model is only worth keeping open while there is more to do.
+        try {
+          await _speech.close();
+        } catch (_) {}
+      } while (_queue.isNotEmpty && mounted);
     } finally {
       _pumping = false;
     }

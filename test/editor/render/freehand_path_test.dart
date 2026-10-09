@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/editor/render/freehand_path.dart';
-import 'package:inkflow/domain/model/stroke_point.dart';
+import 'package:distill_ed/editor/render/freehand_path.dart';
+import 'package:distill_ed/domain/model/stroke_point.dart';
 
 void main() {
   test('build returns null for an empty stroke', () {

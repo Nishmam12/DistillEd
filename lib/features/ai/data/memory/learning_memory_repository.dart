@@ -78,14 +78,22 @@ abstract class LearningMemoryRepository {
 }
 
 class IsarLearningMemoryRepository implements LearningMemoryRepository {
+  /// [isar] lets a test point the store at its own database; the app uses the
+  /// shared [IsarService] instance.
+  IsarLearningMemoryRepository({Isar Function()? isar}) : _isarOverride = isar;
+
+  final Isar Function()? _isarOverride;
+
+  Isar get _isar => _isarOverride?.call() ?? IsarService.instance;
+
   IsarCollection<ConceptMasteryRecord> get _concepts =>
-      IsarService.instance.conceptMasteryRecords;
+      _isar.conceptMasteryRecords;
 
   IsarCollection<QuizAttemptRecord> get _attempts =>
-      IsarService.instance.quizAttemptRecords;
+      _isar.quizAttemptRecords;
 
   IsarCollection<ConceptRelationRecord> get _relations =>
-      IsarService.instance.conceptRelationRecords;
+      _isar.conceptRelationRecords;
 
   @override
   Future<void> observePageContext({
@@ -97,7 +105,7 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
     DateTime? at,
   }) {
     final seenAt = at ?? DateTime.now();
-    return IsarService.instance.writeTxn(() async {
+    return _isar.writeTxn(() async {
       // Exposure first, so a gap can match a concept this same pass introduced.
       for (final name in keyConcepts) {
         final key = normalizeConceptKey(name);
@@ -190,7 +198,7 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
 
   @override
   Future<void> recordQuizAttempt(QuizAttempt attempt) {
-    return IsarService.instance.writeTxn(() async {
+    return _isar.writeTxn(() async {
       await _attempts.put(QuizAttemptRecord.fromDomain(attempt));
 
       for (final entry in attempt.conceptOutcomes().entries) {
@@ -239,7 +247,7 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
 
   @override
   Future<LearningPreferences> loadPreferences() async {
-    final stored = await IsarService.instance.learningPreferencesRecords
+    final stored = await _isar.learningPreferencesRecords
         .get(LearningPreferencesRecord.singletonId);
     final base = stored?.toDomain() ?? LearningPreferences.empty;
 
@@ -254,8 +262,8 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
 
   @override
   Future<void> savePreferences(LearningPreferences prefs) {
-    return IsarService.instance.writeTxn(() async {
-      await IsarService.instance.learningPreferencesRecords
+    return _isar.writeTxn(() async {
+      await _isar.learningPreferencesRecords
           .put(LearningPreferencesRecord.fromDomain(prefs));
     });
   }

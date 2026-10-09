@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/settings_provider.dart';
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../../../editor/state/selection_controller.dart';
 import '../../domain/context_engine/page_context.dart';
@@ -80,15 +80,15 @@ class AiSidebar extends StatelessWidget {
     return Container(
       width: kAiSidebarWidth,
       decoration: BoxDecoration(
-        color: context.ink.surface,
-        border: Border(left: BorderSide(color: context.ink.border)),
+        color: context.colors.surface,
+        border: Border(left: BorderSide(color: context.colors.border)),
       ),
       child: SafeArea(
         left: false,
         child: Column(
           children: [
             _SidebarHeader(onClose: onClose),
-            Divider(height: 1, color: context.ink.border),
+            Divider(height: 1, color: context.colors.border),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
@@ -117,7 +117,7 @@ Future<void> showAiSidebarSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
-    backgroundColor: context.ink.surface,
+    backgroundColor: context.colors.surface,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -205,7 +205,7 @@ class _SidebarFooter extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Divider(height: 1, color: context.ink.border),
+        Divider(height: 1, color: context.colors.border),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Wrap(
@@ -499,12 +499,12 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = enabled ? context.ink.accentStrong : context.ink.textMuted;
+    final fg = enabled ? context.colors.accent : context.colors.textSecondary;
     return Semantics(
       button: true,
       enabled: enabled,
       child: Material(
-        color: enabled ? context.ink.accentWash : context.ink.surfaceHighlight,
+        color: enabled ? context.colors.accentMuted : context.colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -546,7 +546,7 @@ class _SidebarHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 8, 12),
       child: Row(
         children: [
-          Icon(Icons.auto_awesome, size: 18, color: context.ink.accent),
+          Icon(Icons.auto_awesome, size: 18, color: context.colors.accent),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
@@ -556,7 +556,7 @@ class _SidebarHeader extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: context.ink.textPrimary,
+                color: context.colors.textPrimary,
               ),
             ),
           ),
@@ -565,7 +565,7 @@ class _SidebarHeader extends StatelessWidget {
           IconButton(
             tooltip: 'Close',
             constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-            icon: Icon(Icons.close, size: 20, color: context.ink.textSecondary),
+            icon: Icon(Icons.close, size: 20, color: context.colors.textSecondary),
             onPressed: onClose,
           ),
         ],
@@ -634,7 +634,7 @@ class CloudModelToggle extends ConsumerWidget {
                   Icon(
                     on ? Icons.cloud_outlined : Icons.cloud_off_outlined,
                     size: 17,
-                    color: on ? context.ink.accent : context.ink.textMuted,
+                    color: on ? context.colors.accent : context.colors.textSecondary,
                   ),
                   const SizedBox(width: 4),
                   // A real Switch, scaled down: the affordance has to read as a

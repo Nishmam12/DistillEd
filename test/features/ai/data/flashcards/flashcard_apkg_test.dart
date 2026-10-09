@@ -5,8 +5,8 @@ import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-import 'package:inkflow/features/ai/data/flashcards/flashcard_apkg.dart';
-import 'package:inkflow/features/ai/domain/models/flashcard.dart';
+import 'package:distill_ed/features/ai/data/flashcards/flashcard_apkg.dart';
+import 'package:distill_ed/features/ai/domain/models/flashcard.dart';
 
 Flashcard card(String front, String back) => Flashcard(
       front: front,

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/library_item.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/domain/services/library_service.dart';
+import 'package:distill_ed/domain/model/library_item.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/domain/services/library_service.dart';
 
 void main() {
   final item = LibraryItem(

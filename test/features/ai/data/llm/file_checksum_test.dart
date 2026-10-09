@@ -3,10 +3,10 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart' show sha256;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
-import 'package:inkflow/features/ai/data/llm/file_checksum.dart';
-import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
-import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:distill_ed/features/ai/data/llm/file_checksum.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_exceptions.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
 
 void main() {
   late File file;

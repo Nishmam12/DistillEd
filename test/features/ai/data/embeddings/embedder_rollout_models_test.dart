@@ -3,10 +3,10 @@
 
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_adapter.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_rollout_models.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_adapter.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_rollout_models.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
 
 EmbedderSpec _spec(String id, {String? file}) => EmbedderSpec(
       displayName: id,

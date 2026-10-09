@@ -3,11 +3,11 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_exception.dart';
-import 'package:inkflow/features/ai/domain/figure.dart';
-import 'package:inkflow/features/ai/domain/figure_analyzer.dart';
-import 'package:inkflow/features/ai/domain/image_transcriber.dart';
-import 'package:inkflow/features/ai/domain/page_content.dart';
+import 'package:distill_ed/features/ai/domain/ai_exception.dart';
+import 'package:distill_ed/features/ai/domain/figure.dart';
+import 'package:distill_ed/features/ai/domain/figure_analyzer.dart';
+import 'package:distill_ed/features/ai/domain/image_transcriber.dart';
+import 'package:distill_ed/features/ai/domain/page_content.dart';
 
 /// Replies with a scripted string (the last is reused once exhausted), or
 /// throws [throwError] on every call.

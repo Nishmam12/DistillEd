@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_exception.dart';
-import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_retriever.dart';
-import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+import 'package:distill_ed/features/ai/domain/ai_exception.dart';
+import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_retriever.dart';
+import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart'
     show kChunkOverlapWords, kChunkWords;
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
 
 /// Maps canned text → canned vectors, and counts calls so tests can prove the
 /// retriever avoided a ~175 MB model load.

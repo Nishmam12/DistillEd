@@ -3,17 +3,17 @@ import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/flashcards/flashcard_store.dart';
-import 'package:inkflow/features/ai/data/llm/device_storage.dart';
-import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/features/flashcard_generator.dart';
-import 'package:inkflow/features/ai/domain/models/flashcard.dart';
-import 'package:inkflow/features/ai/presentation/ai_providers.dart';
-import 'package:inkflow/features/ai/presentation/flashcard_notifier.dart';
-import 'package:inkflow/features/ai/presentation/flashcards/flashcard_sheet.dart';
+import 'package:distill_ed/features/ai/data/flashcards/flashcard_store.dart';
+import 'package:distill_ed/features/ai/data/llm/device_storage.dart';
+import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
+import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/features/flashcard_generator.dart';
+import 'package:distill_ed/features/ai/domain/models/flashcard.dart';
+import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
+import 'package:distill_ed/features/ai/presentation/flashcard_notifier.dart';
+import 'package:distill_ed/features/ai/presentation/flashcards/flashcard_sheet.dart';
 
 class _NoopProvider implements AiProvider {
   @override

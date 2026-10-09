@@ -18,6 +18,7 @@ import '../render/scene_static_layer.dart';
 import '../state/scene_controller.dart';
 import '../state/scene_image_cache_provider.dart';
 import 'controls/page_actions_sheet.dart';
+import '../../core/theme/app_colors.dart';
 
 class NotebookBookViewScreen extends ConsumerStatefulWidget {
   final int notebookId;
@@ -173,9 +174,7 @@ class _BookPage extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: paper,
-          boxShadow: const [
-            BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 2)),
-          ],
+          boxShadow: context.floatShadow,
         ),
         child: CustomPaint(
           painter: _BookPagePainter(
@@ -259,7 +258,7 @@ class _Filmstrip extends StatelessWidget {
               border: Border.all(
                 color: i == current
                     ? Theme.of(context).colorScheme.primary
-                    : Colors.black26,
+                    : context.colors.border,
                 width: i == current ? 2 : 1,
               ),
             ),

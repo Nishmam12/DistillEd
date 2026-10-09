@@ -6,9 +6,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
-import 'package:inkflow/features/ai/domain/rag/embedder_rollout.dart';
-import 'package:inkflow/features/ai/presentation/ai_providers.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:distill_ed/features/ai/domain/rag/embedder_rollout.dart';
+import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
 
 ProviderContainer _containerWith(EmbedderRollout rollout) {
   final container = ProviderContainer(overrides: [

@@ -12,7 +12,21 @@ class LibraryController extends StateNotifier<List<LibraryItem>> {
   final LibraryRepository _repo;
   LibraryController(this._repo) : super(const []);
 
+  // Every save writes the whole library, so saves must land in the order the
+  // edits were made: an older snapshot finishing last would bring back whatever
+  // was removed since. Each save waits for the one before it.
+  Future<void> _tail = Future.value();
+
+  Future<void> _save() {
+    final snapshot = state;
+    final next = _tail.then((_) => _repo.saveAll(snapshot));
+    _tail = next.catchError((_) {});
+    return next;
+  }
+
   Future<void> load() async {
+    // Let pending saves land first, so the read cannot bring back an older copy.
+    await _tail;
     state = List.unmodifiable(await _repo.load());
   }
 
@@ -30,7 +44,7 @@ class LibraryController extends StateNotifier<List<LibraryItem>> {
       elements: List.of(elements),
     );
     state = List.unmodifiable([...state, item]);
-    await _repo.saveAll(state);
+    await _save();
     return item;
   }
 
@@ -38,7 +52,7 @@ class LibraryController extends StateNotifier<List<LibraryItem>> {
     state = List.unmodifiable([
       for (final i in state) i.id == id ? i.copyWith(name: name) : i,
     ]);
-    await _repo.saveAll(state);
+    await _save();
   }
 
   Future<void> remove(String id) async {
@@ -46,7 +60,7 @@ class LibraryController extends StateNotifier<List<LibraryItem>> {
       for (final i in state)
         if (i.id != id) i,
     ]);
-    await _repo.saveAll(state);
+    await _save();
   }
 }
 

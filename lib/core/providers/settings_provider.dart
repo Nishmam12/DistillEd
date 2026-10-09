@@ -44,11 +44,13 @@ enum AiProcessingMode {
   /// True when the cloud should be tried BEFORE the on-device model.
   bool get prefersCloud => this == AiProcessingMode.cloudFirst;
 
+  /// An unrecognised name falls back to [onDevice], the privacy default: a value
+  /// this build cannot read must never grant the cloud anything.
   static AiProcessingMode byName(String? name) => switch (name) {
         'onDevice' => AiProcessingMode.onDevice,
         'cloudFirst' => AiProcessingMode.cloudFirst,
         'auto' => AiProcessingMode.auto,
-        _ => AiProcessingMode.auto,
+        _ => AiProcessingMode.onDevice,
       };
 }
 

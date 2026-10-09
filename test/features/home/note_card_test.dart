@@ -1,13 +1,13 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/theme/app_colors.dart';
-import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
-import 'package:inkflow/features/home/presentation/notes_palette.dart';
-import 'package:inkflow/features/home/presentation/widgets/knowledge_graph_button.dart';
-import 'package:inkflow/features/home/presentation/widgets/note_card.dart';
-import 'package:inkflow/features/home/presentation/widgets/note_overlay.dart';
-import 'package:inkflow/features/home/presentation/widgets/note_preview.dart';
+import 'package:distill_ed/core/theme/app_colors.dart';
+import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
+import 'package:distill_ed/features/home/presentation/notes_palette.dart';
+import 'package:distill_ed/features/home/presentation/widgets/knowledge_graph_button.dart';
+import 'package:distill_ed/features/home/presentation/widgets/note_card.dart';
+import 'package:distill_ed/features/home/presentation/widgets/note_overlay.dart';
+import 'package:distill_ed/features/home/presentation/widgets/note_preview.dart';
 
 NoteCardData _note({String title = 'Workout', int pages = 2}) {
   return NoteCardData(

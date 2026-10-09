@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/features/home/presentation/widgets/note_scene_preview.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/features/home/presentation/widgets/note_scene_preview.dart';
 
 FreehandElement _stroke({
   String id = 'a',

@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/ai_router.dart';
-import 'package:inkflow/features/ai/domain/features/explainer.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/ai_router.dart';
+import 'package:distill_ed/features/ai/domain/features/explainer.dart';
 
 /// Records what it was asked and replays a scripted set of chunks.
 class _ScriptedProvider implements AiProvider {

@@ -9,7 +9,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-import '../../../core/providers/search_providers.dart';
+import '../../../data/persistence/page_text_store.dart';
 import '../../../domain/model/scene_element.dart';
 import '../../../editor/state/page_notifier.dart';
 import '../../../editor/state/scene_controller.dart';

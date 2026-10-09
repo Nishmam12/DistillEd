@@ -1,6 +1,6 @@
 // The navy/gold token layer: every hex matches design/THEME_SPEC.md, the
-// three-tier hierarchy holds in both brightnesses, and `copyWith`/`lerp` reach
-// all nine fields.
+// three-tier hierarchy holds in both brightnesses, `copyWith`/`lerp` reach all
+// nine fields, and the text the app actually draws stays legible.
 //
 // These exist because the two failure modes here are silent. A field missing
 // from `lerp` holds its old value through a whole transition and then snaps at
@@ -9,11 +9,35 @@
 // compiles, it looks fine in a screenshot of one row, and it flattens the
 // hierarchy across a list of thirty.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/core/theme/app_colors.dart';
-import 'package:inkflow/core/theme/distill_theme.dart';
+import 'package:distill_ed/core/theme/app_colors.dart';
+import 'package:distill_ed/core/theme/distill_theme.dart';
+
+/// WCAG relative luminance.
+double _luminance(Color c) {
+  final argb = c.toARGB32();
+  double channel(int shift) {
+    final v = ((argb >> shift) & 0xFF) / 255.0;
+    return v <= 0.03928
+        ? v / 12.92
+        : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+  }
+
+  return 0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0);
+}
+
+/// WCAG contrast ratio between two opaque colours.
+double _contrast(Color a, Color b) {
+  final la = _luminance(a);
+  final lb = _luminance(b);
+  final hi = la > lb ? la : lb;
+  final lo = la > lb ? lb : la;
+  return (hi + 0.05) / (lo + 0.05);
+}
 
 /// Every field, by name, so a test can assert on the whole set rather than a
 /// hand-picked few. Adding a token to [AppColors] and not to this map makes the
@@ -88,6 +112,36 @@ void main() {
     });
   });
 
+  group('legibility', () {
+    // 4.5:1 is WCAG AA for body text; 3:1 for large text and controls. Checked
+    // in both brightnesses on the surfaces a run of text can land on.
+    for (final (name, c) in [
+      ('light', AppColors.light),
+      ('dark', AppColors.dark),
+    ]) {
+      test('$name: body text reads on the background and on cards', () {
+        expect(_contrast(c.textPrimary, c.bgPrimary),
+            greaterThanOrEqualTo(4.5));
+        expect(_contrast(c.textPrimary, c.surface), greaterThanOrEqualTo(4.5));
+        expect(_contrast(c.textSecondary, c.bgPrimary),
+            greaterThanOrEqualTo(4.5));
+        expect(_contrast(c.textSecondary, c.surface),
+            greaterThanOrEqualTo(4.5));
+      });
+
+      test('$name: secondary text reads on the subtle surface', () {
+        // THEME_SPEC.md flags this pair for a re-check after build.
+        expect(_contrast(c.textSecondary, c.surfaceSubtle),
+            greaterThanOrEqualTo(4.5));
+      });
+
+      test('$name: the accent and the text on it clear the 3:1 bar', () {
+        expect(_contrast(c.accent, c.surface), greaterThanOrEqualTo(3.0));
+        expect(_contrast(c.onAccent, c.accent), greaterThanOrEqualTo(3.0));
+      });
+    }
+  });
+
   group('field coverage', () {
     test('the set is exactly nine tokens', () {
       expect(_fields(AppColors.light), hasLength(9));
@@ -100,7 +154,8 @@ void main() {
       final light = _fields(AppColors.light);
       final dark = _fields(AppColors.dark);
       for (final name in light.keys) {
-        expect(dark[name], isNot(light[name]), reason: '$name is identical in both brightnesses');
+        expect(dark[name], isNot(light[name]),
+            reason: '$name is identical in both brightnesses');
       }
     });
 
@@ -194,6 +249,14 @@ void main() {
       expect(DistillTheme.dark.cardTheme.elevation, 0);
     });
 
+    test('snack bar actions are not the accent', () {
+      // In light the accent is the snack bar's own navy background, so an
+      // accent action would be invisible on it.
+      final snack = DistillTheme.light.snackBarTheme;
+      expect(snack.actionTextColor, isNot(AppColors.light.accent));
+      expect(snack.backgroundColor, AppColors.light.textPrimary);
+    });
+
     test('useMaterial3 stays on, matching the rest of the app', () {
       expect(DistillTheme.light.useMaterial3, isTrue);
       expect(DistillTheme.dark.useMaterial3, isTrue);
@@ -226,6 +289,33 @@ void main() {
         }),
       ));
       expect(seen, same(AppColors.dark));
+    });
+  });
+
+  group('context.floatShadow', () {
+    testWidgets('lifts a floating surface in light', (tester) async {
+      late List<BoxShadow> seen;
+      await tester.pumpWidget(MaterialApp(
+        theme: DistillTheme.light,
+        home: Builder(builder: (context) {
+          seen = context.floatShadow;
+          return const SizedBox();
+        }),
+      ));
+      expect(seen, isNotEmpty);
+    });
+
+    testWidgets('casts none in dark, where the border does the job',
+        (tester) async {
+      late List<BoxShadow> seen;
+      await tester.pumpWidget(MaterialApp(
+        theme: DistillTheme.dark,
+        home: Builder(builder: (context) {
+          seen = context.floatShadow;
+          return const SizedBox();
+        }),
+      ));
+      expect(seen, isEmpty);
     });
   });
 }

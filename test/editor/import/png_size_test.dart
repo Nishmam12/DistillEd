@@ -3,7 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/editor/import/png_size.dart';
+import 'package:distill_ed/editor/import/png_size.dart';
 
 void main() {
   /// The first 24 bytes of a PNG declaring [width] x [height] — signature,

@@ -4,9 +4,9 @@
 
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken, EmbeddingModel;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_adapter.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
-import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_adapter.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_exceptions.dart';
 
 class _Installer implements EmbedderInstaller {
   _Installer({this.installed = true});

@@ -107,7 +107,9 @@ async def search(
 
     try:
         data = await _search_exa(settings, request.query)
-    except httpx.HTTPError as exc:
+        if not isinstance(data, dict):
+            raise ValueError("Exa replied with something other than a JSON object")
+    except (httpx.HTTPError, ValueError) as exc:  # ValueError: a body that is not JSON
         _log.warning("exa search failed: %s", type(exc).__name__)
         await asyncio.to_thread(limiter.refund, x_device_key)
         raise HTTPException(
@@ -132,6 +134,8 @@ def _clean_results(data: dict) -> list[SearchResult]:
     sees them."""
     results = []
     for item in data.get("results", [])[:_MAX_RESULTS]:
+        if not isinstance(item, dict):
+            continue
         url = item.get("url")
         if not isinstance(url, str) or urlparse(url).scheme not in ("http", "https"):
             continue

@@ -7,7 +7,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/figure.dart';
+import 'package:distill_ed/features/ai/domain/figure.dart';
 
 void main() {
   const full = FigureDescription(

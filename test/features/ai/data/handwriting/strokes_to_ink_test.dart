@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
 
 void main() {
   FreehandElement stroke(String id, List<StrokePoint> pts,

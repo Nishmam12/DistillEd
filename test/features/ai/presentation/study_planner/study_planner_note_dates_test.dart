@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/memory/learning_memory_repository.dart';
-import 'package:inkflow/features/ai/data/study_planner/study_plan_store.dart';
-import 'package:inkflow/features/ai/domain/study_planner/note_deadlines.dart';
-import 'package:inkflow/features/ai/domain/study_planner/study_plan.dart';
-import 'package:inkflow/features/ai/presentation/ai_providers.dart';
-import 'package:inkflow/features/ai/presentation/study_planner/study_planner_screen.dart';
-import 'package:inkflow/features/ai/presentation/study_planner_notifier.dart';
+import 'package:distill_ed/features/ai/data/memory/learning_memory_repository.dart';
+import 'package:distill_ed/features/ai/data/study_planner/study_plan_store.dart';
+import 'package:distill_ed/features/ai/domain/study_planner/note_deadlines.dart';
+import 'package:distill_ed/features/ai/domain/study_planner/study_plan.dart';
+import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
+import 'package:distill_ed/features/ai/presentation/study_planner/study_planner_screen.dart';
+import 'package:distill_ed/features/ai/presentation/study_planner_notifier.dart';
 
 /// The planner opens with no saved plan and these tests never generate one, so
 /// nothing here is ever read.

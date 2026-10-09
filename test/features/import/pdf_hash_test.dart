@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/import/pdf_service.dart';
+import 'package:distill_ed/features/import/pdf_service.dart';
 
 void main() {
   // Regression for BUG-11: the PDF page cache key must be deterministic

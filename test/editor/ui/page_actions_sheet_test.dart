@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/editor/ui/controls/page_actions_sheet.dart';
+import 'package:distill_ed/editor/ui/controls/page_actions_sheet.dart';
 
 Future<void> _pump(
   WidgetTester tester, {

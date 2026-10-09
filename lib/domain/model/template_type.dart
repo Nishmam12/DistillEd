@@ -1,19 +1,14 @@
-// Enum defining available canvas background template types.
-
-import 'package:flutter/material.dart';
+// The canvas background templates a notebook can use. Persisted by position
+// (Notebook.templateIndex), so values are only ever appended.
 
 enum TemplateType {
-  blank(displayName: 'Blank', iconData: Icons.crop_square),
-  ruled(displayName: 'Ruled', iconData: Icons.format_align_left),
-  dotted(displayName: 'Dotted', iconData: Icons.more_horiz),
-  grid(displayName: 'Grid', iconData: Icons.grid_on),
-  engineeringGrid(displayName: 'Engineering', iconData: Icons.grid_4x4);
+  blank(displayName: 'Blank'),
+  ruled(displayName: 'Ruled'),
+  dotted(displayName: 'Dotted'),
+  grid(displayName: 'Grid'),
+  engineeringGrid(displayName: 'Engineering');
 
-  const TemplateType({
-    required this.displayName,
-    required this.iconData,
-  });
+  const TemplateType({required this.displayName});
 
   final String displayName;
-  final IconData iconData;
 }

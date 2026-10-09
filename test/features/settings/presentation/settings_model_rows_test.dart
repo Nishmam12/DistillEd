@@ -11,20 +11,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/theme/app_theme.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_download_manager.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
-import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
-import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
-import 'package:inkflow/features/ai/data/llm/model_storage_cleaner.dart';
-import 'package:inkflow/core/providers/secret_store.dart';
-import 'package:inkflow/core/providers/settings_provider.dart';
-import 'package:inkflow/features/ai/presentation/ai_providers.dart';
-import 'package:inkflow/features/ai/domain/rag/embedder_rollout.dart';
-import 'package:inkflow/features/audio/data/edge_ai_speech.dart';
-import 'package:inkflow/features/audio/presentation/transcription_providers.dart';
-import 'package:inkflow/features/settings/presentation/screens/settings_screen.dart';
+import 'package:distill_ed/core/theme/distill_theme.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_download_manager.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
+import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
+import 'package:distill_ed/features/ai/data/llm/model_storage_cleaner.dart';
+import 'package:distill_ed/core/providers/secret_store.dart';
+import 'package:distill_ed/core/providers/settings_provider.dart';
+import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
+import 'package:distill_ed/features/ai/domain/rag/embedder_rollout.dart';
+import 'package:distill_ed/features/audio/data/edge_ai_speech.dart';
+import 'package:distill_ed/features/audio/presentation/transcription_providers.dart';
+import 'package:distill_ed/features/settings/presentation/screens/settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeEmbedder implements EmbedderDownloadManager {
@@ -205,7 +205,7 @@ Future<void> _pumpSettings(
           .overrideWith((ref) async => dryRunCopyInstalled),
     ],
     child: MaterialApp(
-      theme: AppTheme.light(),
+      theme: DistillTheme.light,
       home: const SettingsScreen(),
     ),
   ));

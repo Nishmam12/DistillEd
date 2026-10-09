@@ -9,17 +9,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../domain/study_planner/note_deadlines.dart';
 import '../../domain/study_planner/study_plan.dart';
 import '../ai_providers.dart';
 
 /// Task kind → colour. Distinct from the graph's mastery palette on purpose —
 /// here the colour means the KIND of work, not how well a concept is known.
-Color _taskColor(InkPalette ink, StudyTaskKind kind) => switch (kind) {
-      StudyTaskKind.review => ink.accentYellow,
-      StudyTaskKind.quiz => ink.accent,
-      StudyTaskKind.learnNew => ink.accentPurple,
+Color _taskColor(AppColors colors, StudyTaskKind kind) => switch (kind) {
+      StudyTaskKind.review => colors.textPrimary,
+      StudyTaskKind.quiz => colors.accent,
+      StudyTaskKind.learnNew => colors.textSecondary,
     };
 
 class StudyPlannerScreen extends ConsumerWidget {
@@ -31,7 +31,7 @@ class StudyPlannerScreen extends ConsumerWidget {
     final planAsync = ref.watch(studyPlannerProvider(notebookId));
 
     return Scaffold(
-      backgroundColor: context.ink.background,
+      backgroundColor: context.colors.bgPrimary,
       appBar: AppBar(
         title: const Text('Study plan'),
         actions: [
@@ -126,7 +126,7 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
       children: [
         const SizedBox(height: 8),
         Icon(Icons.event_note_outlined,
-            size: 40, color: context.ink.accentSoft),
+            size: 40, color: context.colors.textSecondary),
         const SizedBox(height: 12),
         Text('Plan your study',
             textAlign: TextAlign.center,
@@ -134,7 +134,7 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
               fontFamily: 'Poppins',
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: context.ink.textPrimary,
+              color: context.colors.textPrimary,
             )),
         const SizedBox(height: 8),
         Text(
@@ -142,7 +142,7 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
           'due for review, and concepts your notes mention but don\'t explain '
           'yet. Everything on-device.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, height: 1.5, color: context.ink.textSecondary),
+          style: TextStyle(fontSize: 14, height: 1.5, color: context.colors.textSecondary),
         ),
         const SizedBox(height: 24),
         for (final kind in StudyHorizonKind.values)
@@ -169,12 +169,12 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
         const SizedBox(height: 24),
         FilledButton(
           style: FilledButton.styleFrom(
-            backgroundColor: context.ink.accent,
+            backgroundColor: context.colors.accent,
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           onPressed: _canGenerate ? _generate : null,
           child: Text('Generate plan',
-              style: TextStyle(color: context.ink.textOnAccent, fontSize: 15)),
+              style: TextStyle(color: context.colors.onAccent, fontSize: 15)),
         ),
       ],
     );
@@ -262,7 +262,7 @@ class _NoteDatesMessage extends StatelessWidget {
         children: [
           Text(text,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: context.ink.textSecondary)),
+              style: TextStyle(fontSize: 13, color: context.colors.textSecondary)),
           if (onRetry != null)
             TextButton(onPressed: onRetry, child: const Text('Try again')),
         ],
@@ -293,10 +293,10 @@ class _DeadlineTile extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? context.ink.accentWash : context.ink.surface,
+            color: selected ? context.colors.accentMuted : context.colors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? context.ink.accent : context.ink.border,
+              color: selected ? context.colors.accent : context.colors.border,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -305,11 +305,11 @@ class _DeadlineTile extends StatelessWidget {
             children: [
               Text(deadline.label,
                   style: TextStyle(
-                      fontSize: 14, color: context.ink.textPrimary)),
+                      fontSize: 14, color: context.colors.textPrimary)),
               const SizedBox(height: 2),
               Text(_formatDate(deadline.date),
                   style: TextStyle(
-                      fontSize: 12, color: context.ink.textSecondary)),
+                      fontSize: 12, color: context.colors.textSecondary)),
             ],
           ),
         ),
@@ -338,10 +338,10 @@ class _HorizonTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: selected ? context.ink.accentWash : context.ink.surface,
+            color: selected ? context.colors.accentMuted : context.colors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? context.ink.accent : context.ink.border,
+              color: selected ? context.colors.accent : context.colors.border,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -352,14 +352,14 @@ class _HorizonTile extends StatelessWidget {
                     ? Icons.radio_button_checked
                     : Icons.radio_button_unchecked,
                 size: 20,
-                color: selected ? context.ink.accent : context.ink.textMuted,
+                color: selected ? context.colors.accent : context.colors.textSecondary,
               ),
               const SizedBox(width: 12),
               Text(kind.label,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    color: context.ink.textPrimary,
+                    color: context.colors.textPrimary,
                   )),
             ],
           ),
@@ -417,8 +417,8 @@ class _PlanHeader extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: BoxDecoration(
-        color: context.ink.surface,
-        border: Border(bottom: BorderSide(color: context.ink.border)),
+        color: context.colors.surface,
+        border: Border(bottom: BorderSide(color: context.colors.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,7 +427,7 @@ class _PlanHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: context.ink.textPrimary,
+                color: context.colors.textPrimary,
               )),
           const SizedBox(height: 10),
           ClipRRect(
@@ -435,14 +435,14 @@ class _PlanHeader extends StatelessWidget {
             child: LinearProgressIndicator(
               value: plan.progress,
               minHeight: 8,
-              color: context.ink.accentGreen,
-              backgroundColor: context.ink.surfaceHighlight,
+              color: context.colors.accent,
+              backgroundColor: context.colors.surfaceSubtle,
             ),
           ),
           const SizedBox(height: 6),
           Text('$pct% complete',
               style: TextStyle(
-                  fontSize: 12, color: context.ink.textSecondary)),
+                  fontSize: 12, color: context.colors.textSecondary)),
         ],
       ),
     );
@@ -464,9 +464,9 @@ class _DayCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: context.ink.surface,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.ink.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
@@ -479,19 +479,19 @@ class _DayCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: context.ink.textPrimary,
+                      color: context.colors.textPrimary,
                     )),
                 const SizedBox(width: 8),
                 Text(_formatDate(day.date),
                     style: TextStyle(
-                        fontSize: 12, color: context.ink.textMuted)),
+                        fontSize: 12, color: context.colors.textSecondary)),
                 const Spacer(),
                 if (!day.isRest)
                   // A subtle "done" toggle per day.
                   Checkbox(
                     value: day.completed,
                     onChanged: (v) => onToggle(v ?? false),
-                    activeColor: context.ink.accentGreen,
+                    activeColor: context.colors.accent,
                     visualDensity: VisualDensity.compact,
                   ),
               ],
@@ -503,7 +503,7 @@ class _DayCard extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 13,
                         fontStyle: FontStyle.italic,
-                        color: context.ink.textSecondary)),
+                        color: context.colors.textSecondary)),
               )
             else
               for (final task in day.tasks) _TaskRow(task: task),
@@ -531,7 +531,7 @@ class _TaskRow extends StatelessWidget {
             margin: const EdgeInsets.only(top: 5, right: 10),
             decoration:
                 BoxDecoration(
-                    color: _taskColor(context.ink, task.kind),
+                    color: _taskColor(context.colors, task.kind),
                     shape: BoxShape.circle),
           ),
           Expanded(
@@ -540,10 +540,10 @@ class _TaskRow extends StatelessWidget {
               children: [
                 Text(task.label,
                     style: TextStyle(
-                        fontSize: 14, color: context.ink.textPrimary)),
+                        fontSize: 14, color: context.colors.textPrimary)),
                 Text(task.kind.reason,
                     style: TextStyle(
-                        fontSize: 12, color: context.ink.textSecondary)),
+                        fontSize: 12, color: context.colors.textSecondary)),
               ],
             ),
           ),
@@ -571,7 +571,7 @@ class _Centered extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 40, color: context.ink.accentSoft),
+            Icon(icon, size: 40, color: context.colors.textSecondary),
             const SizedBox(height: 16),
             Text(title,
                 textAlign: TextAlign.center,
@@ -579,13 +579,13 @@ class _Centered extends StatelessWidget {
                   fontFamily: 'Poppins',
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: context.ink.textPrimary,
+                  color: context.colors.textPrimary,
                 )),
             const SizedBox(height: 8),
             Text(subtitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 14, height: 1.5, color: context.ink.textSecondary)),
+                    fontSize: 14, height: 1.5, color: context.colors.textSecondary)),
           ],
         ),
       ),

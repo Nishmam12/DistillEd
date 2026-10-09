@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/editor/import/ocr_layout.dart';
+import 'package:distill_ed/editor/import/ocr_layout.dart';
 
 void main() {
   /// A recognised line spanning the given box.

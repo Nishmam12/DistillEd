@@ -4,14 +4,14 @@
 // when a question needs it.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_slot.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_adapter.dart';
-import 'package:inkflow/features/ai/data/embeddings/local_text_embedder.dart';
-import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
-import 'package:inkflow/features/ai/domain/ai_exception.dart';
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_slot.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_adapter.dart';
+import 'package:distill_ed/features/ai/data/embeddings/local_text_embedder.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_exceptions.dart';
+import 'package:distill_ed/features/ai/domain/ai_exception.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
 
 EmbedderSpec _spec(String name) => EmbedderSpec(
       displayName: name,

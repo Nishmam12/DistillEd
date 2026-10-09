@@ -9,8 +9,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/render/scene_static_layer.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/render/scene_static_layer.dart';
 
 List<SceneElement> _strokes(int n) {
   final rnd = Random(7);

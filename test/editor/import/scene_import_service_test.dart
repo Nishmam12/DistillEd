@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
-import 'package:inkflow/editor/import/document_scanner_port.dart';
-import 'package:inkflow/editor/import/scene_import_service.dart';
-import 'package:inkflow/features/import/pdf_service.dart';
+import 'package:distill_ed/editor/import/document_scanner_port.dart';
+import 'package:distill_ed/editor/import/scene_import_service.dart';
+import 'package:distill_ed/features/import/pdf_service.dart';
 
 /// A scanner that hands back whatever pages the test gives it, or fails.
 class _FakeScanner implements DocumentScannerPort {

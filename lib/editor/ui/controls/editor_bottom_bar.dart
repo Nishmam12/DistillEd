@@ -6,9 +6,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
+import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
 
-import '../../../core/constants/editor_constants.dart';
+import '../editor_constants.dart';
 import '../../../domain/model/scene_element.dart';
 import '../../state/editor_tool_controller.dart';
 import '../../state/scene_controller.dart';

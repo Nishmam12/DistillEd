@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/study_planner/note_deadlines.dart';
+import 'package:distill_ed/features/ai/domain/study_planner/note_deadlines.dart';
 
 /// A finder that "reads" dates out of a table of exact sentences, and records
 /// what it was asked — so a test says exactly which text reached the model.

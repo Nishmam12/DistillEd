@@ -22,15 +22,29 @@
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Opens [uri] in [mode]: true when a handler took it. The seam for
+/// [openExternalUrl], so the fallback order is tested without a browser.
+typedef UrlLauncher = Future<bool> Function(Uri uri, LaunchMode mode);
+
+Future<bool> _launchWithPlatform(Uri uri, LaunchMode mode) =>
+    launchUrl(uri, mode: mode);
+
 /// Opens [url] in a Custom Tab, falling back to the external browser.
 ///
 /// Returns true if a browser took it. Returns false — never throws — when the
-/// URL is unusable or no handler exists; callers MUST handle false by
-/// surfacing the raw URL, because from the user's side a silent no-op looks
-/// like a broken button.
-Future<bool> openExternalUrl(String url) async {
+/// URL is unusable, is not a web link, or no handler exists; callers MUST handle
+/// false by surfacing the raw URL, because from the user's side a silent no-op
+/// looks like a broken button.
+Future<bool> openExternalUrl(
+  String url, {
+  UrlLauncher launch = _launchWithPlatform,
+}) async {
   final uri = Uri.tryParse(url);
-  if (uri == null || !uri.hasScheme) return false;
+  // Web links only: the callers pass HuggingFace pages, and nothing else needs
+  // to leave the app from here.
+  if (uri == null || !(uri.isScheme('https') || uri.isScheme('http'))) {
+    return false;
+  }
 
   // Tried in order of how good the experience is, not how likely it is to
   // work. `inAppBrowserView` keeps the user inside the app's task; the
@@ -40,7 +54,7 @@ Future<bool> openExternalUrl(String url) async {
     LaunchMode.externalApplication,
   ]) {
     try {
-      if (await launchUrl(uri, mode: mode)) return true;
+      if (await launch(uri, mode)) return true;
     } catch (e) {
       // A PlatformException here means this MODE is unavailable (no Custom Tab
       // provider installed, for instance), not that the URL is bad — so keep

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/language/language_detector.dart';
+import 'package:distill_ed/features/ai/domain/language/language_detector.dart';
 
 /// Answers every question with one tag (or none, as a detector that could not
 /// run would) and counts how often it was asked.

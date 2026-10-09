@@ -11,7 +11,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/llm/hf_token_check.dart';
+import 'package:distill_ed/features/ai/data/llm/hf_token_check.dart';
 
 class _CannedAdapter implements HttpClientAdapter {
   _CannedAdapter(this.statusCode, {this.body, this.throws});

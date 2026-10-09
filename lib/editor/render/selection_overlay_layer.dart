@@ -16,20 +16,24 @@ class SelectionOverlayLayer extends CustomPainter {
   final List<(Offset, Offset)> guides;
   final Color accent;
 
+  /// Fill of the handles, so they read as paper on either theme.
+  final Color surface;
+
   const SelectionOverlayLayer({
     this.boxScreen,
     this.handleScreen = const [],
     this.rotateScreen,
     this.marqueeScreen,
     this.guides = const [],
-    this.accent = const Color(0xFF6741D9),
+    required this.accent,
+    required this.surface,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     // Snap guides.
     final guidePaint = Paint()
-      ..color = const Color(0xFFE8590C)
+      ..color = accent
       ..strokeWidth = 1;
     for (final (a, b) in guides) {
       canvas.drawLine(a, b, guidePaint);
@@ -70,10 +74,10 @@ class SelectionOverlayLayer extends CustomPainter {
               ..strokeWidth = 1.5);
         canvas.drawCircle(rotate, kHandleSize / 2 + 1, Paint()..color = accent);
         canvas.drawCircle(
-            rotate, kHandleSize / 2 - 1, Paint()..color = Colors.white);
+            rotate, kHandleSize / 2 - 1, Paint()..color = surface);
       }
 
-      final fill = Paint()..color = Colors.white;
+      final fill = Paint()..color = surface;
       final border = Paint()
         ..color = accent
         ..style = PaintingStyle.stroke
@@ -92,6 +96,8 @@ class SelectionOverlayLayer extends CustomPainter {
       boxScreen != old.boxScreen ||
       rotateScreen != old.rotateScreen ||
       marqueeScreen != old.marqueeScreen ||
+      accent != old.accent ||
+      surface != old.surface ||
       !identical(handleScreen, old.handleScreen) ||
       !identical(guides, old.guides);
 }

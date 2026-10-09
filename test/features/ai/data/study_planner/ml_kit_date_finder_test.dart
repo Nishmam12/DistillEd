@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/study_planner/ml_kit_date_finder.dart';
-import 'package:inkflow/features/ai/domain/study_planner/note_deadlines.dart';
+import 'package:distill_ed/features/ai/data/study_planner/ml_kit_date_finder.dart';
+import 'package:distill_ed/features/ai/domain/study_planner/note_deadlines.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

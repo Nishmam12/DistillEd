@@ -1,4 +1,4 @@
-# InkFlow 2.0 — Architecture & Rebuild Decisions
+# DistillEd 2.0 — Architecture & Rebuild Decisions
 
 > Living document. Authored at **Phase 0** of the ground-up rebuild. Captures
 > the audit of the 1.0.2 codebase, the
@@ -14,7 +14,7 @@
 
 ## 1. Goal
 
-Rebuild InkFlow on a clean, layered foundation reaching near-parity with
+Rebuild DistillEd on a clean, layered foundation reaching near-parity with
 Excalidraw's drawing engine, **in Dart/Flutter only**, while keeping every
 existing note-taking feature and **all user data**. Excalidraw
 (`./excalidraw-master/`, React/TS) is a **spec only** — port algorithms, never
@@ -32,7 +32,7 @@ Delivered **one phase per turn**; each phase ends at a checkpoint
   `ai`, `audio`, `export`, `home`, `import`, `search`, `settings`, `summarize`.
 * **Routes** (`lib/app/router.dart`): `/`, `/note2/:id` (+ `book`, `graph`,
   `review`, `plan`), `/trash`, `/settings`, `/about`, `/canvas-demo`.
-* **Persistence:** one Isar database (`inkflow`), 17 schemas registered in
+* **Persistence:** one Isar database (`inkflow`), 16 schemas registered in
   `main.dart` — notebooks, pages, folders, `SceneElementRecord` (one row per
   element), `PageTextRecord`, the AI stores (chunks, summaries, flashcards,
   memory, read cache, study plans) and `LectureRecordingRecord`. Isar enums are

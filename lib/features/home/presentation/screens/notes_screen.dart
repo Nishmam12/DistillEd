@@ -10,10 +10,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
+import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/ink_colors.dart';
 import '../../../../domain/model/template_type.dart';
 import '../../../../editor/state/scene_image_cache_provider.dart';
 import '../home_notifier.dart';
@@ -23,6 +22,7 @@ import '../notes_palette.dart';
 import '../widgets/organize_sheets.dart';
 import '../widgets/note_card.dart';
 import '../widgets/search_bar_widget.dart';
+import '../../../../widgets/template_icons.dart';
 
 class NotesScreen extends ConsumerWidget {
   const NotesScreen({super.key});
@@ -121,7 +121,7 @@ class NotesScreen extends ConsumerWidget {
     final current = ref.read(notesSortProvider);
     final picked = await showModalBottomSheet<NotesSort>(
       context: context,
-      backgroundColor: context.notes.card,
+      backgroundColor: context.colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -134,7 +134,7 @@ class NotesScreen extends ConsumerWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: context.notes.textSecondary.withValues(alpha: 0.3),
+                color: context.colors.textSecondary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -147,12 +147,12 @@ class NotesScreen extends ConsumerWidget {
                     fontFamily: 'Poppins',
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    color: context.notes.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
                 trailing: sort == current
                     ? Icon(Icons.check_rounded,
-                        color: context.notes.accent)
+                        color: context.colors.accent)
                     : null,
                 onTap: () => Navigator.of(context).pop(sort),
               ),
@@ -251,7 +251,7 @@ class _NotesList extends ConsumerWidget {
   ) async {
     final action = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: context.notes.card,
+      backgroundColor: context.colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -291,10 +291,10 @@ class _NotesList extends ConsumerWidget {
             ),
             ListTile(
               leading: Icon(Icons.delete_outline_rounded,
-                  color: context.ink.accentRed),
+                  color: Theme.of(context).colorScheme.error),
               title: Text(
                 'Delete note',
-                style: TextStyle(color: context.ink.accentRed),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               onTap: () => Navigator.of(context).pop('delete'),
             ),
@@ -330,7 +330,7 @@ class _NotesList extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: context.notes.card,
+        backgroundColor: context.colors.surface,
         title: const Text('Move to trash'),
         content: Text(
           'Move "${note.title}" to the trash? '
@@ -344,7 +344,7 @@ class _NotesList extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(
-              foregroundColor: context.ink.accentRed,
+              foregroundColor: Theme.of(context).colorScheme.error,
             ),
             child: const Text('Move to trash'),
           ),
@@ -723,7 +723,7 @@ class _CreateNotebookDialogState extends State<_CreateNotebookDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: context.notes.card,
+      backgroundColor: context.colors.surface,
       title: const Text('New note'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -739,7 +739,7 @@ class _CreateNotebookDialogState extends State<_CreateNotebookDialog> {
           Text(
             'Page style',
             style: TextStyle(
-              color: context.notes.textSecondary,
+              color: context.colors.textSecondary,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -784,24 +784,23 @@ class _TemplateChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colour =
-        selected ? context.notes.accent : context.notes.textSecondary;
+        selected ? context.colors.accent : context.colors.textSecondary;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          // Token-derived transparency rather than a Material constant — the
-          // rest of this dialog is still on the pre-migration palette, deferred
-          // to the straggler sweep, but a hardcoded colour is a defect anywhere.
+          // Token-derived transparency rather than a Material constant: a
+          // hardcoded colour is a defect anywhere.
           color: selected
-              ? context.notes.accent.withValues(alpha: 0.08)
-              : context.notes.accent.withValues(alpha: 0),
+              ? context.colors.accent.withValues(alpha: 0.08)
+              : context.colors.accent.withValues(alpha: 0),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected
-                ? context.notes.accent
-                : context.notes.textSecondary.withValues(alpha: 0.35),
+                ? context.colors.accent
+                : context.colors.textSecondary.withValues(alpha: 0.35),
           ),
         ),
         child: Row(

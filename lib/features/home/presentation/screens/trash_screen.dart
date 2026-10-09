@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../data/repositories/note_repository.dart';
 import '../../domain/models/notebook.dart';
 import '../home_notifier.dart';
@@ -18,16 +18,16 @@ class TrashScreen extends ConsumerWidget {
     final trashed = ref.watch(trashNotifierProvider);
 
     return Scaffold(
-      backgroundColor: context.notes.background,
+      backgroundColor: context.colors.bgPrimary,
       appBar: AppBar(
-        backgroundColor: context.notes.background,
+        backgroundColor: context.colors.bgPrimary,
         title: const Text('Trash'),
         actions: [
           if (trashed.isNotEmpty)
             TextButton(
               onPressed: () => _confirmEmpty(context, ref, trashed.length),
               style: TextButton.styleFrom(
-                foregroundColor: context.ink.accentRed,
+                foregroundColor: Theme.of(context).colorScheme.error,
               ),
               child: const Text('Empty'),
             ),
@@ -49,7 +49,7 @@ class TrashScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: context.notes.card,
+        backgroundColor: context.colors.surface,
         title: const Text('Empty trash'),
         content: Text(
           'Permanently delete $count ${count == 1 ? 'note' : 'notes'}? '
@@ -62,7 +62,7 @@ class TrashScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(foregroundColor: context.ink.accentRed),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
             child: const Text('Delete forever'),
           ),
         ],
@@ -83,13 +83,13 @@ class _EmptyTrash extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.delete_outline,
-              size: 48, color: context.notes.textSecondary),
+              size: 48, color: context.colors.textSecondary),
           const SizedBox(height: 12),
           Text(
             'Trash is empty',
             style: TextStyle(
               fontSize: 16,
-              color: context.notes.textSecondary,
+              color: context.colors.textSecondary,
             ),
           ),
           const SizedBox(height: 4),
@@ -98,7 +98,7 @@ class _EmptyTrash extends StatelessWidget {
             '${NoteRepository.trashRetention.inDays} days',
             style: TextStyle(
               fontSize: 13,
-              color: context.notes.textSecondary.withValues(alpha: 0.7),
+              color: context.colors.textSecondary.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -121,14 +121,14 @@ class _TrashRow extends ConsumerWidget {
         notebook.title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: context.notes.textPrimary),
+        style: TextStyle(color: context.colors.textPrimary),
       ),
       subtitle: Text(
         days == 0
             ? 'Deletes today'
             : 'Deletes in $days ${days == 1 ? 'day' : 'days'}',
         style: TextStyle(
-            color: context.notes.textSecondary, fontSize: 12),
+            color: context.colors.textSecondary, fontSize: 12),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -141,7 +141,7 @@ class _TrashRow extends ConsumerWidget {
           IconButton(
             tooltip: 'Delete forever',
             icon: const Icon(Icons.delete_forever_outlined),
-            color: context.ink.accentRed,
+            color: Theme.of(context).colorScheme.error,
             onPressed: () => _confirmDeleteForever(context, ref),
           ),
         ],
@@ -164,7 +164,7 @@ class _TrashRow extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: context.notes.card,
+        backgroundColor: context.colors.surface,
         title: const Text('Delete forever'),
         content: Text(
           'Permanently delete "${notebook.title}" and everything in it? '
@@ -177,7 +177,7 @@ class _TrashRow extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(foregroundColor: context.ink.accentRed),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
             child: const Text('Delete forever'),
           ),
         ],

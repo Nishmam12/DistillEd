@@ -5,7 +5,7 @@
 // would do so on an app update they never opted into.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/providers/settings_provider.dart';
+import 'package:distill_ed/core/providers/settings_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -28,9 +28,21 @@ void main() {
       }
     });
 
-    test('an unknown or missing stored name falls back to auto', () {
-      expect(AiProcessingMode.byName(null), AiProcessingMode.auto);
-      expect(AiProcessingMode.byName('nonsense'), AiProcessingMode.auto);
+    test('an unknown or missing stored name falls back to onDevice', () {
+      // A name this build cannot read (a newer build's mode, after a downgrade,
+      // or hand-edited prefs) must never grant the cloud a permission the user
+      // did not choose in this build.
+      expect(AiProcessingMode.byName(null), AiProcessingMode.onDevice);
+      expect(AiProcessingMode.byName('nonsense'), AiProcessingMode.onDevice);
+    });
+
+    test('an unknown stored name on disk does not reach the cloud', () async {
+      SharedPreferences.setMockInitialValues({'ai.mode': 'cloudOnly'});
+      final notifier = SettingsNotifier();
+      while (!notifier.state.loaded) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(notifier.state.cloudAiEnabled, isFalse);
     });
   });
 

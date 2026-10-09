@@ -3,7 +3,7 @@
 // held the slot has been released.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_slot.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_slot.dart';
 
 class _Owner implements EmbedderSlotOwner {
   _Owner(this.name, this.log);

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/pdf_text_layer.dart';
+import 'package:distill_ed/features/ai/domain/pdf_text_layer.dart';
 
 void main() {
   group('hasUsablePdfText — is the PDF\'s own text worth using', () {

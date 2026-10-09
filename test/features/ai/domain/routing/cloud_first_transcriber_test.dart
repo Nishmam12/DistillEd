@@ -8,9 +8,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/image_transcriber.dart';
-import 'package:inkflow/features/ai/domain/routing/cloud_first_transcriber.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/image_transcriber.dart';
+import 'package:distill_ed/features/ai/domain/routing/cloud_first_transcriber.dart';
 
 class RecordingTranscriber implements ImageTranscriber {
   final String reply;

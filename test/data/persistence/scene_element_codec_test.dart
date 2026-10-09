@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/data/persistence/scene_element_codec.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
+import 'package:distill_ed/data/persistence/scene_element_codec.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
 
 void main() {
   test('every element kind survives a JSON encode/decode round-trip', () {

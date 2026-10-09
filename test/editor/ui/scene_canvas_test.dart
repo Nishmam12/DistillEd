@@ -7,14 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/data/persistence/scene_element_store.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/state/editor_tool_controller.dart';
-import 'package:inkflow/editor/state/history_controller.dart';
-import 'package:inkflow/editor/state/scene_controller.dart';
-import 'package:inkflow/editor/state/selection_controller.dart';
-import 'package:inkflow/editor/state/viewport_controller.dart';
-import 'package:inkflow/editor/ui/scene_canvas.dart';
+import 'package:distill_ed/data/persistence/scene_element_store.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/state/editor_tool_controller.dart';
+import 'package:distill_ed/editor/state/history_controller.dart';
+import 'package:distill_ed/editor/state/scene_controller.dart';
+import 'package:distill_ed/editor/state/selection_controller.dart';
+import 'package:distill_ed/editor/state/viewport_controller.dart';
+import 'package:distill_ed/editor/ui/scene_canvas.dart';
 
 const ScenePageKey _key = (notebookId: 0, pageId: 0);
 

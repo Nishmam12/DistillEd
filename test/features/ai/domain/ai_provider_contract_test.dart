@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
 
 /// A trivial in-file provider proving the [AiProvider] contract is implementable
 /// and exercising the streaming shape. It echoes the prompt back word by word,

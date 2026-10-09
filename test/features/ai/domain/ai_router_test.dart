@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_capabilities.dart';
-import 'package:inkflow/features/ai/domain/ai_router.dart';
+import 'package:distill_ed/features/ai/domain/ai_capabilities.dart';
+import 'package:distill_ed/features/ai/domain/ai_router.dart';
 
 class FakeReachability extends Reachability {
   final bool online;

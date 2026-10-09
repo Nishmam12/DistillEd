@@ -2,10 +2,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
-import 'package:inkflow/features/home/presentation/widgets/note_preview.dart';
-import 'package:inkflow/features/home/presentation/widgets/note_scene_preview.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
+import 'package:distill_ed/features/home/presentation/widgets/note_preview.dart';
+import 'package:distill_ed/features/home/presentation/widgets/note_scene_preview.dart';
 
 /// A 1×1 transparent PNG — enough for a real ImageProvider in a widget test.
 final _pngPixel = Uint8List.fromList(const <int>[

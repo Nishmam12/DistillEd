@@ -1,7 +1,7 @@
 // Shared lookup tables for the editor toolbar and its tool option panels.
 
 import 'package:flutter/material.dart';
-import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
+import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
 
 import '../../domain/model/scene_element.dart';
 import '../../editor/state/editor_tool_controller.dart';
@@ -29,9 +29,9 @@ const List<(ShapeType, IconData)> kEditorShapes = [
   (ShapeType.triangle, Icons.change_history),
 ];
 
-// No font assets are bundled with the app, so these are generic family names
-// resolved by each platform's own font matching rather than guaranteed custom
-// typefaces — real visual variety depends on what's installed on the device.
+// Ink text uses these generic family names, which each platform resolves with its
+// own font matching. The app's bundled UI fonts (Poppins, Nunito) are not offered
+// here: a stroke of text should look the way the device draws that family.
 const List<String> kFontFamilies = ['Roboto', 'Serif', 'Monospace', 'Cursive'];
 
 const Map<Arrowhead, IconData> kArrowheadIcons = {
@@ -49,7 +49,7 @@ const Map<Arrowhead, IconData> kArrowheadIcons = {
 /// borrowed from the app's chrome palette. Three of them used to resolve from
 /// `AppColors` — which meant a chosen swatch would have silently changed hue
 /// when the app theme did. A stroke keeps the colour it was drawn in; see
-/// `core/theme/ink_palette.dart` for the boundary between ink and chrome.
+/// `core/theme/paper_colors.dart` for the boundary between ink and chrome.
 const List<int> kFavoritePickerColors = [
   0xFF1F2933, // charcoal
   0xFF000000, // black

@@ -177,7 +177,7 @@ class EditorAppBarActions extends ConsumerWidget {
     }
     final ok = switch (fmt) {
       'png' => await SceneExportService.sharePng(els, imageCache: cache),
-      'svg' => await SceneExportService.shareSvg(els),
+      'svg' => await SceneExportService.shareSvg(els, imageCache: cache),
       'pdf' => await SceneExportService.sharePdf(els, imageCache: cache),
       _ => false,
     };

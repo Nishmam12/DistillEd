@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/domain/services/z_order_service.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/domain/services/z_order_service.dart';
 
 FreehandElement _el(String id, int z) =>
     FreehandElement(id: id, zOrder: z, color: 0, size: 1, points: const []);

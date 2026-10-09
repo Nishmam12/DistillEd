@@ -7,6 +7,7 @@
 // async; [version] bumps on each successful load so painters know to repaint.
 
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -106,10 +107,73 @@ class SceneImageCache extends ChangeNotifier {
     return '$baseDir$sep$relative';
   }
 
+  /// The longest side, in pixels, a picture is decoded to. A phone photo can be
+  /// several thousand pixels across, and a decoded bitmap costs width x height x 4
+  /// bytes of native memory: 32 of them at full size would not fit beside the
+  /// on-device model. A placed picture is drawn at screen scale, which this keeps
+  /// sharp.
+  static const int maxDecodeSide = 2048;
+
+  /// The size a [width] x [height] picture is decoded at: its own size when it
+  /// fits within [maxSide], otherwise scaled down with its shape kept. Never
+  /// enlarged, and never less than one pixel on either side.
+  @visibleForTesting
+  static ({int width, int height}) decodeSize(
+    int width,
+    int height, {
+    int maxSide = maxDecodeSide,
+  }) {
+    final longest = math.max(width, height);
+    if (longest <= maxSide) return (width: width, height: height);
+    final scale = maxSide / longest;
+    return (
+      width: math.max(1, (width * scale).round()),
+      height: math.max(1, (height * scale).round()),
+    );
+  }
+
   static Future<ui.Image> decode(Uint8List bytes) async {
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    return frame.image;
+    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    final descriptor = await ui.ImageDescriptor.encoded(buffer);
+    try {
+      final size = decodeSize(descriptor.width, descriptor.height);
+      final codec = await descriptor.instantiateCodec(
+        targetWidth: size.width,
+        targetHeight: size.height,
+      );
+      try {
+        return (await codec.getNextFrame()).image;
+      } finally {
+        codec.dispose();
+      }
+    } finally {
+      descriptor.dispose();
+      buffer.dispose();
+    }
+  }
+
+  /// The natural pixel size of the picture at [absolutePath], read from its header
+  /// without decoding it. Null when it cannot be read.
+  ///
+  /// This is the size the picture was made at, not the size [decode] produced: the
+  /// OCR boxes are in these pixels, so mapping them needs this and not the bitmap.
+  static Future<ui.Size?> naturalSize(String absolutePath) async {
+    try {
+      final buffer = await ui.ImmutableBuffer.fromUint8List(
+          await File(absolutePath).readAsBytes());
+      try {
+        final descriptor = await ui.ImageDescriptor.encoded(buffer);
+        try {
+          return ui.Size(descriptor.width.toDouble(), descriptor.height.toDouble());
+        } finally {
+          descriptor.dispose();
+        }
+      } finally {
+        buffer.dispose();
+      }
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<Uint8List> _defaultReadBytes(String absolutePath) =>

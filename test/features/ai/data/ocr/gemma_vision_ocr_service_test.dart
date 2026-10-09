@@ -2,9 +2,9 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/ocr/gemma_vision_ocr_service.dart';
-import 'package:inkflow/features/ai/domain/ai_exception.dart';
-import 'package:inkflow/features/ai/domain/image_transcriber.dart';
+import 'package:distill_ed/features/ai/data/ocr/gemma_vision_ocr_service.dart';
+import 'package:distill_ed/features/ai/domain/ai_exception.dart';
+import 'package:distill_ed/features/ai/domain/image_transcriber.dart';
 
 /// One entry per attempt: a String reply, or an Object to throw. The last entry
 /// is reused if more attempts happen than scripted.

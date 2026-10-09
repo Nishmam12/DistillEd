@@ -6,19 +6,19 @@
 // between the provider and the MaterialApp.
 //
 // The widget below mirrors `lib/app/app.dart`'s theme wiring exactly. The real
-// InkFlowApp cannot be pumped here because its router opens Isar.
+// DistillEdApp cannot be pumped here because its router opens Isar.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:inkflow/core/providers/settings_provider.dart';
-import 'package:inkflow/core/theme/app_theme.dart';
-import 'package:inkflow/core/theme/ink_colors.dart';
+import 'package:distill_ed/core/providers/settings_provider.dart';
+import 'package:distill_ed/core/theme/app_colors.dart';
+import 'package:distill_ed/core/theme/distill_theme.dart';
 
 class _ThemedApp extends ConsumerWidget {
-  final void Function(InkPalette) onBuild;
+  final void Function(AppColors) onBuild;
   const _ThemedApp(this.onBuild);
 
   @override
@@ -26,11 +26,11 @@ class _ThemedApp extends ConsumerWidget {
     final themeMode = ref.watch(settingsProvider.select((s) => s.themeMode));
 
     return MaterialApp(
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: DistillTheme.light,
+      darkTheme: DistillTheme.dark,
       themeMode: themeMode.toThemeMode,
       home: Builder(builder: (context) {
-        onBuild(context.ink);
+        onBuild(context.colors);
         return const SizedBox();
       }),
     );
@@ -40,11 +40,11 @@ class _ThemedApp extends ConsumerWidget {
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  /// Pumps the app and returns a handle for reading the resolved palette and
+  /// Pumps the app and returns a handle for reading the resolved tokens and
   /// driving the setting.
-  Future<(List<InkPalette>, ProviderContainer)> boot(
+  Future<(List<AppColors>, ProviderContainer)> boot(
       WidgetTester tester) async {
-    final seen = <InkPalette>[];
+    final seen = <AppColors>[];
     final container = ProviderContainer(retry: (_, _) => null);
     addTearDown(container.dispose);
 
@@ -59,7 +59,7 @@ void main() {
 
   testWidgets('choosing Dark repaints the app dark', (tester) async {
     final (seen, container) = await boot(tester);
-    expect(seen.last, same(InkPalette.light),
+    expect(seen.last, same(AppColors.light),
         reason: 'test binding reports a light platform brightness');
 
     await container.read(settingsProvider.notifier).setThemeMode(
@@ -67,7 +67,7 @@ void main() {
         );
     await tester.pumpAndSettle();
 
-    expect(seen.last, same(InkPalette.dark));
+    expect(seen.last, same(AppColors.dark));
   });
 
   testWidgets('choosing Light pins light regardless of the device',
@@ -79,7 +79,7 @@ void main() {
         .setThemeMode(AppThemeMode.light);
     await tester.pumpAndSettle();
 
-    expect(seen.last, same(InkPalette.light));
+    expect(seen.last, same(AppColors.light));
   });
 
   testWidgets('a stored preference applies on launch', (tester) async {
@@ -88,7 +88,7 @@ void main() {
     final (seen, _) = await boot(tester);
     await tester.pumpAndSettle();
 
-    expect(seen.last, same(InkPalette.dark));
+    expect(seen.last, same(AppColors.dark));
   });
 
   testWidgets('upgrading from the old darkMode bool applies on launch',
@@ -98,6 +98,6 @@ void main() {
     final (seen, _) = await boot(tester);
     await tester.pumpAndSettle();
 
-    expect(seen.last, same(InkPalette.dark));
+    expect(seen.last, same(AppColors.dark));
   });
 }

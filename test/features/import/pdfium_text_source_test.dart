@@ -9,7 +9,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/import/pdf_text_layer.dart';
+import 'package:distill_ed/features/import/pdf_text_layer.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 void main() {

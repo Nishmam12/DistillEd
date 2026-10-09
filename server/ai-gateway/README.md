@@ -1,9 +1,9 @@
-# InkFlow AI Gateway
+# DistillEd AI Gateway
 
 A minimal, stateless FastAPI service whose only job is routing requests to
 cloud-tier models. It never stores notes, memory, or user profiles — see
-`ai_prompts/04_phase3_cloud_gateway_router.md` in the main repo for the full
-scope decision and privacy model.
+`docs/AI_PIPELINE_PLAN.md` in the main repo for the scope decision and privacy
+model.
 
 ## Local development
 

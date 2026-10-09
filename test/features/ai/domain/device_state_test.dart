@@ -5,8 +5,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/compute_backend.dart';
-import 'package:inkflow/features/ai/domain/device_state.dart';
+import 'package:distill_ed/features/ai/domain/compute_backend.dart';
+import 'package:distill_ed/features/ai/domain/device_state.dart';
 
 void main() {
   const gb = 1000 * 1000 * 1000;

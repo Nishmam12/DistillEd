@@ -2,52 +2,30 @@
 // the rows the UI shows. Real Isar, like the chunk store test; skips itself if
 // the native library cannot be found.
 
-import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
-import 'package:inkflow/data/persistence/isar_scene_element_store.dart';
-import 'package:inkflow/data/persistence/lecture_recording_record.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/data/persistence/page_text_record.dart';
-import 'package:inkflow/data/persistence/scene_element_record.dart';
-import 'package:inkflow/features/ai/data/flashcards/flashcard_record.dart';
-import 'package:inkflow/features/ai/data/memory/concept_mastery_record.dart';
-import 'package:inkflow/features/ai/data/memory/concept_relation_record.dart';
-import 'package:inkflow/features/ai/data/memory/quiz_attempt_record.dart';
-import 'package:inkflow/features/ai/data/rag/note_chunk_record.dart';
-import 'package:inkflow/features/ai/data/study_planner/study_plan_record.dart';
-import 'package:inkflow/features/home/data/repositories/note_repository.dart';
-import 'package:inkflow/features/home/data/repositories/page_repository.dart';
-import 'package:inkflow/features/home/domain/models/folder.dart';
-import 'package:inkflow/features/home/domain/models/note_page.dart';
-import 'package:inkflow/features/home/domain/models/notebook.dart';
-import 'package:inkflow/features/summarize/data/cache/summary_cache.dart';
+import 'package:distill_ed/data/persistence/isar_scene_element_store.dart';
+import 'package:distill_ed/data/persistence/lecture_recording_record.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/data/persistence/page_text_record.dart';
+import 'package:distill_ed/data/persistence/scene_element_record.dart';
+import 'package:distill_ed/features/ai/data/flashcards/flashcard_record.dart';
+import 'package:distill_ed/features/ai/data/memory/concept_mastery_record.dart';
+import 'package:distill_ed/features/ai/data/memory/concept_relation_record.dart';
+import 'package:distill_ed/features/ai/data/memory/quiz_attempt_record.dart';
+import 'package:distill_ed/features/ai/data/rag/note_chunk_record.dart';
+import 'package:distill_ed/features/ai/data/study_planner/study_plan_record.dart';
+import 'package:distill_ed/features/home/data/repositories/note_repository.dart';
+import 'package:distill_ed/features/home/data/repositories/page_repository.dart';
+import 'package:distill_ed/features/home/domain/models/folder.dart';
+import 'package:distill_ed/features/home/domain/models/note_page.dart';
+import 'package:distill_ed/features/home/domain/models/notebook.dart';
+import 'package:distill_ed/features/summarize/data/cache/summary_cache.dart';
 
-Future<String?> _nativeLibrary() async {
-  final config = File('.dart_tool/package_config.json');
-  if (!config.existsSync()) return null;
-  final packages =
-      (jsonDecode(await config.readAsString()) as Map)['packages'] as List;
-  final entry = packages
-      .cast<Map>()
-      .where((p) => p['name'] == 'isar_community_flutter_libs');
-  if (entry.isEmpty) return null;
-  final rootUri = Uri.parse(entry.first['rootUri'] as String);
-  final root = rootUri.isAbsolute
-      ? File.fromUri(rootUri).path
-      : File.fromUri(config.parent.uri.resolveUri(rootUri)).path;
-  final candidate = switch (Abi.current()) {
-    Abi.linuxX64 => '$root/linux/libisar.so',
-    Abi.windowsX64 => '$root/windows/isar.dll',
-    Abi.macosX64 || Abi.macosArm64 => '$root/macos/libisar.dylib',
-    _ => null,
-  };
-  return candidate != null && File(candidate).existsSync() ? candidate : null;
-}
+import '../../support/isar_native_library.dart';
 
 NoteChunkRecord _chunk(int notebookId, int pageId) => NoteChunkRecord()
   ..notebookId = notebookId
@@ -68,7 +46,7 @@ LectureRecordingRecord _recording(int notebookId, int pageId) =>
       ..durationMs = 1000;
 
 Future<void> main() async {
-  final library = await _nativeLibrary();
+  final library = await isarNativeLibrary();
   final skip = library == null ? 'Isar native library not found' : null;
 
   group('deleting notes deletes what was derived from them', () {
@@ -76,7 +54,7 @@ Future<void> main() async {
     late Isar isar;
 
     setUpAll(() async {
-      await Isar.initializeIsarCore(libraries: {Abi.current(): library!});
+      await initIsarForTests(library!);
     });
 
     setUp(() async {

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/page_context.dart';
 
 void main() {
   group('PageContext.fromJson', () {

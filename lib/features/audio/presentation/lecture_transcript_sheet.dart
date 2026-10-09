@@ -10,7 +10,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/ink_colors.dart';
+import '../../../core/theme/app_colors.dart';
 import '../domain/lecture_recording.dart';
 import '../domain/transcript.dart';
 import 'lecture_transcription_notifier.dart';
@@ -72,12 +72,12 @@ class _LectureTranscriptSheetState
               fontFamily: 'Poppins',
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: context.ink.textPrimary,
+              color: context.colors.textPrimary,
             )),
         const SizedBox(height: 12),
         if (recordings.isEmpty)
           Text('No lectures recorded on this page yet.',
-              style: TextStyle(fontSize: 14, color: context.ink.textSecondary))
+              style: TextStyle(fontSize: 14, color: context.colors.textSecondary))
         else
           for (final recording in recordings)
             _RecordingSection(
@@ -135,12 +135,12 @@ class _RecordingSectionState extends ConsumerState<_RecordingSection> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: context.ink.textPrimary,
+                    color: context.colors.textPrimary,
                   )),
               const Spacer(),
               Text(LectureRecording.formatOffset(recording.durationMs),
                   style:
-                      TextStyle(fontSize: 12, color: context.ink.textMuted)),
+                      TextStyle(fontSize: 12, color: context.colors.textSecondary)),
             ],
           ),
           const SizedBox(height: 8),
@@ -152,8 +152,8 @@ class _RecordingSectionState extends ConsumerState<_RecordingSection> {
 
   Widget _body(BuildContext context, LectureRecording recording,
       TranscriptionStatus? status) {
-    final ink = context.ink;
-    TextStyle muted() => TextStyle(fontSize: 13, color: ink.textSecondary);
+    final colors = context.colors;
+    TextStyle muted() => TextStyle(fontSize: 13, color: colors.textSecondary);
 
     if (!recording.isSpeechAudio) {
       return Text(
@@ -174,8 +174,8 @@ class _RecordingSectionState extends ConsumerState<_RecordingSection> {
             LinearProgressIndicator(
               value: status.progress,
               minHeight: 6,
-              color: ink.accent,
-              backgroundColor: ink.surfaceHighlight,
+              color: colors.accent,
+              backgroundColor: colors.surfaceSubtle,
             ),
           ],
         );
@@ -250,7 +250,7 @@ class _RecordingSectionState extends ConsumerState<_RecordingSection> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: ink.accentStrong,
+                              color: colors.textSecondary,
                             )),
                       ),
                       Expanded(
@@ -258,7 +258,7 @@ class _RecordingSectionState extends ConsumerState<_RecordingSection> {
                             style: TextStyle(
                                 fontSize: 14,
                                 height: 1.4,
-                                color: ink.textPrimary)),
+                                color: colors.textPrimary)),
                       ),
                     ],
                   ),

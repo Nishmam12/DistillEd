@@ -3,15 +3,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/theme/app_theme.dart';
+import '../core/theme/distill_theme.dart';
 import '../core/providers/settings_provider.dart';
 import '../features/ai/presentation/ai_providers.dart';
 import '../features/ai/data/embeddings/embedder_spec.dart';
 import '../features/ai/data/rag/embedder_mobile_data_choice.dart';
 import 'router.dart';
 
-class InkFlowApp extends ConsumerWidget {
-  const InkFlowApp({super.key});
+class DistillEdApp extends ConsumerWidget {
+  const DistillEdApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -57,8 +57,8 @@ class InkFlowApp extends ConsumerWidget {
       title: 'DistillEd',
       debugShowCheckedModeBanner: false,
       showPerformanceOverlay: devMode,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: DistillTheme.light,
+      darkTheme: DistillTheme.dark,
       themeMode: themeMode.toThemeMode,
       routerConfig: appRouter,
     );

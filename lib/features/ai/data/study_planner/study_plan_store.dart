@@ -20,12 +20,20 @@ abstract class StudyPlanStore {
 }
 
 class IsarStudyPlanStore implements StudyPlanStore {
+  /// [isar] lets a test point the store at its own database; the app uses the
+  /// shared [IsarService] instance.
+  IsarStudyPlanStore({Isar Function()? isar}) : _isarOverride = isar;
+
+  final Isar Function()? _isarOverride;
+
+  Isar get _isar => _isarOverride?.call() ?? IsarService.instance;
+
   IsarCollection<StudyPlanRecord> get _plans =>
-      IsarService.instance.studyPlanRecords;
+      _isar.studyPlanRecords;
 
   @override
   Future<void> save(StudyPlan plan) {
-    return IsarService.instance.writeTxn(() async {
+    return _isar.writeTxn(() async {
       await _plans.filter().notebookIdEqualTo(plan.notebookId).deleteAll();
       await _plans.put(StudyPlanRecord.fromDomain(plan));
     });
@@ -40,7 +48,7 @@ class IsarStudyPlanStore implements StudyPlanStore {
 
   @override
   Future<void> deleteForNotebook(int notebookId) {
-    return IsarService.instance.writeTxn(() async {
+    return _isar.writeTxn(() async {
       await _plans.filter().notebookIdEqualTo(notebookId).deleteAll();
     });
   }

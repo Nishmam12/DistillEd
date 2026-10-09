@@ -1,9 +1,9 @@
-"""InkFlow AI Gateway — a minimal, stateless router to cloud-tier models.
+"""DistillEd AI Gateway — a minimal, stateless router to cloud-tier models.
 
 Scope (Phase 3, locked decision): this gateway never stores notes, memory, or
 user profiles. It receives a request, forwards it to a model provider,
 streams the response back, and forgets it. See
-`ai_prompts/04_phase3_cloud_gateway_router.md` for the full scope boundary.
+`docs/AI_PIPELINE_PLAN.md` for the full scope boundary.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def _throttle_by_ip(request: Request) -> None:
 
 
 app = FastAPI(
-    title="InkFlow AI Gateway",
+    title="DistillEd AI Gateway",
     version="0.1.0",
     docs_url=None,
     redoc_url=None,

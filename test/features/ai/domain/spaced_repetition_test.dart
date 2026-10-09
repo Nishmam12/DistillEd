@@ -3,8 +3,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/flashcards/spaced_repetition.dart';
-import 'package:inkflow/features/ai/domain/models/flashcard.dart';
+import 'package:distill_ed/features/ai/domain/flashcards/spaced_repetition.dart';
+import 'package:distill_ed/features/ai/domain/models/flashcard.dart';
 
 final _now = DateTime(2026, 7, 29, 10);
 

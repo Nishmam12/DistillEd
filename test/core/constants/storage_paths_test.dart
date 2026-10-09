@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/constants/storage_paths.dart';
+import 'package:distill_ed/core/constants/storage_paths.dart';
 
 void main() {
   group('pdfTextSidecar — where a PDF page\'s own text is kept', () {

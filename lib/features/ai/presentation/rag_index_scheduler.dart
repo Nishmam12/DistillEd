@@ -32,6 +32,7 @@ class RagIndexScheduler {
   /// One pending timer per page, so editing page A never cancels page B.
   final _pending = <int, Timer>{};
 
+
   RagIndexScheduler({
     required this._indexer,
     this.idleDelay = kIndexIdleDelay,

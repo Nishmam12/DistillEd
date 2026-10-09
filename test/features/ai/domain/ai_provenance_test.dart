@@ -7,11 +7,11 @@
 // exists to remove, and settings-derived attribution would do exactly that.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/ai_provenance.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/context_engine/context_engine.dart';
-import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
-import 'package:inkflow/features/ai/domain/page_content.dart';
+import 'package:distill_ed/features/ai/domain/ai_provenance.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/context_engine.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/page_context.dart';
+import 'package:distill_ed/features/ai/domain/page_content.dart';
 
 /// Enough of a page that the meaningfulness gate lets it through.
 const _richText = '''

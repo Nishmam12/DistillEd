@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../../audio/domain/transcript.dart' show lectureOffsetOf;
 import '../../../audio/presentation/recording_notifier.dart';
@@ -165,7 +165,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
   Widget _header(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.travel_explore, size: 18, color: context.ink.accent),
+        Icon(Icons.travel_explore, size: 18, color: context.colors.accent),
         const SizedBox(width: 8),
         Expanded(
           child: Text('Ask your notes',
@@ -174,7 +174,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: context.ink.textPrimary,
+                color: context.colors.textPrimary,
               )),
         ),
         IconButton(
@@ -182,7 +182,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           visualDensity: VisualDensity.compact,
           constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           padding: EdgeInsets.zero,
-          icon: Icon(Icons.close, size: 18, color: context.ink.textSecondary),
+          icon: Icon(Icons.close, size: 18, color: context.colors.textSecondary),
           onPressed: () => ref.read(askNotesNotifierProvider.notifier).reset(),
         ),
       ],
@@ -198,12 +198,12 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
       onSubmitted: (_) => _submit(),
       minLines: 1,
       maxLines: 3,
-      style: TextStyle(fontSize: 14, color: context.ink.textPrimary),
+      style: TextStyle(fontSize: 14, color: context.colors.textPrimary),
       decoration: InputDecoration(
         hintText: 'e.g. What did I write about mitosis?',
-        hintStyle: TextStyle(color: context.ink.textMuted, fontSize: 13),
+        hintStyle: TextStyle(color: context.colors.textSecondary, fontSize: 13),
         filled: true,
-        fillColor: context.ink.surfaceHighlight,
+        fillColor: context.colors.surfaceSubtle,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -213,7 +213,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           tooltip: 'Ask',
           icon: Icon(Icons.arrow_upward,
               size: 20,
-              color: enabled ? context.ink.accent : context.ink.textMuted),
+              color: enabled ? context.colors.accent : context.colors.textSecondary),
           onPressed: enabled ? _submit : null,
         ),
       ),
@@ -350,7 +350,7 @@ class _Answer extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     height: 1.5,
-                    color: context.ink.textPrimary,
+                    color: context.colors.textPrimary,
                   ),
                 ),
                 if (sources.isNotEmpty) ...[
@@ -360,7 +360,7 @@ class _Answer extends StatelessWidget {
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
-                        color: context.ink.textMuted,
+                        color: context.colors.textSecondary,
                       )),
                   const SizedBox(height: 8),
                   for (var i = 0; i < sources.length; i++)
@@ -395,12 +395,12 @@ class _Answer extends StatelessWidget {
                   width: 12,
                   height: 12,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: context.ink.accentSoft),
+                      strokeWidth: 2, color: context.colors.accent),
                 ),
                 const SizedBox(width: 8),
                 Text('Writing…',
                     style: TextStyle(
-                        fontSize: 12, color: context.ink.textSecondary)),
+                        fontSize: 12, color: context.colors.textSecondary)),
               ],
             ),
           )
@@ -419,20 +419,20 @@ class _Answer extends StatelessWidget {
                     );
                   },
             icon: Icon(Icons.copy_outlined,
-                size: 18, color: context.ink.textSecondary),
+                size: 18, color: context.colors.textSecondary),
           ),
         const Spacer(),
         Flexible(
           child: FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
             onPressed: (streaming || trimmed.isEmpty)
                 ? null
                 : () => onInsertNote(trimmed),
             icon: Icon(Icons.note_add_outlined,
-                size: 18, color: context.ink.textOnAccent),
+                size: 18, color: context.colors.onAccent),
             label: Text('Insert as note',
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: context.ink.textOnAccent)),
+                style: TextStyle(color: context.colors.onAccent)),
           ),
         ),
       ],
@@ -477,9 +477,9 @@ class SourceCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: context.ink.surfaceHighlight,
+            color: context.colors.surfaceSubtle,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: context.ink.border),
+            border: Border.all(color: context.colors.border),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,14 +489,14 @@ class SourceCard extends StatelessWidget {
                 height: 22,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: context.ink.accentWash,
+                  color: context.colors.accentMuted,
                   shape: BoxShape.circle,
                 ),
                 child: Text('$index',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: context.ink.accentStrong,
+                      color: context.colors.accent,
                     )),
               ),
               const SizedBox(width: 10),
@@ -509,7 +509,7 @@ class SourceCard extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 12,
                         height: 1.4,
-                        color: context.ink.textSecondary)),
+                        color: context.colors.textSecondary)),
               ),
               if (fromLecture)
                 SizedBox(
@@ -520,7 +520,7 @@ class SourceCard extends StatelessWidget {
                     tooltip: 'Play this part of the lecture',
                     iconSize: 20,
                     icon: Icon(Icons.play_circle_outline,
-                        color: context.ink.accent),
+                        color: context.colors.accent),
                     onPressed: () => play(pageId, text),
                   ),
                 ),
@@ -528,7 +528,7 @@ class SourceCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(left: 6, top: 2),
                   child: Icon(Icons.north_east,
-                      size: 14, color: context.ink.textMuted),
+                      size: 14, color: context.colors.textSecondary),
                 ),
             ],
           ),
@@ -616,17 +616,17 @@ class _ErrorBody extends ConsumerWidget {
         const SizedBox(height: 14),
         if (downloadLabel != null)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text(downloadLabel,
-                style: TextStyle(color: context.ink.textOnAccent)),
+                style: TextStyle(color: context.colors.onAccent)),
           )
         else if (state.retryable)
           TextButton.icon(
             onPressed: notifier.retry,
-            icon: Icon(Icons.refresh, size: 18, color: context.ink.accent),
+            icon: Icon(Icons.refresh, size: 18, color: context.colors.accent),
             label: Text('Try again',
-                style: TextStyle(color: context.ink.accent)),
+                style: TextStyle(color: context.colors.accent)),
           ),
       ],
     );
@@ -653,9 +653,9 @@ class _Centered extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showSpinner)
-            CircularProgressIndicator(color: context.ink.accent)
+            CircularProgressIndicator(color: context.colors.accent)
           else
-            Icon(icon, size: 34, color: context.ink.accentSoft),
+            Icon(icon, size: 34, color: context.colors.textSecondary),
           const SizedBox(height: 14),
           Text(title,
               textAlign: TextAlign.center,
@@ -663,14 +663,14 @@ class _Centered extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: context.ink.textPrimary,
+                color: context.colors.textPrimary,
               )),
           if (subtitle != null) ...[
             const SizedBox(height: 6),
             Text(subtitle!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 13, height: 1.4, color: context.ink.textSecondary)),
+                    fontSize: 13, height: 1.4, color: context.colors.textSecondary)),
           ],
         ],
       ),

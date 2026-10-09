@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../../domain/model/template_type.dart';
-import '../../domain/model/template_config.dart';
+import 'template_config.dart';
 
 class TemplatePainter {
   /// Paints the template pattern for the given type onto the canvas.

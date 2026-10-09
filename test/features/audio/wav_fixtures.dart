@@ -4,7 +4,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:inkflow/features/audio/domain/wav.dart';
+import 'package:distill_ed/features/audio/domain/wav.dart';
 
 /// 16 kHz mono 16-bit PCM from `(milliseconds, amplitude)` runs. A run with a
 /// non-zero amplitude is a square wave at that level; zero is silence.

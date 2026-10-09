@@ -6,10 +6,10 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/providers/cloud_gateway_provider.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/tools/tool.dart';
-import 'package:inkflow/features/ai/domain/tools/tool_generation_event.dart';
+import 'package:distill_ed/features/ai/data/providers/cloud_gateway_provider.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/tools/tool.dart';
+import 'package:distill_ed/features/ai/domain/tools/tool_generation_event.dart';
 
 class _FakeTool implements Tool {
   @override

@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/audio/domain/wav.dart';
+import 'package:distill_ed/features/audio/domain/wav.dart';
 
 /// A WAV file of [samples] 16-bit samples, with the header `record` writes — or
 /// a tolerant variation of it.

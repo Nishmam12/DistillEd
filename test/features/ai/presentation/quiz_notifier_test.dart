@@ -3,14 +3,14 @@ import 'dart:async';
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/llm/device_storage.dart';
-import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
-import 'package:inkflow/features/ai/domain/features/quiz_generator.dart';
-import 'package:inkflow/features/ai/presentation/quiz_notifier.dart';
+import 'package:distill_ed/features/ai/data/llm/device_storage.dart';
+import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
+import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/page_context.dart';
+import 'package:distill_ed/features/ai/domain/features/quiz_generator.dart';
+import 'package:distill_ed/features/ai/presentation/quiz_notifier.dart';
 
 // ---- Fakes ------------------------------------------------------------------
 

@@ -5,16 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/data/persistence/lecture_recording_store.dart';
-import 'package:inkflow/editor/state/scene_controller.dart' show appDocsPathProvider;
-import 'package:inkflow/features/audio/data/transcript_store.dart';
-import 'package:inkflow/features/audio/domain/lecture_recording.dart';
-import 'package:inkflow/features/audio/domain/lecture_transcriber.dart';
-import 'package:inkflow/features/audio/domain/transcript.dart';
-import 'package:inkflow/features/audio/presentation/audio_providers.dart';
-import 'package:inkflow/features/audio/presentation/lecture_transcript_sheet.dart';
-import 'package:inkflow/features/audio/presentation/lecture_transcription_notifier.dart';
-import 'package:inkflow/features/audio/presentation/transcription_providers.dart';
+import 'package:distill_ed/data/persistence/lecture_recording_store.dart';
+import 'package:distill_ed/editor/state/scene_controller.dart' show appDocsPathProvider;
+import 'package:distill_ed/features/audio/data/transcript_store.dart';
+import 'package:distill_ed/features/audio/domain/lecture_recording.dart';
+import 'package:distill_ed/features/audio/domain/lecture_transcriber.dart';
+import 'package:distill_ed/features/audio/domain/transcript.dart';
+import 'package:distill_ed/features/audio/presentation/audio_providers.dart';
+import 'package:distill_ed/features/audio/presentation/lecture_transcript_sheet.dart';
+import 'package:distill_ed/features/audio/presentation/lecture_transcription_notifier.dart';
+import 'package:distill_ed/features/audio/presentation/transcription_providers.dart';
 
 import 'recording_notifier_test.dart' show FakePlayback;
 

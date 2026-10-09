@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/ai_router.dart';
-import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
-import 'package:inkflow/features/ai/domain/features/quiz_generator.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/ai_router.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/page_context.dart';
+import 'package:distill_ed/features/ai/domain/features/quiz_generator.dart';
 
 class _ScriptedProvider implements AiProvider {
   final List<String> responses;

@@ -13,7 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/constants/storage_paths.dart';
-import '../../../core/providers/search_providers.dart';
+import '../../../data/persistence/page_text_store.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../dev/dev_secrets.dart';
 import '../../../editor/render/scene_exporter.dart';
@@ -422,7 +422,7 @@ final contextEngineProvider = Provider<ContextEngine>((ref) {
   // Analysis runs on a background debounce with no per-call prompt, so cloud is
   // used only when the user has allowed that without asking; `askEachTime`
   // falls back to the on-device model.
-  final preferCloud = mayAnalyzeInCloud(ref.watch(settingsProvider));
+  final preferCloud = ref.watch(settingsProvider.select(mayAnalyzeInCloud));
   return ContextEngine(
     provider: preferCloud
         ? ref.watch(cloudGatewayMidProvider)

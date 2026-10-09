@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/context_engine/context_engine.dart';
-import 'package:inkflow/features/ai/domain/features/explainer.dart';
-import 'package:inkflow/features/ai/domain/features/notes_qa.dart';
-import 'package:inkflow/features/ai/domain/untrusted_text.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/context_engine.dart';
+import 'package:distill_ed/features/ai/domain/features/explainer.dart';
+import 'package:distill_ed/features/ai/domain/features/notes_qa.dart';
+import 'package:distill_ed/features/ai/domain/untrusted_text.dart';
 
 void main() {
   test('text is fenced between matching markers', () {

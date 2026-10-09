@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/language/ml_kit_language_detector.dart';
+import 'package:distill_ed/features/ai/data/language/ml_kit_language_detector.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

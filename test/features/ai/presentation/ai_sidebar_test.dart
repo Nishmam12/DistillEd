@@ -3,21 +3,21 @@ import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/editor/state/selection_controller.dart';
-import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
-import 'package:inkflow/features/ai/data/llm/device_storage.dart';
-import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/context_engine/context_engine.dart';
-import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
-import 'package:inkflow/features/ai/domain/features/explainer.dart';
-import 'package:inkflow/features/ai/domain/page_content_extractor.dart';
-import 'package:inkflow/features/ai/presentation/ai_providers.dart';
-import 'package:inkflow/features/ai/presentation/context_engine_notifier.dart';
-import 'package:inkflow/features/ai/presentation/explain_notifier.dart';
-import 'package:inkflow/features/ai/presentation/sidebar/ai_sidebar.dart';
+import 'package:distill_ed/editor/state/selection_controller.dart';
+import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:distill_ed/features/ai/data/llm/device_storage.dart';
+import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
+import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/context_engine.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/page_context.dart';
+import 'package:distill_ed/features/ai/domain/features/explainer.dart';
+import 'package:distill_ed/features/ai/domain/page_content_extractor.dart';
+import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
+import 'package:distill_ed/features/ai/presentation/context_engine_notifier.dart';
+import 'package:distill_ed/features/ai/presentation/explain_notifier.dart';
+import 'package:distill_ed/features/ai/presentation/sidebar/ai_sidebar.dart';
 
 // ---- Fakes ------------------------------------------------------------------
 

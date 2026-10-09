@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/core/providers/settings_provider.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/quality/ai_quality_guard.dart';
-import 'package:inkflow/features/ai/domain/quality/output_quality.dart';
+import 'package:distill_ed/core/providers/settings_provider.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/quality/ai_quality_guard.dart';
+import 'package:distill_ed/features/ai/domain/quality/output_quality.dart';
 
 /// Emits a canned reply, split into chunks so the streaming path is exercised,
 /// and counts calls so a test can prove the cloud was (or was not) reached.

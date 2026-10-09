@@ -7,7 +7,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
+import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../models/note_card_data.dart';

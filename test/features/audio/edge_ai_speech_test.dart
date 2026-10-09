@@ -7,8 +7,8 @@ import 'dart:typed_data';
 
 import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/audio/data/edge_ai_speech.dart';
-import 'package:inkflow/features/audio/domain/lecture_transcriber.dart';
+import 'package:distill_ed/features/audio/data/edge_ai_speech.dart';
+import 'package:distill_ed/features/audio/domain/lecture_transcriber.dart';
 
 class _FakeRecognizer implements SpeechRecognizer {
   final languages = <String?>[];

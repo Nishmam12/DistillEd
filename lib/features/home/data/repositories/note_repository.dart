@@ -185,7 +185,7 @@ class NoteRepository {
 
   /// Gets a notebook by ID.
   Future<Notebook?> getNotebook(int id) async {
-    return await _isar.notebooks.get(id);
+    return _isar.notebooks.get(id);
   }
 
   // ---- organisation ---------------------------------------------------------

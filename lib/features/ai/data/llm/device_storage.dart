@@ -17,6 +17,10 @@ class DeviceStorage {
       return value ?? 0;
     } on PlatformException {
       return 0;
+    } on MissingPluginException {
+      // The platform side is not registered (tests, another platform): the same
+      // answer as a failed call, rather than an exception out of a download check.
+      return 0;
     }
   }
 }

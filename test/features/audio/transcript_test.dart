@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/constants/storage_paths.dart';
-import 'package:inkflow/features/audio/data/transcript_store.dart';
-import 'package:inkflow/features/audio/domain/lecture_recording.dart';
-import 'package:inkflow/features/audio/domain/transcript.dart';
+import 'package:distill_ed/core/constants/storage_paths.dart';
+import 'package:distill_ed/features/audio/data/transcript_store.dart';
+import 'package:distill_ed/features/audio/domain/lecture_recording.dart';
+import 'package:distill_ed/features/audio/domain/transcript.dart';
 
 Transcript sample() => const Transcript(
       language: 'en',

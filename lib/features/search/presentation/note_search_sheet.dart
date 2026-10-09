@@ -6,7 +6,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers/search_providers.dart';
 import '../../../data/persistence/page_text_store.dart';
 import '../../../editor/state/page_notifier.dart';
 import '../domain/note_search.dart';

@@ -6,6 +6,7 @@
 // The byte/string producers here are pure and deterministic; sharing/saving the
 // result is a thin platform concern handled by `features/export`.
 
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:isolate';
@@ -222,10 +223,15 @@ class SceneExporter {
   /// Vector SVG of the scene. Freehand ink is approximated as a stroked
   /// polyline and hachure fills as solid fills — faithful enough for re-use in
   /// other vector tools without a path-introspection dependency.
+  ///
+  /// A picture is embedded from [images] (its bytes, keyed by relative path), so
+  /// the file is self-contained and shows in any vector tool. A picture with no
+  /// bytes in [images] is drawn as the canvas's placeholder instead.
   static String toSvg(
     List<SceneElement> els, {
     Color? background,
     double padding = defaultPadding,
+    Map<String, Uint8List> images = const {},
   }) {
     final bounds = contentBounds(els, padding: padding) ??
         const Rect.fromLTWH(0, 0, 1, 1);
@@ -234,6 +240,7 @@ class SceneExporter {
       ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
       ..writeln('<svg xmlns="http://www.w3.org/2000/svg" '
           'width="${_n(w)}" height="${_n(h)}" '
+          'xmlns:xlink="http://www.w3.org/1999/xlink" '
           'viewBox="${_n(bounds.left)} ${_n(bounds.top)} ${_n(w)} ${_n(h)}">');
     if (background != null) {
       b.writeln('<rect x="${_n(bounds.left)}" y="${_n(bounds.top)}" '
@@ -241,13 +248,17 @@ class SceneExporter {
     }
     final ordered = [...els]..sort((a, b) => a.zOrder.compareTo(b.zOrder));
     for (final e in ordered) {
-      _svgElement(b, e);
+      _svgElement(b, e, images);
     }
     b.writeln('</svg>');
     return b.toString();
   }
 
-  static void _svgElement(StringBuffer b, SceneElement e) {
+  static void _svgElement(
+    StringBuffer b,
+    SceneElement e,
+    Map<String, Uint8List> images,
+  ) {
     final g = _rotateAttr(e);
     if (g != null) b.writeln('<g transform="$g">');
     switch (e) {
@@ -272,11 +283,14 @@ class SceneExporter {
         }
       case ImageElement():
         final r = _rect(e.geometryData);
-        if (e.relativeImagePath.isNotEmpty) {
-          b.writeln('<image href="${_esc(e.relativeImagePath)}" '
+        final href = _imageHref(images[e.relativeImagePath]);
+        if (href != null) {
+          b.writeln('<image xlink:href="$href" '
               'x="${_n(r.left)}" y="${_n(r.top)}" '
               'width="${_n(r.width)}" height="${_n(r.height)}" opacity="${_n(e.opacity)}"/>');
         } else {
+          // Not embedded: no file, or a type this exporter does not carry. The
+          // canvas placeholder, rather than a link that breaks outside the app.
           b.writeln('<rect x="${_n(r.left)}" y="${_n(r.top)}" '
               'width="${_n(r.width)}" height="${_n(r.height)}" '
               'fill="none" stroke="#8A93A6"/>');
@@ -347,6 +361,38 @@ class SceneExporter {
         'fill="${_hex(color)}" fill-opacity="${_n(opacity)}"/>');
   }
 
+  /// The picture's bytes as a data URI, or null when they are absent or are not
+  /// a picture type [imageMimeType] knows.
+  static String? _imageHref(Uint8List? bytes) {
+    if (bytes == null) return null;
+    final mime = imageMimeType(bytes);
+    return mime == null ? null : 'data:$mime;base64,${base64Encode(bytes)}';
+  }
+
+  /// The picture type [bytes] declare in their first bytes: PNG, JPEG or WebP.
+  /// Null for anything else, so nothing is embedded under a made-up type.
+  @visibleForTesting
+  static String? imageMimeType(Uint8List bytes) {
+    bool startsWith(List<int> magic, [int at = 0]) {
+      if (bytes.length < at + magic.length) return false;
+      for (var i = 0; i < magic.length; i++) {
+        if (bytes[at + i] != magic[i]) return false;
+      }
+      return true;
+    }
+
+    if (startsWith(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) {
+      return 'image/png';
+    }
+    if (startsWith(const [0xFF, 0xD8, 0xFF])) return 'image/jpeg';
+    // WebP is RIFF, a size, then "WEBP".
+    if (startsWith(const [0x52, 0x49, 0x46, 0x46]) &&
+        startsWith(const [0x57, 0x45, 0x42, 0x50], 8)) {
+      return 'image/webp';
+    }
+    return null;
+  }
+
   static String? _rotateAttr(SceneElement e) {
     if (e.rotation == 0) return null;
     final c = SceneGeometry.center(e);
@@ -376,7 +422,11 @@ class SceneExporter {
   static double _alpha(int argb, double opacity) =>
       ((argb >> 24) & 0xFF) / 255.0 * opacity;
 
+  /// A number as SVG writes it. A non-finite value (an element that went to
+  /// infinity somewhere upstream) has no SVG form, so it is written as 0 rather
+  /// than failing the whole export.
   static String _n(double v) {
+    if (!v.isFinite) return '0';
     if (v == v.roundToDouble()) return v.toInt().toString();
     return v.toStringAsFixed(2);
   }

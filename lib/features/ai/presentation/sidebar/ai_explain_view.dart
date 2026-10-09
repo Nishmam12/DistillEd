@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/features/explainer.dart';
 import '../../domain/quality/ai_quality_guard.dart';
@@ -94,7 +94,7 @@ class _Header extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.school_outlined, size: 18, color: context.ink.accent),
+            Icon(Icons.school_outlined, size: 18, color: context.colors.accent),
             const SizedBox(width: 8),
             Expanded(
               child: Text('Explain',
@@ -103,7 +103,7 @@ class _Header extends ConsumerWidget {
                     fontFamily: 'Poppins',
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: context.ink.textPrimary,
+                    color: context.colors.textPrimary,
                   )),
             ),
             if (fromCloud) const _CloudBadge(),
@@ -114,7 +114,7 @@ class _Header extends ConsumerWidget {
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
               padding: EdgeInsets.zero,
               icon: Icon(Icons.close,
-                  size: 18, color: context.ink.textSecondary),
+                  size: 18, color: context.colors.textSecondary),
               onPressed: () =>
                   ref.read(explainNotifierProvider.notifier).reset(),
             ),
@@ -147,7 +147,7 @@ class _ModeSelector extends ConsumerWidget {
                 Icon(
                   m == mode ? Icons.check : Icons.tune,
                   size: 16,
-                  color: m == mode ? context.ink.accent : context.ink.textMuted,
+                  color: m == mode ? context.colors.accent : context.colors.textSecondary,
                 ),
                 const SizedBox(width: 10),
                 Text(m.label),
@@ -158,7 +158,7 @@ class _ModeSelector extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: context.ink.accentWash,
+          color: context.colors.accentMuted,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
@@ -168,10 +168,10 @@ class _ModeSelector extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: context.ink.accentStrong,
+                  color: context.colors.accent,
                 )),
             Icon(Icons.arrow_drop_down,
-                size: 18, color: context.ink.accentStrong),
+                size: 18, color: context.colors.accent),
           ],
         ),
       ),
@@ -221,7 +221,7 @@ class _Body extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 height: 1.5,
-                color: context.ink.textPrimary,
+                color: context.colors.textPrimary,
               ),
             ),
           ),
@@ -239,12 +239,12 @@ class _Body extends StatelessWidget {
                       width: 12,
                       height: 12,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: context.ink.accentSoft),
+                          strokeWidth: 2, color: context.colors.accent),
                     ),
                     const SizedBox(width: 8),
                     Text('Writing…',
                         style: TextStyle(
-                            fontSize: 12, color: context.ink.textSecondary)),
+                            fontSize: 12, color: context.colors.textSecondary)),
                   ],
                 ),
               )
@@ -263,21 +263,21 @@ class _Body extends StatelessWidget {
                         );
                       },
                 icon: Icon(Icons.copy_outlined,
-                    size: 18, color: context.ink.textSecondary),
+                    size: 18, color: context.colors.textSecondary),
               ),
             const Spacer(),
             Flexible(
               child: FilledButton.icon(
                 style:
-                    FilledButton.styleFrom(backgroundColor: context.ink.accent),
+                    FilledButton.styleFrom(backgroundColor: context.colors.accent),
                 onPressed: (streaming || trimmed.isEmpty)
                     ? null
                     : () => onInsertNote(trimmed),
                 icon: Icon(Icons.note_add_outlined,
-                    size: 18, color: context.ink.textOnAccent),
+                    size: 18, color: context.colors.onAccent),
                 label: Text('Insert as note',
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: context.ink.textOnAccent)),
+                    style: TextStyle(color: context.colors.onAccent)),
               ),
             ),
           ],
@@ -299,20 +299,20 @@ class _CloudBadge extends StatelessWidget {
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: context.ink.accentWash,
+        color: context.colors.accentMuted,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: context.ink.accentSoft),
+        border: Border.all(color: context.colors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.cloud_outlined, size: 13, color: context.ink.accentStrong),
+          Icon(Icons.cloud_outlined, size: 13, color: context.colors.accent),
           const SizedBox(width: 4),
           Text('Cloud',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: context.ink.accentStrong,
+                color: context.colors.accent,
               )),
         ],
       ),
@@ -355,14 +355,14 @@ class _ConfirmCloudBody extends ConsumerWidget {
             TextButton(
               onPressed: notifier.cancelCloud,
               child: Text('Cancel',
-                  style: TextStyle(color: context.ink.textSecondary)),
+                  style: TextStyle(color: context.colors.textSecondary)),
             ),
             const SizedBox(width: 8),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+              style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
               onPressed: notifier.confirmCloudAndRun,
               child: Text('Send',
-                  style: TextStyle(color: context.ink.textOnAccent)),
+                  style: TextStyle(color: context.colors.onAccent)),
             ),
           ],
         ),
@@ -394,17 +394,17 @@ class _ErrorBody extends ConsumerWidget {
         const SizedBox(height: 14),
         if (state.offerModelDownload)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
-                style: TextStyle(color: context.ink.textOnAccent)),
+                style: TextStyle(color: context.colors.onAccent)),
           )
         else if (state.retryable)
           TextButton.icon(
             onPressed: notifier.retry,
-            icon: Icon(Icons.refresh, size: 18, color: context.ink.accent),
+            icon: Icon(Icons.refresh, size: 18, color: context.colors.accent),
             label: Text('Try again',
-                style: TextStyle(color: context.ink.accent)),
+                style: TextStyle(color: context.colors.accent)),
           ),
       ],
     );
@@ -458,9 +458,9 @@ class _Centered extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showSpinner)
-            CircularProgressIndicator(color: context.ink.accent)
+            CircularProgressIndicator(color: context.colors.accent)
           else
-            Icon(icon, size: 34, color: context.ink.accentSoft),
+            Icon(icon, size: 34, color: context.colors.textSecondary),
           const SizedBox(height: 14),
           Text(title,
               textAlign: TextAlign.center,
@@ -468,14 +468,14 @@ class _Centered extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: context.ink.textPrimary,
+                color: context.colors.textPrimary,
               )),
           if (subtitle != null) ...[
             const SizedBox(height: 6),
             Text(subtitle!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 13, height: 1.4, color: context.ink.textSecondary)),
+                    fontSize: 13, height: 1.4, color: context.colors.textSecondary)),
           ],
         ],
       ),

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/math_markup.dart';
+import 'package:distill_ed/features/ai/domain/math_markup.dart';
 
 /// Reassembles [segments] back into the source string, delimiters and all.
 /// Every parse must survive this — a renderer that can lose text is worse than

@@ -9,6 +9,9 @@ class DashPath {
 
   /// Returns a new path made of [dash]-length segments separated by [gap].
   static Path dashed(Path source, {required double dash, required double gap}) {
+    // A step that never advances would loop for ever; a solid path is the only
+    // sensible answer to a pattern with no dashes in it.
+    if (dash <= 0 || dash + gap <= 0) return source;
     final result = Path();
     for (final metric in source.computeMetrics()) {
       double distance = 0;

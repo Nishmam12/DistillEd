@@ -24,10 +24,10 @@ class _PdfRenderPayload {
   _PdfRenderPayload(this.token, this.filePath, this.notebookId, this.docsDir);
 }
 
-class PDFService {
+class PdfService {
   /// [textLayers] keeps each page's own text beside its image so reading the page
   /// later needs no OCR (see `pdf_text_layer.dart`); tests pass a fake.
-  PDFService({PdfTextLayerWriter? textLayers})
+  PdfService({PdfTextLayerWriter? textLayers})
       : _textLayers = textLayers ?? PdfTextLayerWriter(PdfiumTextSource());
 
   final PdfTextLayerWriter _textLayers;

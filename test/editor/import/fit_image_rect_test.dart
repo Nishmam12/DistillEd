@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/editor/import/fit_image_rect.dart';
+import 'package:distill_ed/editor/import/fit_image_rect.dart';
 
 void main() {
   group('scaledToFit', () {

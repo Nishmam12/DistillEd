@@ -31,7 +31,7 @@ class BackgroundLayer extends CustomPainter {
     this.scrollY = 0.0,
     this.zoom = 1.0,
     this.pageRect,
-    this.deskColor = const Color(0xFFE6E8EC),
+    required this.deskColor,
   });
 
   @override

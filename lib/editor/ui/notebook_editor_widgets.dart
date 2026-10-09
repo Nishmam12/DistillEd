@@ -196,7 +196,7 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
             state.isRecording
                 ? Icons.stop_circle
                 : PhosphorIconsRegular.microphone,
-            color: state.isRecording ? context.ink.accentRed : null,
+            color: state.isRecording ? Theme.of(context).colorScheme.error : null,
           ),
           onPressed: () async {
             if (state.isRecording) {

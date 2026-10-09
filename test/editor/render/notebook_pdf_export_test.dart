@@ -5,8 +5,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/render/scene_exporter.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/render/scene_exporter.dart';
 
 SceneShapeElement _box(String id, double size) => SceneShapeElement(
       id: id,

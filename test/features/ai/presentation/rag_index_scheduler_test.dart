@@ -1,12 +1,59 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
-import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_indexer.dart';
+import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart'
     show kChunkOverlapWords, kChunkWords;
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
-import 'package:inkflow/features/ai/presentation/rag_index_scheduler.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/presentation/rag_index_scheduler.dart';
+
+/// An embedder whose calls finish only when the test releases them, so runs
+/// that overlap can be seen.
+class _GatedEmbedder implements TextEmbedder {
+  final started = <String>[];
+  final _gates = <Completer<void>>[];
+
+  void release(int call) => _gates[call].complete();
+
+  @override
+  PromptContract get promptContract => PromptContract.pluginGemma300m;
+
+  @override
+  int get chunkWords => kChunkWords;
+
+  @override
+  int get chunkOverlapWords => kChunkOverlapWords;
+
+  @override
+  final String modelId = 'fake-v1';
+
+  @override
+  final int dimensions = 3;
+
+  @override
+  Future<List<List<double>>> embedAll(
+    List<String> texts, {
+    required EmbedTaskType taskType,
+  }) async {
+    started.add(texts.join('|'));
+    final gate = Completer<void>();
+    _gates.add(gate);
+    await gate.future;
+    return [
+      for (final _ in texts) const [1.0, 0.0, 0.0]
+    ];
+  }
+
+  @override
+  Future<List<double>> embedOne(String text,
+          {required EmbedTaskType taskType}) async =>
+      (await embedAll([text], taskType: taskType)).first;
+}
+
+Future<void> _settle() => Future<void>.delayed(const Duration(milliseconds: 20));
 
 class _RecordingEmbedder implements TextEmbedder {
 
@@ -178,5 +225,37 @@ void main() {
 
     await settle();
     expect(embedder.batches, isEmpty);
+  });
+
+  test('a page is never embedded twice at once: newer text waits for the older run',
+      () async {
+    final embedder = _GatedEmbedder();
+    final saved = <String>[];
+    final indexer = RagIndexer(
+      embedder: embedder,
+      saveChunks: (pageId, chunks) async =>
+          saved.add(chunks.map((c) => c.text).join('|')),
+      deleteChunks: (pageId) async {},
+      indexStateOf: (pageId, modelId) async => null,
+    );
+    final scheduler =
+        RagIndexScheduler(indexer: indexer, idleDelay: Duration.zero);
+
+    scheduler.schedule(notebookId: 1, pageId: 7, text: 'old text');
+    await _settle(); // the older run is now waiting on the embedder
+    scheduler.schedule(notebookId: 1, pageId: 7, text: 'new text');
+    await _settle();
+
+    expect(embedder.started, hasLength(1),
+        reason: 'the newer text must not start while the older run is busy');
+
+    embedder.release(0);
+    await _settle();
+    expect(embedder.started, hasLength(2));
+
+    embedder.release(1);
+    await _settle();
+    expect(saved.last, contains('new text'),
+        reason: 'the last save must be the newest text, never the older one');
   });
 }

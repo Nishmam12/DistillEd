@@ -3,7 +3,7 @@
 // saved element means. New values go at the END; this test fails if one doesn't.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
 
 List<String> _names(List<Enum> values) => [for (final v in values) v.name];
 

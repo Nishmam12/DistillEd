@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/services/snap_engine.dart';
+import 'package:distill_ed/domain/services/snap_engine.dart';
 
 void main() {
   test('snaps an edge within the threshold and emits a guide', () {

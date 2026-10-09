@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/domain/services/selection_editing.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/domain/services/selection_editing.dart';
 
 void main() {
   test('duplicate gives fresh ids, offsets geometry, and remaps groups', () {

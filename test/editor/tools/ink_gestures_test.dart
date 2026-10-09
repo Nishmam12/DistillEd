@@ -3,8 +3,8 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/tools/ink_gestures.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/tools/ink_gestures.dart';
 
 /// Points from `(x, y, t)` triples.
 List<StrokePoint> pts(List<(double, double, int)> raw) =>

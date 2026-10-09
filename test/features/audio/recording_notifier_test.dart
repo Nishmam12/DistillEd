@@ -5,13 +5,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/data/persistence/lecture_recording_store.dart';
-import 'package:inkflow/features/audio/data/transcript_store.dart';
-import 'package:inkflow/features/audio/domain/audio_ports.dart';
-import 'package:inkflow/features/audio/domain/transcript.dart';
-import 'package:inkflow/features/audio/domain/lecture_recording.dart';
-import 'package:inkflow/features/audio/domain/recording_session.dart';
-import 'package:inkflow/features/audio/presentation/recording_notifier.dart';
+import 'package:distill_ed/data/persistence/lecture_recording_store.dart';
+import 'package:distill_ed/features/audio/data/transcript_store.dart';
+import 'package:distill_ed/features/audio/domain/audio_ports.dart';
+import 'package:distill_ed/features/audio/domain/transcript.dart';
+import 'package:distill_ed/features/audio/domain/lecture_recording.dart';
+import 'package:distill_ed/features/audio/domain/recording_session.dart';
+import 'package:distill_ed/features/audio/presentation/recording_notifier.dart';
 
 import 'lecture_recording_test.dart' show FakeCapture;
 

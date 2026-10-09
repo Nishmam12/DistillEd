@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/knowledge_graph/concept_relation.dart';
-import 'package:inkflow/features/ai/domain/knowledge_graph/graph_layout.dart';
-import 'package:inkflow/features/ai/domain/knowledge_graph/knowledge_graph.dart';
-import 'package:inkflow/features/ai/domain/memory/concept_mastery.dart';
+import 'package:distill_ed/features/ai/domain/knowledge_graph/concept_relation.dart';
+import 'package:distill_ed/features/ai/domain/knowledge_graph/graph_layout.dart';
+import 'package:distill_ed/features/ai/domain/knowledge_graph/knowledge_graph.dart';
+import 'package:distill_ed/features/ai/domain/memory/concept_mastery.dart';
 
 KnowledgeGraph _graph(int n, {List<ConceptRelation> relations = const []}) {
   return KnowledgeGraph.build(

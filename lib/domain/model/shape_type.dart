@@ -1,4 +1,4 @@
-// Enumerates all supported shape types in InkFlow.
+// Enumerates all supported shape types in DistillEd.
 enum ShapeType {
   line,
   arrow,

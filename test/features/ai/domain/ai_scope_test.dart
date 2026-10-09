@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_scope.dart';
+import 'package:distill_ed/features/ai/domain/ai_scope.dart';
 
 /// A notebook holding a hand-written page, a 3-page PDF, and a page from a
 /// SECOND import — the layout that makes "the whole PDF" a distinct scope from

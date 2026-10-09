@@ -2,8 +2,8 @@
 // not consent: the privacy setting must also allow it.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/providers/settings_provider.dart';
-import 'package:inkflow/features/ai/presentation/ai_providers.dart';
+import 'package:distill_ed/core/providers/settings_provider.dart';
+import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
 
 SettingsState _s(AiProcessingMode mode, CloudPrivacy privacy) =>
     SettingsState(aiMode: mode, cloudPrivacy: privacy);

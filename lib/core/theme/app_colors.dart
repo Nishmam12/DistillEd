@@ -6,9 +6,9 @@
 // not one of these nine, the spec needs a new token, not the screen a literal.
 //
 // ── Why exactly nine ──────────────────────────────────────────────────────
-// The app's older warm skin (`ink_palette.dart`) carries thirty-odd roles, and
-// the cost of that is real: a role defined for one brightness and forgotten in
-// the other is invisible until someone opens the app at night. Nine roles fit
+// The warm skin this replaced carried thirty-odd roles, and the cost of that was
+// real: a role defined for one brightness and forgotten in the other is
+// invisible until someone opens the app at night. Nine roles fit
 // in your head, and `copyWith`/`lerp` below enumerate all nine explicitly so a
 // forgotten field is a compile error rather than a colour that refuses to
 // animate.
@@ -31,11 +31,11 @@
 // ── Reading these ─────────────────────────────────────────────────────────
 //   context.colors.accent      — inside build(), follows the live theme
 //
-// `light` and `dark` are `const` because they are the *source* of the tokens,
-// the same way `InkPalette.light` is. That is not the same thing as a widget
-// capturing `AppColors.light.surface` into a `static final` — that would freeze
-// a colour outside the theme and is exactly what breaks live switching. Read
-// through `context.colors` at the point of use, always.
+// `light` and `dark` are `const` because they are the *source* of the tokens.
+// That is not the same thing as a widget capturing `AppColors.light.surface`
+// into a `static final` — that would freeze a colour outside the theme and is
+// exactly what breaks live switching. Read through `context.colors` at the
+// point of use, always.
 
 import 'package:flutter/material.dart';
 
@@ -176,5 +176,23 @@ extension AppColorsContext on BuildContext {
     final theme = Theme.of(this);
     return theme.extension<AppColors>() ??
         (theme.brightness == Brightness.dark ? AppColors.dark : AppColors.light);
+  }
+
+  /// The lift under a floating surface such as a popover, tinted with the
+  /// accent. Light only: THEME_SPEC.md replaces shadow with a hairline border in
+  /// dark, and the caller draws that border itself.
+  List<BoxShadow> get floatShadow {
+    if (Theme.of(this).brightness == Brightness.dark) return const [];
+    final accent = colors.accent;
+    return [
+      BoxShadow(
+          color: accent.withValues(alpha: 0.12),
+          blurRadius: 32,
+          offset: const Offset(0, 12)),
+      BoxShadow(
+          color: accent.withValues(alpha: 0.06),
+          blurRadius: 8,
+          offset: const Offset(0, 2)),
+    ];
   }
 }

@@ -3,9 +3,9 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/render/scene_element_painter.dart';
-import 'package:inkflow/editor/render/scene_image_cache.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/render/scene_element_painter.dart';
+import 'package:distill_ed/editor/render/scene_image_cache.dart';
 
 // A real ui.Image made via the test engine's supported path (picture.toImage);
 // the headless test engine does not decode PNG bytes via instantiateImageCodec,
@@ -166,6 +166,39 @@ void main() {
       expect(image.width, 64);
       image.dispose();
       picture.dispose();
+    });
+  });
+
+  group('natural size', () {
+    test('a picture that cannot be read has no size', () async {
+      expect(
+        await SceneImageCache.naturalSize('/no/such/picture.png'),
+        isNull,
+      );
+    });
+  });
+
+  group('decode size', () {
+    test('a picture larger than the limit is decoded smaller, keeping its shape',
+        () {
+      final size = SceneImageCache.decodeSize(4032, 3024, maxSide: 2048);
+
+      expect(size.width, 2048);
+      expect(size.height, 1536);
+    });
+
+    test('a picture within the limit is decoded at its own size', () {
+      final size = SceneImageCache.decodeSize(300, 200, maxSide: 2048);
+
+      expect(size.width, 300);
+      expect(size.height, 200);
+    });
+
+    test('a very tall picture keeps its aspect and never reaches zero', () {
+      final size = SceneImageCache.decodeSize(1, 100000, maxSide: 2048);
+
+      expect(size.height, 2048);
+      expect(size.width, 1);
     });
   });
 }

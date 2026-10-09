@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/rag/vector_math.dart';
+import 'package:distill_ed/features/ai/domain/rag/vector_math.dart';
 
 /// A tiny named vector, so ranking assertions read clearly.
 class _Doc {

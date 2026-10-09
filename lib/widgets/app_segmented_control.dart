@@ -103,35 +103,43 @@ class _Segment<T> extends StatelessWidget {
     // would double-apply the difference.
     final foreground = selected ? c.accent : c.textSecondary;
 
-    return InkWell(
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: segment.label,
+      // The gestures below are excluded from semantics, so the action is given here.
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        height: 40,
-        // The unselected fill is the SAME token at zero alpha rather than a
-        // Material transparent constant, for two reasons: it keeps this file
-        // free of hardcoded colours, and it gives AnimatedContainer a straight
-        // alpha fade between the two states instead of a colour-to-null jump.
-        color: selected ? c.accentMuted : c.accentMuted.withValues(alpha: 0),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(segment.icon, size: 18, color: foreground),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                segment.label,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: foreground,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          height: 40,
+          // The unselected fill is the SAME token at zero alpha rather than a
+          // Material transparent constant, for two reasons: it keeps this file
+          // free of hardcoded colours, and it gives AnimatedContainer a straight
+          // alpha fade between the two states instead of a colour-to-null jump.
+          color: selected ? c.accentMuted : c.accentMuted.withValues(alpha: 0),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(segment.icon, size: 18, color: foreground),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  segment.label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: foreground,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

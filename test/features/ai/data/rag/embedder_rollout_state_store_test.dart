@@ -2,8 +2,8 @@
 // a crash resumes the rollout where it stopped, so the state must be saved.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/rag/embedder_rollout_state_store.dart';
-import 'package:inkflow/features/ai/domain/rag/embedder_rollout.dart';
+import 'package:distill_ed/features/ai/data/rag/embedder_rollout_state_store.dart';
+import 'package:distill_ed/features/ai/domain/rag/embedder_rollout.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

@@ -11,7 +11,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/llm/hf_access_check.dart';
+import 'package:distill_ed/features/ai/data/llm/hf_access_check.dart';
 
 /// Replays a canned status + headers without a network.
 class _CannedAdapter implements HttpClientAdapter {

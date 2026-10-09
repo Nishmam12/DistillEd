@@ -8,7 +8,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../export/export_share_service.dart';
 import '../../data/flashcards/flashcard_apkg.dart';
 import '../../data/flashcards/flashcard_csv.dart';
@@ -22,7 +22,7 @@ import '../widgets/model_download_progress.dart';
 void showFlashcardSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
-    backgroundColor: context.ink.surface,
+    backgroundColor: context.colors.surface,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -74,9 +74,9 @@ class _Status extends StatelessWidget {
       children: [
         const _SheetTitle('Flashcards'),
         const SizedBox(height: 28),
-        CircularProgressIndicator(color: context.ink.accent),
+        CircularProgressIndicator(color: context.colors.accent),
         const SizedBox(height: 16),
-        Text(label, style: TextStyle(color: context.ink.textSecondary)),
+        Text(label, style: TextStyle(color: context.colors.textSecondary)),
         const SizedBox(height: 12),
       ],
     );
@@ -98,7 +98,7 @@ class _Downloading extends ConsumerWidget {
         Text(
           '${LlmModelSpec.active.displayName} · '
           '${sizeGb.toStringAsFixed(1)} GB — one-time download',
-          style: TextStyle(fontSize: 13, color: context.ink.textSecondary),
+          style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
         ),
         const SizedBox(height: 20),
         ModelDownloadProgress(
@@ -125,30 +125,30 @@ class _ErrorView extends ConsumerWidget {
       children: [
         const _SheetTitle('Flashcards'),
         const SizedBox(height: 20),
-        Icon(Icons.error_outline, color: context.ink.accentRed, size: 40),
+        Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 40),
         const SizedBox(height: 12),
         Text(state.message,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: context.ink.textPrimary)),
+            style: TextStyle(fontSize: 14, color: context.colors.textPrimary)),
         const SizedBox(height: 20),
         if (state.offerModelDownload)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
-                style: TextStyle(color: context.ink.textOnAccent)),
+                style: TextStyle(color: context.colors.onAccent)),
           )
         else if (state.retryable)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
             onPressed: notifier.retry,
             child: Text('Try again',
-                style: TextStyle(color: context.ink.textOnAccent)),
+                style: TextStyle(color: context.colors.onAccent)),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text('Close',
-              style: TextStyle(color: context.ink.textSecondary)),
+              style: TextStyle(color: context.colors.textSecondary)),
         ),
       ],
     );
@@ -252,7 +252,7 @@ class _DeckState extends State<_Deck> {
             IconButton(
               tooltip: 'Close',
               icon: Icon(Icons.close,
-                  size: 20, color: context.ink.textSecondary),
+                  size: 20, color: context.colors.textSecondary),
               onPressed: () => Navigator.of(context).pop(),
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
@@ -262,7 +262,7 @@ class _DeckState extends State<_Deck> {
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: context.ink.textMuted)),
+                    color: context.colors.textSecondary)),
           ],
         ),
         const SizedBox(height: 4),
@@ -304,7 +304,7 @@ class _DeckState extends State<_Deck> {
             Expanded(
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: context.ink.accent,
+                  backgroundColor: context.colors.accent,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 onPressed: _exporting ? null : () => _export(apkg: true),
@@ -313,18 +313,18 @@ class _DeckState extends State<_Deck> {
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: context.ink.textOnAccent))
+                            strokeWidth: 2, color: context.colors.onAccent))
                     : Icon(Icons.style_outlined,
-                        size: 16, color: context.ink.textOnAccent),
+                        size: 16, color: context.colors.onAccent),
                 label: Text('Export to Anki (.apkg)',
                     style:
-                        TextStyle(fontSize: 13, color: context.ink.textOnAccent)),
+                        TextStyle(fontSize: 13, color: context.colors.onAccent)),
               ),
             ),
             TextButton(
               onPressed: _exporting ? null : () => _export(apkg: false),
               child: Text('Export as CSV',
-                  style: TextStyle(fontSize: 12, color: context.ink.textSecondary)),
+                  style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
             ),
           ],
         ),
@@ -333,8 +333,8 @@ class _DeckState extends State<_Deck> {
   }
 }
 
-/// One full-bleed color card per side: a soft honey wash for the prompt, solid
-/// coral for the answer. The color swap itself signals "flipped" — there's no
+/// One full-bleed color card per side: a soft accent wash for the prompt, solid
+/// accent for the answer. The color swap itself signals "flipped" — there's no
 /// separate caption competing with the term for attention.
 class _CardFace extends StatelessWidget {
   final Flashcard card;
@@ -348,10 +348,10 @@ class _CardFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = showBack ? context.ink.accent : context.ink.accentYellowWash;
-    final fg = showBack ? context.ink.textOnAccent : context.ink.textPrimary;
-    final labelBg = showBack ? context.ink.accentStrong : context.ink.surface;
-    final labelFg = showBack ? context.ink.textOnAccent : context.ink.textSecondary;
+    final bg = showBack ? context.colors.accent : context.colors.accentMuted;
+    final fg = showBack ? context.colors.onAccent : context.colors.textPrimary;
+    final labelBg = showBack ? context.colors.accent : context.colors.surface;
+    final labelFg = showBack ? context.colors.onAccent : context.colors.textSecondary;
 
     return Semantics(
       button: true,
@@ -422,7 +422,7 @@ class _SheetTitle extends StatelessWidget {
           fontFamily: 'Poppins',
           fontSize: 17,
           fontWeight: FontWeight.w600,
-          color: context.ink.textPrimary,
+          color: context.colors.textPrimary,
         ));
   }
 }

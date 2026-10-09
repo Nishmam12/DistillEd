@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/audio/data/transcript_store.dart';
-import 'package:inkflow/features/audio/domain/lecture_recording.dart';
-import 'package:inkflow/features/audio/domain/lecture_transcriber.dart';
-import 'package:inkflow/features/audio/domain/transcript.dart';
-import 'package:inkflow/features/audio/presentation/lecture_transcription_notifier.dart';
+import 'package:distill_ed/features/audio/data/transcript_store.dart';
+import 'package:distill_ed/features/audio/domain/lecture_recording.dart';
+import 'package:distill_ed/features/audio/domain/lecture_transcriber.dart';
+import 'package:distill_ed/features/audio/domain/transcript.dart';
+import 'package:distill_ed/features/audio/presentation/lecture_transcription_notifier.dart';
 
 class _Speech implements SpeechToText {
   int closed = 0;
@@ -17,6 +17,19 @@ class _Speech implements SpeechToText {
   @override
   Future<String> transcribe(Uint8List pcm, {required String language}) async =>
       '';
+}
+
+/// A speech model whose close can be held open, to test what arrives meanwhile.
+class _ClosingSpeech extends _Speech {
+  _ClosingSpeech(this.gate);
+
+  final Completer<void> gate;
+
+  @override
+  Future<void> close() async {
+    closed++;
+    await gate.future;
+  }
 }
 
 /// A transcriber that does what the test says: report progress, wait, fail.
@@ -102,6 +115,32 @@ void main() {
     expect((await store.load(_rec(1)))!.segments.single.text, 'hello');
     expect(indexed.map((r) => r.id), [1]);
     expect(t.paths, ['/docs/audio/n1_p7_1.wav']);
+  });
+
+  test('a recording queued while the model is closing is still transcribed',
+      () async {
+    final gate = Completer<void>();
+    final closing = _ClosingSpeech(gate);
+    final t = _FakeTranscriber((_, _, _, _) async => _said('x'));
+    final n = LectureTranscriptionNotifier(
+      transcriber: t,
+      speech: closing,
+      store: store,
+      appDocsPath: '/docs',
+      languageFor: (_) async => 'en',
+    );
+
+    n.enqueue(_rec(1));
+    await settle(); // rec 1 is done and the queue is now closing the model
+    expect(closing.closed, 1);
+
+    n.enqueue(_rec(2)); // arrives while that close is still pending
+    gate.complete();
+    await settle();
+
+    expect(n.state[2]?.phase, TranscriptionPhase.done,
+        reason: 'it was queued, so it must not be left waiting for ever');
+    expect(t.paths, hasLength(2));
   });
 
   test('progress is visible while it runs', () async {

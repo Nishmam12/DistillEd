@@ -4,8 +4,7 @@
 // app's design tokens as `static const Color`. Those were chrome, and a `const`
 // cannot vary by [Brightness], so every widget that read one bypassed the theme
 // and stayed light no matter what ThemeData was supplied. They now live in
-// `core/theme/ink_palette.dart` (the warm skin) and `core/theme/app_colors.dart`
-// (the navy/gold skin), reached through `context.ink` and `context.colors`.
+// `core/theme/app_colors.dart`, reached through `context.colors`.
 //
 // The class was renamed `AppColors` -> `PaperColors` when the navy/gold token
 // layer claimed the `AppColors` name for the nine-token [ThemeExtension] the
@@ -38,9 +37,9 @@ class PaperColors {
 
   /// The canonical ink set: identical in both brightnesses, by design.
   ///
-  /// Not currently read anywhere — the editor's swatch picker carries its own
-  /// list in `core/constants/editor_constants.dart`. Kept as the documented
-  /// reference for what "ink" means here.
+  /// Not read by the editor — its swatch picker carries its own list in
+  /// `editor/ui/editor_constants.dart`. Kept as the documented reference for
+  /// what "ink" means here, and pinned by `test/core/theme/paper_colors_test.dart`.
   static const penPalette = <Color>[
     Color(0xFF33302E), // ink
     Color(0xFFD9654E), // coral

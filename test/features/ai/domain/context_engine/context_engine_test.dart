@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/ai_router.dart';
-import 'package:inkflow/features/ai/domain/context_engine/context_engine.dart';
-import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
-import 'package:inkflow/features/ai/domain/page_content.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/ai_router.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/context_engine.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/page_context.dart';
+import 'package:distill_ed/features/ai/domain/page_content.dart';
 
 // ---- Fakes ------------------------------------------------------------------
 

@@ -17,7 +17,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../domain/quality/ai_quality_guard.dart';
 import '../../domain/quality/output_quality.dart';
 
@@ -45,8 +45,8 @@ class AnswerTierBanner extends StatelessWidget {
       AnswerTier.cloudVerified => _Chip(
           icon: Icons.cloud_done_outlined,
           label: 'Checked with the cloud model',
-          foreground: context.ink.accentStrong,
-          background: context.ink.accentWash,
+          foreground: context.colors.accent,
+          background: context.colors.accentMuted,
         ),
       AnswerTier.localLowConfidence => _Warning(
           issue: issue,
@@ -68,9 +68,9 @@ class _Warning extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: context.ink.surfaceHighlight,
+        color: context.colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.ink.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,7 +80,7 @@ class _Warning extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.warning_amber_rounded,
-                  size: 16, color: context.ink.accentYellow),
+                  size: 16, color: context.colors.accent),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -92,7 +92,7 @@ class _Warning extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     height: 1.4,
-                    color: context.ink.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ),
@@ -103,7 +103,7 @@ class _Warning extends StatelessWidget {
             padding: const EdgeInsets.only(left: 24),
             child: Text(
               "Don't rely on it without checking your notes.",
-              style: TextStyle(fontSize: 12, color: context.ink.textMuted),
+              style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
             ),
           ),
           if (verify != null) ...[
@@ -119,10 +119,10 @@ class _Warning extends StatelessWidget {
                   ),
                   onPressed: verify,
                   icon: Icon(Icons.cloud_upload_outlined,
-                      size: 16, color: context.ink.accent),
+                      size: 16, color: context.colors.accent),
                   label: Text(
                     'Check with the cloud model',
-                    style: TextStyle(fontSize: 12, color: context.ink.accent),
+                    style: TextStyle(fontSize: 12, color: context.colors.accent),
                   ),
                 ),
               ),

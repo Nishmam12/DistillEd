@@ -8,11 +8,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
-import 'package:inkflow/data/persistence/scene_element_store.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/state/page_notifier.dart';
-import 'package:inkflow/features/home/data/repositories/page_repository.dart';
-import 'package:inkflow/features/home/domain/models/note_page.dart';
+import 'package:distill_ed/data/persistence/scene_element_store.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/state/page_notifier.dart';
+import 'package:distill_ed/features/home/data/repositories/page_repository.dart';
+import 'package:distill_ed/features/home/domain/models/note_page.dart';
 
 /// In-memory stand-in that keeps page indexes contiguous, like the real one.
 class FakePageRepository implements PageRepository {

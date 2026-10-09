@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/knowledge_graph/concept_relation.dart';
-import 'package:inkflow/features/ai/domain/knowledge_graph/knowledge_graph.dart';
-import 'package:inkflow/features/ai/domain/memory/concept_mastery.dart';
+import 'package:distill_ed/features/ai/domain/knowledge_graph/concept_relation.dart';
+import 'package:distill_ed/features/ai/domain/knowledge_graph/knowledge_graph.dart';
+import 'package:distill_ed/features/ai/domain/memory/concept_mastery.dart';
 
 ConceptMastery _mastery(String name, MasteryLevel level) => ConceptMastery(
       conceptName: name,

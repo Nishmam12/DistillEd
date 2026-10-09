@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/features/writing_assistant.dart';
-import 'package:inkflow/features/ai/domain/page_content.dart';
-import 'package:inkflow/features/ai/presentation/writing_assistant_notifier.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/features/writing_assistant.dart';
+import 'package:distill_ed/features/ai/domain/page_content.dart';
+import 'package:distill_ed/features/ai/presentation/writing_assistant_notifier.dart';
 
 // ---- Fakes ------------------------------------------------------------------
 

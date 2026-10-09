@@ -3,7 +3,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/domain/model/checklist_text.dart';
+import 'package:distill_ed/domain/model/checklist_text.dart';
 
 void main() {
   group('detection', () {

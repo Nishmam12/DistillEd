@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/rag/bulk_indexer.dart';
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
-import 'package:inkflow/features/ai/presentation/notebook_index_notifier.dart';
+import 'package:distill_ed/features/ai/domain/rag/bulk_indexer.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_indexer.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/presentation/notebook_index_notifier.dart';
 
 class _Embedder implements TextEmbedder {
   @override

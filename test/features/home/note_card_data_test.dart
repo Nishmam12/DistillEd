@@ -1,9 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/theme/ink_palette.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/features/home/domain/models/notebook.dart';
-import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
-import 'package:inkflow/features/home/presentation/notes_palette.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/features/home/domain/models/notebook.dart';
+import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
+import 'package:distill_ed/features/home/presentation/notes_palette.dart';
 
 Notebook _notebook({
   int id = 1,
@@ -207,16 +206,6 @@ void main() {
   });
 
   group('NotesPalette', () {
-    test('exposes the spec colours', () {
-      expect(InkPalette.light.notes.background.toARGB32(), 0xFFF7F8FA);
-      expect(InkPalette.light.notes.card.toARGB32(), 0xFFFFFFFF);
-      expect(InkPalette.light.notes.textPrimary.toARGB32(), 0xFF111111);
-      // Darkened from the spec's #7A7A7A to clear WCAG AA on a white card —
-      // see the contrast group in test/core/theme/app_theme_test.dart.
-      expect(InkPalette.light.notes.textSecondary.toARGB32(), 0xFF6E6E6E);
-      expect(InkPalette.light.notes.accent.toARGB32(), 0xFF192841);
-    });
-
     test('keeps the card height inside the 150–170 band', () {
       expect(NotesPalette.cardHeight,
           inInclusiveRange(NotesPalette.cardHeightMin, NotesPalette.cardHeightMax));
@@ -224,15 +213,6 @@ void main() {
 
     test('keeps the overlay inside the 30–35% band', () {
       expect(NotesPalette.overlayWidthFactor, inInclusiveRange(0.30, 0.35));
-    });
-
-    test('gives a note a stable tint', () {
-      expect(InkPalette.light.notes.tintFor(3), InkPalette.light.notes.tintFor(3));
-      expect(InkPalette.light.notes.tintFor(-3), InkPalette.light.notes.tintFor(3));
-      expect(
-        InkPalette.light.notes.tintFor(InkPalette.light.notes.previewTints.length),
-        InkPalette.light.notes.previewTints.first,
-      );
     });
   });
 }

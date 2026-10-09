@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/editor/ui/notebook_editor_screen.dart';
+import 'package:distill_ed/editor/ui/notebook_editor_screen.dart';
 
 void main() {
   // The slice of scene currently on screen. Placement must stay inside it —

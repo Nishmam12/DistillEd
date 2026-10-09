@@ -30,14 +30,22 @@ abstract class FlashcardStore {
 }
 
 class IsarFlashcardStore implements FlashcardStore {
+  /// [isar] lets a test point the store at its own database; the app uses the
+  /// shared [IsarService] instance.
+  IsarFlashcardStore({Isar Function()? isar}) : _isarOverride = isar;
+
+  final Isar Function()? _isarOverride;
+
+  Isar get _isar => _isarOverride?.call() ?? IsarService.instance;
+
   @override
   Future<void> replaceForPage(
     int notebookId,
     int pageId,
     List<Flashcard> cards,
   ) async {
-    return IsarService.instance.writeTxn(() async {
-      final collection = IsarService.instance.flashcardRecords;
+    return _isar.writeTxn(() async {
+      final collection = _isar.flashcardRecords;
       // Read inside the write txn so a concurrent grade can't be lost.
       final existing = [
         for (final r in await collection.filter().pageIdEqualTo(pageId).findAll())
@@ -57,8 +65,8 @@ class IsarFlashcardStore implements FlashcardStore {
 
   @override
   Future<void> updateSchedule(Flashcard card) async {
-    await IsarService.instance.writeTxn(() async {
-      final collection = IsarService.instance.flashcardRecords;
+    await _isar.writeTxn(() async {
+      final collection = _isar.flashcardRecords;
       // Located by page + front, the same identity the domain uses; the Isar id
       // is a local storage detail the domain never carries.
       final rows =
@@ -74,7 +82,7 @@ class IsarFlashcardStore implements FlashcardStore {
 
   @override
   Future<List<Flashcard>> forNotebook(int notebookId) async {
-    final rows = await IsarService.instance.flashcardRecords
+    final rows = await _isar.flashcardRecords
         .filter()
         .notebookIdEqualTo(notebookId)
         .findAll();
@@ -84,7 +92,7 @@ class IsarFlashcardStore implements FlashcardStore {
 
   @override
   Future<List<Flashcard>> forPage(int pageId) async {
-    final rows = await IsarService.instance.flashcardRecords
+    final rows = await _isar.flashcardRecords
         .filter()
         .pageIdEqualTo(pageId)
         .findAll();

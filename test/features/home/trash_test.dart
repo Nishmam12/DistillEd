@@ -6,11 +6,11 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/home/data/repositories/note_repository.dart';
-import 'package:inkflow/features/home/domain/models/folder.dart';
-import 'package:inkflow/features/home/domain/models/notebook.dart';
-import 'package:inkflow/features/home/presentation/home_notifier.dart';
-import 'package:inkflow/features/home/presentation/trash_notifier.dart';
+import 'package:distill_ed/features/home/data/repositories/note_repository.dart';
+import 'package:distill_ed/features/home/domain/models/folder.dart';
+import 'package:distill_ed/features/home/domain/models/notebook.dart';
+import 'package:distill_ed/features/home/presentation/home_notifier.dart';
+import 'package:distill_ed/features/home/presentation/trash_notifier.dart';
 
 class FakeNoteRepository implements NoteRepository {
   final List<Notebook> notebooks = [];

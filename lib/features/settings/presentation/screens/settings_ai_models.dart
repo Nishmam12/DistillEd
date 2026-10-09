@@ -265,7 +265,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
               child: Text('Delete',
-                  style: TextStyle(color: context.ink.accentRed)),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
           ],
         ),

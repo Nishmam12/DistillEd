@@ -9,9 +9,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/ocr/gemma_vision_ocr_service.dart';
-import 'package:inkflow/features/ai/domain/figure_analyzer.dart';
-import 'package:inkflow/features/ai/domain/image_transcriber.dart';
+import 'package:distill_ed/features/ai/data/ocr/gemma_vision_ocr_service.dart';
+import 'package:distill_ed/features/ai/domain/figure_analyzer.dart';
+import 'package:distill_ed/features/ai/domain/image_transcriber.dart';
 
 class ScriptedTranscriber implements ImageTranscriber {
   final List<String> replies;

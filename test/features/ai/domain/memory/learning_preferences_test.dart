@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
-import 'package:inkflow/features/ai/domain/features/explainer.dart';
-import 'package:inkflow/features/ai/domain/memory/concept_mastery.dart';
-import 'package:inkflow/features/ai/domain/memory/learning_preferences.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/page_context.dart';
+import 'package:distill_ed/features/ai/domain/features/explainer.dart';
+import 'package:distill_ed/features/ai/domain/memory/concept_mastery.dart';
+import 'package:distill_ed/features/ai/domain/memory/learning_preferences.dart';
 
 ConceptMastery concept(
   String name, {

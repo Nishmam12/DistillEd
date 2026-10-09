@@ -2,7 +2,7 @@
 // is what the model runs from. Only both together mean installed.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
+import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
 
 void main() {
   const filename = 'gemma-4-E2B-it.litertlm';

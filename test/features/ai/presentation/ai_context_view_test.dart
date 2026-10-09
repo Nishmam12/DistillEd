@@ -5,21 +5,21 @@ import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
-import 'package:inkflow/features/ai/data/llm/device_storage.dart';
-import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/context_engine/context_engine.dart';
-import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
-import 'package:inkflow/features/ai/domain/features/writing_assistant.dart';
-import 'package:inkflow/features/ai/domain/page_content_extractor.dart';
-import 'package:inkflow/features/ai/presentation/ai_providers.dart';
-import 'package:inkflow/features/ai/presentation/context_engine_notifier.dart';
-import 'package:inkflow/features/ai/presentation/model_download_notifier.dart';
-import 'package:inkflow/features/ai/presentation/writing_assistant_notifier.dart';
-import 'package:inkflow/features/ai/presentation/sidebar/ai_context_view.dart';
+import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:distill_ed/features/ai/data/llm/device_storage.dart';
+import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
+import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/context_engine.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/page_context.dart';
+import 'package:distill_ed/features/ai/domain/features/writing_assistant.dart';
+import 'package:distill_ed/features/ai/domain/page_content_extractor.dart';
+import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
+import 'package:distill_ed/features/ai/presentation/context_engine_notifier.dart';
+import 'package:distill_ed/features/ai/presentation/model_download_notifier.dart';
+import 'package:distill_ed/features/ai/presentation/writing_assistant_notifier.dart';
+import 'package:distill_ed/features/ai/presentation/sidebar/ai_context_view.dart';
 
 // ---- Fakes ------------------------------------------------------------------
 

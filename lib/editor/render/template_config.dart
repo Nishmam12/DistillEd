@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 
-import 'template_type.dart';
+import '../../domain/model/template_type.dart';
 
 class TemplateConfig {
   final double lineSpacing;

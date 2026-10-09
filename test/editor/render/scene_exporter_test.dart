@@ -2,8 +2,8 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/render/scene_exporter.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/render/scene_exporter.dart';
 
 const _scene = <SceneElement>[
   SceneShapeElement(
@@ -178,6 +178,94 @@ void main() {
       expect(png, isNotNull);
       expect(png!.sublist(0, 4), [0x89, 0x50, 0x4E, 0x47]);
       bitmap.dispose();
+    });
+  });
+
+
+  test('an element at infinity exports without throwing or writing Infinity',
+      () {
+    final broken = [
+      const SceneShapeElement(
+        id: 'inf',
+        zOrder: 0,
+        shapeType: ShapeType.rectangle,
+        geometryData: [0, 0, double.infinity, 10],
+        color: 0xFF000000,
+        strokeWidth: 1,
+      ),
+    ];
+
+    final svg = SceneExporter.toSvg(broken);
+
+    expect(svg, isNot(contains('Infinity')));
+    expect(svg, isNot(contains('NaN')));
+  });
+
+
+  group('pictures in an SVG', () {
+    const picture = ImageElement(
+      id: 'pic',
+      zOrder: 0,
+      geometryData: [0, 0, 40, 30],
+      relativeImagePath: 'notes/1/imports/img_a.png',
+    );
+    final png = Uint8List.fromList(
+        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3]);
+
+    test('a picture is embedded from its bytes, not linked by its file path',
+        () {
+      final svg = SceneExporter.toSvg(
+        [picture],
+        images: {picture.relativeImagePath: png},
+      );
+
+      expect(svg, contains('xlink:href="data:image/png;base64,'));
+      expect(svg, isNot(contains('img_a.png')));
+      expect(svg, contains('xmlns:xlink="http://www.w3.org/1999/xlink"'));
+    });
+
+    test('a picture with no bytes is drawn as the placeholder, not a broken link',
+        () {
+      final svg = SceneExporter.toSvg([picture]);
+
+      expect(svg, isNot(contains('<image')));
+      expect(svg, isNot(contains('img_a.png')));
+      expect(svg, contains('stroke="#8A93A6"'));
+    });
+
+    test('bytes that are not a picture type are never embedded under a made-up one',
+        () {
+      final svg = SceneExporter.toSvg(
+        [picture],
+        images: {
+          picture.relativeImagePath: Uint8List.fromList([1, 2, 3, 4]),
+        },
+      );
+
+      expect(svg, isNot(contains('<image')));
+      expect(svg, isNot(contains('data:')));
+    });
+
+    test('the picture type is read from the first bytes', () {
+      expect(SceneExporter.imageMimeType(png), 'image/png');
+      expect(
+        SceneExporter.imageMimeType(
+            Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0])),
+        'image/jpeg',
+      );
+      // RIFF, a size, then WEBP.
+      expect(
+        SceneExporter.imageMimeType(Uint8List.fromList(
+            [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50])),
+        'image/webp',
+      );
+      // RIFF, a size, then WAVE: a sound file, not a picture.
+      expect(
+        SceneExporter.imageMimeType(Uint8List.fromList(
+            [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45])),
+        isNull,
+      );
+      expect(SceneExporter.imageMimeType(Uint8List(0)), isNull);
     });
   });
 }

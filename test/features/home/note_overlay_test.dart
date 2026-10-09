@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
-import 'package:inkflow/core/theme/app_colors.dart';
-import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
-import 'package:inkflow/features/home/presentation/notes_palette.dart';
-import 'package:inkflow/features/home/presentation/widgets/note_overlay.dart';
+import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
+import 'package:distill_ed/core/theme/app_colors.dart';
+import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
+import 'package:distill_ed/features/home/presentation/notes_palette.dart';
+import 'package:distill_ed/features/home/presentation/widgets/note_overlay.dart';
 
 NoteCardData _note({
   String title = 'Pasig Pass',

@@ -5,41 +5,18 @@
 // shipped by isar_community_flutter_libs through the package config (so it works on any
 // machine where the package is resolved) and skips itself if it can't.
 
-import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
-import 'package:inkflow/features/ai/data/ocr/isar_read_cache.dart';
-import 'package:inkflow/features/ai/data/ocr/read_cache_record.dart';
-import 'package:inkflow/features/ai/domain/figure.dart';
-import 'package:inkflow/features/ai/domain/read_cache.dart';
+import 'package:distill_ed/features/ai/data/ocr/isar_read_cache.dart';
+import 'package:distill_ed/features/ai/data/ocr/read_cache_record.dart';
+import 'package:distill_ed/features/ai/domain/figure.dart';
+import 'package:distill_ed/features/ai/domain/read_cache.dart';
 
-Future<String?> _nativeLibrary() async {
-  // `flutter test` runs from the project root, and the package resolver is not
-  // available to the test isolate, so read the package config directly.
-  final config = File('.dart_tool/package_config.json');
-  if (!config.existsSync()) return null;
-  final packages =
-      (jsonDecode(await config.readAsString()) as Map)['packages'] as List;
-  final entry = packages
-      .cast<Map>()
-      .where((p) => p['name'] == 'isar_community_flutter_libs');
-  if (entry.isEmpty) return null;
-  final rootUri = Uri.parse(entry.first['rootUri'] as String);
-  final root = rootUri.isAbsolute
-      ? File.fromUri(rootUri).path
-      : File.fromUri(config.parent.uri.resolveUri(rootUri)).path;
-  final candidate = switch (Abi.current()) {
-    Abi.linuxX64 => '$root/linux/libisar.so',
-    Abi.windowsX64 => '$root/windows/isar.dll',
-    Abi.macosX64 || Abi.macosArm64 => '$root/macos/libisar.dylib',
-    _ => null,
-  };
-  return candidate != null && File(candidate).existsSync() ? candidate : null;
-}
+import '../../../../support/isar_native_library.dart';
 
 void main() {
   late Isar isar;
@@ -47,7 +24,7 @@ void main() {
   String? skipReason;
 
   setUpAll(() async {
-    final lib = await _nativeLibrary();
+    final lib = await isarNativeLibrary();
     if (lib == null) {
       skipReason = 'Isar native library not found for this platform';
       return;

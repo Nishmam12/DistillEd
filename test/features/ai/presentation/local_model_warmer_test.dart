@@ -11,13 +11,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:inkflow/core/providers/settings_provider.dart';
-import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/compute_backend.dart';
-import 'package:inkflow/features/ai/domain/device_state.dart';
-import 'package:inkflow/features/ai/presentation/ai_providers.dart';
+import 'package:distill_ed/core/providers/settings_provider.dart';
+import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/compute_backend.dart';
+import 'package:distill_ed/features/ai/domain/device_state.dart';
+import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
 
 class _Session implements LlmSession {
   @override

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/editor/state/viewport_controller.dart';
-import 'package:inkflow/editor/ui/zoom_pill.dart';
+import 'package:distill_ed/editor/state/viewport_controller.dart';
+import 'package:distill_ed/editor/ui/zoom_pill.dart';
 
 void main() {
   Future<ProviderContainer> pump(WidgetTester tester) async {

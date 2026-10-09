@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
-import 'package:inkflow/data/persistence/scene_element_store.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/state/editor_tool_controller.dart';
-import 'package:inkflow/editor/state/scene_controller.dart';
-import 'package:inkflow/editor/ui/controls/editor_bottom_bar.dart';
+import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
+import 'package:distill_ed/data/persistence/scene_element_store.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/state/editor_tool_controller.dart';
+import 'package:distill_ed/editor/state/scene_controller.dart';
+import 'package:distill_ed/editor/ui/controls/editor_bottom_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

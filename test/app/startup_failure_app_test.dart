@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/app/startup_failure_app.dart';
+import 'package:distill_ed/app/startup_failure_app.dart';
 
 void main() {
   testWidgets('says the notes could not be opened and offers a retry',

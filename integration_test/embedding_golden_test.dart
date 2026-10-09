@@ -24,9 +24,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
-import 'package:inkflow/features/ai/data/embeddings/local_text_embedder.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:distill_ed/features/ai/data/embeddings/local_text_embedder.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
 
 /// The fixed inputs. Changing any of them invalidates the golden file.
 const _inputs = <String, String>{

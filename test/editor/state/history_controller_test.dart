@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/data/persistence/scene_element_store.dart';
-import 'package:inkflow/domain/commands/scene_command.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/editor/state/history_controller.dart';
-import 'package:inkflow/editor/state/scene_controller.dart';
+import 'package:distill_ed/data/persistence/scene_element_store.dart';
+import 'package:distill_ed/domain/commands/scene_command.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/editor/state/history_controller.dart';
+import 'package:distill_ed/editor/state/scene_controller.dart';
 
 SceneController _controller() =>
     SceneController(InMemorySceneElementStore(), notebookId: 1, pageId: 1);

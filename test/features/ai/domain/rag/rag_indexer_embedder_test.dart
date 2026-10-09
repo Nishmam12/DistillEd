@@ -3,10 +3,10 @@
 // either and the stored vectors stop matching the text they were built from.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_indexer.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
 
 class _ContractEmbedder implements TextEmbedder {
   _ContractEmbedder({

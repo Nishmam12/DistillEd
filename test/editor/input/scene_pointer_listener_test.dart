@@ -5,8 +5,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/editor/input/scene_pointer_listener.dart';
-import 'package:inkflow/domain/model/stroke_point.dart';
+import 'package:distill_ed/editor/input/scene_pointer_listener.dart';
+import 'package:distill_ed/domain/model/stroke_point.dart';
 
 void main() {
   late List<PointerDeviceKind> downs;

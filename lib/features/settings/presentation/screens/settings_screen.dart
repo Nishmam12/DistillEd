@@ -4,11 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
+import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/providers/settings_provider.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/ink_colors.dart';
 import '../../../../core/utils/external_links.dart';
 import '../../../../widgets/app_chip_group.dart';
 import '../../../../widgets/app_segmented_control.dart';
@@ -50,9 +49,7 @@ class SettingsScreen extends ConsumerWidget {
     final c = context.colors;
 
     return Scaffold(
-      // SET-01. The app bar is set explicitly rather than left to the theme,
-      // because the app-wide ThemeData is still the pre-migration warm skin —
-      // this screen is the first one on the navy/gold tokens.
+      // SET-01. The app bar reads its colours from the same tokens as the body.
       appBar: AppBar(
         title: const Text('Settings'),
         backgroundColor: c.bgPrimary,

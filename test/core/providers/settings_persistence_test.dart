@@ -9,7 +9,7 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:inkflow/core/providers/settings_provider.dart';
+import 'package:distill_ed/core/providers/settings_provider.dart';
 
 /// Builds a notifier and waits for its async `_restore()` to land.
 Future<SettingsNotifier> _restored() async {

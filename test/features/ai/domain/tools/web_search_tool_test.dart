@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/tools/web_search_tool.dart';
+import 'package:distill_ed/features/ai/domain/tools/web_search_tool.dart';
 
 class _FakeAdapter implements HttpClientAdapter {
   final String? jsonBody;

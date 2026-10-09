@@ -7,10 +7,10 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
-import 'package:inkflow/editor/ui/controls/editor_tool_options_overlay.dart';
-import 'package:inkflow/editor/ui/scene_canvas.dart';
-import 'package:inkflow/editor/ui/scene_editor_screen.dart';
+import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
+import 'package:distill_ed/editor/ui/controls/editor_tool_options_overlay.dart';
+import 'package:distill_ed/editor/ui/scene_canvas.dart';
+import 'package:distill_ed/editor/ui/scene_editor_screen.dart';
 
 void main() {
   testWidgets('the options panel starts open, showing the default pen tool',

@@ -3,8 +3,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/data/persistence/page_text_store.dart';
-import 'package:inkflow/features/search/domain/note_search.dart';
+import 'package:distill_ed/data/persistence/page_text_store.dart';
+import 'package:distill_ed/features/search/domain/note_search.dart';
 
 PageText _page(int pageId, String text) =>
     PageText(pageId: pageId, notebookId: 1, text: text);
@@ -165,5 +165,20 @@ void main() {
 
       expect(hits.single.pageIndex, -1);
     });
+  });
+
+
+  test('the counter and the hits agree where lowercasing changes length', () {
+    // 'İ' lowercases to two code units, the case that needs the folding map.
+    final pages = [
+      const PageText(pageId: 1, notebookId: 1, text: 'İstanbul and istanbul'),
+    ];
+    final hits = NoteSearch.search(
+      pages: pages,
+      pageIndexById: const {1: 0},
+      query: 'istanbul',
+    );
+    expect(NoteSearch.countMatches(pages, 'istanbul'), hits.length);
+    expect(hits, hasLength(2));
   });
 }

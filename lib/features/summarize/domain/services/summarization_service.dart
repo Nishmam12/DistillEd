@@ -350,12 +350,16 @@ class SummarizationService {
     // pin the bad recap to the notebook until its text changed, and the student
     // would see it again on every open with no way to ask for another try.
     if (cacheable && tier != AnswerTier.localLowConfidence) {
-      await _store.save(SummaryCache()
-        ..notebookId = notebookId
-        ..textHash = hash
-        ..summary = summary
-        ..modelUsed = modelUsed
-        ..createdAt = DateTime.now());
+      try {
+        await _store.save(SummaryCache()
+          ..notebookId = notebookId
+          ..textHash = hash
+          ..summary = summary
+          ..modelUsed = modelUsed
+          ..createdAt = DateTime.now());
+      } catch (_) {
+        // The summary exists and is returned; only the next open pays for it.
+      }
     }
 
     return SummarizationResult(
@@ -482,8 +486,9 @@ class SummarizationService {
       {int pass = 0}) async {
     final sections = text_budget.chunkByWords(text, budget);
     if (sections.length <= 1) {
-      return _guarded(
-          sections.isEmpty ? text : sections.first, reduceInstruction);
+      // Pass 0 is the note itself; later passes are recaps of it.
+      return _guarded(sections.isEmpty ? text : sections.first,
+          pass == 0 ? noteInstruction : reduceInstruction);
     }
 
     final partials = <String>[];
@@ -505,8 +510,6 @@ class SummarizationService {
     return _chunkAndReduce(combined, budget, pass: pass + 1);
   }
 
-  /// One local generation pass (defaults tuned for faithful summarization, not
-  /// creative chat), translating platform failures into summarize-level ones.
   /// Sampling for a summarization pass — a constant so the guard's cloud re-run
   /// asks for the same thing the local pass was asked for.
   static const AiGenerationOptions _summarizeOptions = AiGenerationOptions(
@@ -515,6 +518,8 @@ class SummarizationService {
     maxTokens: 512,
   );
 
+  /// One local generation pass (defaults tuned for faithful summarization, not
+  /// creative chat), translating platform failures into summarize-level ones.
   Future<String> _summarizeOnce(String text, String instruction) async {
     try {
       final chunks = await _local

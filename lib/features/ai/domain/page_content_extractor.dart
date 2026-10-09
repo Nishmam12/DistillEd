@@ -290,8 +290,10 @@ class PageContentExtractor {
       for (final e in elements)
         if (e is TextElement && e.text.trim().isNotEmpty) e,
     ]..sort((a, b) {
-        final dy = a.geometryData[1].compareTo(b.geometryData[1]);
-        return dy != 0 ? dy : a.geometryData[0].compareTo(b.geometryData[0]);
+        final ra = _rectOf(a.geometryData);
+        final rb = _rectOf(b.geometryData);
+        final dy = ra.top.compareTo(rb.top);
+        return dy != 0 ? dy : ra.left.compareTo(rb.left);
       });
     for (final e in textElements) {
       sources.add(PageContentSource(
@@ -549,6 +551,11 @@ class PageContentExtractor {
     return union;
   }
 
-  static Rect _rectOf(List<double> geometryData) => Rect.fromLTRB(
-      geometryData[0], geometryData[1], geometryData[2], geometryData[3]);
+  /// The box a geometry describes. A damaged outline with fewer than four values
+  /// gives an empty box rather than an exception: its text still reads, and only
+  /// its position is lost.
+  static Rect _rectOf(List<double> geometryData) => geometryData.length < 4
+      ? Rect.zero
+      : Rect.fromLTRB(
+          geometryData[0], geometryData[1], geometryData[2], geometryData[3]);
 }

@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/audio/data/edge_ai_speech.dart';
-import 'package:inkflow/features/audio/presentation/speech_model_notifier.dart';
+import 'package:distill_ed/features/audio/data/edge_ai_speech.dart';
+import 'package:distill_ed/features/audio/presentation/speech_model_notifier.dart';
 
 class _FakeInstaller implements SpeechModelInstaller {
   _FakeInstaller({this.installed = false});

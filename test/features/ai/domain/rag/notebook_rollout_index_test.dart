@@ -2,12 +2,12 @@
 // phase 4.5): it counts what is not yet current for the target, and brings it current.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/device_state.dart';
-import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
-import 'package:inkflow/features/ai/domain/rag/notebook_rollout_index.dart';
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/domain/device_state.dart';
+import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
+import 'package:distill_ed/features/ai/domain/rag/notebook_rollout_index.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_indexer.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
 
 class _Embedder implements TextEmbedder {
   _Embedder(this.modelId);

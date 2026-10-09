@@ -2,10 +2,10 @@
 // (docs/TECH_MIGRATION_PLAN.md, phase 4.5). The rollout asks this of every page.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_indexer.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
 
 class _Embedder implements TextEmbedder {
   _Embedder(this.modelId);

@@ -1,40 +1,21 @@
-// The navy/gold ThemeData pair, built entirely from the nine [AppColors]
-// tokens. One builder, two brightnesses — a role can never be defined for one
-// and forgotten in the other.
+// The app's ThemeData pair: the navy/gold skin, built entirely from the nine
+// [AppColors] tokens. One builder, two brightnesses, so a role can never be
+// defined for one and forgotten in the other.
 //
-// ── Not yet wired ─────────────────────────────────────────────────────────
-// `MaterialApp` in `app/app.dart` still points at [AppTheme] (the warm coral
-// skin). This file is complete and unit-tested but deliberately unreferenced by
-// the running app, because flipping it on today would re-skin all thirty-two
-// screens to navy/gold while ~53 hardcoded colours and 428 `context.ink` reads
-// stayed coral — a visibly mixed app for the duration of the screen migration.
-// `app/app.dart` switches over at the start of the settings-screen pass, once
-// there is a migrated screen to look at.
-//
-// ── Why the base theme is derived at all ──────────────────────────────────
-// Every widget that has not been migrated to `context.colors` yet still reads
-// `ThemeData` somewhere — a `Card`, a `Divider`, an unstyled `Text`. Deriving
-// `colorScheme`, `scaffoldBackgroundColor`, `cardTheme`, `dividerColor`,
-// `iconTheme`, `textTheme` and `appBarTheme` from the same nine tokens means
-// those widgets degrade to the right brightness instead of sitting light on a
-// near-black scaffold.
-//
-// For the same reason this registers BOTH theme extensions: [AppColors] for
-// migrated code, and [InkColors] carrying the matching-brightness [InkPalette]
-// so the 428 surviving `context.ink` call sites at least follow the brightness
-// while they wait their turn.
+// Every component theme below reads the same tokens. A widget that has not been
+// moved to `context.colors` yet still lands on the right brightness and palette
+// rather than on Material's defaults.
 
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
-import 'ink_colors.dart'; // re-exports ink_palette.dart
 
 class DistillTheme {
   DistillTheme._();
 
-  // The type pairing is inherited from the warm theme unchanged. This stage is
-  // a colour change; re-picking the typeface at the same time would make it
-  // impossible to tell which of the two caused a regression.
+  // The type pairing is unchanged from the shipped app. Re-picking the typeface
+  // in the same pass as the colours would make a regression impossible to pin on
+  // one or the other.
   static const String _displayFont = 'Poppins';
   static const String _bodyFont = 'Nunito';
 
@@ -51,11 +32,13 @@ class DistillTheme {
       brightness: brightness,
       useMaterial3: true,
       fontFamily: _bodyFont,
-      extensions: [c, isDark ? InkColors.dark : InkColors.light],
+      splashFactory: InkSparkle.splashFactory,
+      extensions: [c],
       colorScheme: _scheme(brightness, c),
       scaffoldBackgroundColor: c.bgPrimary,
       canvasColor: c.surface,
       primaryColor: c.accent,
+      splashColor: c.accentMuted,
       dividerColor: c.border,
       // Default glyph colour is `textPrimary`, not `accent`. The single-instance
       // chrome glyphs the spec keeps gold (back arrow, overflow, search leading
@@ -78,6 +61,14 @@ class DistillTheme {
           letterSpacing: -0.2,
         ),
       ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: c.accent,
+        foregroundColor: c.onAccent,
+        elevation: isDark ? 0 : 4,
+        focusElevation: isDark ? 0 : 6,
+        highlightElevation: isDark ? 0 : 2,
+        shape: const StadiumBorder(),
+      ),
       // The spec's one global asymmetry: "shadows generally present and soft in
       // light, replaced by hairline borders in dark. Do not carry BoxShadow into
       // dark mode." Encoded here so a plain `Card` obeys it without the screen
@@ -92,6 +83,198 @@ class DistillTheme {
           side: isDark ? BorderSide(color: c.border) : BorderSide.none,
         ),
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: c.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: isDark ? 0 : 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: isDark ? BorderSide(color: c.border) : BorderSide.none,
+        ),
+        titleTextStyle: TextStyle(
+          fontFamily: _displayFont,
+          color: c.textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+        contentTextStyle: TextStyle(
+          fontFamily: _bodyFont,
+          color: c.textSecondary,
+          fontSize: 15,
+          height: 1.45,
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: c.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: c.accent,
+          foregroundColor: c.onAccent,
+          elevation: 0,
+          minimumSize: const Size(0, 46),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(
+            fontFamily: _displayFont,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: c.accent,
+          foregroundColor: c.onAccent,
+          minimumSize: const Size(0, 46),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(
+            fontFamily: _displayFont,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: c.accent,
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(
+            fontFamily: _displayFont,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: c.accent,
+          side: BorderSide(color: c.border, width: 1.5),
+          minimumSize: const Size(0, 46),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(
+            fontFamily: _displayFont,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: c.surfaceSubtle,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        hintStyle: TextStyle(color: c.textSecondary),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: c.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: c.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: c.accent, width: 1.5),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        // Selected: an accent track with the on-accent thumb — white in light,
+        // near-black in dark — as THEME_SPEC.md's asymmetry table asks.
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? c.onAccent
+                : (isDark ? c.textSecondary : c.surface)),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? c.accent : c.surfaceSubtle),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.transparent
+                : c.border),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: c.accent,
+        inactiveTrackColor: c.border,
+        thumbColor: c.accent,
+        overlayColor: c.accent.withValues(alpha: 0.2),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        // Inverted by design: a snack bar reads as an overlay, not a surface.
+        backgroundColor: c.textPrimary,
+        contentTextStyle: TextStyle(fontFamily: _bodyFont, color: c.surface),
+        // Not the accent: in light the accent is the snack bar's own navy, so an
+        // accent action would vanish into the background it sits on.
+        actionTextColor: c.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        behavior: SnackBarBehavior.floating,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: c.surface,
+        selectedColor: c.accentMuted,
+        checkmarkColor: c.accent,
+        side: BorderSide(color: c.border),
+        labelStyle: TextStyle(
+          fontFamily: _displayFont,
+          color: c.textSecondary,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: c.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textStyle: TextStyle(
+          fontFamily: _bodyFont,
+          color: c.textPrimary,
+          fontSize: 14,
+        ),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: c.textSecondary,
+        textColor: c.textPrimary,
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          textStyle: const WidgetStatePropertyAll(TextStyle(
+            fontFamily: _displayFont,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          )),
+          foregroundColor: WidgetStateProperty.resolveWith((states) =>
+              states.contains(WidgetState.selected) ? c.accent : c.textSecondary),
+          backgroundColor: WidgetStateProperty.resolveWith((states) =>
+              states.contains(WidgetState.selected)
+                  ? c.accentMuted
+                  : Colors.transparent),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: c.accent,
+        linearTrackColor: c.surfaceSubtle,
+        circularTrackColor: c.surfaceSubtle,
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: c.textPrimary,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        textStyle: TextStyle(
+          fontFamily: _bodyFont,
+          color: c.surface,
+          fontSize: 12,
+        ),
+      ),
       textTheme: _textTheme(c),
     );
   }
@@ -104,7 +287,8 @@ class DistillTheme {
   /// `accent` lets Flutter's own algorithm supply those instead of this file
   /// inventing hexes the spec never approved; every role the nine tokens DO
   /// cover is then overridden below, so nothing generated leaks into a surface
-  /// or text role. If the spec later grows an error token, override it here.
+  /// or text role. Error red therefore comes from Material's own error values.
+  /// If the spec later grows an error token, override it here.
   static ColorScheme _scheme(Brightness brightness, AppColors c) {
     return ColorScheme.fromSeed(
       seedColor: c.accent,
@@ -130,8 +314,8 @@ class DistillTheme {
       onSurfaceVariant: c.textSecondary,
       outline: c.border,
       outlineVariant: c.border,
-      // M3's elevation tint would pull the warm surfaces towards the primary
-      // hue, which reads as dirty on paper and as a gold haze on near-black.
+      // M3's elevation tint would pull the surfaces towards the primary hue,
+      // which reads as a gold haze on near-black.
       surfaceTint: Colors.transparent,
     );
   }

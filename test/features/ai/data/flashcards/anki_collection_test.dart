@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/flashcards/anki_collection.dart';
-import 'package:inkflow/features/ai/data/flashcards/flashcard_csv.dart'
+import 'package:distill_ed/features/ai/data/flashcards/anki_collection.dart';
+import 'package:distill_ed/features/ai/data/flashcards/flashcard_csv.dart'
     show kDefaultAnkiDeckName;
-import 'package:inkflow/features/ai/domain/models/flashcard.dart';
+import 'package:distill_ed/features/ai/domain/models/flashcard.dart';
 
 Flashcard card(String front, String back) => Flashcard(
       front: front,

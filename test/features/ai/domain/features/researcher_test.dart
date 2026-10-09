@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_message.dart';
-import 'package:inkflow/features/ai/domain/features/researcher.dart';
-import 'package:inkflow/features/ai/domain/tools/tool.dart';
-import 'package:inkflow/features/ai/domain/tools/tool_generation_event.dart';
+import 'package:distill_ed/features/ai/domain/ai_message.dart';
+import 'package:distill_ed/features/ai/domain/features/researcher.dart';
+import 'package:distill_ed/features/ai/domain/tools/tool.dart';
+import 'package:distill_ed/features/ai/domain/tools/tool_generation_event.dart';
 
 /// Scripted client: each call to `generateWithTools` pops the next scripted
 /// response off the queue and records the request it was given — the same

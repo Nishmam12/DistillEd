@@ -33,7 +33,7 @@ class _ReclaimSpaceRowState extends ConsumerState<_ReclaimSpaceRow> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: context.ink.surface,
+        backgroundColor: context.colors.surface,
         title: const Text('Free up space?'),
         content: Text(
           '${orphans.length} leftover file${orphans.length == 1 ? '' : 's'} '
@@ -48,7 +48,7 @@ class _ReclaimSpaceRowState extends ConsumerState<_ReclaimSpaceRow> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: context.ink.accentRed)),
+            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),

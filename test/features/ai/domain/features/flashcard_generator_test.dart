@@ -2,10 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
-import 'package:inkflow/features/ai/domain/features/flashcard_generator.dart';
-import 'package:inkflow/features/ai/domain/models/flashcard.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/page_context.dart';
+import 'package:distill_ed/features/ai/domain/features/flashcard_generator.dart';
+import 'package:distill_ed/features/ai/domain/models/flashcard.dart';
 
 class _ScriptedProvider implements AiProvider {
   final List<String> responses;

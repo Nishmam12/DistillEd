@@ -4,12 +4,12 @@ import 'dart:typed_data';
 import 'package:flutter_edge_ai/flutter_edge_ai.dart'
     show ModelFileType, ModelType;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
-import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/data/providers/local_gemma_provider.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/compute_backend.dart';
+import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_exceptions.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
+import 'package:distill_ed/features/ai/data/providers/local_gemma_provider.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/compute_backend.dart';
 
 /// Runtime whose sessions stream scripted chunks and record everything the
 /// provider does with the seams.

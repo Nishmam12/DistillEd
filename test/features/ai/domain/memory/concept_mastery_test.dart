@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/memory/concept_mastery.dart';
+import 'package:distill_ed/features/ai/domain/memory/concept_mastery.dart';
 
 ConceptMastery concept(
   String name, {

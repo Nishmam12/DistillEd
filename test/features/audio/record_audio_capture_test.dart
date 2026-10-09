@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/audio/data/record_audio_capture.dart';
-import 'package:inkflow/features/audio/domain/audio_ports.dart';
+import 'package:distill_ed/features/audio/data/record_audio_capture.dart';
+import 'package:distill_ed/features/audio/domain/audio_ports.dart';
 import 'package:record/record.dart';
 
 void main() {

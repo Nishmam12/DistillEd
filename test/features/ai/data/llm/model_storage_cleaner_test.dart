@@ -17,8 +17,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
-import 'package:inkflow/features/ai/data/llm/model_storage_cleaner.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_exceptions.dart';
+import 'package:distill_ed/features/ai/data/llm/model_storage_cleaner.dart';
 
 const _llm = 'gemma-4-E2B-it.litertlm';
 const _embedModel = 'embeddinggemma-300M_seq512_mixed-precision.tflite';

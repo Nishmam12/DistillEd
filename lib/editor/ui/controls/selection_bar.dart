@@ -28,6 +28,7 @@ import '../../state/scene_image_cache_provider.dart';
 import '../../state/selection_controller.dart';
 import '../text_input_dialog.dart';
 import 'editor_controls_shared.dart';
+import 'save_to_library_dialog.dart';
 
 class SelectionBar extends ConsumerWidget {
   final ScenePageKey pageKey;
@@ -355,7 +356,9 @@ class SelectionBar extends ConsumerWidget {
       textDirection: TextDirection.ltr,
       maxLines: 1,
     )..layout();
-    return painter.width;
+    final width = painter.width;
+    painter.dispose();
+    return width;
   }
 
   /// A single selected stroke that was drawn during a recording, or null.
@@ -403,20 +406,20 @@ class SelectionBar extends ConsumerWidget {
     // not be touched once this widget is gone.
     if (!context.mounted) return;
 
-    // The recogniser reports boxes in the source image's pixel space, so the
-    // picture's own pixel size is what they map from — read from the decoded
-    // bitmap, which the cache already holds to draw it.
-    final bitmap = ref.read(sceneImageCacheProvider).get(im.relativeImagePath);
-    if (bitmap == null) {
-      messenger.showSnackBar(const SnackBar(
-          content: Text('That picture is still loading — try again.')));
+    // The recogniser reports boxes in the picture's own pixels, so those are what
+    // they map from. Read from the file's header: the decoded bitmap may be
+    // smaller than the picture (see SceneImageCache.decodeSize).
+    final source = await SceneImageCache.naturalSize(absolute);
+    if (!context.mounted) return;
+    if (source == null) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text("That picture couldn't be read.")));
       return;
     }
 
     final placed = layOutOcrBoxes(
       boxes: boxes,
-      sourcePixels:
-          Size(bitmap.width.toDouble(), bitmap.height.toDouble()),
+      sourcePixels: source,
       target: ElementBounds.of(im),
       measureWidth: _measureExtractedLine,
     );
@@ -508,8 +511,9 @@ class SelectionBar extends ConsumerWidget {
   Future<void> _saveToLibrary(BuildContext context, WidgetRef ref) async {
     final selected = _sel(ref);
     if (selected.isEmpty) return;
-    final name = await _promptName(context);
-    if (name == null) return;
+    final name = await showSaveToLibraryDialog(context);
+    // The dialog can outlive this widget; `ref` must not be read once it has.
+    if (name == null || !context.mounted) return;
     await ref
         .read(libraryProvider.notifier)
         .addFromElements(name, selected, id: editorNewId());
@@ -517,31 +521,5 @@ class SelectionBar extends ConsumerWidget {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Saved "$name" to library')));
     }
-  }
-
-  Future<String?> _promptName(BuildContext context) {
-    final controller = TextEditingController();
-    String? clean(String v) => v.trim().isEmpty ? null : v.trim();
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Save to library'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Item name'),
-          onSubmitted: (v) => Navigator.of(context).pop(clean(v)),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () =>
-                  Navigator.of(context).pop(clean(controller.text)),
-              child: const Text('Save')),
-        ],
-      ),
-    );
   }
 }

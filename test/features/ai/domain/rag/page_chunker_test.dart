@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/rag/page_chunker.dart';
-import 'package:inkflow/features/ai/domain/text_budget.dart';
+import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart';
+import 'package:distill_ed/features/ai/domain/text_budget.dart';
 
 /// A paragraph of [words] distinct, countable words: "p1w1 p1w2 …".
 String paragraph(int index, int words) =>

@@ -1,5 +1,6 @@
 """Tests for POST /v1/tools/search (Loop 3.4 Web Search tool proxy)."""
 
+import json
 import os
 import tempfile
 
@@ -184,3 +185,68 @@ async def test_failed_search_is_refunded(client, monkeypatch):
                 assert resp.status_code == 502
     finally:
         os.remove(path)
+
+
+async def _fake_search_exa_not_json(settings, query: str):
+    # What `resp.json()` raises when Exa answers with a body that is not JSON.
+    raise json.JSONDecodeError("Expecting value", "", 0)
+
+
+async def _fake_search_exa_not_an_object(settings, query: str):
+    return ["not", "the", "results", "object"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "fake", [_fake_search_exa_not_json, _fake_search_exa_not_an_object]
+)
+async def test_malformed_upstream_reply_is_a_502_and_refunded(
+    client, monkeypatch, fake
+):
+    monkeypatch.setattr(tools_module, "get_settings", _configured_settings)
+    monkeypatch.setattr(tools_module, "_search_exa", fake)
+    fd, path = tempfile.mkstemp(suffix=".sqlite3")
+    os.close(fd)
+    limiter = SearchRateLimiter(
+        SearchRateLimitConfig(db_path=path, daily_search_cap=1)
+    )
+    monkeypatch.setattr(tools_module, "_get_search_rate_limiter", lambda: limiter)
+    try:
+        async with client as c:
+            for _ in range(2):  # a cap of 1 would 429 the second if not refunded
+                resp = await c.post(
+                    "/v1/tools/search",
+                    headers={"X-Device-Key": "test-device"},
+                    json={"query": "x"},
+                )
+                assert resp.status_code == 502
+    finally:
+        os.remove(path)
+
+
+async def _fake_search_exa_with_a_junk_entry(settings, query: str):
+    return {
+        "results": [
+            "junk, not an object",
+            {
+                "title": "Ada Lovelace",
+                "url": "https://en.wikipedia.org/wiki/Ada_Lovelace",
+                "text": "Ada Lovelace was an English mathematician.",
+            },
+        ]
+    }
+
+
+@pytest.mark.asyncio
+async def test_a_junk_entry_is_skipped_and_the_rest_still_returned(client, monkeypatch):
+    monkeypatch.setattr(tools_module, "get_settings", _configured_settings)
+    monkeypatch.setattr(tools_module, "_search_exa", _fake_search_exa_with_a_junk_entry)
+    async with client as c:
+        resp = await c.post(
+            "/v1/tools/search",
+            headers={"X-Device-Key": "test-device"},
+            json={"query": "ada lovelace"},
+        )
+    assert resp.status_code == 200
+    assert [r["title"] for r in resp.json()["results"]] == ["Ada Lovelace"]
+

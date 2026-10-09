@@ -1,8 +1,8 @@
 // Round-trips the Phase 3 style fields through the Isar record mapper.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/data/persistence/scene_element_record_mapper.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
+import 'package:distill_ed/data/persistence/scene_element_record_mapper.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
 
 void main() {
   test('shape style fields survive the round-trip', () {

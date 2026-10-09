@@ -6,15 +6,14 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:inkflow/core/providers/search_providers.dart';
-import 'package:inkflow/data/persistence/page_text_store.dart';
-import 'package:inkflow/editor/state/page_notifier.dart';
-import 'package:inkflow/features/ai/domain/rag/page_chunker.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_corpus.dart';
-import 'package:inkflow/features/export/export_share_service.dart';
-import 'package:inkflow/features/home/data/repositories/note_repository.dart';
-import 'package:inkflow/features/home/data/repositories/page_repository.dart';
-import 'package:inkflow/features/home/presentation/home_notifier.dart';
+import 'package:distill_ed/data/persistence/page_text_store.dart';
+import 'package:distill_ed/editor/state/page_notifier.dart';
+import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_corpus.dart';
+import 'package:distill_ed/features/export/export_share_service.dart';
+import 'package:distill_ed/features/home/data/repositories/note_repository.dart';
+import 'package:distill_ed/features/home/data/repositories/page_repository.dart';
+import 'package:distill_ed/features/home/presentation/home_notifier.dart';
 
 Future<String> _buildRagCorpus({
   required NoteRepository notes,

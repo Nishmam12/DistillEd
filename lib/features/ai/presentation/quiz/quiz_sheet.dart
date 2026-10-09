@@ -12,7 +12,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/features/quiz_generator.dart';
 import '../../domain/memory/concept_mastery.dart';
@@ -21,22 +21,18 @@ import '../ai_providers.dart';
 import '../quiz_notifier.dart';
 import '../widgets/model_download_progress.dart';
 
-/// Verdict colours. Deliberately a deeper green than the palette's decorative
-/// leaf, so a correct answer reads as a *result* rather than an accent. It has
-/// to lighten in dark for the same reason the coral accent does — a mid-tone
-/// green on near-black fails contrast.
-Color _correct(BuildContext context) =>
-    Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF81C784)
-        : const Color(0xFF2E7D32);
+/// A right answer takes the accent: navy in light, gold in dark. The theme has
+/// no green, and the accent already marks every confirmed state, so a correct
+/// answer reads as the highlighted result. A wrong answer keeps the error red.
+Color _correct(BuildContext context) => context.colors.accent;
 
-Color _wrong(BuildContext context) => context.ink.accentRed;
+Color _wrong(BuildContext context) => Theme.of(context).colorScheme.error;
 
 /// Opens the quiz sheet. Call after kicking off [QuizNotifier.generate].
 void showQuizSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
-    backgroundColor: context.ink.surface,
+    backgroundColor: context.colors.surface,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -100,9 +96,9 @@ class _Status extends StatelessWidget {
       children: [
         const _SheetTitle('Quiz'),
         const SizedBox(height: 28),
-        CircularProgressIndicator(color: context.ink.accent),
+        CircularProgressIndicator(color: context.colors.accent),
         const SizedBox(height: 16),
-        Text(label, style: TextStyle(color: context.ink.textSecondary)),
+        Text(label, style: TextStyle(color: context.colors.textSecondary)),
         const SizedBox(height: 12),
       ],
     );
@@ -124,7 +120,7 @@ class _Downloading extends ConsumerWidget {
         Text(
           '${LlmModelSpec.active.displayName} · '
           '${sizeGb.toStringAsFixed(1)} GB — one-time download',
-          style: TextStyle(fontSize: 13, color: context.ink.textSecondary),
+          style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
         ),
         const SizedBox(height: 20),
         ModelDownloadProgress(
@@ -154,26 +150,26 @@ class _ErrorView extends ConsumerWidget {
         const SizedBox(height: 12),
         Text(state.message,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: context.ink.textPrimary)),
+            style: TextStyle(fontSize: 14, color: context.colors.textPrimary)),
         const SizedBox(height: 20),
         if (state.offerModelDownload)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
             onPressed: notifier.downloadModelAndRetry,
             child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
-                style: TextStyle(color: context.ink.textOnAccent)),
+                style: TextStyle(color: context.colors.onAccent)),
           )
         else if (state.retryable)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
             onPressed: notifier.retry,
             child: Text('Try again',
-                style: TextStyle(color: context.ink.textOnAccent)),
+                style: TextStyle(color: context.colors.onAccent)),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text('Close',
-              style: TextStyle(color: context.ink.textSecondary)),
+              style: TextStyle(color: context.colors.textSecondary)),
         ),
       ],
     );
@@ -303,18 +299,18 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: context.ink.accentWash,
+                  color: context.colors.accentMuted,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text('$_score / $total',
                     style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: context.ink.accentStrong)),
+                        color: context.colors.accent)),
               ),
             IconButton(
               tooltip: 'Close',
               icon: Icon(Icons.close,
-                  size: 20, color: context.ink.textSecondary),
+                  size: 20, color: context.colors.textSecondary),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],
@@ -347,10 +343,10 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
         const SizedBox(height: 12),
         if (!_checked)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
             onPressed: _check,
             child: Text('Check answers',
-                style: TextStyle(color: context.ink.textOnAccent)),
+                style: TextStyle(color: context.colors.onAccent)),
           )
         else
           Row(
@@ -359,17 +355,17 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
                 child: OutlinedButton(
                   onPressed: _reset,
                   child: Text('Retake',
-                      style: TextStyle(color: context.ink.accent)),
+                      style: TextStyle(color: context.colors.accent)),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton(
                   style:
-                      FilledButton.styleFrom(backgroundColor: context.ink.accent),
+                      FilledButton.styleFrom(backgroundColor: context.colors.accent),
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text('Done',
-                      style: TextStyle(color: context.ink.textOnAccent)),
+                      style: TextStyle(color: context.colors.onAccent)),
                 ),
               ),
             ],
@@ -407,9 +403,9 @@ class _QuestionCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: context.ink.surfaceWarm,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: context.ink.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,12 +415,12 @@ class _QuestionCard extends StatelessWidget {
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.6,
-                color: context.ink.textMuted,
+                color: context.colors.textSecondary,
               )),
           const SizedBox(height: 6),
           Text(q.prompt,
               style: TextStyle(
-                  fontSize: 15, height: 1.35, color: context.ink.textPrimary)),
+                  fontSize: 15, height: 1.35, color: context.colors.textPrimary)),
           const SizedBox(height: 10),
           if (q.isChoice)
             for (var o = 0; o < q.options.length; o++)
@@ -489,9 +485,9 @@ class _OptionRow extends StatelessWidget {
         ),
       _OptionState.wrong => (_wrong(context), Icons.cancel, _wrong(context)),
       _OptionState.neutral => (
-          selected ? context.ink.accent : context.ink.border,
+          selected ? context.colors.accent : context.colors.border,
           selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-          selected ? context.ink.accent : context.ink.textMuted,
+          selected ? context.colors.accent : context.colors.textSecondary,
         ),
     };
     return Padding(
@@ -522,7 +518,7 @@ class _OptionRow extends StatelessWidget {
               Expanded(
                 child: Text(text,
                     style: TextStyle(
-                        fontSize: 14, color: context.ink.textPrimary)),
+                        fontSize: 14, color: context.colors.textPrimary)),
               ),
             ],
           ),
@@ -556,17 +552,17 @@ class _Result extends StatelessWidget {
               TextSpan(
                   text: q.isSelfAssessed ? 'Reference: ' : 'Answer: ',
                   style: TextStyle(
-                      fontWeight: FontWeight.w700, color: context.ink.textMuted)),
+                      fontWeight: FontWeight.w700, color: context.colors.textSecondary)),
               TextSpan(
                   text: q.correctAnswer,
-                  style: TextStyle(color: context.ink.textPrimary)),
+                  style: TextStyle(color: context.colors.textPrimary)),
             ],
           )),
         if (q.explanation.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(q.explanation,
               style: TextStyle(
-                  fontSize: 13, height: 1.35, color: context.ink.textSecondary)),
+                  fontSize: 13, height: 1.35, color: context.colors.textSecondary)),
         ],
         if (q.isSelfAssessed) ...[
           const SizedBox(height: 4),
@@ -577,10 +573,10 @@ class _Result extends StatelessWidget {
                 Icon(selfMarked ? Icons.check_box : Icons.check_box_outline_blank,
                     size: 18,
                     color:
-                        selfMarked ? _correct(context) : context.ink.textMuted),
+                        selfMarked ? _correct(context) : context.colors.textSecondary),
                 const SizedBox(width: 8),
                 Text('I got this right',
-                    style: TextStyle(fontSize: 13, color: context.ink.textPrimary)),
+                    style: TextStyle(fontSize: 13, color: context.colors.textPrimary)),
               ],
             ),
           ),
@@ -601,7 +597,7 @@ class _SheetTitle extends StatelessWidget {
           fontFamily: 'Poppins',
           fontSize: 17,
           fontWeight: FontWeight.w600,
-          color: context.ink.textPrimary,
+          color: context.colors.textPrimary,
         ));
   }
 }

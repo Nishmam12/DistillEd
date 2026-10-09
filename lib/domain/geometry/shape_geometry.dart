@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'dart:ui';
 
 class ShapeGeometry {
   static Rect boundingRect(List<Offset> points) {

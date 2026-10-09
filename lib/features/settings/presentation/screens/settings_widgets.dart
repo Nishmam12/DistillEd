@@ -26,7 +26,7 @@ class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: context.ink.surface,
+      backgroundColor: context.colors.surface,
       title: const Text('HuggingFace Token'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -39,7 +39,7 @@ class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
             'Both steps happen in your browser, where you are already signed '
             'in. Your token stays on this device and is only ever sent to '
             'HuggingFace to download the model.',
-            style: TextStyle(fontSize: 13, color: context.ink.textSecondary),
+            style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
           ),
           const SizedBox(height: 4),
           // The two steps as taps rather than instructions. Previously this
@@ -92,18 +92,18 @@ class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(''),
             child: Text('Remove',
-                style: TextStyle(color: context.ink.accentRed)),
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text('Cancel',
-              style: TextStyle(color: context.ink.textSecondary)),
+              style: TextStyle(color: context.colors.textSecondary)),
         ),
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+          style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
           onPressed: () => Navigator.of(context).pop(_controller.text),
           child: Text('Save',
-              style: TextStyle(color: context.ink.textOnAccent)),
+              style: TextStyle(color: context.colors.onAccent)),
         ),
       ],
     );

@@ -19,17 +19,17 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/context_engine/context_engine.dart';
-import 'package:inkflow/features/ai/domain/features/explainer.dart';
-import 'package:inkflow/features/ai/domain/features/notes_qa.dart';
-import 'package:inkflow/features/ai/domain/page_content.dart';
-import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_retriever.dart';
-import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/context_engine.dart';
+import 'package:distill_ed/features/ai/domain/features/explainer.dart';
+import 'package:distill_ed/features/ai/domain/features/notes_qa.dart';
+import 'package:distill_ed/features/ai/domain/page_content.dart';
+import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_retriever.dart';
+import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart'
     show kChunkOverlapWords, kChunkWords;
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
 
 /// Records exactly what reached the model.
 class _RecordingProvider implements AiProvider {

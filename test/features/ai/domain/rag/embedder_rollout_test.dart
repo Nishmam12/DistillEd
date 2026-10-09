@@ -4,7 +4,7 @@
 // which is being built, and how far the build has got.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/domain/rag/embedder_rollout.dart';
+import 'package:distill_ed/features/ai/domain/rag/embedder_rollout.dart';
 
 final _now = DateTime(2026, 10, 8, 23, 0);
 

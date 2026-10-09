@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/theme/app_colors.dart';
-import 'package:inkflow/features/home/presentation/models/note_card_data.dart';
-import 'package:inkflow/features/home/presentation/note_cards_provider.dart';
-import 'package:inkflow/features/home/presentation/notes_palette.dart';
-import 'package:inkflow/features/home/presentation/screens/notes_screen.dart';
-import 'package:inkflow/features/home/presentation/widgets/note_card.dart';
-import 'package:inkflow/features/home/presentation/widgets/search_bar_widget.dart';
+import 'package:distill_ed/core/theme/app_colors.dart';
+import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
+import 'package:distill_ed/features/home/presentation/note_cards_provider.dart';
+import 'package:distill_ed/features/home/presentation/notes_palette.dart';
+import 'package:distill_ed/features/home/presentation/screens/notes_screen.dart';
+import 'package:distill_ed/features/home/presentation/widgets/note_card.dart';
+import 'package:distill_ed/features/home/presentation/widgets/search_bar_widget.dart';
 
 NoteCardData _card(int id, String title, {DateTime? createdAt}) {
   return NoteCardData(

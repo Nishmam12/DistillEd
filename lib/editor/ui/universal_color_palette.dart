@@ -8,8 +8,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/constants/editor_constants.dart';
-import '../../core/theme/ink_colors.dart';
+import 'editor_constants.dart';
+import '../../core/theme/app_colors.dart';
 import '../state/editor_tool_controller.dart';
 
 class UniversalColorPalette extends ConsumerStatefulWidget {
@@ -54,11 +54,11 @@ class _UniversalColorPaletteState extends ConsumerState<UniversalColorPalette> {
                   constraints: const BoxConstraints(maxWidth: 176),
                   padding: const EdgeInsets.all(10),
                   decoration: ShapeDecoration(
-                    color: context.ink.surface,
-                    shadows: context.ink.shadowFloat,
+                    color: context.colors.surface,
+                    shadows: context.floatShadow,
                     shape: ContinuousRectangleBorder(
                       borderRadius: BorderRadius.circular(22),
-                      side: BorderSide(color: context.ink.border),
+                      side: BorderSide(color: context.colors.border),
                     ),
                   ),
                   child: Wrap(
@@ -100,9 +100,9 @@ class _Trigger extends StatelessWidget {
     return Tooltip(
       message: 'Colour',
       child: Material(
-        color: context.ink.surface,
+        color: context.colors.surface,
         elevation: 2,
-        shape: StadiumBorder(side: BorderSide(color: context.ink.border)),
+        shape: StadiumBorder(side: BorderSide(color: context.colors.border)),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onTap,
@@ -117,14 +117,14 @@ class _Trigger extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Color(color),
                     shape: BoxShape.circle,
-                    border: Border.all(color: context.ink.border, width: 1.5),
+                    border: Border.all(color: context.colors.border, width: 1.5),
                   ),
                 ),
                 const SizedBox(width: 4),
                 Icon(
                   open ? Icons.expand_less : Icons.expand_more,
                   size: 16,
-                  color: context.ink.textSecondary,
+                  color: context.colors.textSecondary,
                 ),
               ],
             ),
@@ -154,7 +154,7 @@ class _Swatch extends StatelessWidget {
           color: Color(color),
           shape: BoxShape.circle,
           border: Border.all(
-            color: selected ? Theme.of(context).colorScheme.primary : Colors.black26,
+            color: selected ? Theme.of(context).colorScheme.primary : context.colors.border,
             width: selected ? 3 : 1,
           ),
         ),

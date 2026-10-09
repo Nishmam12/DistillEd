@@ -3,6 +3,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -42,22 +43,43 @@ class ExportShareService {
     return cleaned.isEmpty ? 'export' : cleaned;
   }
 
+  /// The longest title, in characters, kept in an export's file name. A file
+  /// system refuses a name over 255 bytes, and a pasted title can be longer.
+  static const int _maxTitleChars = 80;
+
+  /// `<title>_<timestamp>.<extension>` for an export, with the title shortened
+  /// (never the extension, which the share target needs) and made safe.
+  @visibleForTesting
+  static String fileName(String title, int timestamp, String extension) {
+    final safe = safeFilename(title);
+    final short = safe.length > _maxTitleChars
+        ? safe.substring(0, _maxTitleChars)
+        : safe;
+    return '${short}_$timestamp.$extension';
+  }
+
   /// Shares PNG image bytes via the system share sheet.
   static Future<void> sharePng(Uint8List pngBytes, String notebookTitle) async {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
     await shareFile(
       bytes: pngBytes,
-      filename: '${notebookTitle}_$timestamp.png',
+      filename: fileName(
+        notebookTitle,
+        DateTime.now().millisecondsSinceEpoch,
+        'png',
+      ),
       mimeType: 'image/png',
     );
   }
 
   /// Shares PDF bytes via the system share sheet.
   static Future<void> sharePdf(Uint8List pdfBytes, String notebookTitle) async {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
     await shareFile(
       bytes: pdfBytes,
-      filename: '${notebookTitle}_$timestamp.pdf',
+      filename: fileName(
+        notebookTitle,
+        DateTime.now().millisecondsSinceEpoch,
+        'pdf',
+      ),
       mimeType: 'application/pdf',
     );
   }

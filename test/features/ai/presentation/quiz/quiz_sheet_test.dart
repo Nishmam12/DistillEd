@@ -3,20 +3,20 @@ import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/llm/device_storage.dart';
-import 'package:inkflow/features/ai/data/llm/gemma_adapter.dart';
-import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
-import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
-import 'package:inkflow/features/ai/data/memory/learning_memory_repository.dart';
-import 'package:inkflow/features/ai/domain/ai_provider.dart';
-import 'package:inkflow/features/ai/domain/features/quiz_generator.dart';
-import 'package:inkflow/features/ai/domain/knowledge_graph/concept_relation.dart';
-import 'package:inkflow/features/ai/domain/memory/concept_mastery.dart';
-import 'package:inkflow/features/ai/domain/memory/learning_preferences.dart';
-import 'package:inkflow/features/ai/domain/memory/quiz_attempt.dart';
-import 'package:inkflow/features/ai/presentation/ai_providers.dart';
-import 'package:inkflow/features/ai/presentation/quiz_notifier.dart';
-import 'package:inkflow/features/ai/presentation/quiz/quiz_sheet.dart';
+import 'package:distill_ed/features/ai/data/llm/device_storage.dart';
+import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
+import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
+import 'package:distill_ed/features/ai/data/memory/learning_memory_repository.dart';
+import 'package:distill_ed/features/ai/domain/ai_provider.dart';
+import 'package:distill_ed/features/ai/domain/features/quiz_generator.dart';
+import 'package:distill_ed/features/ai/domain/knowledge_graph/concept_relation.dart';
+import 'package:distill_ed/features/ai/domain/memory/concept_mastery.dart';
+import 'package:distill_ed/features/ai/domain/memory/learning_preferences.dart';
+import 'package:distill_ed/features/ai/domain/memory/quiz_attempt.dart';
+import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
+import 'package:distill_ed/features/ai/presentation/quiz_notifier.dart';
+import 'package:distill_ed/features/ai/presentation/quiz/quiz_sheet.dart';
 
 /// Captures what the sheet files, so the durable side-effect is asserted
 /// without standing up Isar.

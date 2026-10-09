@@ -43,31 +43,32 @@ class IsarSceneElementStore implements SceneElementStore {
     int pageId,
     List<SceneElement> elements,
   ) async {
-    {
-      // Map existing rows by elementId so re-running replaces rather than dupes.
-      // Only the two columns, not the rows: a drawn element's points are the big
-      // part, and this runs on every pen-up. Both queries share a filter and so
-      // an order, which pairs the lists up.
-      final pageRows = _isar.sceneElementRecords.filter().pageIdEqualTo(pageId);
-      final rowIds = await pageRows.idProperty().findAll();
-      final elementIds = await pageRows.elementIdProperty().findAll();
-      final existingIdByElementId = <String, int>{
-        for (var i = 0; i < rowIds.length; i++) elementIds[i]: rowIds[i],
-      };
+    // Map existing rows by elementId so re-running replaces rather than dupes.
+    // Only the two columns, not the rows: a drawn element's points are the big
+    // part, and this runs on every pen-up. Both queries share a filter and so
+    // an order, which pairs the lists up.
+    final pageRows = _isar.sceneElementRecords.filter().pageIdEqualTo(pageId);
+    final rowIds = await pageRows.idProperty().findAll();
+    final elementIds = await pageRows.elementIdProperty().findAll();
+    final existingIdByElementId = <String, int>{
+      for (var i = 0; i < rowIds.length; i++) elementIds[i]: rowIds[i],
+    };
 
-      final records = elements.map((e) {
-        final record = SceneElementRecordMapper.toRecord(
-          e,
-          notebookId: notebookId,
-          pageId: pageId,
-        );
-        final prior = existingIdByElementId[e.id];
-        if (prior != null) record.id = prior;
-        return record;
-      }).toList();
-
-      await _isar.sceneElementRecords.putAll(records);
+    // One row per element: a batch that names an element twice keeps the last
+    // copy, as the in-memory scene does, rather than two rows for one element.
+    final recordByElementId = <String, SceneElementRecord>{};
+    for (final e in elements) {
+      final record = SceneElementRecordMapper.toRecord(
+        e,
+        notebookId: notebookId,
+        pageId: pageId,
+      );
+      final prior = existingIdByElementId[e.id];
+      if (prior != null) record.id = prior;
+      recordByElementId[e.id] = record;
     }
+
+    await _isar.sceneElementRecords.putAll(recordByElementId.values.toList());
   }
 
   @override

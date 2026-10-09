@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/study_planner/study_plan.dart';
-import 'package:inkflow/features/ai/domain/study_planner/study_scheduler.dart';
+import 'package:distill_ed/features/ai/domain/study_planner/study_plan.dart';
+import 'package:distill_ed/features/ai/domain/study_planner/study_scheduler.dart';
 
 StudyHorizon _week() => StudyHorizon(
       kind: StudyHorizonKind.week,

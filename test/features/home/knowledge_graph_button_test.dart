@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/core/icons/phosphor_icons_regular.dart';
-import 'package:inkflow/core/theme/app_colors.dart';
-import 'package:inkflow/features/home/presentation/notes_palette.dart';
-import 'package:inkflow/features/home/presentation/widgets/knowledge_graph_button.dart';
+import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
+import 'package:distill_ed/core/theme/app_colors.dart';
+import 'package:distill_ed/features/home/presentation/notes_palette.dart';
+import 'package:distill_ed/features/home/presentation/widgets/knowledge_graph_button.dart';
 
 Future<void> _pump(
   WidgetTester tester, {

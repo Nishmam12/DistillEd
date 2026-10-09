@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderException;
 
-import '../../../../core/theme/ink_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/ai_provenance.dart';
@@ -149,9 +149,9 @@ class _ErrorState extends ConsumerWidget {
         const SizedBox(height: 12),
         TextButton.icon(
           onPressed: () => ref.read(pageContextProvider(pageKey).notifier).refresh(),
-          icon: Icon(Icons.refresh, size: 18, color: context.ink.accent),
+          icon: Icon(Icons.refresh, size: 18, color: context.colors.accent),
           label: Text('Try again',
-              style: TextStyle(color: context.ink.accent)),
+              style: TextStyle(color: context.colors.accent)),
         ),
       ],
     );
@@ -223,17 +223,17 @@ class _ModelNotReady extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(failure,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: context.ink.accentRed)),
+              style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.error)),
         ],
         const SizedBox(height: 16),
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: context.ink.accent),
+          style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
           onPressed: () => ref.read(llmDownloadProvider.notifier).start(),
           child: Text(
               failure != null
                   ? 'Try again'
                   : 'Download model (${sizeGb.toStringAsFixed(1)} GB)',
-              style: TextStyle(color: context.ink.textOnAccent)),
+              style: TextStyle(color: context.colors.onAccent)),
         ),
       ],
     );
@@ -283,7 +283,7 @@ class _ContextBody extends StatelessWidget {
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.8,
-                    color: buildContext.ink.textMuted,
+                    color: buildContext.colors.textSecondary,
                   )),
               const Spacer(),
               if (!refreshing && onReread != null)
@@ -297,14 +297,14 @@ class _ContextBody extends StatelessWidget {
               fontFamily: 'Poppins',
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: buildContext.ink.textPrimary,
+              color: buildContext.colors.textPrimary,
             ),
           ),
           if (c.subtopics.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(c.subtopics.join('  ·  '),
                 style: TextStyle(
-                    fontSize: 13, color: buildContext.ink.textSecondary)),
+                    fontSize: 13, color: buildContext.colors.textSecondary)),
           ],
           // Its own line rather than the header row: the panel is ~300px wide
           // on a tablet split view, where the label and the Re-read button
@@ -356,7 +356,7 @@ class _RereadingBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
       decoration: BoxDecoration(
-        color: context.ink.accentWash,
+        color: context.colors.accentMuted,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -369,7 +369,7 @@ class _RereadingBanner extends StatelessWidget {
                 width: 15,
                 height: 15,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: context.ink.accentStrong),
+                    strokeWidth: 2, color: context.colors.accent),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -377,7 +377,7 @@ class _RereadingBanner extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: context.ink.accentStrong,
+                      color: context.colors.accent,
                     )),
               ),
             ],
@@ -387,8 +387,8 @@ class _RereadingBanner extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               minHeight: 4,
-              color: context.ink.accentStrong,
-              backgroundColor: context.ink.surfaceHighlight,
+              color: context.colors.accent,
+              backgroundColor: context.colors.surfaceSubtle,
             ),
           ),
         ],
@@ -414,9 +414,9 @@ class _RanOnBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = context.ink;
+    final colors = context.colors;
     final left = ranOn.leftDevice;
-    final fg = left ? ink.accent : ink.textMuted;
+    final fg = left ? colors.accent : colors.textSecondary;
 
     return Tooltip(
       message: ranOn.explanation,
@@ -465,7 +465,7 @@ class _RereadButton extends StatelessWidget {
       icon: const Icon(Icons.refresh, size: 16),
       label: const Text('Re-read'),
       style: TextButton.styleFrom(
-        foregroundColor: context.ink.accent,
+        foregroundColor: context.colors.accent,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         minimumSize: const Size(0, 32),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -515,9 +515,9 @@ class _SuggestionCard extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
       decoration: BoxDecoration(
-        color: context.ink.surfaceWarm,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.ink.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,12 +531,12 @@ class _SuggestionCard extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.6,
-                      color: context.ink.textMuted,
+                      color: context.colors.textSecondary,
                     )),
                 const SizedBox(height: 3),
                 Text(s.message,
                     style: TextStyle(
-                        fontSize: 13, height: 1.35, color: context.ink.textPrimary)),
+                        fontSize: 13, height: 1.35, color: context.colors.textPrimary)),
                 if (s.excerpt.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text('“${s.excerpt}”',
@@ -544,7 +544,7 @@ class _SuggestionCard extends StatelessWidget {
                         fontSize: 12,
                         height: 1.3,
                         fontStyle: FontStyle.italic,
-                        color: context.ink.textSecondary,
+                        color: context.colors.textSecondary,
                       )),
                 ],
                 if (s.replacement.isNotEmpty) ...[
@@ -556,10 +556,10 @@ class _SuggestionCard extends StatelessWidget {
                           text: 'Try: ',
                           style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: context.ink.textMuted)),
+                              color: context.colors.textSecondary)),
                       TextSpan(
                           text: s.replacement,
-                          style: TextStyle(color: context.ink.accentStrong)),
+                          style: TextStyle(color: context.colors.textPrimary)),
                     ],
                   )),
                 ],
@@ -571,7 +571,7 @@ class _SuggestionCard extends StatelessWidget {
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             padding: EdgeInsets.zero,
-            icon: Icon(Icons.close, size: 16, color: context.ink.textMuted),
+            icon: Icon(Icons.close, size: 16, color: context.colors.textSecondary),
             onPressed: onDismiss,
           ),
         ],
@@ -593,7 +593,7 @@ class _SectionLabel extends StatelessWidget {
             fontSize: 11,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
-            color: context.ink.textMuted,
+            color: context.colors.textSecondary,
           )),
     );
   }
@@ -620,7 +620,7 @@ class _LevelIndicator extends StatelessWidget {
             child: Container(
               height: 6,
               decoration: BoxDecoration(
-                color: i <= index ? context.ink.accent : context.ink.surfaceHighlight,
+                color: i <= index ? context.colors.accent : context.colors.surfaceSubtle,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -632,7 +632,7 @@ class _LevelIndicator extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: context.ink.textPrimary,
+              color: context.colors.textPrimary,
             )),
       ],
     );
@@ -648,14 +648,14 @@ class _ConceptChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: context.ink.accentPurpleWash,
+        color: context.colors.accentMuted,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: context.ink.accentPurpleStrong,
+            color: context.colors.accent,
           )),
     );
   }
@@ -674,7 +674,7 @@ class _GapFlag extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: context.ink.accentYellowWash,
+        color: context.colors.accentMuted,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -683,20 +683,20 @@ class _GapFlag extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 1),
             child: Icon(Icons.lightbulb_outline,
-                size: 16, color: context.ink.accentYellow),
+                size: 16, color: context.colors.accent),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(text,
                 style: TextStyle(
-                    fontSize: 13, height: 1.35, color: context.ink.textPrimary)),
+                    fontSize: 13, height: 1.35, color: context.colors.textPrimary)),
           ),
           if (onTap != null) ...[
             const SizedBox(width: 6),
             Padding(
               padding: const EdgeInsets.only(top: 1),
               child: Icon(Icons.school_outlined,
-                  size: 15, color: context.ink.accentYellow),
+                  size: 15, color: context.colors.accent),
             ),
           ],
         ],
@@ -731,14 +731,14 @@ class _DefinitionRow extends StatelessWidget {
       child: Text.rich(
         TextSpan(
           style: TextStyle(
-              fontSize: 13, height: 1.4, color: context.ink.textPrimary),
+              fontSize: 13, height: 1.4, color: context.colors.textPrimary),
           children: [
             TextSpan(
                 text: '$term — ',
                 style: const TextStyle(fontWeight: FontWeight.w600)),
             TextSpan(
                 text: definition,
-                style: TextStyle(color: context.ink.textSecondary)),
+                style: TextStyle(color: context.colors.textSecondary)),
           ],
         ),
       ),
@@ -772,9 +772,9 @@ class _CenteredMessage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showSpinner)
-            CircularProgressIndicator(color: context.ink.accent)
+            CircularProgressIndicator(color: context.colors.accent)
           else
-            Icon(icon, size: 36, color: context.ink.accentSoft),
+            Icon(icon, size: 36, color: context.colors.textSecondary),
           const SizedBox(height: 16),
           Text(title,
               textAlign: TextAlign.center,
@@ -782,13 +782,13 @@ class _CenteredMessage extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: context.ink.textPrimary,
+                color: context.colors.textPrimary,
               )),
           const SizedBox(height: 6),
           Text(subtitle,
               textAlign: TextAlign.center,
               style: TextStyle(
-                  fontSize: 13, height: 1.4, color: context.ink.textSecondary)),
+                  fontSize: 13, height: 1.4, color: context.colors.textSecondary)),
         ],
       ),
     );

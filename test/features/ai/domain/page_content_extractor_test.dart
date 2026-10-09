@@ -1,18 +1,18 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
-import 'package:inkflow/features/ai/data/ocr/gemma_vision_ocr_service.dart';
-import 'package:inkflow/features/ai/domain/ai_exception.dart';
-import 'package:inkflow/features/ai/domain/figure.dart';
-import 'package:inkflow/features/ai/domain/figure_analyzer.dart';
-import 'package:inkflow/features/ai/domain/image_transcriber.dart';
-import 'package:inkflow/features/ai/domain/language/language_detector.dart';
-import 'package:inkflow/features/ai/domain/page_content.dart';
-import 'package:inkflow/features/ai/domain/page_content_extractor.dart';
-import 'package:inkflow/features/ai/domain/pdf_text_layer.dart';
-import 'package:inkflow/features/ai/domain/read_cache.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:distill_ed/features/ai/data/ocr/gemma_vision_ocr_service.dart';
+import 'package:distill_ed/features/ai/domain/ai_exception.dart';
+import 'package:distill_ed/features/ai/domain/figure.dart';
+import 'package:distill_ed/features/ai/domain/figure_analyzer.dart';
+import 'package:distill_ed/features/ai/domain/image_transcriber.dart';
+import 'package:distill_ed/features/ai/domain/language/language_detector.dart';
+import 'package:distill_ed/features/ai/domain/page_content.dart';
+import 'package:distill_ed/features/ai/domain/page_content_extractor.dart';
+import 'package:distill_ed/features/ai/domain/pdf_text_layer.dart';
+import 'package:distill_ed/features/ai/domain/read_cache.dart';
 
 /// A Gemma transcriber that replies with a scripted string per attempt (the
 /// last is reused if more attempts happen), or throws [throwError] every call.
@@ -227,6 +227,29 @@ void main() {
         await extractor([blank]).extractPage(1, languageCode: 'en');
     expect(content.typedText, isEmpty);
     expect(content.sources, isEmpty);
+  });
+
+  test('a text box with a damaged outline still reads, without costing the page',
+      () async {
+    recognizedText = '';
+    const damaged = TextElement(
+        id: 't-damaged',
+        zOrder: 0,
+        geometryData: [5, 5],
+        text: 'still here',
+        color: 0xFF000000);
+    const other = TextElement(
+        id: 't-other',
+        zOrder: 1,
+        geometryData: [0, 10, 100, 30],
+        text: 'fine',
+        color: 0xFF000000);
+
+    final content = await extractor([damaged, other])
+        .extractPage(1, languageCode: 'en');
+
+    expect(content.typedText, contains('still here'));
+    expect(content.typedText, contains('fine'));
   });
 
   test('images (rasterized PDFs included) are flagged needsOcr, not read',

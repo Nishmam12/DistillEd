@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:inkflow/core/providers/secret_store.dart';
-import 'package:inkflow/core/providers/settings_provider.dart';
+import 'package:distill_ed/core/providers/secret_store.dart';
+import 'package:distill_ed/core/providers/settings_provider.dart';
 
 const _key = 'ai.huggingFaceToken';
 

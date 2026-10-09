@@ -2,8 +2,8 @@
 // they point at, for the model and for its tokenizer.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_adapter.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_adapter.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
 
 void main() {
   final spec = EmbedderSpec.active;

@@ -5,38 +5,16 @@
 // this finds Isar's native library through the package config and skips itself
 // if it cannot.
 
-import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
-import 'package:inkflow/features/ai/data/rag/note_chunk_record.dart';
-import 'package:inkflow/features/ai/data/rag/note_chunk_store.dart';
-import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
+import 'package:distill_ed/features/ai/data/rag/note_chunk_record.dart';
+import 'package:distill_ed/features/ai/data/rag/note_chunk_store.dart';
+import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
 
-Future<String?> _nativeLibrary() async {
-  final config = File('.dart_tool/package_config.json');
-  if (!config.existsSync()) return null;
-  final packages =
-      (jsonDecode(await config.readAsString()) as Map)['packages'] as List;
-  final entry = packages
-      .cast<Map>()
-      .where((p) => p['name'] == 'isar_community_flutter_libs');
-  if (entry.isEmpty) return null;
-  final rootUri = Uri.parse(entry.first['rootUri'] as String);
-  final root = rootUri.isAbsolute
-      ? File.fromUri(rootUri).path
-      : File.fromUri(config.parent.uri.resolveUri(rootUri)).path;
-  final candidate = switch (Abi.current()) {
-    Abi.linuxX64 => '$root/linux/libisar.so',
-    Abi.windowsX64 => '$root/windows/isar.dll',
-    Abi.macosX64 || Abi.macosArm64 => '$root/macos/libisar.dylib',
-    _ => null,
-  };
-  return candidate != null && File(candidate).existsSync() ? candidate : null;
-}
+import '../../../../support/isar_native_library.dart';
 
 NoteChunk _chunk(
   int page,
@@ -65,7 +43,7 @@ Map<String, int> _countsByModel(List<NoteChunk> chunks) {
 }
 
 Future<void> main() async {
-  final library = await _nativeLibrary();
+  final library = await isarNativeLibrary();
   final skip = library == null ? 'Isar native library not found' : null;
 
   group('the chunk store, keyed by page and model', () {
@@ -74,7 +52,7 @@ Future<void> main() async {
     late IsarNoteChunkStore store;
 
     setUpAll(() async {
-      await Isar.initializeIsarCore(libraries: {Abi.current(): library!});
+      await initIsarForTests(library!);
     });
 
     setUp(() async {

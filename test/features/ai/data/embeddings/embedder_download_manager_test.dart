@@ -2,14 +2,14 @@ import 'package:flutter_edge_ai/flutter_edge_ai.dart'
     show CancelToken, DownloadError, DownloadException;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/data/embeddings/embedder_adapter.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_download_manager.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
-import 'package:inkflow/features/ai/data/llm/device_storage.dart';
-import 'package:inkflow/features/ai/data/llm/hf_access_check.dart';
-import 'package:inkflow/features/ai/data/llm/hf_token_check.dart';
-import 'package:inkflow/features/ai/data/llm/llm_exceptions.dart';
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_adapter.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_download_manager.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:distill_ed/features/ai/data/llm/device_storage.dart';
+import 'package:distill_ed/features/ai/data/llm/hf_access_check.dart';
+import 'package:distill_ed/features/ai/data/llm/hf_token_check.dart';
+import 'package:distill_ed/features/ai/data/llm/llm_exceptions.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
 
 const _spec = EmbedderSpec(
   displayName: 'Fake Embedder',

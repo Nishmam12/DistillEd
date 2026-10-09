@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/text_budget.dart';
+import 'package:distill_ed/features/ai/domain/text_budget.dart';
 
 void main() {
   group('countWords', () {

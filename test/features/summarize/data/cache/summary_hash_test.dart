@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/summarize/data/cache/summary_store.dart';
+import 'package:distill_ed/features/summarize/data/cache/summary_store.dart';
 
 void main() {
   group('hashRecognizedText (summary cache key)', () {

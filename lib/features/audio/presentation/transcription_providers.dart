@@ -8,7 +8,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-import '../../../core/providers/search_providers.dart';
+import '../../../data/persistence/page_text_store.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../editor/state/scene_controller.dart' show appDocsPathProvider;
 import '../../ai/data/providers/local_gemma_provider.dart';

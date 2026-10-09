@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/core/providers/settings_provider.dart' show CloudPrivacy;
-import 'package:inkflow/features/ai/domain/ai_message.dart';
-import 'package:inkflow/features/ai/domain/features/researcher.dart';
-import 'package:inkflow/features/ai/domain/tools/tool.dart';
-import 'package:inkflow/features/ai/domain/tools/tool_generation_event.dart';
-import 'package:inkflow/features/ai/presentation/research_notifier.dart';
+import 'package:distill_ed/core/providers/settings_provider.dart' show CloudPrivacy;
+import 'package:distill_ed/features/ai/domain/ai_message.dart';
+import 'package:distill_ed/features/ai/domain/features/researcher.dart';
+import 'package:distill_ed/features/ai/domain/tools/tool.dart';
+import 'package:distill_ed/features/ai/domain/tools/tool_generation_event.dart';
+import 'package:distill_ed/features/ai/presentation/research_notifier.dart';
 
 /// Scripted client — same pattern as `researcher_test.dart`.
 class _ScriptedClient implements ToolCallingClient {
@@ -46,6 +46,8 @@ class _HangingClient implements ToolCallingClient {
     List<AiMessage>? history,
     required List<Tool> tools,
   }) {
+    // The controller is deliberately never closed (see the comment below).
+    // ignore: close_sinks
     late final StreamController<ToolGenerationEvent> controller;
     controller = StreamController<ToolGenerationEvent>(
       onListen: () {

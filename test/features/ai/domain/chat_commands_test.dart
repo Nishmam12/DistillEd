@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/chat_commands.dart';
+import 'package:distill_ed/features/ai/domain/chat_commands.dart';
 
 void main() {
   group('/cloud', () {

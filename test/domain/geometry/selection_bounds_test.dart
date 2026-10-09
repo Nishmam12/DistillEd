@@ -1,8 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/geometry/selection_bounds.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
+import 'package:distill_ed/domain/geometry/selection_bounds.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
 
 void main() {
   const box = Rect.fromLTRB(0, 0, 100, 50);

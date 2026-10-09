@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/presentation/sidebar/ai_ask_view.dart';
+import 'package:distill_ed/features/ai/presentation/sidebar/ai_ask_view.dart';
 
 void main() {
   const lecture = '[1:23] The nucleus holds the DNA.';

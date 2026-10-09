@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/ai_exception.dart';
-import 'package:inkflow/features/ai/domain/device_state.dart';
-import 'package:inkflow/features/ai/domain/rag/bulk_indexer.dart';
-import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_indexer.dart';
-import 'package:inkflow/features/ai/domain/rag/rag_retriever.dart';
-import 'package:inkflow/features/ai/domain/rag/page_chunker.dart'
+import 'package:distill_ed/features/ai/domain/ai_exception.dart';
+import 'package:distill_ed/features/ai/domain/device_state.dart';
+import 'package:distill_ed/features/ai/domain/rag/bulk_indexer.dart';
+import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_indexer.dart';
+import 'package:distill_ed/features/ai/domain/rag/rag_retriever.dart';
+import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart'
     show kChunkOverlapWords, kChunkWords;
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
+import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
+import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
 
 /// Deterministic stand-in: each distinct text gets its own axis, so cosine
 /// similarity is 1.0 for the same text and 0.0 for any other. Enough to prove

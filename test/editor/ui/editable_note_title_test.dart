@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/editor/ui/editable_note_title.dart';
+import 'package:distill_ed/editor/ui/editable_note_title.dart';
 
 void main() {
   Widget host(String title, ValueChanged<String>? onRename) => MaterialApp(

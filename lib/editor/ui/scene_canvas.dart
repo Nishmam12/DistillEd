@@ -44,6 +44,7 @@ import '../state/viewport_controller.dart';
 import '../tools/ink_gestures.dart';
 import '../tools/shape_factory.dart';
 import 'text_input_dialog.dart';
+import '../../core/theme/app_colors.dart';
 
 part 'scene_canvas_tools.dart';
 
@@ -383,6 +384,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
                 child: CustomPaint(
                   painter: BackgroundLayer(
                     backgroundColor: widget.backgroundColor,
+                    // The canvas backdrop is chrome; the page itself is content.
+                    deskColor: context.colors.bgPrimary,
                     templateType: widget.templateType,
                     scrollX: viewport.scrollX,
                     scrollY: viewport.scrollY,
@@ -464,6 +467,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
                       valueListenable: _guides,
                       builder: (_, guidesScene, _) => CustomPaint(
                         painter: SelectionOverlayLayer(
+                          accent: context.colors.accent,
+                          surface: context.colors.surface,
                           boxScreen: boxScreen,
                           handleScreen: handleScreen,
                           rotateScreen: rotateScreen,

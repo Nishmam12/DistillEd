@@ -43,14 +43,26 @@ class LibraryJson {
         'items': [for (final i in items) encodeItem(i)],
       });
 
-  static List<LibraryItem> decode(String source) {
-    if (source.trim().isEmpty) return const [];
+  /// The items in [source] that decode, and how many entries did not. Only a
+  /// source that is not JSON at all throws: one damaged entry must not hide the
+  /// rest of the library.
+  static ({List<LibraryItem> items, int skipped}) decodeTolerant(String source) {
+    if (source.trim().isEmpty) return (items: const [], skipped: 0);
     final root = jsonDecode(source);
     final list = (root is Map ? root['items'] : root) as List? ?? const [];
-    return [
-      for (final m in list) decodeItem(Map<String, dynamic>.from(m as Map)),
-    ];
+    final items = <LibraryItem>[];
+    var skipped = 0;
+    for (final m in list) {
+      try {
+        items.add(decodeItem(Map<String, dynamic>.from(m as Map)));
+      } catch (_) {
+        skipped++;
+      }
+    }
+    return (items: items, skipped: skipped);
   }
+
+  static List<LibraryItem> decode(String source) => decodeTolerant(source).items;
 }
 
 class InMemoryLibraryRepository implements LibraryRepository {
@@ -73,11 +85,17 @@ class FileLibraryRepository implements LibraryRepository {
   Future<List<LibraryItem>> load() async {
     if (!await file.exists()) return const [];
     try {
-      return LibraryJson.decode(await file.readAsString());
+      final decoded = LibraryJson.decodeTolerant(await file.readAsString());
+      if (decoded.skipped > 0) {
+        // The next save writes the library without the entries that did not
+        // decode, so the original is kept beside it to recover them by hand.
+        await file.copy('${file.path}.bad');
+      }
+      return decoded.items;
     } catch (_) {
-      // A damaged file must not take the whole library screen down. It is kept
-      // beside the original name so it can be recovered by hand, and the library
-      // starts empty (the next save writes a fresh file).
+      // A file that is not JSON at all must not take the whole library screen
+      // down. It is kept beside the original name, and the library starts empty
+      // (the next save writes a fresh file).
       try {
         await file.rename('${file.path}.bad');
       } catch (_) {}

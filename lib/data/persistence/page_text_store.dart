@@ -4,6 +4,7 @@
 // an in-memory implementation and no native Isar, with the Isar-backed one used
 // in production.
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar_community/isar.dart';
 
 import '../../shared/isar/isar_service.dart';
@@ -157,3 +158,11 @@ class InMemoryPageTextStore implements PageTextStore {
   Future<void> deleteForNotebook(int notebookId) async =>
       _byPage.removeWhere((_, p) => p.notebookId == notebookId);
 }
+
+/// Durable per-page searchable text. Override with [InMemoryPageTextStore] in
+/// tests and the dev playground.
+///
+/// Lives beside the store: the AI feature's extraction writes it, and the home
+/// list and in-note search read it, so it is shared rather than owned by either.
+final pageTextStoreProvider =
+    Provider<PageTextStore>((ref) => IsarPageTextStore());

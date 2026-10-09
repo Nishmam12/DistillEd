@@ -1,10 +1,9 @@
 // Layout metrics for the Notes list screen (UI v3.0).
 //
-// The browser's *colours* used to live here too. They were `static const`, so
-// they could not follow the app theme — they now sit alongside the rest of the
-// design tokens in `core/theme/ink_palette.dart` (the `NotesInk` group) and are
-// read with `context.notes`. The browser keeps its own cool, paper-white
-// direction there; only the storage moved.
+// The browser's *colours* used to live here too, as a separate cool palette
+// that could not follow the app theme. They now come from the same navy/gold
+// tokens as every other screen, read with `context.colors`. Only the layout
+// metrics remain in this file.
 //
 // Metrics stay here because they do not vary by brightness, and because the
 // list's geometry is genuinely its own concern.

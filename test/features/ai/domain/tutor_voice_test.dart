@@ -8,11 +8,11 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/features/ai/domain/context_engine/context_engine.dart';
-import 'package:inkflow/features/ai/domain/features/explainer.dart';
-import 'package:inkflow/features/ai/domain/features/notes_qa.dart';
-import 'package:inkflow/features/ai/domain/tutor_voice.dart';
-import 'package:inkflow/features/summarize/domain/services/summarization_service.dart';
+import 'package:distill_ed/features/ai/domain/context_engine/context_engine.dart';
+import 'package:distill_ed/features/ai/domain/features/explainer.dart';
+import 'package:distill_ed/features/ai/domain/features/notes_qa.dart';
+import 'package:distill_ed/features/ai/domain/tutor_voice.dart';
+import 'package:distill_ed/features/summarize/domain/services/summarization_service.dart';
 
 /// Every prose-speaking prompt in the app, by the name a failure should name.
 Map<String, String> prosePrompts() => {

@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/editor/import/document_scanner_port.dart';
-import 'package:inkflow/editor/import/ml_kit_document_scanner.dart';
+import 'package:distill_ed/editor/import/document_scanner_port.dart';
+import 'package:distill_ed/editor/import/ml_kit_document_scanner.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

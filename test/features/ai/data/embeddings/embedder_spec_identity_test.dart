@@ -10,7 +10,7 @@
 
 import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
 
 void main() {
   test('the filenames the app looks for are the ones the plugin installs under',

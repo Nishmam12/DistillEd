@@ -1,8 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/domain/services/frame_service.dart';
+import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:distill_ed/domain/services/frame_service.dart';
 
 FrameElement _frame(String id, List<double> g, {int z = 0}) =>
     FrameElement(id: id, zOrder: z, geometryData: g);
