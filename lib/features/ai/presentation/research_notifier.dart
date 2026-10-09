@@ -72,13 +72,11 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
   final Future<void> Function() _markFirstCloudCallSeen;
 
   ResearchNotifier({
-    required Researcher researcher,
-    required CloudPrivacy Function() privacy,
+    required this._researcher,
+    required this._privacy,
     bool Function()? hasSeenFirstCloudCall,
     Future<void> Function()? markFirstCloudCallSeen,
-  })  : _researcher = researcher,
-        _privacy = privacy,
-        _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
+  })  : _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
         _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
         super(const ResearchIdle());
 

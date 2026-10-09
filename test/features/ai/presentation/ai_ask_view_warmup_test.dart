@@ -18,7 +18,7 @@ void main() {
     var warmups = 0;
     await tester.pumpWidget(
       ProviderScope(
-        retry: (_, __) => null,
+        retry: (_, _) => null,
         overrides: [
           localModelWarmerProvider.overrideWithValue(() => warmups++),
           pageImportGroupProvider(key).overrideWith((ref) async => null),

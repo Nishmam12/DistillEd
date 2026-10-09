@@ -120,8 +120,8 @@ class AiScopeResolver {
   final Future<List<ScopePage>> Function(int notebookId) _pagesOf;
 
   const AiScopeResolver({
-    required Future<List<ScopePage>> Function(int notebookId) pagesOf,
-  }) : _pagesOf = pagesOf;
+    required this._pagesOf,
+  });
 
   /// Resolves [kind] for [pageId] within [notebookId].
   ///

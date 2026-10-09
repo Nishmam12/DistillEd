@@ -160,8 +160,6 @@ class EditorToolController extends StateNotifier<EditorToolState> {
   void setEdges(EdgeStyle e) => state = state.copyWith(edges: e);
   void setElbowed(bool v) => state = state.copyWith(elbowed: v);
   void setEndArrowhead(Arrowhead a) => state = state.copyWith(endArrowhead: a);
-  void setStartArrowhead(Arrowhead a) =>
-      state = state.copyWith(startArrowhead: a);
   void setFontSize(double s) => state = state.copyWith(fontSize: s);
   void setFontFamily(String f) => state = state.copyWith(fontFamily: f);
   void setEraserPixel(bool v) => state = state.copyWith(eraserPixel: v);

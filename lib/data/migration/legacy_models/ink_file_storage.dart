@@ -139,15 +139,6 @@ class InkFileStorage {
     return [];
   }
 
-  /// Deletes all ink files for a given notebook.
-  static Future<void> deleteNotebookInkFiles(int notebookId) async {
-    final dir = await _notebookDir(notebookId);
-    final directory = Directory(dir);
-    if (await directory.exists()) {
-      await directory.delete(recursive: true);
-    }
-  }
-
   /// Deletes the ink file for a specific page.
   static Future<void> deletePageInkFile({
     required int notebookId,

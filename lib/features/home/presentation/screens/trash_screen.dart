@@ -38,7 +38,7 @@ class TrashScreen extends ConsumerWidget {
           : ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: trashed.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (_, i) => _TrashRow(notebook: trashed[i]),
             ),
     );

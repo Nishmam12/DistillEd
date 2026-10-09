@@ -27,10 +27,9 @@ class NotesQa {
   final RagRetriever _retriever;
 
   const NotesQa({
-    required AiProvider provider,
-    required RagRetriever retriever,
-  })  : _provider = provider,
-        _retriever = retriever;
+    required this._provider,
+    required this._retriever,
+  });
 
   /// The grounding contract — identical every call, exposed for prompt review
   /// and tests.

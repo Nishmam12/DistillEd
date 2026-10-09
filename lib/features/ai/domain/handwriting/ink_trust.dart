@@ -50,7 +50,7 @@ bool inkLineNeedsVision({
   if (trimmed.isEmpty) return false;
 
   final verdict =
-      gate.evaluate(trimmed, topScores: [if (score != null) score]);
+      gate.evaluate(trimmed, topScores: [?score]);
   if (!verdict.passed) return true;
 
   if (looksLikeMath(trimmed)) return true;

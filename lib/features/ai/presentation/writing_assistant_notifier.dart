@@ -38,12 +38,10 @@ class WritingAssistantNotifier extends StateNotifier<List<WritingSuggestion>> {
   PageContent? _pending;
 
   WritingAssistantNotifier({
-    required WritingAssistant assistant,
-    required PageWritingCache cache,
+    required this._assistant,
+    required this._cache,
     required int pageId,
-  })  : _assistant = assistant,
-        _cache = cache,
-        _pageId = pageId,
+  })  : _pageId = pageId,
         super(const []) {
     final cached = _cache.find(pageId);
     if (cached != null) {

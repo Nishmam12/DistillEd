@@ -85,7 +85,7 @@ AskNotesNotifier buildNotifier(SettingsNotifier settings) => AskNotesNotifier(
     );
 
 Widget wrap(Widget child) => ProviderScope(
-      retry: (_, __) => null,
+      retry: (_, _) => null,
       child: MaterialApp(home: Scaffold(body: child)),
     );
 
@@ -111,7 +111,7 @@ void main() {
     testWidgets('tapping it turns cloud AI on in settings', (tester) async {
       late WidgetRef captured;
       await tester.pumpWidget(ProviderScope(
-        retry: (_, __) => null,
+        retry: (_, _) => null,
         child: MaterialApp(
           home: Scaffold(
             body: Consumer(builder: (context, ref, _) {
@@ -137,7 +137,7 @@ void main() {
       // quietly promote the privacy mode to "send whatever you like".
       late WidgetRef captured;
       await tester.pumpWidget(ProviderScope(
-        retry: (_, __) => null,
+        retry: (_, _) => null,
         child: MaterialApp(
           home: Scaffold(
             body: Consumer(builder: (context, ref, _) {
@@ -233,7 +233,7 @@ void main() {
     // stored value, so a change through either is visible through the other.
     late WidgetRef captured;
     await tester.pumpWidget(ProviderScope(
-      retry: (_, __) => null,
+      retry: (_, _) => null,
       child: MaterialApp(
         home: Scaffold(
           body: Consumer(builder: (context, ref, _) {

@@ -209,7 +209,7 @@ Future<void> _openAndRun() async {
 
   runApp(
     ProviderScope(
-      retry: (_, __) => null,
+      retry: (_, _) => null,
       overrides: [
         deviceProfileProvider.overrideWithValue(profile),
         appDocsPathProvider.overrideWithValue(appDocsPath),

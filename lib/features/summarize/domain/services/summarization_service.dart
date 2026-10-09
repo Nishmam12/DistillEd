@@ -231,24 +231,16 @@ class SummarizationService {
   final bool _visionEnabled;
 
   SummarizationService({
-    required PageContentExtractor extractor,
-    required AiRouter router,
-    required AiProvider local,
-    required CloudLlmClient cloud,
-    required SummaryStore store,
-    MeaningfulnessGate gate = const MeaningfulnessGate(),
-    String localModelLabel = 'gemma4-e2b-local',
-    bool visionEnabled = true,
-    AiQualityGuard? guard,
-  })  : _guard = guard,
-        _extractor = extractor,
-        _gate = gate,
-        _router = router,
-        _local = local,
-        _cloud = cloud,
-        _store = store,
-        _localModelLabel = localModelLabel,
-        _visionEnabled = visionEnabled;
+    required this._extractor,
+    required this._router,
+    required this._local,
+    required this._cloud,
+    required this._store,
+    this._gate = const MeaningfulnessGate(),
+    this._localModelLabel = 'gemma4-e2b-local',
+    this._visionEnabled = true,
+    this._guard,
+  });
 
   /// Summarizes a whole notebook. [pageIds] must be in page order. Kept as the
   /// notebook entry point (the app-bar Summarize action); delegates to

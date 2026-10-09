@@ -79,7 +79,7 @@ class NotePreview extends StatelessWidget {
               // anchor to the top, where the writing on a page starts.
               alignment: Alignment.topCenter,
               filterQuality: FilterQuality.medium,
-              errorBuilder: (context, _, __) => _TypographicPreview(
+              errorBuilder: (context, _, _) => _TypographicPreview(
                 note: note,
                 overlayInset: overlayInset,
                 trailingInset: trailingInset,

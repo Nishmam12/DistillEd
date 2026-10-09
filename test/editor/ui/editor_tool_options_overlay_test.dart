@@ -11,7 +11,7 @@ void main() {
     WidgetTester tester, {
     bool anchorBottom = false,
   }) async {
-    final container = ProviderContainer(retry: (_, __) => null);
+    final container = ProviderContainer(retry: (_, _) => null);
     addTearDown(container.dispose);
     await tester.pumpWidget(
       UncontrolledProviderScope(

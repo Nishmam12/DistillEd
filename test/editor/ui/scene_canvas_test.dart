@@ -19,7 +19,7 @@ import 'package:inkflow/editor/ui/scene_canvas.dart';
 const ScenePageKey _key = (notebookId: 0, pageId: 0);
 
 ProviderContainer _container() =>
-    ProviderContainer(retry: (_, __) => null, overrides: [
+    ProviderContainer(retry: (_, _) => null, overrides: [
       sceneElementStoreProvider
           .overrideWithValue(InMemorySceneElementStore()),
     ]);

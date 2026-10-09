@@ -63,19 +63,12 @@ class GemmaVisionOcrService {
   final int maxAttempts;
 
   GemmaVisionOcrService({
-    required ImageTranscriber transcriber,
-    // Lenient by design: Gemma produces coherent prose or nothing, so the gate
-    // here only guards against empty / symbol-garbage output, not the ML Kit
-    // confidence score (Gemma has none). Real quality is Gemma's to deliver.
-    // Digits count as content: the lines sent here are often maths, and a
-    // correct `x^2 + 3x = 0, so x(x + 3) = 0` is mostly digits and symbols.
-    MeaningfulnessGate gate = const MeaningfulnessGate(
+    required this._transcriber,
+    this._gate = const MeaningfulnessGate(
         minWords: 2, minAlphaRatio: 0.4, countDigits: true),
     this.maxAttempts = 2,
     int Function()? seedSource,
-  })  : _transcriber = transcriber,
-        _gate = gate,
-        _seedSource = seedSource ?? _makeSeedSource();
+  })  : _seedSource = seedSource ?? _makeSeedSource();
 
   /// Whether [text] is a transcription worth keeping, by the SAME gate this
   /// service applies to its own attempts.

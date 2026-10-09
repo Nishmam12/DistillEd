@@ -20,7 +20,7 @@ void main() {
     WidgetTester tester, {
     VoidCallback? onImport,
   }) async {
-    final container = ProviderContainer(retry: (_, __) => null, overrides: [
+    final container = ProviderContainer(retry: (_, _) => null, overrides: [
       sceneElementStoreProvider.overrideWithValue(InMemorySceneElementStore()),
     ]);
     addTearDown(container.dispose);

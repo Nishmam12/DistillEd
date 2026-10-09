@@ -202,7 +202,7 @@ void main() {
       // Which notebook a passage came from is signal for ranking across
       // notebooks, but it is not part of what the student wrote, so it must not
       // turn up inside the quoted source card.
-      await indexWith(titled((_, __) async => 'Biology 101'),
+      await indexWith(titled((_, _) async => 'Biology 101'),
           'Mitochondria make ATP.');
 
       expect(embedder.calls.single.texts,
@@ -212,7 +212,7 @@ void main() {
 
     test('every chunk of a long page carries the title', () async {
       final longPage = List.generate(600, (i) => 'word$i').join(' ');
-      await indexWith(titled((_, __) async => 'Biology 101'), longPage);
+      await indexWith(titled((_, _) async => 'Biology 101'), longPage);
 
       final texts = embedder.calls.single.texts;
       expect(texts.length, greaterThan(1));
@@ -233,7 +233,7 @@ void main() {
     });
 
     test('no title embeds the bare passage, exactly as before', () async {
-      await indexWith(titled((_, __) async => null), 'Mitochondria make ATP.');
+      await indexWith(titled((_, _) async => null), 'Mitochondria make ATP.');
       expect(embedder.calls.single.texts, ['Mitochondria make ATP.']);
 
       embedder.calls.clear();
@@ -244,7 +244,7 @@ void main() {
     test('a failing title lookup indexes the page untitled rather than not at all',
         () async {
       final outcome = await indexWith(
-          titled((_, __) async => throw StateError('repository closed')),
+          titled((_, _) async => throw StateError('repository closed')),
           'Mitochondria make ATP.');
 
       expect(outcome, RagIndexOutcome.indexed);
@@ -254,7 +254,7 @@ void main() {
     test('renaming the notebook re-embeds a page whose text did not change',
         () async {
       var name = 'Biology 101';
-      final i = titled((_, __) async => name);
+      final i = titled((_, _) async => name);
       const text = 'Mitochondria make ATP.';
 
       expect(await indexWith(i, text), RagIndexOutcome.indexed);

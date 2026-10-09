@@ -79,12 +79,10 @@ $kMathMarkup''';
   final AiQualityGuard? _guard;
 
   ContextEngine({
-    required AiProvider provider,
-    MeaningfulnessGate gate = const MeaningfulnessGate(),
-    AiQualityGuard? guard,
-  })  : _provider = provider,
-        _gate = gate,
-        _guard = guard;
+    required this._provider,
+    this._gate = const MeaningfulnessGate(),
+    this._guard,
+  });
 
   /// Analyzes [content]. Returns [PageContext.empty] when the page doesn't
   /// carry enough readable text (gate) or the model's output is unusable

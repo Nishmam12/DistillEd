@@ -123,7 +123,7 @@ Rules:
   static const int maxSuggestions = 6;
 
   final AiProvider _provider;
-  const WritingAssistant({required AiProvider provider}) : _provider = provider;
+  const WritingAssistant({required this._provider});
 
   /// Reviews [typedText] and returns suggestions (possibly empty). Malformed
   /// model output yields an empty list; [AiException]s propagate.

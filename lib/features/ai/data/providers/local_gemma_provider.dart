@@ -80,11 +80,10 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
   LocalGemmaProvider({
     this.spec = LlmModelSpec.active,
     LlmRuntime? runtime,
-    TextEmbedder Function()? embedderOf,
+    this._embedderOf,
     this.idleUnloadDelay = defaultIdleUnloadDelay,
     this.onBackendChanged,
-  })  : _runtime = runtime ?? EdgeAiRuntime(),
-        _embedderOf = embedderOf;
+  })  : _runtime = runtime ?? EdgeAiRuntime();
 
   /// Mutex: chain of futures; each call awaits the previous one. Held for the
   /// whole stream so the load→generate lifecycle never overlaps.

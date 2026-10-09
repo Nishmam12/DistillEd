@@ -51,7 +51,7 @@ class MathText extends StatelessWidget {
     // ordinary answers keep the exact text layout they had before.
     if (!segments.any((s) => s.isMath)) {
       return Text.rich(
-        TextSpan(text: text, children: [if (trailing != null) trailing!]),
+        TextSpan(text: text, children: [?trailing]),
         style: effective,
         textAlign: textAlign,
       );

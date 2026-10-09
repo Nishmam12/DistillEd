@@ -23,13 +23,10 @@ class StudyPlannerNotifier extends StateNotifier<AsyncValue<StudyPlan?>> {
   final int _notebookId;
 
   StudyPlannerNotifier({
-    required LearningMemoryRepository memory,
-    required StudyPlanStore store,
-    required int notebookId,
-  })  : _memory = memory,
-        _store = store,
-        _notebookId = notebookId,
-        super(const AsyncValue.loading()) {
+    required this._memory,
+    required this._store,
+    required this._notebookId,
+  })  : super(const AsyncValue.loading()) {
     _load();
   }
 

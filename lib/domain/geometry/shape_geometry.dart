@@ -76,51 +76,6 @@ class ShapeGeometry {
     return (points.first - points.last).distance <= closeThreshold;
   }
 
-  static double linearR2(List<Offset> points) {
-    if (points.length < 2) return 0.0;
-
-    double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
-    final int n = points.length;
-
-    for (final p in points) {
-      sumX += p.dx;
-      sumY += p.dy;
-      sumXY += p.dx * p.dy;
-      sumX2 += p.dx * p.dx;
-      sumY2 += p.dy * p.dy;
-    }
-
-    final double num = (n * sumXY - sumX * sumY);
-    final double den1 = (n * sumX2 - sumX * sumX);
-    final double den2 = (n * sumY2 - sumY * sumY);
-
-    if (den1 == 0 || den2 == 0) {
-      // Perfect vertical or horizontal line
-      return 1.0; 
-    }
-
-    final double r = num / sqrt(den1 * den2);
-    return r * r;
-  }
-
-  static double angleBetween(Offset a, Offset vertex, Offset b) {
-    final Offset v1 = a - vertex;
-    final Offset v2 = b - vertex;
-
-    final double dotProduct = v1.dx * v2.dx + v1.dy * v2.dy;
-    final double magnitude1 = v1.distance;
-    final double magnitude2 = v2.distance;
-
-    if (magnitude1 == 0 || magnitude2 == 0) return 0.0;
-
-    double cosTheta = dotProduct / (magnitude1 * magnitude2);
-    // Clamp to handle floating point inaccuracies
-    if (cosTheta < -1.0) cosTheta = -1.0;
-    if (cosTheta > 1.0) cosTheta = 1.0;
-
-    return acos(cosTheta);
-  }
-
   static Rect rectFromGeometry(List<double> data) {
     if (data.length < 4) return Rect.zero;
     return Rect.fromLTRB(data[0], data[1], data[2], data[3]);

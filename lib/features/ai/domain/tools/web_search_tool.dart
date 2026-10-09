@@ -16,13 +16,11 @@ class WebSearchTool implements Tool {
   final bool Function() _isCloudAllowed;
 
   WebSearchTool({
-    required String baseUrl,
-    required String deviceKey,
+    required this._baseUrl,
+    required this._deviceKey,
     Dio? dio,
     bool Function()? isCloudAllowed,
-  })  : _baseUrl = baseUrl,
-        _deviceKey = deviceKey,
-        _isCloudAllowed = isCloudAllowed ?? (() => true),
+  })  : _isCloudAllowed = isCloudAllowed ?? (() => true),
         _dio = dio ?? Dio();
 
   @override

@@ -27,12 +27,10 @@ class CloudFirstTranscriber implements ImageTranscriber {
   final bool Function() _preferCloud;
 
   CloudFirstTranscriber({
-    required ImageTranscriber local,
-    required ImageTranscriber? cloud,
-    required bool Function() preferCloud,
-  })  : _local = local,
-        _cloud = cloud,
-        _preferCloud = preferCloud;
+    required this._local,
+    required this._cloud,
+    required this._preferCloud,
+  });
 
   @override
   Future<String> transcribeImage(

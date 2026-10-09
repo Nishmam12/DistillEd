@@ -150,7 +150,7 @@ class CloudGatewayProvider
         data: {
           'model_tier': _modelTier,
           'prompt': prompt,
-          if (systemPrompt != null) 'system_prompt': systemPrompt,
+          'system_prompt': ?systemPrompt,
           'history': [
             for (final m in history ?? const <AiMessage>[])
               {'role': m.role.name, 'content': m.content},
@@ -218,7 +218,7 @@ class CloudGatewayProvider
         data: {
           'model_tier': _modelTier,
           'prompt': prompt,
-          if (systemPrompt != null) 'system_prompt': systemPrompt,
+          'system_prompt': ?systemPrompt,
           'history': [
             for (final m in history ?? const <AiMessage>[])
               {

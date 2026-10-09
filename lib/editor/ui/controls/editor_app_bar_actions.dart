@@ -216,7 +216,7 @@ class EditorAppBarActions extends ConsumerWidget {
       duration: const Duration(minutes: 5),
       content: ValueListenableBuilder<String>(
         valueListenable: status,
-        builder: (_, text, __) => Text(text),
+        builder: (_, text, _) => Text(text),
       ),
     ));
     try {

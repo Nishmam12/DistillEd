@@ -102,16 +102,12 @@ class AiQualityGuard {
   final Future<bool> Function() _isOnline;
 
   AiQualityGuard({
-    required AiProvider local,
-    AiProvider? cloud,
-    required bool Function() cloudEnabled,
-    required CloudPrivacy Function() privacy,
-    required Future<bool> Function() isOnline,
-  })  : _local = local,
-        _cloud = cloud,
-        _cloudEnabled = cloudEnabled,
-        _privacy = privacy,
-        _isOnline = isOnline;
+    required this._local,
+    this._cloud,
+    required this._cloudEnabled,
+    required this._privacy,
+    required this._isOnline,
+  });
 
   /// Generates locally, checks the result, and escalates when policy allows.
   ///

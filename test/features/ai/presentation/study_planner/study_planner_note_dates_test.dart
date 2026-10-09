@@ -45,7 +45,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(
-      retry: (_, __) => null,
+      retry: (_, _) => null,
       overrides: [
         studyPlannerProvider(1).overrideWith((ref) => StudyPlannerNotifier(
             memory: _UnusedMemory(), store: _EmptyStore(), notebookId: 1)),

@@ -115,9 +115,9 @@ class _RecordingIndex extends NotebookIndexNotifier {
             indexer: BulkRagIndexer(
           indexer: RagIndexer(
             embedder: _NoEmbedder(),
-            saveChunks: (_, __) async {},
+            saveChunks: (_, _) async {},
             deleteChunks: (_) async {},
-            indexStateOf: (_, __) async => null,
+            indexStateOf: (_, _) async => null,
           ),
           readPage: (_) async => '',
         ));
@@ -168,7 +168,7 @@ void main() {
     List<Override> extra = const [],
     InMemoryPageTextStore? pageStore,
   }) {
-    final c = ProviderContainer(retry: (_, __) => null, overrides: [
+    final c = ProviderContainer(retry: (_, _) => null, overrides: [
       appDocsPathProvider.overrideWithValue(docs.path),
       lectureTranscriberProvider.overrideWithValue(transcriber),
       speechToTextProvider.overrideWithValue(speech),

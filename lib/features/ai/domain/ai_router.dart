@@ -96,12 +96,10 @@ class AiRouter {
 
   AiRouter({
     required this.localCapabilities,
-    required Future<bool> Function() isLocalModelInstalled,
-    Reachability reachability = const Reachability(),
-    bool Function() isLocalDegraded = _notDegraded,
-  })  : _isLocalModelInstalled = isLocalModelInstalled,
-        _reachability = reachability,
-        _isLocalDegraded = isLocalDegraded;
+    required this._isLocalModelInstalled,
+    this._reachability = const Reachability(),
+    this._isLocalDegraded = _notDegraded,
+  });
 
   static bool _notDegraded() => false;
 

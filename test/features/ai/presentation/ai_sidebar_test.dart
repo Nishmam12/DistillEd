@@ -110,7 +110,7 @@ void main() {
   }) {
     return tester.pumpWidget(
       ProviderScope(
-        retry: (_, __) => null,
+        retry: (_, _) => null,
         overrides: [
           pageContextProvider(key)
               .overrideWith((ref) => _FixedContext(AsyncValue.data(context))),

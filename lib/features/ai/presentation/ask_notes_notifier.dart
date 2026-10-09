@@ -144,21 +144,14 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
   final bool Function()? _privacyAsksEachTime;
 
   AskNotesNotifier({
-    required NotesQa qa,
-    required ModelDownloadManager llmDownloads,
-    required EmbedderDownloadManager embedderDownloads,
-    AiQualityGuard? guard,
-    bool Function()? cloudEnabled,
-    Future<void> Function(bool enabled)? setCloudEnabled,
-    bool Function()? privacyAsksEachTime,
-  })  : _qa = qa,
-        _llmDownloads = llmDownloads,
-        _embedderDownloads = embedderDownloads,
-        _guard = guard,
-        _cloudEnabled = cloudEnabled,
-        _setCloudEnabled = setCloudEnabled,
-        _privacyAsksEachTime = privacyAsksEachTime,
-        super(const AskNotesIdle());
+    required this._qa,
+    required this._llmDownloads,
+    required this._embedderDownloads,
+    this._guard,
+    this._cloudEnabled,
+    this._setCloudEnabled,
+    this._privacyAsksEachTime,
+  })  : super(const AskNotesIdle());
 
   String? _lastQuestion;
   int? _lastNotebookId;

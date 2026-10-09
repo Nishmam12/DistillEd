@@ -26,9 +26,8 @@ class HistoryController extends StateNotifier<HistoryState> {
 
   final int _maxDepth;
 
-  HistoryController(this._mutator, {int maxDepth = defaultMaxDepth})
-      : _maxDepth = maxDepth,
-        super(const HistoryState(0, 0));
+  HistoryController(this._mutator, {this._maxDepth = defaultMaxDepth})
+      : super(const HistoryState(0, 0));
 
   /// Applies [command] and records it for undo. A command that throws part way
   /// is rolled back as far as it can be and NOT recorded, so undo never offers

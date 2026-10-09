@@ -41,8 +41,7 @@ Rules:
   static const int maxCards = 20;
 
   final AiProvider _provider;
-  const FlashcardGenerator({required AiProvider provider})
-      : _provider = provider;
+  const FlashcardGenerator({required this._provider});
 
   /// Generates cards for ([notebookId], [pageId]). [context] supplies the
   /// note's definitions and the key concepts to prioritise; [pageText] grounds

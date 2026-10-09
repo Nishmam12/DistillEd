@@ -121,7 +121,7 @@ class _NotebookBookViewScreenState
                     Expanded(
                       child: AnimatedBuilder(
                         animation: _imageCache,
-                        builder: (_, __) => PageView.builder(
+                        builder: (_, _) => PageView.builder(
                           controller: _controller,
                           onPageChanged: (i) => setState(() => _index = i),
                           itemCount: _pageIds.length,

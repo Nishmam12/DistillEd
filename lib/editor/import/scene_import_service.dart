@@ -55,17 +55,16 @@ class SceneImportService {
   final DocumentScannerPort? _scanner;
   final Future<String> Function() _documentsDir;
 
-  /// [scanner] is optional: without one (or on a device that can't scan) the
+  /// [_scanner] is optional: without one (or on a device that can't scan) the
   /// camera entry is a plain photo. [documentsDir] exists so tests need no
   /// platform channel.
   SceneImportService({
     PDFService? pdf,
     ImagePicker? picker,
-    DocumentScannerPort? scanner,
+    this._scanner,
     Future<String> Function()? documentsDir,
   })  : _pdf = pdf ?? PDFService(),
         _picker = picker ?? ImagePicker(),
-        _scanner = scanner,
         _documentsDir = documentsDir ??
             (() async => (await getApplicationDocumentsDirectory()).path);
 

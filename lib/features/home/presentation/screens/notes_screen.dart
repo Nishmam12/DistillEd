@@ -222,7 +222,7 @@ class _NotesList extends ConsumerWidget {
         return ListView.separated(
           padding: NotesPalette.listPadding,
           itemCount: cards.length,
-          separatorBuilder: (_, __) =>
+          separatorBuilder: (_, _) =>
               const SizedBox(height: NotesPalette.cardGap),
           itemBuilder: (context, index) {
             final note = cards[index];

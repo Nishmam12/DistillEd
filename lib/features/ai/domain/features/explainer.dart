@@ -100,7 +100,7 @@ class Explainer {
   };
 
   final AiProvider _provider;
-  const Explainer({required AiProvider provider}) : _provider = provider;
+  const Explainer({required this._provider});
 
   /// System prompt for [mode] — exposed for tests and prompt review.
   static String systemPromptFor(ExplainMode mode) =>

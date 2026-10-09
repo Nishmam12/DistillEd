@@ -223,9 +223,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   /// default rather than leaving the picker showing no selection at all.
   static const exportFormats = {'PNG', 'PDF'};
 
-  SettingsNotifier({SecretStore secrets = const KeystoreSecretStore()})
-      : _secrets = secrets,
-        super(SettingsState()) {
+  SettingsNotifier({this._secrets = const KeystoreSecretStore()})
+      : super(SettingsState()) {
     _restore();
   }
 
@@ -342,12 +341,6 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   Future<void> setCloudAiEnabled(bool value) => setAiMode(
         value ? AiProcessingMode.auto : AiProcessingMode.onDevice,
       );
-
-  Future<void> setCloudPrivacy(CloudPrivacy value) async {
-    state = state.copyWith(cloudPrivacy: value);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kCloudPrivacy, value.name);
-  }
 
   /// Marks the first-cloud-call explainer as shown — every confirmation
   /// after this one is the terser, repeat version.

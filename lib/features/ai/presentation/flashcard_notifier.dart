@@ -79,13 +79,10 @@ class FlashcardNotifier extends StateNotifier<FlashcardState> {
   static const int _minWords = 15;
 
   FlashcardNotifier({
-    required FlashcardGenerator generator,
-    required FlashcardStore store,
-    required ModelDownloadManager downloads,
-  })  : _generator = generator,
-        _store = store,
-        _downloads = downloads,
-        super(const FlashcardIdle());
+    required this._generator,
+    required this._store,
+    required this._downloads,
+  })  : super(const FlashcardIdle());
 
   FlashcardRequest? _last;
   bool _running = false;

@@ -72,13 +72,10 @@ class ReviewNotifier extends StateNotifier<ReviewState> {
   final DateTime Function() _now;
 
   ReviewNotifier({
-    required FlashcardStore store,
-    required int notebookId,
-    DateTime Function() now = DateTime.now,
-  })  : _store = store,
-        _notebookId = notebookId,
-        _now = now,
-        super(const ReviewLoading());
+    required this._store,
+    required this._notebookId,
+    this._now = DateTime.now,
+  })  : super(const ReviewLoading());
 
   Future<void> start() async {
     state = const ReviewLoading();

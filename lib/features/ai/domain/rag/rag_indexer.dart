@@ -39,20 +39,13 @@ class RagIndexer {
   final DateTime Function() _now;
 
   RagIndexer({
-    required TextEmbedder embedder,
-    required Future<void> Function(int pageId, List<NoteChunk> chunks)
-        saveChunks,
-    required Future<void> Function(int pageId) deleteChunks,
-    required Future<PageIndexState?> Function(int pageId, String modelId)
-        indexStateOf,
-    Future<String?> Function(int notebookId, int pageId)? titleOf,
-    DateTime Function() now = DateTime.now,
-  })  : _embedder = embedder,
-        _saveChunks = saveChunks,
-        _deleteChunks = deleteChunks,
-        _indexStateOf = indexStateOf,
-        _titleOf = titleOf,
-        _now = now;
+    required this._embedder,
+    required this._saveChunks,
+    required this._deleteChunks,
+    required this._indexStateOf,
+    this._titleOf,
+    this._now = DateTime.now,
+  });
 
   /// A title helps ranking; it is never a precondition for indexing, so a lookup
   /// that fails (a repository closing mid-run) costs the title and nothing else.

@@ -117,13 +117,10 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
   final HandwritingRecognitionService _recognition;
 
   SummarizeNotifier({
-    required SummarizationService service,
-    required ModelDownloadManager downloads,
-    required HandwritingRecognitionService recognition,
-  })  : _service = service,
-        _downloads = downloads,
-        _recognition = recognition,
-        super(const SummarizeIdle());
+    required this._service,
+    required this._downloads,
+    required this._recognition,
+  })  : super(const SummarizeIdle());
 
   SummarizeRequest? _lastRequest;
   bool _running = false;

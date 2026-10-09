@@ -45,10 +45,9 @@ class HandwritingRecognitionService {
   final Map<String, mlkit.DigitalInkRecognizer> _recognizers = {};
 
   HandwritingRecognitionService({
-    MeaningfulnessGate gate = const MeaningfulnessGate(),
+    this._gate = const MeaningfulnessGate(),
     mlkit.DigitalInkRecognizerModelManager? modelManager,
-  })  : _gate = gate,
-        _modelManager =
+  })  : _modelManager =
             modelManager ?? mlkit.DigitalInkRecognizerModelManager();
 
   // ---- Language model management (models are ~20 MB, managed by ML Kit) ----

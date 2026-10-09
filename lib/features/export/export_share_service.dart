@@ -63,20 +63,4 @@ class ExportShareService {
     );
   }
 
-  /// Saves PNG bytes to the app's documents directory.
-  static Future<String> saveToDocuments(
-    Uint8List pngBytes,
-    String notebookTitle,
-  ) async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final exportDir = Directory('${appDir.path}/exports');
-    await exportDir.create(recursive: true);
-
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final filename = safeFilename('${notebookTitle}_$timestamp.png');
-    final file = File('${exportDir.path}/$filename');
-    await file.writeAsBytes(pngBytes);
-
-    return file.path;
-  }
 }

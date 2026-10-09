@@ -33,9 +33,9 @@ class RagIndexScheduler {
   final _pending = <int, Timer>{};
 
   RagIndexScheduler({
-    required RagIndexer indexer,
+    required this._indexer,
     this.idleDelay = kIndexIdleDelay,
-  }) : _indexer = indexer;
+  });
 
   /// Queues [pageId] to be indexed once its text stops changing.
   ///

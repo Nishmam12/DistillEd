@@ -83,7 +83,7 @@ void main() {
 
   ProviderContainer container(_Runtime runtime) {
     final c = ProviderContainer(
-        retry: (_, __) => null,
+        retry: (_, _) => null,
         overrides: [llmRuntimeProvider.overrideWithValue(runtime)]);
     addTearDown(c.dispose);
     return c;
@@ -120,7 +120,7 @@ void main() {
       // A 4 GB phone cannot spare 2.6 GB for a guess about what the student will
       // do next; the model loads when something actually needs it.
       final runtime = _Runtime();
-      final c = ProviderContainer(retry: (_, __) => null, overrides: [
+      final c = ProviderContainer(retry: (_, _) => null, overrides: [
         llmRuntimeProvider.overrideWithValue(runtime),
         deviceProfileProvider.overrideWithValue(AiProfile.cloudAssisted),
       ]);
@@ -135,7 +135,7 @@ void main() {
     test('is a harmless no-op when the local provider is not the real one',
         () async {
       final c = ProviderContainer(
-          retry: (_, __) => null,
+          retry: (_, _) => null,
           overrides: [localAiProvider.overrideWithValue(_NotLocal())]);
       addTearDown(c.dispose);
 
@@ -162,7 +162,7 @@ void main() {
 
   group('device profile', () {
     int contextWindow(AiProfile profile) {
-      final c = ProviderContainer(retry: (_, __) => null, overrides: [
+      final c = ProviderContainer(retry: (_, _) => null, overrides: [
         deviceProfileProvider.overrideWithValue(profile),
         llmRuntimeProvider.overrideWithValue(_Runtime()),
       ]);
@@ -181,7 +181,7 @@ void main() {
 
     test('the default profile is full', () {
       final c = ProviderContainer(
-          retry: (_, __) => null,
+          retry: (_, _) => null,
           overrides: [llmRuntimeProvider.overrideWithValue(_Runtime())]);
       addTearDown(c.dispose);
 

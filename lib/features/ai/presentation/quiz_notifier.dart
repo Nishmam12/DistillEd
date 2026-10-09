@@ -100,11 +100,9 @@ class QuizNotifier extends StateNotifier<QuizState> {
   static const int _minWords = 15;
 
   QuizNotifier({
-    required QuizGenerator generator,
-    required ModelDownloadManager downloads,
-  })  : _generator = generator,
-        _downloads = downloads,
-        super(const QuizIdle());
+    required this._generator,
+    required this._downloads,
+  })  : super(const QuizIdle());
 
   QuizRequest? _last;
   bool _running = false;

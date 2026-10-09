@@ -28,9 +28,6 @@ working tree.
   signed with the debug key. CI can now refuse that with `-PrequireReleaseSigning=true`.
 
 ### Your call
-- **Root clutter, all tracked:** `README_v4.md`, `check.py`, `dump_code.py`,
-  `AI_TUTOR_RAG_FIX_REPORT.md`, `PROJECT_CONTEXT_PROMPT.md`. Delete them if they
-  are dead; I did not.
 - **Git history** still carries the removed dump files and `logcat_dump.txt`
   (~42 MB pack). `git filter-repo` rewrites history; only if clone size matters.
 - **Summarize's cloud route** (`cloudLlmClientProvider`) is still a stub that falls

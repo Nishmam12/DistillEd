@@ -25,7 +25,7 @@ void main() {
       ));
 
   testWidgets('a passage from a lecture offers to play it', (tester) async {
-    await pump(tester, text: lecture, onPlay: (_, __) {});
+    await pump(tester, text: lecture, onPlay: (_, _) {});
 
     expect(find.byTooltip('Play this part of the lecture'), findsOneWidget);
   });
@@ -50,7 +50,7 @@ void main() {
       (tester) async {
     final jumped = <int>[];
     await pump(tester,
-        text: lecture, onJump: jumped.add, onPlay: (_, __) {});
+        text: lecture, onJump: jumped.add, onPlay: (_, _) {});
 
     await tester.tap(find.textContaining('nucleus'));
     await tester.pump();
@@ -59,7 +59,7 @@ void main() {
   });
 
   testWidgets('ordinary notes have no play button', (tester) async {
-    await pump(tester, text: notes, onPlay: (_, __) {});
+    await pump(tester, text: notes, onPlay: (_, _) {});
 
     expect(find.byTooltip('Play this part of the lecture'), findsNothing);
   });
@@ -71,7 +71,7 @@ void main() {
   });
 
   testWidgets('a citation number is not a lecture', (tester) async {
-    await pump(tester, text: 'as shown in [2] and [12]', onPlay: (_, __) {});
+    await pump(tester, text: 'as shown in [2] and [12]', onPlay: (_, _) {});
 
     expect(find.byTooltip('Play this part of the lecture'), findsNothing);
   });

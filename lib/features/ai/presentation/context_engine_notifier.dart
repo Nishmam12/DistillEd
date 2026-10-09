@@ -117,23 +117,16 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
   bool _visionReadDone = false;
 
   ContextEngineNotifier({
-    required ContextEngine engine,
-    required PageContentExtractor extractor,
-    required HandwritingRecognitionService recognition,
-    required PageContextCache cache,
+    required this._engine,
+    required this._extractor,
+    required this._recognition,
+    required this._cache,
     required int pageId,
-    required String Function() languageCode,
-    void Function(PageContent content)? onContent,
-    void Function(PageContext context)? onContext,
+    required this._languageCode,
+    this._onContent,
+    this._onContext,
     this.debounce = const Duration(milliseconds: 2500),
-  })  : _engine = engine,
-        _extractor = extractor,
-        _recognition = recognition,
-        _cache = cache,
-        _pageId = pageId,
-        _languageCode = languageCode,
-        _onContent = onContent,
-        _onContext = onContext,
+  })  : _pageId = pageId,
         super(const AsyncValue.loading()) {
     final cached = _cache.find(pageId);
     if (cached != null) state = AsyncValue.data(cached.context);

@@ -54,9 +54,7 @@ class Researcher {
   final ToolCallingClient _client;
   final List<Tool> _tools;
 
-  const Researcher({required ToolCallingClient client, required List<Tool> tools})
-      : _client = client,
-        _tools = tools;
+  const Researcher({required this._client, required this._tools});
 
   static const String systemPrompt =
       '$kUntrustedDataRule\n\n'

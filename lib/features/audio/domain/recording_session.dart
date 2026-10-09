@@ -18,10 +18,9 @@ class RecordingSession {
   final int Function() _engineNowMs;
 
   RecordingSession({
-    required AudioCapturePort capture,
-    required int Function() engineNowMs,
-  })  : _capture = capture,
-        _engineNowMs = engineNowMs;
+    required this._capture,
+    required this._engineNowMs,
+  });
 
   RecordingStatus _status = RecordingStatus.idle;
   RecordingClock? _clock;

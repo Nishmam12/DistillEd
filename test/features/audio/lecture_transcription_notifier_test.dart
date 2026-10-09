@@ -92,7 +92,7 @@ void main() {
 
   test('a recording is transcribed, saved, and then handed on to be indexed',
       () async {
-    final t = _FakeTranscriber((_, __, ___, ____) async => _said('hello'));
+    final t = _FakeTranscriber((_, _, _, _) async => _said('hello'));
     final n = notifier(t);
 
     n.enqueue(_rec(1));
@@ -106,7 +106,7 @@ void main() {
 
   test('progress is visible while it runs', () async {
     final gate = Completer<void>();
-    final t = _FakeTranscriber((_, __, progress, ___) async {
+    final t = _FakeTranscriber((_, _, progress, _) async {
       progress!(0.4);
       await gate.future;
       return _said('x');
@@ -125,7 +125,7 @@ void main() {
   });
 
   test('it is transcribed in the language chosen for it', () async {
-    final t = _FakeTranscriber((_, __, ___, ____) async => _said('x'));
+    final t = _FakeTranscriber((_, _, _, _) async => _said('x'));
 
     notifier(t, language: 'bn').enqueue(_rec(1));
     await settle();
@@ -134,7 +134,7 @@ void main() {
   });
 
   test('queued recordings run one at a time, in order', () async {
-    final t = _FakeTranscriber((_, __, ___, ____) async {
+    final t = _FakeTranscriber((_, _, _, _) async {
       await Future<void>.delayed(const Duration(milliseconds: 10));
       return _said('x');
     });
@@ -152,7 +152,7 @@ void main() {
   });
 
   test('asking twice for the same recording runs it once', () async {
-    final t = _FakeTranscriber((_, __, ___, ____) async => _said('x'));
+    final t = _FakeTranscriber((_, _, _, _) async => _said('x'));
     final n = notifier(t);
 
     n.enqueue(_rec(1));
@@ -165,7 +165,7 @@ void main() {
   test('asking again while it runs does not send it back to "queued"',
       () async {
     final gate = Completer<void>();
-    final t = _FakeTranscriber((_, __, progress, ___) async {
+    final t = _FakeTranscriber((_, _, progress, _) async {
       progress!(0.5);
       await gate.future;
       return _said('x');
@@ -184,7 +184,7 @@ void main() {
 
   test('one that is already transcribed is not done again', () async {
     await store.save(_rec(1), _said('earlier'));
-    final t = _FakeTranscriber((_, __, ___, ____) async => _said('again'));
+    final t = _FakeTranscriber((_, _, _, _) async => _said('again'));
     final n = notifier(t);
 
     n.enqueue(_rec(1));
@@ -196,7 +196,7 @@ void main() {
   });
 
   test('a recording made without transcripts on is refused, plainly', () async {
-    final t = _FakeTranscriber((_, __, ___, ____) async => _said('x'));
+    final t = _FakeTranscriber((_, _, _, _) async => _said('x'));
     final n = notifier(t);
 
     n.enqueue(_rec(1, ext: 'm4a'));
@@ -209,7 +209,7 @@ void main() {
 
   test('a recording with nothing in it still finishes — saved as empty',
       () async {
-    final t = _FakeTranscriber((_, __, ___, ____) async => const Transcript(
+    final t = _FakeTranscriber((_, _, _, _) async => const Transcript(
         language: 'en', model: 'm', segments: []));
     final n = notifier(t);
 
@@ -224,7 +224,7 @@ void main() {
     test('the recording is marked failed with a reason, nothing is saved',
         () async {
       final t = _FakeTranscriber(
-          (_, __, ___, ____) async => throw const FormatException('bad wav'));
+          (_, _, _, _) async => throw const FormatException('bad wav'));
       final n = notifier(t);
 
       n.enqueue(_rec(1));
@@ -237,7 +237,7 @@ void main() {
     });
 
     test('the next one in the queue still runs', () async {
-      final t = _FakeTranscriber((path, _, __, ___) async {
+      final t = _FakeTranscriber((path, _, _, _) async {
         if (path.endsWith('_1.wav')) throw StateError('boom');
         return _said('ok');
       });
@@ -254,7 +254,7 @@ void main() {
     test('a missing speech model fails the rest of the queue the same way, '
         'without trying them', () async {
       final t = _FakeTranscriber(
-          (_, __, ___, ____) async => throw const SpeechUnavailableException());
+          (_, _, _, _) async => throw const SpeechUnavailableException());
       final n = notifier(t);
 
       n.enqueue(_rec(1));
@@ -269,7 +269,7 @@ void main() {
     });
 
     test('indexing that fails does not undo a finished transcript', () async {
-      final t = _FakeTranscriber((_, __, ___, ____) async => _said('x'));
+      final t = _FakeTranscriber((_, _, _, _) async => _said('x'));
       final n = notifier(t,
           onTranscribed: (_) async => throw StateError('index failed'));
 
@@ -284,7 +284,7 @@ void main() {
   group('cancelling', () {
     test('a running job stops and leaves nothing behind', () async {
       final started = Completer<void>();
-      final t = _FakeTranscriber((_, __, ___, isCancelled) async {
+      final t = _FakeTranscriber((_, _, _, isCancelled) async {
         started.complete();
         while (!(isCancelled?.call() ?? false)) {
           await Future<void>.delayed(const Duration(milliseconds: 2));
@@ -305,7 +305,7 @@ void main() {
 
     test('a queued one never runs', () async {
       final gate = Completer<void>();
-      final t = _FakeTranscriber((_, __, ___, ____) async {
+      final t = _FakeTranscriber((_, _, _, _) async {
         await gate.future;
         return _said('x');
       });
@@ -324,7 +324,7 @@ void main() {
   });
 
   test('the speech model is freed when the queue runs dry', () async {
-    final t = _FakeTranscriber((_, __, ___, ____) async => _said('x'));
+    final t = _FakeTranscriber((_, _, _, _) async => _said('x'));
     final n = notifier(t);
 
     n.enqueue(_rec(1));

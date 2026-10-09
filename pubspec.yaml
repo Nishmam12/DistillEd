@@ -57,10 +57,8 @@ dependencies:
   image: ^4.2.0
 
   # ── Vector Shapes (Phase 5) ──────────────────────────────
-  flutter_svg: ^2.3.0
 
   # ── Export & Share (Phase 2) ─────────────────────────────
-  printing: ^5.13.1
   share_plus: ^13.3.1
   file_picker: ^13.1.0
   pdf: ^3.12.0
@@ -162,7 +160,7 @@ dependencies:
   #    cookie jar — the user who just created a token is already signed in —
   #    while an embedded WebView would have its own jar and force a second
   #    login inside our app. 6.3.x matches the url_launcher_* platform shims
-  #    already resolved transitively via share_plus/printing.
+  #    already resolved transitively via share_plus.
   url_launcher: ^6.3.1
   flutter_secure_storage: ^11.2.0
   # phosphor_flutter removed: 2.1.0 (latest) declares

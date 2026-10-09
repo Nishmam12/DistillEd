@@ -21,11 +21,9 @@ class SceneController extends StateNotifier<List<SceneElement>>
 
   SceneController(
     this._store, {
-    required int notebookId,
-    required int pageId,
-  })  : _notebookId = notebookId,
-        _pageId = pageId,
-        super(const []);
+    required this._notebookId,
+    required this._pageId,
+  })  : super(const []);
 
   // Tail of the write queue. Edits change `state` synchronously but their
   // writes are async; without ordering, a slow earlier write could land after

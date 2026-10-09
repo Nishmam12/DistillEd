@@ -39,7 +39,7 @@ Future<ProviderContainer> _pump(
   addTearDown(tester.view.reset);
 
   final container = ProviderContainer(
-    retry: (_, __) => null,
+    retry: (_, _) => null,
     overrides: [
       noteCardsProvider.overrideWith((ref) async => cards ?? _cards),
     ],

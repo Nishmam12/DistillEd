@@ -56,7 +56,7 @@ void main() {
 
   test('the model is told the language, every time', () async {
     final path = writeWav(dir, pcm([(30000, 4000)]));
-    final speech = _FakeSpeech((_, __) => 'x');
+    final speech = _FakeSpeech((_, _) => 'x');
 
     await transcriber(speech).transcribe(path, language: 'bn');
 
@@ -65,8 +65,8 @@ void main() {
 
   test('Bangla is fed in much shorter pieces than English', () async {
     final path = writeWav(dir, pcm([(60000, 4000)]));
-    final en = _FakeSpeech((_, __) => 'x');
-    final bn = _FakeSpeech((_, __) => 'x');
+    final en = _FakeSpeech((_, _) => 'x');
+    final bn = _FakeSpeech((_, _) => 'x');
 
     await transcriber(en).transcribe(path, language: 'en');
     await transcriber(bn).transcribe(path, language: 'bn');
@@ -79,7 +79,7 @@ void main() {
     // Whisper invents text for silence.
     final path =
         writeWav(dir, pcm([(25000, 4000), (25000, 0), (25000, 4000)]));
-    final speech = _FakeSpeech((_, __) => 'said something');
+    final speech = _FakeSpeech((_, _) => 'said something');
 
     final t = await transcriber(speech).transcribe(path, language: 'en');
 
@@ -89,7 +89,7 @@ void main() {
 
   test('an all-silent recording is an empty transcript, not an error', () async {
     final path = writeWav(dir, pcm([(40000, 0)]));
-    final speech = _FakeSpeech((_, __) => 'never');
+    final speech = _FakeSpeech((_, _) => 'never');
 
     final t = await transcriber(speech).transcribe(path, language: 'en');
 
@@ -124,7 +124,7 @@ void main() {
         }
       }
 
-      final speech = _FakeSpeech((_, __) async {
+      final speech = _FakeSpeech((_, _) async {
         await Future<void>.delayed(const Duration(milliseconds: 5));
         return 'x';
       });
@@ -153,7 +153,7 @@ void main() {
         }
       }
 
-      await transcriber(_FakeSpeech((_, __) => 'x'), exclusive: exclusive)
+      await transcriber(_FakeSpeech((_, _) => 'x'), exclusive: exclusive)
           .transcribe(path, language: 'en');
 
       expect(heldAtStartOfNext, isFalse);
@@ -165,7 +165,7 @@ void main() {
       final path = writeWav(dir, pcm([(60000, 4000)]));
       final seen = <double>[];
 
-      await transcriber(_FakeSpeech((_, __) => 'x')).transcribe(path,
+      await transcriber(_FakeSpeech((_, _) => 'x')).transcribe(path,
           language: 'en', onProgress: seen.add);
 
       expect(seen, isNotEmpty);
@@ -179,7 +179,7 @@ void main() {
       final path = writeWav(dir, pcm([(50000, 0)]));
       final seen = <double>[];
 
-      await transcriber(_FakeSpeech((_, __) => 'x')).transcribe(path,
+      await transcriber(_FakeSpeech((_, _) => 'x')).transcribe(path,
           language: 'en', onProgress: seen.add);
 
       expect(seen.last, 1.0);
@@ -220,7 +220,7 @@ void main() {
 
     test('a model that is not there ends the job', () async {
       final path = writeWav(dir, pcm([(60000, 4000)]));
-      final speech = _FakeSpeech((_, __) => throw const SpeechUnavailableException());
+      final speech = _FakeSpeech((_, _) => throw const SpeechUnavailableException());
 
       await expectLater(transcriber(speech).transcribe(path, language: 'en'),
           throwsA(isA<SpeechUnavailableException>()));
@@ -229,7 +229,7 @@ void main() {
 
     test('every window failing is an error, not an empty transcript', () async {
       final path = writeWav(dir, pcm([(60000, 4000)]));
-      final speech = _FakeSpeech((_, __) => throw StateError('nope'));
+      final speech = _FakeSpeech((_, _) => throw StateError('nope'));
 
       await expectLater(transcriber(speech).transcribe(path, language: 'en'),
           throwsA(isA<SpeechUnavailableException>()));
@@ -240,7 +240,7 @@ void main() {
     final file = File('${dir.path}/not.wav')..writeAsBytesSync([1, 2, 3, 4]);
 
     await expectLater(
-        transcriber(_FakeSpeech((_, __) => 'x'))
+        transcriber(_FakeSpeech((_, _) => 'x'))
             .transcribe(file.path, language: 'en'),
         throwsFormatException);
   });

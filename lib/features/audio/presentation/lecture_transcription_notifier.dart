@@ -30,18 +30,13 @@ class TranscriptionStatus {
 class LectureTranscriptionNotifier
     extends StateNotifier<Map<int, TranscriptionStatus>> {
   LectureTranscriptionNotifier({
-    required LectureTranscriber transcriber,
-    required SpeechToText speech,
-    required TranscriptStore store,
+    required this._transcriber,
+    required this._speech,
+    required this._store,
     required String appDocsPath,
-    required Future<String> Function(LectureRecording) languageFor,
-    Future<void> Function(LectureRecording)? onTranscribed,
-  })  : _transcriber = transcriber,
-        _speech = speech,
-        _store = store,
-        _docs = appDocsPath,
-        _languageFor = languageFor,
-        _onTranscribed = onTranscribed,
+    required this._languageFor,
+    this._onTranscribed,
+  })  : _docs = appDocsPath,
         super(const {});
 
   final LectureTranscriber _transcriber;

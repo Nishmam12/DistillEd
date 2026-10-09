@@ -55,7 +55,7 @@ Future<ProviderContainer> _open(
 }) async {
   SharedPreferences.setMockInitialValues(
       {'ui.snapShapes': snap, 'ui.scribbleErase': erase});
-  final container = ProviderContainer(retry: (_, __) => null, overrides: [
+  final container = ProviderContainer(retry: (_, _) => null, overrides: [
     sceneElementStoreProvider.overrideWithValue(InMemorySceneElementStore()),
     inkClassifierProvider.overrideWithValue(classifier),
   ]);
@@ -176,7 +176,7 @@ void main() {
     testWidgets('with both settings off the classifier is not even created — '
         'every stroke on every page pays for nothing', (tester) async {
       SharedPreferences.setMockInitialValues({});
-      final container = ProviderContainer(retry: (_, __) => null, overrides: [
+      final container = ProviderContainer(retry: (_, _) => null, overrides: [
         sceneElementStoreProvider.overrideWithValue(InMemorySceneElementStore()),
         inkClassifierProvider
             .overrideWith((ref) => throw StateError('created without being asked')),

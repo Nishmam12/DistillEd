@@ -128,17 +128,13 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
   final AiQualityGuard? _guard;
 
   ExplainNotifier({
-    required Explainer explainer,
-    required ModelDownloadManager downloads,
-    Future<CloudRouteDecision?> Function(String content)? evaluateCloudRoute,
+    required this._explainer,
+    required this._downloads,
+    this._evaluateCloudRoute,
     bool Function()? hasSeenFirstCloudCall,
     Future<void> Function()? markFirstCloudCallSeen,
-    AiQualityGuard? guard,
-  })  : _explainer = explainer,
-        _downloads = downloads,
-        _guard = guard,
-        _evaluateCloudRoute = evaluateCloudRoute,
-        _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
+    this._guard,
+  })  : _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
         _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
         super(const ExplainIdle());
 

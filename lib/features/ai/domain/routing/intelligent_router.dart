@@ -66,9 +66,9 @@ class IntelligentRouter {
 
   const IntelligentRouter({
     required this.localCapabilities,
-    Reachability reachability = const Reachability(),
+    this._reachability = const Reachability(),
     this.localDegraded = _healthy,
-  }) : _reachability = reachability;
+  });
 
   static bool _healthy() => false;
 

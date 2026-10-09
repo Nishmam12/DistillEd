@@ -72,22 +72,15 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
   final void Function(LectureRecording)? _onFinished;
 
   RecordingNotifier({
-    required RecordingSession session,
-    required LectureRecordingStore store,
-    required AudioPlaybackPort playback,
-    required String appDocsPath,
-    required int notebookId,
+    required this._session,
+    required this._store,
+    required this._playback,
+    required this._appDocsPath,
+    required this._notebookId,
     bool Function()? transcribeLectures,
-    void Function(LectureRecording)? onFinished,
-    TranscriptStore? transcripts,
-  })  : _session = session,
-        _store = store,
-        _playback = playback,
-        _appDocsPath = appDocsPath,
-        _notebookId = notebookId,
-        _transcribeLectures = transcribeLectures ?? (() => false),
-        _onFinished = onFinished,
-        _transcripts = transcripts,
+    this._onFinished,
+    this._transcripts,
+  })  : _transcribeLectures = transcribeLectures ?? (() => false),
         super(const RecordingUiState());
 
   /// Absolute path for a recording's audio file, mirroring how images are

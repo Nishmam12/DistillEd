@@ -120,7 +120,7 @@ void main() {
   }) {
     return tester.pumpWidget(
       ProviderScope(
-        retry: (_, __) => null,
+        retry: (_, _) => null,
         overrides: [
           pageContextProvider(key).overrideWith((ref) => _FixedNotifier(state)),
           if (download != null)
@@ -235,7 +235,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        retry: (_, __) => null,
+        retry: (_, _) => null,
         overrides: [
           pageContextProvider(key).overrideWith((ref) => _FixedNotifier(
               const AsyncValue.data(PageContext(

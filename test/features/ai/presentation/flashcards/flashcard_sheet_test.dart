@@ -89,7 +89,7 @@ void main() {
   Future<void> open(WidgetTester tester, List<Flashcard> deck) async {
     await tester.pumpWidget(
       ProviderScope(
-        retry: (_, __) => null,
+        retry: (_, _) => null,
         overrides: [
           flashcardNotifierProvider
               .overrideWith((ref) => _FixedFlashcards(deck)),

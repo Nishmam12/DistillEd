@@ -153,7 +153,7 @@ void main() {
   Future<void> openSheet(WidgetTester tester, {_FakeMemory? memory}) async {
     await tester.pumpWidget(
       ProviderScope(
-        retry: (_, __) => null,
+        retry: (_, _) => null,
         overrides: [
           quizNotifierProvider.overrideWith((ref) => _FixedQuiz(questions)),
           learningMemoryProvider.overrideWithValue(memory ?? _FakeMemory()),

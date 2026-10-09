@@ -52,12 +52,10 @@ Future<T> _alone<T>(Future<T> Function() job) => job();
 
 class LectureTranscriber {
   LectureTranscriber({
-    required SpeechToText speech,
-    required String modelId,
+    required this._speech,
+    required this._modelId,
     Exclusive? exclusive,
-  })  : _speech = speech,
-        _modelId = modelId,
-        _exclusive = exclusive ?? _alone;
+  })  : _exclusive = exclusive ?? _alone;
 
   final SpeechToText _speech;
   final String _modelId;

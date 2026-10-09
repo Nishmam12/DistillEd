@@ -23,11 +23,9 @@ class SpeechModelState {
 
 class SpeechModelNotifier extends StateNotifier<SpeechModelState> {
   SpeechModelNotifier({
-    required SpeechModelInstaller installer,
-    SpeechModelSpec spec = SpeechModelSpec.active,
-  })  : _installer = installer,
-        _spec = spec,
-        super(const SpeechModelState(SpeechModelPhase.unknown)) {
+    required this._installer,
+    this._spec = SpeechModelSpec.active,
+  })  : super(const SpeechModelState(SpeechModelPhase.unknown)) {
     refresh();
   }
 

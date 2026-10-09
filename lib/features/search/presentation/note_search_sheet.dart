@@ -176,7 +176,7 @@ class _NoteSearchSheetState extends ConsumerState<_NoteSearchSheet> {
     return ListView.separated(
       shrinkWrap: true,
       itemCount: _hits.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (_, i) {
         final hit = _hits[i];
         return ListTile(

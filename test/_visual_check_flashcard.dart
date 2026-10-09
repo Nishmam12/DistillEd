@@ -93,7 +93,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        retry: (_, __) => null,
+        retry: (_, _) => null,
         overrides: [
           flashcardNotifierProvider.overrideWith((ref) => _FixedFlashcards([
                 card('What is the function of mitochondria?',

@@ -26,8 +26,6 @@ extension MasteryLevelX on MasteryLevel {
   /// Rank for comparisons; mirrors declaration order.
   int get rank => index;
 
-  bool isStrongerThan(MasteryLevel other) => rank > other.rank;
-
   /// One step up, saturating at [MasteryLevel.mastered].
   MasteryLevel get promoted => switch (this) {
         MasteryLevel.unseen => MasteryLevel.learning,

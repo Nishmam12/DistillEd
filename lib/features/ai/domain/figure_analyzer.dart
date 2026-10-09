@@ -84,18 +84,15 @@ class FigureAnalyzer {
   final bool Function() _preferCloud;
 
   FigureAnalyzer({
-    required ImageTranscriber local,
-    ImageTranscriber? cloud,
+    required this._local,
+    this._cloud,
     Future<bool> Function()? canEscalate,
     bool Function()? preferCloud,
-    FigureQualityBar bar = const FigureQualityBar(),
+    this._bar = const FigureQualityBar(),
     this.localModelId = 'local',
     this.cloudModelId = 'cloud',
-  })  : _local = local,
-        _cloud = cloud,
-        _canEscalate = canEscalate ?? _never,
-        _preferCloud = preferCloud ?? _no,
-        _bar = bar;
+  })  : _canEscalate = canEscalate ?? _never,
+        _preferCloud = preferCloud ?? _no;
 
   static Future<bool> _never() async => false;
   static bool _no() => false;

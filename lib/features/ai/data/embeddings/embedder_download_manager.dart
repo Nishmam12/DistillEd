@@ -40,14 +40,13 @@ class EmbedderDownloadManager {
   final HuggingFaceIdentity _identity;
 
   EmbedderDownloadManager({
-    required String? Function() authToken,
+    required this._authToken,
     this.spec = EmbedderSpec.active,
     EmbedderInstaller? installer,
     DeviceStorage? storage,
     HuggingFaceAccess? access,
     HuggingFaceIdentity? identity,
-  })  : _authToken = authToken,
-        _installer = installer ?? embedderInstallerFor(spec),
+  })  : _installer = installer ?? embedderInstallerFor(spec),
         _storage = storage ?? DeviceStorage(),
         _access = access ?? DioHuggingFaceAccess(),
         _identity = identity ?? DioHuggingFaceIdentity();

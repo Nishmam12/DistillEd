@@ -60,12 +60,10 @@ class RagRetriever {
   final PageTextLoader? _loadPageTexts;
 
   const RagRetriever({
-    required TextEmbedder embedder,
-    required Future<List<NoteChunk>> Function(int notebookId) loadChunks,
-    PageTextLoader? loadPageTexts,
-  })  : _embedder = embedder,
-        _loadChunks = loadChunks,
-        _loadPageTexts = loadPageTexts;
+    required this._embedder,
+    required this._loadChunks,
+    this._loadPageTexts,
+  });
 
   /// The passages in [notebookId] most relevant to [query], best first.
   ///

@@ -54,9 +54,8 @@ class NotebookIndexDone extends NotebookIndexState {
 class NotebookIndexNotifier extends StateNotifier<NotebookIndexState> {
   final BulkRagIndexer _indexer;
 
-  NotebookIndexNotifier({required BulkRagIndexer indexer})
-      : _indexer = indexer,
-        super(const NotebookIndexIdle());
+  NotebookIndexNotifier({required this._indexer})
+      : super(const NotebookIndexIdle());
 
   bool _running = false;
   bool _cancelled = false;

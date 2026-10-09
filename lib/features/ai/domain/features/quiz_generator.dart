@@ -213,7 +213,7 @@ class QuizGenerator {
   );
 
   final AiProvider _provider;
-  const QuizGenerator({required AiProvider provider}) : _provider = provider;
+  const QuizGenerator({required this._provider});
 
   /// Generates up to [count] questions from [text] at a difficulty derived from
   /// [level]. Coding questions are included only when [allowCoding] is true.

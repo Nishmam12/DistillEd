@@ -17,7 +17,7 @@ ProviderContainer _containerWith(EmbedderRollout rollout) {
   // A stream provider pauses its stream while nothing listens, so a read alone
   // never sees the value. The app keeps a listener through the providers that
   // watch the rollout; the test keeps one here.
-  container.listen(embedderRolloutStatusProvider, (_, __) {});
+  container.listen(embedderRolloutStatusProvider, (_, _) {});
   addTearDown(container.dispose);
   return container;
 }

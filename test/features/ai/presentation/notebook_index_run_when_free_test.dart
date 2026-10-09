@@ -36,9 +36,9 @@ void main() {
       indexer: BulkRagIndexer(
         indexer: RagIndexer(
           embedder: _Embedder(),
-          saveChunks: (_, __) async {},
+          saveChunks: (_, _) async {},
           deleteChunks: (_) async {},
-          indexStateOf: (_, __) async => null,
+          indexStateOf: (_, _) async => null,
         ),
         readPage: (pageId) async {
           reads.add(pageId);

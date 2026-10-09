@@ -23,7 +23,7 @@ class SceneEditorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ProviderScope(
-      retry: (_, __) => null,
+      retry: (_, _) => null,
       overrides: [
         sceneElementStoreProvider.overrideWithValue(InMemorySceneElementStore()),
       ],

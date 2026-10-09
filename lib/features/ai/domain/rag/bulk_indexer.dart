@@ -128,20 +128,15 @@ class BulkRagIndexer {
   final Duration pollInterval;
 
   const BulkRagIndexer({
-    required RagIndexer indexer,
-    required PageTextReader readPage,
+    required this._indexer,
+    required this._readPage,
     this.batchByModel = kBatchByModel,
-    Future<bool> Function()? embedderReady,
-    Future<void> Function()? releaseVisionModel,
-    Future<void> Function(int notebookId, int pageId, String text)? onPageRead,
-    Future<PauseReason?> Function()? pauseReason,
+    this._embedderReady,
+    this._releaseVisionModel,
+    this._onPageRead,
+    this._pauseReason,
     this.pollInterval = const Duration(seconds: 15),
-  })  : _indexer = indexer,
-        _readPage = readPage,
-        _embedderReady = embedderReady,
-        _releaseVisionModel = releaseVisionModel,
-        _onPageRead = onPageRead,
-        _pauseReason = pauseReason;
+  });
 
   /// Waits while the device says background work should wait, reporting why on
   /// each poll. Returns false if the run was cancelled during the wait, so a
