@@ -4,6 +4,11 @@
 > `INKFLOW_REBUILD_PROMPT.md`. Captures the audit of the 1.0.2 codebase, the
 > locked architectural decisions, and the persistence/migration contract.
 > App version at start of rebuild: **1.0.2+6**.
+>
+> **Status:** the rebuild described here has shipped (see "Current state" below).
+> Sections 2–3 record the 1.0.2 codebase as audited and are kept as history; they
+> do not describe today's code. The AI layer (`lib/features/ai`) postdates this
+> document: see `docs/AI_PIPELINE_PLAN.md`.
 
 ---
 
@@ -17,6 +22,29 @@ copy `.ts`/`.tsx`, no runtime dependency.
 
 Delivered **one phase per turn**; each phase ends at a checkpoint
 (`flutter analyze` clean, `flutter test` green) and waits for explicit approval.
+
+## Current state
+
+* **Layout:** `lib/{app,core,data,domain,editor,features,shared,widgets}`.
+  `domain/` holds the `SceneElement` model, geometry, commands and services;
+  `data/persistence` and `data/migration` hold the Isar stores and the v1→v2
+  migrator; `editor/` holds `state`, `input`, `render`, `tools`, `ui`; features are
+  `ai`, `audio`, `export`, `home`, `import`, `search`, `settings`, `summarize`.
+* **Routes** (`lib/app/router.dart`): `/`, `/note2/:id` (+ `book`, `graph`,
+  `review`, `plan`), `/trash`, `/settings`, `/about`, `/canvas-demo`.
+* **Persistence:** one Isar database (`inkflow`), 17 schemas registered in
+  `main.dart` — notebooks, pages, folders, `SceneElementRecord` (one row per
+  element), `PageTextRecord`, the AI stores (chunks, summaries, flashcards,
+  memory, read cache, study plans) and `LectureRecordingRecord`. Isar enums are
+  stored by position; `test/data/persistence/scene_enum_order_test.dart` pins
+  their order. Startup failure shows `StartupFailureApp`, and unexpected errors go
+  to an on-device `error_log.txt`.
+* **Render stack:** a `BackgroundLayer`, then four `RepaintBoundary`-wrapped
+  painters over it — `SceneStaticLayer` (committed elements),
+  `SceneActiveStrokeLayer` (the stroke being drawn), `ScenePreviewLayer`
+  (shape/selection previews) and `SceneLaserLayer` — see `scene_canvas.dart`.
+* **DI:** Riverpod only; `get_it` is gone.
+* **Platform:** Android only. See the README.
 
 ## 2. Architecture map (1.0.2 — audited, what we are replacing)
 
@@ -92,8 +120,8 @@ last). Never reorder; only append.
   of the "Cannot clone a disposed image" crash — 2.0 formalizes ref-counting).
 
 ### Discrepancies vs prompt §2 (recorded)
-1. `get_it` is in pubspec but **unused** — DI is Riverpod + `IsarService`
-   singleton only. 2.0 stays Riverpod-only; `get_it` should be dropped.
+1. `get_it` was in pubspec but **unused** — DI is Riverpod + `IsarService`
+   singleton only. (Dropped since.)
 2. A lasso-based selection + move/resize/rotate (with `LassoTransformCommand`)
    already exists; Phase 4 **extends/replaces** it toward Excalidraw
    marquee + 8 handles + snapping + grouping.
@@ -197,7 +225,7 @@ lib/
 
 No service locator. **Riverpod** providers form the dependency graph;
 **`IsarService`** is the single DB singleton (opened in `main.dart` before
-`runApp`). `get_it` is declared but unused and will be removed. New services
+`runApp`). `get_it` has been removed. New services
 (e.g. `SceneElementStore`, `SceneMigratorV2`) are exposed as Riverpod providers
 that depend on `IsarService.instance`.
 

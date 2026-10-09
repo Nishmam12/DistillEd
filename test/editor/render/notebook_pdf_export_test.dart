@@ -1,5 +1,7 @@
 // Tier 1.6: exporting a whole notebook, not just the open page.
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -24,6 +26,37 @@ int _pageCount(List<int> bytes) {
 }
 
 void main() {
+  testWidgets('reports progress page by page, ending at the total',
+      (tester) async {
+    await tester.runAsync(() async {
+      final seen = <(int, int)>[];
+      await SceneExporter.toNotebookPdf(
+        [
+          [_box('a', 100)],
+          [_box('b', 80)],
+        ],
+        scale: 1,
+        onProgress: (done, total) => seen.add((done, total)),
+      );
+
+      expect(seen.first, (0, 2));
+      expect(seen.last, (2, 2));
+    });
+  });
+
+  testWidgets('a huge page is scaled down to the export cap, not cropped',
+      (tester) async {
+    await tester.runAsync(() async {
+      final png = await SceneExporter.toPng([_box('big', 20000)], scale: 2);
+
+      expect(png, isNotNull);
+      // PNG header carries the size: width at bytes 16-19, height at 20-23.
+      final data = ByteData.sublistView(png!);
+      expect(data.getUint32(16), lessThanOrEqualTo(kMaxExportSide));
+      expect(data.getUint32(20), lessThanOrEqualTo(kMaxExportSide));
+    });
+  });
+
   testWidgets('produces a PDF covering every page', (tester) async {
     await tester.runAsync(() async {
       final pdf = await SceneExporter.toNotebookPdf(

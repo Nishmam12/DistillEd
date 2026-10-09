@@ -215,6 +215,7 @@ void main() {
       final t = await transcriber(speech).transcribe(path, language: 'en');
 
       expect(t.segments.map((s) => s.text), ['ok 0', 'ok 2']);
+      expect(t.skippedWindows, 1, reason: 'the gap is recorded, not hidden');
     });
 
     test('a model that is not there ends the job', () async {

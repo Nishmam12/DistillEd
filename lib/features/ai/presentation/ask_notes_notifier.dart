@@ -201,8 +201,8 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     _running = true;
     try {
       state = AskNotesSearching(trimmed, scope: scope);
-      final sources = await _qa.findSources(
-          question: trimmed, notebookId: notebookId, scope: scope);
+      final sources = _qa.fitToBudget(await _qa.findSources(
+          question: trimmed, notebookId: notebookId, scope: scope));
       if (!mounted) return;
       if (sources.isEmpty) {
         // Grounded refusal decided WITHOUT the LLM — nothing to answer from.

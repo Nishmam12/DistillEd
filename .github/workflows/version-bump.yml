@@ -6,6 +6,14 @@ name: Auto version bump
 #
 # The semantic MAJOR.MINOR.PATCH is bumped by hand when a change warrants it
 # (see CHANGELOG.md); only the build counter is automated here.
+#
+# This pushes straight to the branch, so it stops working if branch protection
+# requires pull requests (the push is rejected after 3 attempts and the job
+# fails). If that is turned on, drop this workflow and pass
+# `--build-number=${{ github.run_number }}` to the release build instead.
+#
+# The commit author is the repo variables BUMP_AUTHOR_NAME / BUMP_AUTHOR_EMAIL
+# when set (so the history can show the owner), else github-actions[bot].
 
 on:
   push:
@@ -33,14 +41,14 @@ jobs:
           fetch-depth: 0
 
       - name: Bump build number in pubspec.yaml
+        env:
+          BUMP_AUTHOR_NAME: ${{ vars.BUMP_AUTHOR_NAME }}
+          BUMP_AUTHOR_EMAIL: ${{ vars.BUMP_AUTHOR_EMAIL }}
         run: |
           set -e
-          # Author the automated bump under the repo owner's identity (matching
-          # their normal commits) so github-actions[bot] doesn't appear as a
-          # contributor. The push still uses GITHUB_TOKEN, so it won't retrigger
-          # this workflow.
-          git config user.name "afnan-mojumder"
-          git config user.email "afnan.mojumder@gmail.com"
+          # The push uses GITHUB_TOKEN, so it won't retrigger this workflow.
+          git config user.name "${BUMP_AUTHOR_NAME:-github-actions[bot]}"
+          git config user.email "${BUMP_AUTHOR_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
 
           current=$(grep -E '^version:' pubspec.yaml | head -n1 \
             | sed -E 's/^version:[[:space:]]*//' | tr -d '[:space:]')

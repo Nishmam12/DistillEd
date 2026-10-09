@@ -11,7 +11,7 @@ publish_to: 'none'
 version: 5.0.0+30
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.13.0 <4.0.0'
   flutter: '>=3.47.0'
 
 dependencies:
@@ -164,6 +164,7 @@ dependencies:
   #    login inside our app. 6.3.x matches the url_launcher_* platform shims
   #    already resolved transitively via share_plus/printing.
   url_launcher: ^6.3.1
+  flutter_secure_storage: ^11.2.0
   # phosphor_flutter removed: 2.1.0 (latest) declares
   # `class PhosphorIconData extends IconData`, which cannot compile against
   # Flutter 3.44+ where IconData became a final class. Upstream fix PRs

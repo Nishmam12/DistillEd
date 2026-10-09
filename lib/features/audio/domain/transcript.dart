@@ -47,10 +47,15 @@ class Transcript {
 
   final List<TranscriptSegment> segments;
 
+  /// Stretches of the recording the model could not read. Zero for a transcript
+  /// that covers the whole lecture; kept so a gap is never mistaken for silence.
+  final int skippedWindows;
+
   const Transcript({
     required this.language,
     required this.model,
     required this.segments,
+    this.skippedWindows = 0,
   });
 
   bool get isEmpty => segments.isEmpty;
@@ -59,6 +64,7 @@ class Transcript {
         'language': language,
         'model': model,
         'segments': [for (final s in segments) s.toJson()],
+        if (skippedWindows > 0) 'skippedWindows': skippedWindows,
       };
 
   /// Throws [FormatException] for anything that is not a transcript.
@@ -69,9 +75,11 @@ class Transcript {
     if (language is! String || model is! String || segments is! List) {
       throw const FormatException('Not a transcript');
     }
+    final skipped = json['skippedWindows'];
     return Transcript(
       language: language,
       model: model,
+      skippedWindows: skipped is int ? skipped : 0,
       segments: [
         for (final s in segments)
           TranscriptSegment.fromJson((s as Map).cast<String, Object?>()),
@@ -96,6 +104,9 @@ class Transcript {
       'Lecture recorded ${formatLectureWhen(recordedAt)} '
           '(spoken words, transcribed on this device):',
       ...lines,
+      if (skippedWindows > 0)
+        '(${skippedWindows == 1 ? 'One stretch' : '$skippedWindows stretches'} '
+            'of this recording could not be transcribed.)',
     ].join('\n');
   }
 }

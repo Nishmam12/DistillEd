@@ -153,7 +153,7 @@ void main() {
       await expectLater(
         provider.generate(prompt: 'hi').listen(
               received.add,
-              onError: (e) => throw e,
+              onError: (Object e) => throw e,
             ).asFuture<void>(),
         throwsA(isA<AiGenerationException>()),
       );
@@ -294,7 +294,7 @@ void main() {
       await expectLater(
         provider
             .generateWithTools(prompt: 'hi', tools: [_FakeTool()])
-            .listen(received.add, onError: (e) => throw e)
+            .listen(received.add, onError: (Object e) => throw e)
             .asFuture<void>(),
         throwsA(isA<AiGenerationException>()),
       );

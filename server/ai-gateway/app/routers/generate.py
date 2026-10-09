@@ -18,10 +18,23 @@ from typing import Literal
 
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from starlette.background import BackgroundTask
 
 from ..config import get_settings
-from ..logging_config import RequestLogEntry, Stopwatch, log_request
+from ..guards import (
+    stream_deadline,
+    stream_limiter,
+    validate_history_tool_calls,
+    validate_tools,
+)
+from ..logging_config import (
+    RequestLogEntry,
+    Stopwatch,
+    approx_cost,
+    hash_device,
+    log_request,
+)
 from ..provider_selection import UnknownModelTierError, select_provider
 from ..providers.base import ChatTurn, ProviderError
 from ..rate_limit import RateLimitConfig, RateLimiter, RateLimitExceededError
@@ -44,15 +57,26 @@ _DEFAULT_OUTPUT_TOKENS = 1024
 
 
 class HistoryTurn(BaseModel):
-    role: Literal["system", "user", "assistant", "tool"]
+    # No "system": the one system prompt is `system_prompt`. A client-supplied
+    # system turn in the middle of a conversation is an injection route.
+    role: Literal["user", "assistant", "tool"]
     content: str = Field(default="", max_length=_MAX_TEXT_CHARS)
     # Loop 3.4 tool round-trip only: `tool_call_id` on a `role: "tool"` turn
     # answers a specific prior call; `tool_calls` on a `role: "assistant"`
     # turn carries that call forward (OpenAI-shape `[{"id","type","function":
     # {"name","arguments"}}]`) so a follow-up request's history stays a valid
     # conversation. Both null on every non-tool turn.
-    tool_call_id: str | None = None
+    tool_call_id: str | None = Field(default=None, max_length=200)
     tool_calls: list[dict] | None = None
+
+    @field_validator("tool_calls")
+    @classmethod
+    def _tool_calls_bounded(cls, value):
+        try:
+            validate_history_tool_calls(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+        return value
 
 
 class GenerateRequest(BaseModel):
@@ -68,6 +92,12 @@ class GenerateRequest(BaseModel):
     # (`[{"type":"function","function":{"name","description","parameters"}}]`).
     # Empty means "no tools" — every existing caller is unaffected.
     tools: list[dict] = Field(default=[], max_length=_MAX_TOOLS)
+
+    @field_validator("tools")
+    @classmethod
+    def _tools_allowed(cls, value):
+        validate_tools(value)
+        return value
 
 
 def _estimate_tokens(request: GenerateRequest) -> int:
@@ -106,12 +136,8 @@ async def generate(
 ):
     settings = get_settings()
     estimated_tokens = _estimate_tokens(request)
-
-    try:
-        _get_rate_limiter().check_and_record(x_device_key, estimated_tokens)
-    except RateLimitExceededError as exc:
-        raise HTTPException(status_code=429, detail=exc.message) from exc
-
+    # Everything that can be refused for the deployment's own reasons is checked
+    # BEFORE the caller is charged: a 503 or 400 must not cost them quota.
     try:
         provider = select_provider(
             settings=settings,
@@ -127,17 +153,6 @@ async def generate(
             detail="No cloud provider is configured for this request.",
         )
 
-    history = [
-        ChatTurn(
-            role=t.role,
-            content=t.content,
-            tool_call_id=t.tool_call_id,
-            tool_calls=t.tool_calls,
-        )
-        for t in request.history
-    ]
-    request_id = str(uuid.uuid4())
-
     if request.tools:
         # Tool calling (Loop 3.4) is a multi-turn, client-orchestrated flow —
         # only the streaming shape carries a `tool_call` event distinctly
@@ -152,48 +167,79 @@ async def generate(
                 status_code=400,
                 detail=f"{type(provider).__name__} does not support tool calling yet.",
             )
-        return StreamingResponse(
-            _sse_stream_with_tools(
-                request_id, request, provider, history, estimated_tokens
-            ),
-            media_type="text/event-stream",
+
+    limiter = _get_rate_limiter()
+    try:
+        limiter.check_and_record(x_device_key, estimated_tokens)
+    except RateLimitExceededError as exc:
+        raise HTTPException(status_code=429, detail=exc.message) from exc
+
+    history = [
+        ChatTurn(
+            role=t.role,
+            content=t.content,
+            tool_call_id=t.tool_call_id,
+            tool_calls=t.tool_calls,
         )
+        for t in request.history
+    ]
+    request_id = str(uuid.uuid4())
 
     if request.stream:
+        try:
+            lease = stream_limiter.acquire(x_device_key)
+        except HTTPException:
+            limiter.refund(x_device_key, estimated_tokens)
+            raise
+        events = (
+            _sse_stream_with_tools(
+                request_id, request, provider, history, estimated_tokens,
+                x_device_key, limiter, lease,
+            )
+            if request.tools
+            else _sse_stream(
+                request_id, request, provider, history, estimated_tokens,
+                x_device_key, limiter, lease,
+            )
+        )
+        # The generator releases the lease when it ends; this covers a response
+        # that is cancelled before the generator ever starts.
         return StreamingResponse(
-            _sse_stream(request_id, request, provider, history, estimated_tokens),
+            events,
             media_type="text/event-stream",
+            background=BackgroundTask(lease.release),
         )
 
     watch = Stopwatch()
     try:
-        text = "".join(
-            [
-                chunk
-                async for chunk in provider.generate(
-                    prompt=request.prompt,
-                    system_prompt=request.system_prompt,
-                    history=history,
-                    temperature=request.temperature,
-                    max_tokens=request.max_tokens,
-                )
-            ]
-        )
-    except ProviderError as exc:
-        _log.warning("provider error: %s", exc)
-        log_request(
-            RequestLogEntry(
-                request_id=request_id,
-                model_tier=request.model_tier,
-                provider=type(provider).__name__,
-                token_count=estimated_tokens,
-                latency_ms=watch.elapsed_ms(),
-                approx_cost_usd=0.0,
-                status="error",
+        async with stream_deadline():
+            text = "".join(
+                [
+                    chunk
+                    async for chunk in provider.generate(
+                        prompt=request.prompt,
+                        system_prompt=request.system_prompt,
+                        history=history,
+                        temperature=request.temperature,
+                        max_tokens=request.max_tokens,
+                    )
+                ]
             )
-        )
+    except (ProviderError, TimeoutError) as exc:
+        _log.warning("provider error: %s", type(exc).__name__)
+        # No usable reply, so no charge.
+        limiter.refund(x_device_key, estimated_tokens)
+        _log_done(request_id, request, provider, estimated_tokens, watch,
+                  x_device_key, "error", exc)
         raise HTTPException(status_code=502, detail=_UPSTREAM_ERROR) from exc
 
+    _log_done(request_id, request, provider, estimated_tokens, watch,
+              x_device_key, "ok", None)
+    return {"text": text, "request_id": request_id}
+
+
+def _log_done(request_id, request, provider, estimated_tokens, watch, device_key,
+              status, exc) -> None:
     log_request(
         RequestLogEntry(
             request_id=request_id,
@@ -201,17 +247,52 @@ async def generate(
             provider=type(provider).__name__,
             token_count=estimated_tokens,
             latency_ms=watch.elapsed_ms(),
-            approx_cost_usd=0.0,
-            status="ok",
+            approx_cost_usd=approx_cost(
+                estimated_tokens, get_settings().approx_cost_per_1k_tokens_usd
+            ),
+            status=status,
+            device=hash_device(device_key),
+            error_class=type(exc).__name__ if exc else "",
         )
     )
-    return {"text": text, "request_id": request_id}
 
 
-async def _sse_stream(request_id, request, provider, history, estimated_tokens):
+async def _stream_events(source, request_id, request, provider, estimated_tokens,
+                         device_key, limiter, lease):
+    """Shared SSE loop: yields `data:` lines for each event [source] produces.
+
+    [source] is an async iterator of events (`{"text": …}` and friends). The whole
+    stream is bounded in time; the lease is always released; and a stream that
+    failed before any output refunds the charge.
+    """
     watch = Stopwatch()
     status = "ok"
+    failure: Exception | None = None
+    produced = False
     try:
+        async with stream_deadline():
+            async for event in source:
+                produced = True
+                yield f"data: {json.dumps(event)}\n\n"
+    except (ProviderError, TimeoutError) as exc:
+        _log.warning("provider error: %s", type(exc).__name__)
+        failure = exc
+        status = "timeout" if isinstance(exc, TimeoutError) else "error"
+        # Partial output already reached the client via prior `data:` events —
+        # this final error event lets `CloudGatewayProvider` mark the reply
+        # incomplete rather than silently truncating it.
+        yield f"data: {json.dumps({'error': _UPSTREAM_ERROR})}\n\n"
+    finally:
+        lease.release()
+        if failure is not None and not produced:
+            limiter.refund(device_key, estimated_tokens)
+        _log_done(request_id, request, provider, estimated_tokens, watch,
+                  device_key, status, failure)
+
+
+async def _sse_stream(request_id, request, provider, history, estimated_tokens,
+                      device_key, limiter, lease):
+    async def source():
         async for chunk in provider.generate(
             prompt=request.prompt,
             system_prompt=request.system_prompt,
@@ -219,31 +300,15 @@ async def _sse_stream(request_id, request, provider, history, estimated_tokens):
             temperature=request.temperature,
             max_tokens=request.max_tokens,
         ):
-            yield f"data: {json.dumps({'text': chunk})}\n\n"
-    except ProviderError as exc:
-        _log.warning("provider error: %s", exc)
-        status = "error"
-        # Partial output already reached the client via prior `data:` events —
-        # this final error event lets `CloudGatewayProvider` mark the reply
-        # incomplete rather than silently truncating it.
-        yield f"data: {json.dumps({'error': _UPSTREAM_ERROR})}\n\n"
-    finally:
-        log_request(
-            RequestLogEntry(
-                request_id=request_id,
-                model_tier=request.model_tier,
-                provider=type(provider).__name__,
-                token_count=estimated_tokens,
-                latency_ms=watch.elapsed_ms(),
-                approx_cost_usd=0.0,
-                status=status,
-            )
-        )
+            yield {"text": chunk}
+
+    async for line in _stream_events(source(), request_id, request, provider,
+                                     estimated_tokens, device_key, limiter, lease):
+        yield line
 
 
-async def _sse_stream_with_tools(
-    request_id, request, provider, history, estimated_tokens
-):
+async def _sse_stream_with_tools(request_id, request, provider, history,
+                                 estimated_tokens, device_key, limiter, lease):
     """Loop 3.4 variant of [_sse_stream]: also emits `tool_call` events.
 
     One gateway call is still exactly one model round-trip (the gateway stays
@@ -251,31 +316,15 @@ async def _sse_stream_with_tools(
     endpoint again with the result appended to `history`; this generator just
     needs to pass `tool_call` events through instead of only `text`.
     """
-    watch = Stopwatch()
-    status = "ok"
-    try:
-        async for event in provider.generate_with_tools(
+    async for line in _stream_events(
+        provider.generate_with_tools(
             prompt=request.prompt,
             system_prompt=request.system_prompt,
             history=history,
             temperature=request.temperature,
             max_tokens=request.max_tokens,
             tools=request.tools,
-        ):
-            yield f"data: {json.dumps(event)}\n\n"
-    except ProviderError as exc:
-        _log.warning("provider error: %s", exc)
-        status = "error"
-        yield f"data: {json.dumps({'error': _UPSTREAM_ERROR})}\n\n"
-    finally:
-        log_request(
-            RequestLogEntry(
-                request_id=request_id,
-                model_tier=request.model_tier,
-                provider=type(provider).__name__,
-                token_count=estimated_tokens,
-                latency_ms=watch.elapsed_ms(),
-                approx_cost_usd=0.0,
-                status=status,
-            )
-        )
+        ),
+        request_id, request, provider, estimated_tokens, device_key, limiter, lease,
+    ):
+        yield line

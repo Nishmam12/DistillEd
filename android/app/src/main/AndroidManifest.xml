@@ -71,6 +71,12 @@
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
 
+        <!-- Holds the microphone while a lecture is recorded in the background. -->
+        <service
+            android:name=".RecordingService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
         <!-- GPU inference (LiteRT-LM): on Android 12+ the app linker namespace
              can't dlopen the vendor OpenCL ICD without declaring its loader.
              All optional — devices without them fall back gracefully. -->

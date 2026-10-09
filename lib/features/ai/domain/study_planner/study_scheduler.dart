@@ -67,9 +67,18 @@ StudyPlan buildStudyPlan({
     days: [
       for (var i = 0; i < numDays; i++)
         StudyDay(
-          date: horizon.startDate.add(Duration(days: i)),
+          date: _dayOffset(horizon.startDate, i),
           tasks: buckets[i],
         ),
     ],
   );
 }
+
+/// [start] plus [days] calendar days. `add(Duration(days: n))` adds 24-hour
+/// blocks, so across a daylight-saving change a local midnight lands at 23:00 or
+/// 01:00 and the day label shifts.
+DateTime _dayOffset(DateTime start, int days) => start.isUtc
+    ? DateTime.utc(start.year, start.month, start.day + days, start.hour,
+        start.minute, start.second)
+    : DateTime(start.year, start.month, start.day + days, start.hour,
+        start.minute, start.second);

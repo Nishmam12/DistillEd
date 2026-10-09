@@ -169,6 +169,12 @@ class EditorAppBarActions extends ConsumerWidget {
       return;
     }
     final cache = ref.read(sceneImageCacheProvider);
+    // Say so: exporting only the selection looks the same as exporting the page
+    // until the file opens.
+    if (sel.isNotEmpty && context.mounted) {
+      _toast(context,
+          'Exporting the ${sel.length} selected item${sel.length == 1 ? '' : 's'} only');
+    }
     final ok = switch (fmt) {
       'png' => await SceneExportService.sharePng(els, imageCache: cache),
       'svg' => await SceneExportService.shareSvg(els),
@@ -204,14 +210,30 @@ class EditorAppBarActions extends ConsumerWidget {
     final notebook = await ref.read(noteRepositoryProvider).getNotebook(notebookId);
     if (!context.mounted) return;
 
-    _toast(context, 'Exporting ${pages.length} pages…');
-    final ok = await SceneExportService.shareNotebookPdf(
-      scenes,
-      title: notebook?.title ?? 'notebook',
-      background: Color(notebook?.backgroundColor ?? 0xFFFFFFFF),
-      imageCache: ref.read(sceneImageCacheProvider),
-    );
-    if (!ok && context.mounted) _toast(context, 'Nothing to export');
+    final messenger = ScaffoldMessenger.of(context);
+    final status = ValueNotifier<String>('Exporting ${pages.length} pages…');
+    messenger.showSnackBar(SnackBar(
+      duration: const Duration(minutes: 5),
+      content: ValueListenableBuilder<String>(
+        valueListenable: status,
+        builder: (_, text, __) => Text(text),
+      ),
+    ));
+    try {
+      final ok = await SceneExportService.shareNotebookPdf(
+        scenes,
+        title: notebook?.title ?? 'notebook',
+        background: Color(notebook?.backgroundColor ?? 0xFFFFFFFF),
+        imageCache: ref.read(sceneImageCacheProvider),
+        onProgress: (done, total) =>
+            status.value = 'Exporting page ${done.clamp(1, total)} of $total…',
+      );
+      messenger.hideCurrentSnackBar();
+      if (!ok && context.mounted) _toast(context, 'Nothing to export');
+    } finally {
+      messenger.hideCurrentSnackBar();
+      status.dispose();
+    }
   }
 
   void _toast(BuildContext context, String msg) =>

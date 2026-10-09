@@ -113,6 +113,23 @@ Future<void> main() async {
           {'serving': 1, 'target': 1});
     });
 
+    test('a notebook is read from cache until something changes it, even behind the store',
+        () async {
+      await store.replaceForPage(1, [_chunk(1, 0, 'serving')]);
+
+      final first = await store.forNotebook(1);
+      expect(identical(await store.forNotebook(1), first), isTrue);
+
+      // content_purge deletes through Isar directly, not through the store.
+      await isar.writeTxn(
+          () => isar.noteChunkRecords.filter().pageIdEqualTo(1).deleteAll());
+      expect(await store.forNotebook(1), isEmpty);
+
+      await store.replaceForPage(1, [_chunk(1, 0, 'serving')]);
+      await store.replaceForPage(1, [_chunk(1, 0, 'serving', signature: 'edited')]);
+      expect((await store.forNotebook(1)).single.contentSignature, 'edited');
+    });
+
     test('the index state is kept per model', () async {
       await store.replaceForPage(1, [_chunk(1, 0, 'serving', signature: 'old-text')]);
       await store.replaceForPage(1, [_chunk(1, 0, 'target', signature: 'new-text')]);

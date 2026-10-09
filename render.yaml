@@ -39,3 +39,12 @@ services:
         value: "5000"
       - key: GLOBAL_SEARCH_CAP
         value: "500"
+      # Abuse bounds (see server/ai-gateway/README.md). Render adds one proxy
+      # hop to X-Forwarded-For.
+      - key: IP_RATE_LIMIT_PER_MINUTE
+        value: "240"
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+      # The usage counters reset on every deploy and spin-down on the free plan.
+      # On a paid plan, mount a disk at /data and set RATE_LIMIT_DB_PATH to
+      # /data/rate_limit.sqlite3 so the caps (and the global kill switch) persist.

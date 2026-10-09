@@ -59,11 +59,14 @@ class _Harness {
         if (!installed) throw LlmNotReadyException();
       },
       loadModel: _load,
+      now: () => clock,
       closeCachedModel: () async {
         if (models.isNotEmpty) await models.last.close();
       },
     );
   }
+
+  DateTime clock = DateTime(2026, 10, 12, 10);
 
   /// Whether the plugin can actually bring the GPU up. When it can't it falls
   /// back to the CPU on its own, which is exactly the silent failure under test.
@@ -175,6 +178,19 @@ void main() {
 
       // No second failed GPU attempt, and no drafter.
       expect(h.asked, [(PreferredBackend.cpu, false)]);
+    });
+
+    test('the GPU is tried again after a while, not given up on for the session',
+        () async {
+      final h = _Harness(gpuWorks: false);
+      await h.open();
+      await h.runtime.releaseModel();
+      h.loads.clear();
+
+      h.clock = h.clock.add(EdgeAiRuntime.gpuRetryAfter + const Duration(minutes: 1));
+      await h.open();
+
+      expect(h.asked.first, (PreferredBackend.gpu, true));
     });
 
     test('a spec can switch the drafter off even on a working GPU', () async {

@@ -186,7 +186,11 @@ void main() {
       // Nothing but the passage: no retrieved context, no notebook text, no
       // invented framing that would let the model treat something else as
       // source material.
-      expect(prompt.replaceAll('PASSAGE:', '').trim(),
+      expect(
+          prompt
+              .replaceAll('PASSAGE:', '')
+              .replaceAll(RegExp(r'<</?DATA-[0-9a-f]+>>'), '')
+              .trim(),
           'A catalyst lowers activation energy.');
     });
 

@@ -9,6 +9,7 @@
 // Provider failures ([AiModelNotReadyException] etc.) DO propagate: the
 // caller decides how to surface "no model yet".
 
+import '../untrusted_text.dart';
 import 'dart:convert';
 
 import '../ai_provenance.dart';
@@ -30,6 +31,8 @@ class ContextEngine {
   /// the same notation the views know how to render, or the knowledge graph and
   /// the flashcards built from it show raw backslashes.
   static const String schemaInstruction = '''
+$kUntrustedDataRule
+
 You analyze one page of a student's notes. Reply with ONLY a single JSON object — no markdown, no code fences, no text before or after it — in exactly this shape:
 
 {"currentTopic": "short phrase naming the main topic",
@@ -129,7 +132,7 @@ $kMathMarkup''';
             'the topic "${previous.currentTopic}". The note may have stayed '
             'on it or moved on — judge from the text alone.'
         : '';
-    return 'NOTE:\n$noteText$continuity';
+    return 'NOTE:\n${fenceUntrusted(noteText)}$continuity';
   }
 
   /// Greedy decoding: structured extraction wants determinism, and small models

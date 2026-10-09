@@ -20,6 +20,7 @@ class InkFlowApp extends ConsumerWidget {
     final themeMode = ref.watch(settingsProvider.select((s) => s.themeMode));
     final devMode = ref.watch(settingsProvider.select((s) => s.devMode));
 
+    ref.read(modelLifecycleReleaserProvider);
     ref.read(embedderRolloutResumeProvider); // starts/resumes an embedder switch
     ref.listen(embedderMobileDataPromptProvider, (_, asking) {
       if (!asking) return;

@@ -10,6 +10,8 @@ reasoning as every other provider key in this gateway — see
 from __future__ import annotations
 
 import logging
+import re
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Header, HTTPException
@@ -101,18 +103,41 @@ async def search(
     try:
         data = await _search_exa(settings, request.query)
     except httpx.HTTPError as exc:
-        _log.warning("exa search failed: %s", exc)
+        _log.warning("exa search failed: %s", type(exc).__name__)
         raise HTTPException(
             status_code=502, detail="Web search failed. Try again."
         ) from exc
 
-    results = [
-        SearchResult(
-            title=item.get("title") or item.get("url", ""),
-            url=item["url"],
-            snippet=(item.get("text") or "").strip(),
+    return SearchResponse(results=_clean_results(data))
+
+
+_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_TITLE_MAX_CHARS = 200
+
+
+def _clean(text: str, limit: int) -> str:
+    return _CONTROL_CHARS.sub("", text).strip()[:limit]
+
+
+def _clean_results(data: dict) -> list[SearchResult]:
+    """What comes back from the web is attacker-controlled text: only http(s)
+    links are passed on, and titles and snippets are bounded and stripped of
+    control characters. The app fences them as untrusted data before the model
+    sees them."""
+    results = []
+    for item in data.get("results", [])[:_MAX_RESULTS]:
+        url = item.get("url")
+        if not isinstance(url, str) or urlparse(url).scheme not in ("http", "https"):
+            continue
+        title = item.get("title")
+        text = item.get("text")
+        results.append(
+            SearchResult(
+                title=_clean(title if isinstance(title, str) and title else url,
+                             _TITLE_MAX_CHARS),
+                url=url[:2000],
+                snippet=_clean(text if isinstance(text, str) else "",
+                               _SNIPPET_MAX_CHARS),
+            )
         )
-        for item in data.get("results", [])[:_MAX_RESULTS]
-        if item.get("url")
-    ]
-    return SearchResponse(results=results)
+    return results

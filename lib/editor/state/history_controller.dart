@@ -20,11 +20,28 @@ class HistoryController extends StateNotifier<HistoryState> {
   final List<SceneCommand> _undo = [];
   final List<SceneCommand> _redo = [];
 
-  HistoryController(this._mutator) : super(const HistoryState(0, 0));
+  /// The oldest commands are forgotten past this many, so a long session does
+  /// not hold every stroke it ever drew.
+  static const int defaultMaxDepth = 200;
 
-  /// Applies [command] and records it for undo.
+  final int _maxDepth;
+
+  HistoryController(this._mutator, {int maxDepth = defaultMaxDepth})
+      : _maxDepth = maxDepth,
+        super(const HistoryState(0, 0));
+
+  /// Applies [command] and records it for undo. A command that throws part way
+  /// is rolled back as far as it can be and NOT recorded, so undo never offers
+  /// to reverse something that did not fully happen.
   void push(SceneCommand command) {
-    command.apply(_mutator);
+    try {
+      command.apply(_mutator);
+    } catch (_) {
+      try {
+        command.revert(_mutator);
+      } catch (_) {}
+      rethrow;
+    }
     _record(command);
   }
 
@@ -34,6 +51,7 @@ class HistoryController extends StateNotifier<HistoryState> {
 
   void _record(SceneCommand command) {
     _undo.add(command);
+    if (_undo.length > _maxDepth) _undo.removeAt(0);
     _redo.clear();
     _sync();
   }

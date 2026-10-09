@@ -1,3 +1,4 @@
+import 'dart:async';
 // The Notes browser — the app's home screen.
 //
 // Not a list and not a grid: a column of full-width document cards on a
@@ -113,7 +114,7 @@ class NotesScreen extends ConsumerWidget {
         .read(homeNotifierProvider.notifier)
         .createNotebook(result.title.trim(), templateIndex: result.templateIndex);
 
-    if (context.mounted) context.push('/note2/${notebook.id}');
+    if (context.mounted) unawaited(context.push('/note2/${notebook.id}'));
   }
 
   Future<void> _pickSort(BuildContext context, WidgetRef ref) async {
@@ -313,9 +314,9 @@ class _NotesList extends ConsumerWidget {
       case 'tags':
         await showEditTagsDialog(context, ref, note: note);
       case 'book':
-        context.push('/note2/${note.id}/book');
+        unawaited(context.push('/note2/${note.id}/book'));
       case 'graph':
-        context.push('/note2/${note.id}/graph');
+        unawaited(context.push('/note2/${note.id}/graph'));
       case 'delete':
         await _confirmDelete(context, ref, note);
     }

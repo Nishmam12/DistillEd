@@ -13,8 +13,8 @@
 //     be split so that neither chunk states it fully, and neither retrieves.
 //     Each chunk after the first is prefixed with the tail of the previous one.
 //
-// Sizing is in WORDS, like every other budget in this codebase (see
-// `text_budget.dart`); the words↔tokens math lives in [AiRouter]. Each model
+// Sizing is in budget WORDS, like every other budget in this codebase (see
+// `text_budget.dart`, where an Indic word costs more than an English one). Each model
 // sets its own window (`EmbedderSpec.chunkWords`); the constants below are the
 // EmbeddingGemma 300M values, inside the phase spec's 200–400 token target.
 
@@ -115,9 +115,15 @@ List<NoteChunkDraft> chunkPage({
   return chunks;
 }
 
-String _lastWords(String text, int count) {
-  if (count <= 0) return '';
+/// The tail of [text] worth up to [budget] budget words.
+String _lastWords(String text, int budget) {
+  if (budget <= 0) return '';
   final words = text.trim().split(_whitespace);
-  if (words.length <= count) return words.join(' ');
-  return words.sublist(words.length - count).join(' ');
+  var cost = 0.0;
+  var start = words.length;
+  while (start > 0 && cost + wordCost(words[start - 1]) <= budget) {
+    start--;
+    cost += wordCost(words[start]);
+  }
+  return words.sublist(start).join(' ');
 }

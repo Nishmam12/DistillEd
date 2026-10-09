@@ -7,6 +7,8 @@ exercise it.
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from .config import Settings
 from .providers.base import ModelProvider
 from .providers.claude_provider import ClaudeProvider
@@ -38,11 +40,11 @@ def select_provider(
         raise UnknownModelTierError(f"Unknown model_tier: {model_tier!r}")
 
     if provider_hint in VALID_HINTS:
-        candidate = _FRONTIER_FACTORIES[provider_hint](settings)
+        candidate = _frontier(provider_hint, settings)
         if candidate.is_available():
             return candidate
 
-    return GemmaCloudProvider(settings, model_tier=model_tier)
+    return _gemma(settings, model_tier)
 
 
 class NoVisionProviderError(Exception):
@@ -71,7 +73,7 @@ def select_vision_provider(
         ordered = [provider_hint] + [h for h in ordered if h != provider_hint]
 
     for name in ordered:
-        candidate = _FRONTIER_FACTORIES[name](settings)
+        candidate = _frontier(name, settings)
         if getattr(candidate, "supports_vision", lambda: False)():
             return candidate
 
@@ -79,6 +81,18 @@ def select_vision_provider(
         "No vision-capable provider is configured. Set GEMINI_API_KEY to "
         "enable cloud figure analysis."
     )
+
+
+# One client (and so one connection pool) per provider and settings, not one per
+# request. `Settings` is frozen, so it is a valid cache key.
+@lru_cache(maxsize=16)
+def _gemma(settings: Settings, model_tier: str) -> GemmaCloudProvider:
+    return GemmaCloudProvider(settings, model_tier=model_tier)
+
+
+@lru_cache(maxsize=16)
+def _frontier(name: str, settings: Settings) -> ModelProvider:
+    return _FRONTIER_FACTORIES[name](settings)
 
 
 _FRONTIER_FACTORIES = {

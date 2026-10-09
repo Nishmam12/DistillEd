@@ -19,6 +19,24 @@ jobs:
       - run: flutter analyze
       - run: flutter test
 
+  # Every 64-bit native library must be 16 KB page-size ready (Android 15+).
+  android-native-libs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: flutter pub get
+      - run: flutter build apk --debug
+      - run: tool/check_16kb_alignment.sh build/app/outputs/flutter-apk/app-debug.apk
+
   gateway:
     runs-on: ubuntu-latest
     defaults:
@@ -33,3 +51,5 @@ jobs:
           cache-dependency-path: server/ai-gateway/requirements-dev.txt
       - run: pip install -r requirements-dev.txt
       - run: pytest -q
+      # Known-vulnerable pinned dependencies fail the build.
+      - run: pip install pip-audit && pip-audit --require-hashes -r requirements.lock

@@ -72,7 +72,17 @@ class FileLibraryRepository implements LibraryRepository {
   @override
   Future<List<LibraryItem>> load() async {
     if (!await file.exists()) return const [];
-    return LibraryJson.decode(await file.readAsString());
+    try {
+      return LibraryJson.decode(await file.readAsString());
+    } catch (_) {
+      // A damaged file must not take the whole library screen down. It is kept
+      // beside the original name so it can be recovered by hand, and the library
+      // starts empty (the next save writes a fresh file).
+      try {
+        await file.rename('${file.path}.bad');
+      } catch (_) {}
+      return const [];
+    }
   }
 
   @override

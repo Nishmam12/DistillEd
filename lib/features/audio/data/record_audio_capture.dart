@@ -2,13 +2,37 @@
 //
 // The only file in the feature that knows which recording plugin is in use.
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
+import 'package:flutter/services.dart';
 import 'package:record/record.dart';
 
 import '../domain/audio_ports.dart';
 
+/// Asks MainActivity.kt to hold a foreground service while recording, so Android
+/// 14+ keeps the microphone live with the app backgrounded. Anywhere the channel
+/// is not registered (tests, other platforms) it does nothing.
+class RecordingServiceChannel {
+  static const _channel = MethodChannel('com.inkflow.inkflow/recording');
+
+  Future<void> start() => _call('start');
+  Future<void> stop() => _call('stop');
+
+  Future<void> _call(String method) async {
+    try {
+      await _channel.invokeMethod<void>(method);
+    } on MissingPluginException {
+      // No service to start here.
+    } on PlatformException catch (e) {
+      // Recording still works with the app in front; only background capture is
+      // at risk, so this is logged rather than failing the recording.
+      debugPrint('[audio] recording service $method failed: ${e.message}');
+    }
+  }
+}
+
 class RecordAudioCapture implements AudioCapturePort {
   final AudioRecorder _recorder;
+  final RecordingServiceChannel _service = RecordingServiceChannel();
 
   /// Measures the recording's length locally.
   ///
@@ -47,9 +71,11 @@ class RecordAudioCapture implements AudioCapturePort {
   @override
   Future<void> start(String absolutePath,
       {AudioFormat format = AudioFormat.aac}) async {
+    await _service.start();
     try {
       await _recorder.start(configFor(format), path: absolutePath);
     } on Exception catch (e) {
+      await _service.stop();
       throw AudioUnavailableException('Could not start recording: $e');
     }
     _elapsed
@@ -64,6 +90,7 @@ class RecordAudioCapture implements AudioCapturePort {
     _elapsed.stop();
     _recording = false;
     await _recorder.stop();
+    await _service.stop();
     return _elapsed.elapsedMilliseconds;
   }
 
@@ -74,6 +101,7 @@ class RecordAudioCapture implements AudioCapturePort {
     _recording = false;
     // Deletes the partial file as well as stopping the encoder.
     await _recorder.cancel();
+    await _service.stop();
   }
 
   Future<void> dispose() async {

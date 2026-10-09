@@ -56,13 +56,57 @@ class PdfiumTextSource implements PdfTextSource {
     try {
       return [
         for (final page in document.pages)
-          (await page.loadText())?.fullText ?? '',
+          _visibleText(page, await page.loadText()),
       ];
     } finally {
       await document.dispose();
     }
   }
 }
+
+/// The page's text minus what a reader cannot see. A PDF can carry text sized to
+/// nothing or placed off the page; it never shows, but it would reach the model
+/// as if the student had read it, so it is a way to plant instructions.
+/// (White-on-white text is not caught: that needs the glyph colour.)
+String _visibleText(PdfPage page, PdfPageRawText? text) {
+  if (text == null) return '';
+  final rects = text.charRects;
+  if (rects.length != text.fullText.length) return text.fullText;
+  final out = StringBuffer();
+  for (var i = 0; i < rects.length; i++) {
+    final char = text.fullText[i];
+    final r = rects[i];
+    if (char.trim().isEmpty ||
+        isVisibleTextBounds(
+          left: r.left,
+          bottom: r.bottom,
+          right: r.right,
+          top: r.top,
+          pageWidth: page.width,
+          pageHeight: page.height,
+        )) {
+      out.write(char);
+    }
+  }
+  return out.toString();
+}
+
+/// Whether a character with these bounds (PDF points, origin bottom-left) can be
+/// seen: at least 2 pt tall (a zero-size font is 0), and overlapping the page.
+/// Width is not checked: a combining mark, as in Bangla, can have none.
+bool isVisibleTextBounds({
+  required double left,
+  required double bottom,
+  required double right,
+  required double top,
+  required double pageWidth,
+  required double pageHeight,
+}) =>
+    top - bottom >= 2 &&
+    right > 0 &&
+    left < pageWidth &&
+    top > 0 &&
+    bottom < pageHeight;
 
 /// Writes each page's text beside its image.
 class PdfTextLayerWriter {

@@ -86,6 +86,12 @@ class SpeechModelNotifier extends StateNotifier<SpeechModelState> {
   }
 }
 
+/// A transcript is added to the page's text, so it travels with the notes: into
+/// search and, like any note text, into AI prompts that cloud AI may handle.
+const String _transcriptDisclosure =
+    'The transcript becomes part of the page, so with cloud AI on it can be '
+    'sent along with your notes.';
+
 /// What Settings says under the "Transcribe lectures" switch, given the switch
 /// and the state of the speech model.
 String lectureTranscriptsSubtitle({
@@ -94,13 +100,14 @@ String lectureTranscriptsSubtitle({
 }) {
   if (!on) {
     return 'Record lectures so they can be transcribed on this device. '
-        'Recordings take about 2 MB a minute.';
+        'Recordings take about 2 MB a minute. $_transcriptDisclosure';
   }
   switch (model.phase) {
     case SpeechModelPhase.downloading:
       return 'Downloading the speech model… ${model.percent}%';
     case SpeechModelPhase.ready:
-      return 'On — a lecture is transcribed after you stop recording.';
+      return 'On — a lecture is transcribed after you stop recording. '
+          '$_transcriptDisclosure';
     case SpeechModelPhase.failed:
       return '${model.error ?? "Couldn't download the speech model."} '
           'Tap to try again.';

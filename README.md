@@ -2,16 +2,36 @@
 
 A beefed up notepad app
 
-## Getting Started
+## Platforms
 
-This project is a starting point for a Flutter application.
+**Android only.** The on-device AI (LiteRT-LM, ML Kit) and several platform
+channels (`MainActivity.kt`) exist only there. There is no iOS project: the
+`ios/` folder, if present, holds files Flutter regenerates and is not buildable.
+Supporting iOS would mean `flutter create --platforms=ios .` plus ports of those
+channels and the model runtime.
 
-A few resources to get you started if this is your first Flutter project:
+## Build
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+flutter pub get
+flutter run                                   # debug on a device
+flutter build apk --release                   # signs with the debug key unless
+                                              # android/key.properties exists
+flutter build apk --release -PrequireReleaseSigning=true   # fails without it
+tool/check_16kb_alignment.sh build/app/outputs/flutter-apk/app-debug.apk
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Release signing reads `android/key.properties` (gitignored):
+`storeFile`, `storePassword`, `keyAlias`, `keyPassword`.
+
+The cloud gateway URL and certificate pin are build-time settings:
+`--dart-define=GATEWAY_URL=http://localhost:8000`,
+`--dart-define=GATEWAY_CERT_SHA256=<hex>[,<hex>]`.
+
+R8 shrinking is off on purpose (see `android/app/build.gradle.kts`): turning it on
+needs keep rules for the on-device ML libraries and a run on a real device.
+
+## Docs
+
+`docs/ARCHITECTURE.md`, `docs/AI_PIPELINE_PLAN.md`, `docs/AUDIT_BACKLOG.md` (what
+is still open), and `server/ai-gateway/README.md` for the cloud gateway.

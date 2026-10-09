@@ -95,6 +95,12 @@ that touches it is "done" until every test below is green.
 
 ## 4. Manual verification (device/emulator, end of Phase 1)
 
+> **Status: NOT RECORDED.** The automated cases (`test/data/migration/`, including
+> the per-page "migrated" marker and a pre-migration database copy,
+> `inkflow_before_v2.isar`) pass, but nothing in the repo records this walkthrough
+> being run on a real device with a copied 1.0.2 data set. Run it and tick the
+> boxes below before calling the migration verified.
+
 1. Build 2.0 over an existing 1.0.2 app-docs directory (copy a real 1.0.2
    `inkflow.isar` + `notes/` tree onto the device).
 2. Launch → every notebook appears; open each page → strokes, shapes, text,

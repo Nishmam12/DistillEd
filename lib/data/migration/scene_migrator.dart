@@ -45,8 +45,15 @@ class SceneMigratorV2 {
       }
       final elements = LegacyAdapters.pageToSceneElements(page);
       if (elements.isEmpty) continue;
-      if ((await store.loadForPage(page.pageId)).isNotEmpty) continue;
+      if (await gate.isPageMigrated(page.pageId)) continue;
+      // A page migrated by a build that did not record this has elements; leave
+      // its edits alone and record it now.
+      if ((await store.loadForPage(page.pageId)).isNotEmpty) {
+        await gate.markPageMigrated(page.pageId);
+        continue;
+      }
       await store.upsertForPage(page.notebookId, page.pageId, elements);
+      await gate.markPageMigrated(page.pageId);
     }
 
     if (incomplete) return true;

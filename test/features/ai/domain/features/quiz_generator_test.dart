@@ -187,5 +187,26 @@ void main() {
           )),
           isFalse);
     });
+
+    test('a hint inside another word does not count', () {
+      expect(
+          QuizGenerator.looksLikeProgramming(const PageContext(
+            currentTopic: 'Image classification and trust in institutions',
+            keyConcepts: ['therapy', 'capital'],
+            estimatedLevel: KnowledgeLevel.intermediate,
+            confidence: 0.7,
+          )),
+          isFalse);
+    });
+
+    test('hints with symbols and spaces still match', () {
+      expect(
+          QuizGenerator.looksLikeProgramming(const PageContext(
+            currentTopic: 'Pointers in C++ and data structures',
+            estimatedLevel: KnowledgeLevel.beginner,
+            confidence: 0.6,
+          )),
+          isTrue);
+    });
   });
 }

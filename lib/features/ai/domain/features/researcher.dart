@@ -9,6 +9,7 @@
 // gateway stays stateless/one-shot per call by design (phase spec §1) — each
 // `generateWithTools` call here is exactly one gateway round-trip.
 
+import '../untrusted_text.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -58,6 +59,7 @@ class Researcher {
         _tools = tools;
 
   static const String systemPrompt =
+      '$kUntrustedDataRule\n\n'
       'You are a research assistant inside a note-taking app. Answer the '
       "user's question directly and concisely. Use the available tools when "
       'they would make your answer more accurate or current: use the '

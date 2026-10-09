@@ -13,6 +13,7 @@
 // Retrieval and generation are split so the caller can show the two phases
 // ("searching…" → "answering, drawing on N pages") and render the sources.
 
+import '../untrusted_text.dart';
 import '../ai_provider.dart';
 import '../ai_router.dart';
 import '../ai_scope.dart';
@@ -47,6 +48,7 @@ class NotesQa {
   /// support, and to nothing else. When they support nothing, the only correct
   /// output is [notFoundReply].
   static const String systemPrompt =
+      '$kUntrustedDataRule\n\n'
       'You are a tutor answering a student\'s question about their own notes, '
       'using ONLY the passages from those notes given below. These passages are '
       'the only source of truth. '
@@ -144,7 +146,7 @@ class NotesQa {
     required String question,
     required List<RetrievedChunk> sources,
   }) =>
-      'PASSAGES FROM YOUR NOTES:\n${_formatPassages(sources)}\n\n'
+      'PASSAGES FROM YOUR NOTES:\n${fenceUntrusted(_formatPassages(sources))}\n\n'
       'QUESTION: ${question.trim()}';
 
   /// What the answer must be grounded in, for the quality check.
@@ -170,17 +172,26 @@ class NotesQa {
   /// passages are dropped from the end rather than cutting one mid-sentence, so
   /// every number the model sees maps to a passage it saw in full.
   String _formatPassages(List<RetrievedChunk> sources) {
+    final shown = fitToBudget(sources);
+    return [
+      for (var i = 0; i < shown.length; i++)
+        '[${i + 1}] ${shown[i].chunk.text.trim()}',
+    ].join('\n\n');
+  }
+
+  /// The leading [sources] the prompt has room for: at least the first, then as
+  /// many whole passages as fit. The UI shows exactly these, so a source chip is
+  /// never numbered for a passage the model did not see.
+  List<RetrievedChunk> fitToBudget(List<RetrievedChunk> sources) {
     final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
-    final buffer = StringBuffer();
     var used = 0;
-    for (var i = 0; i < sources.length; i++) {
-      final text = sources[i].chunk.text.trim();
-      final cost = countWords(text);
-      if (i > 0 && used + cost > budget) break;
-      if (i > 0) buffer.write('\n\n');
-      buffer.write('[${i + 1}] $text');
+    var count = 0;
+    for (final source in sources) {
+      final cost = budgetWords(source.chunk.text.trim());
+      if (count > 0 && used + cost > budget) break;
       used += cost;
+      count++;
     }
-    return buffer.toString();
+    return sources.sublist(0, count);
   }
 }

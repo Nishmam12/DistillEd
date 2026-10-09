@@ -1,5 +1,6 @@
 // Entry point — initializes Isar database and launches the app with Riverpod.
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
@@ -10,6 +11,8 @@ import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'app/app.dart';
+import 'app/startup_failure_app.dart';
+import 'core/error_log.dart';
 import 'data/migration/launch_migration.dart';
 import 'data/persistence/library_repository.dart';
 import 'data/persistence/lecture_recording_record.dart';
@@ -74,7 +77,7 @@ void main() async {
     if (kDebugMode) {
       FlutterError.dumpErrorToConsole(details);
     } else {
-      // In production, log to a file or crashlytics here
+      unawaited(ErrorLog.record(details.exception, details.stack));
       debugPrint('Caught FlutterError: ${details.exception}');
     }
   };
@@ -84,7 +87,7 @@ void main() async {
     if (kDebugMode) {
       debugPrint('Caught Async Error: $error\n$stack');
     } else {
-      // Log to file or crashlytics
+      unawaited(ErrorLog.record(error, stack));
       debugPrint('Caught Async Error: $error');
     }
     return true; // prevent default fatal crash behavior
@@ -131,6 +134,36 @@ void main() async {
       ),
     );
   };
+
+  await _boot();
+}
+
+/// Opens the database, migrates, and starts the app. Re-runnable: when the
+/// database cannot be opened the user gets a screen with a retry instead of a
+/// frozen splash.
+Future<void> _boot() async {
+  // Something on screen at once: opening the database and migrating a large
+  // library can take a while, and a blank window reads as a hang.
+  runApp(const _BootSplash());
+  try {
+    await _openAndRun();
+  } catch (error, stack) {
+    unawaited(ErrorLog.record(error, stack));
+    runApp(StartupFailureApp(error: error, retry: _boot));
+  }
+}
+
+class _BootSplash extends StatelessWidget {
+  const _BootSplash();
+
+  @override
+  Widget build(BuildContext context) => const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
+}
+
+Future<void> _openAndRun() async {
 
   // Open Isar with all collection schemas before the app starts. The new
   // unified collections (SceneElementRecord/AppMeta) are additive — Isar

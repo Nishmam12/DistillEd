@@ -62,14 +62,34 @@ class PDFService {
 /// hex. Unlike `String.hashCode`, this is stable across runs/platforms and is
 /// content-based, so the on-disk page cache is reused correctly across launches
 /// and two different PDFs cannot collide onto the same cache directory.
-String _fnv1aHashHex(List<int> bytes) {
+String _fnv1aHashHex(List<int> bytes) => _fnvHex(_fnvUpdate(_fnvSeed, bytes));
+
+const int _fnvSeed = 0xcbf29ce484222325;
+
+int _fnvUpdate(int hash, List<int> bytes) {
   const int prime = 0x100000001b3;
-  int hash = 0xcbf29ce484222325;
   for (final b in bytes) {
     hash = (hash ^ b) * prime;
   }
-  // Mask to 60 bits to guarantee a positive value and a clean hex string.
-  return (hash & 0x0FFFFFFFFFFFFFFF).toRadixString(16).padLeft(15, '0');
+  return hash;
+}
+
+// Mask to 60 bits to guarantee a positive value and a clean hex string.
+String _fnvHex(int hash) =>
+    (hash & 0x0FFFFFFFFFFFFFFF).toRadixString(16).padLeft(15, '0');
+
+/// Longest side, in pixels, a page is rendered at. 2x the page's size is crisp
+/// for a slide (~1,500 px) but a poster-sized page would need ~100 MB for one
+/// bitmap.
+const double kPdfMaxRenderSide = 4096;
+
+/// The pixel size to render a [width] x [height] pt page at: 2x, capped.
+@visibleForTesting
+(double, double) pdfRenderSize(double width, double height) {
+  final scale = (kPdfMaxRenderSide / (2 * (width > height ? width : height)))
+      .clamp(0.0, 1.0);
+  final factor = 2.0 * scale;
+  return (width * factor, height * factor);
 }
 
 /// Test-only accessor for the deterministic content hash used as the PDF cache key.
@@ -83,8 +103,12 @@ Future<List<ImportedContent>> _renderPdfIsolate(_PdfRenderPayload payload) async
   // cache key. Falls back to the path hash if the file can't be read for hashing.
   String pdfHash;
   try {
-    final fileBytes = await File(payload.filePath).readAsBytes();
-    pdfHash = _fnv1aHashHex(fileBytes);
+    // Streamed: a 200 MB PDF is not held in memory just to be hashed.
+    var hash = _fnvSeed;
+    await for (final chunk in File(payload.filePath).openRead()) {
+      hash = _fnvUpdate(hash, chunk);
+    }
+    pdfHash = _fnvHex(hash);
   } catch (_) {
     pdfHash = _fnv1aHashHex(payload.filePath.codeUnits);
   }
@@ -97,6 +121,7 @@ Future<List<ImportedContent>> _renderPdfIsolate(_PdfRenderPayload payload) async
   }
 
   final List<ImportedContent> importedPages = [];
+  final failedPages = <int>[];
 
   try {
     final pageCount = document.pagesCount;
@@ -109,10 +134,12 @@ Future<List<ImportedContent>> _renderPdfIsolate(_PdfRenderPayload payload) async
       if (!await diskFile.exists()) {
         try {
           final page = await document.getPage(i);
-          // Render at 2x device pixel ratio for clarity
+          // 2x for clarity, capped so a huge page cannot exhaust memory.
+          final (renderWidth, renderHeight) =
+              pdfRenderSize(page.width, page.height);
           final pageImage = await page.render(
-            width: page.width * 2.0,
-            height: page.height * 2.0,
+            width: renderWidth,
+            height: renderHeight,
             format: PdfPageImageFormat.png,
           );
           await page.close();
@@ -124,6 +151,12 @@ Future<List<ImportedContent>> _renderPdfIsolate(_PdfRenderPayload payload) async
           }
         } catch (e) {
           debugPrint('Rendering failed for page $i: $e');
+        }
+        // No file means a page that would open blank: fail the import (pages
+        // already drawn stay cached, so trying again is quick).
+        if (!await diskFile.exists()) {
+          failedPages.add(i);
+          continue;
         }
       }
 
@@ -138,5 +171,10 @@ Future<List<ImportedContent>> _renderPdfIsolate(_PdfRenderPayload payload) async
     await document.close();
   }
 
+  if (failedPages.isNotEmpty) {
+    throw ImportException(
+        'Could not render page ${failedPages.first} of the PDF'
+        '${failedPages.length > 1 ? ' and ${failedPages.length - 1} more' : ''}.');
+  }
   return importedPages;
 }

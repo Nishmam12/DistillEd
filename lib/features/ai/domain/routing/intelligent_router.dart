@@ -155,7 +155,7 @@ class RoutedAiProvider implements AiProvider {
 
   Future<RouteTarget> _decide(String prompt) => router.decide(
         task: task,
-        inputWordCount: countWords(prompt),
+        inputWordCount: budgetWords(prompt),
         privacy: privacy(),
       );
 

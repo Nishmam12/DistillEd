@@ -13,6 +13,7 @@ import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 
 import '../../domain/rag/prompt_contract.dart';
 import '../../domain/rag/text_embedder.dart';
+import '../llm/file_checksum.dart';
 import '../llm/gemma_adapter.dart';
 import '../llm/llm_exceptions.dart';
 import 'embedder_spec.dart';
@@ -78,7 +79,9 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
     Future<bool> Function(String filename)? isFileInstalled,
     Future<bool> Function(String filename)? isFileOnDisk,
     Future<void> Function(String filename)? forgetFile,
-  })  : _isFileInstalled = isFileInstalled ?? _pluginHas,
+    Future<String> Function(String filename)? pathOf,
+  })  : _pathOf = pathOf ?? _pluginPath,
+        _isFileInstalled = isFileInstalled ?? _pluginHas,
         _isFileOnDisk = isFileOnDisk ?? _pluginOnDisk,
         _forgetFile = forgetFile ?? _uninstallIfPresent;
 
@@ -90,6 +93,13 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
 
   /// Removes a file's record, and the file if it is still there.
   final Future<void> Function(String filename) _forgetFile;
+
+  final Future<String> Function(String filename) _pathOf;
+
+  static Future<String> _pluginPath(String filename) async {
+    await GemmaBootstrap.ensureInitialized();
+    return FlutterEdgeAi.getModelPath(filename);
+  }
 
   static Future<bool> _pluginHas(String filename) async {
     await GemmaBootstrap.ensureInitialized();
@@ -166,6 +176,7 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
     if (tokenizerUrl == null) {
       throw StateError('${spec.displayName} is not a model with a tokenizer');
     }
+    final alreadyThere = await isInstalled(spec);
     await forgetStaleRecords(spec);
     var builder = FlutterEdgeAi.installEmbedder()
         .modelFromNetwork(spec.modelUrl, token: token)
@@ -178,6 +189,20 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
     }
     if (cancelToken != null) builder = builder.withCancelToken(cancelToken);
     await builder.install();
+    if (alreadyThere) return;
+    try {
+      for (final (name, expected) in [
+        (spec.modelFilename, spec.modelSha256),
+        (spec.tokenizerFilename, spec.tokenizerSha256),
+      ]) {
+        if (expected == null) continue;
+        await verifySha256(
+            path: await _pathOf(name), expected: expected, name: spec.displayName);
+      }
+    } on ModelDownloadException {
+      await uninstall(spec);
+      rethrow;
+    }
   }
 
   @override

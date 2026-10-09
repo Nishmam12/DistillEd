@@ -63,17 +63,25 @@ class NoteSearch {
 
     final hits = <NoteSearchHit>[];
     for (final page in pages) {
-      final haystack = page.text.toLowerCase();
+      final folded = _fold(page.text);
+      final haystack = folded.text;
       var from = 0;
       var found = 0;
       while (found < maxHitsPerPage) {
         final at = haystack.indexOf(needle, from);
         if (at < 0) break;
+        final origin = folded.origin;
+        // Offsets in the lowercased text only equal offsets in the page's text
+        // when no character changed length ('İ' lowercases to two units).
+        final start = origin == null ? at : origin[at];
+        final end = origin == null || at + needle.length >= origin.length
+            ? (origin == null ? at + needle.length : page.text.length)
+            : origin[at + needle.length];
         hits.add(_hitAt(
           page,
           pageIndexById[page.pageId] ?? -1,
-          at,
-          needle.length,
+          start,
+          end - start,
           snippetRadius,
         ));
         from = at + needle.length;
@@ -102,6 +110,26 @@ class NoteSearch {
       }
     }
     return total;
+  }
+
+  /// [text] lowercased, with — only when lowercasing changed its length — where
+  /// each lowercased code unit came from in [text].
+  static ({String text, List<int>? origin}) _fold(String text) {
+    final lower = text.toLowerCase();
+    if (lower.length == text.length) return (text: lower, origin: null);
+    final out = StringBuffer();
+    final origin = <int>[];
+    var i = 0;
+    for (final rune in text.runes) {
+      final char = String.fromCharCode(rune);
+      final folded = char.toLowerCase();
+      out.write(folded);
+      for (var k = 0; k < folded.length; k++) {
+        origin.add(i);
+      }
+      i += char.length;
+    }
+    return (text: out.toString(), origin: origin);
   }
 
   static NoteSearchHit _hitAt(

@@ -27,6 +27,21 @@ void main() {
       expect(plan.days.last.date, DateTime(2026, 7, 26));
     });
 
+    test('every day is a calendar day after the last, whatever the clock does', () {
+      final plan = buildStudyPlan(
+        notebookId: 1,
+        horizon: StudyHorizon(
+            kind: StudyHorizonKind.month, startDate: DateTime(2026, 3, 1)),
+        weakConcepts: const ['Mitosis'],
+        dueConcepts: const [],
+        gapConcepts: const [],
+      );
+
+      for (var i = 0; i < plan.days.length; i++) {
+        expect(plan.days[i].date, DateTime(2026, 3, 1 + i));
+      }
+    });
+
     test('weak → review, due → quiz, gap → learnNew', () {
       final plan = buildStudyPlan(
         notebookId: 1,

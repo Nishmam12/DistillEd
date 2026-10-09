@@ -15,6 +15,7 @@ from typing import AsyncIterator
 from openai import AsyncOpenAI
 
 from ..config import Settings
+from ..guards import MAX_TOOL_ARGUMENT_CHARS
 from .base import ChatTurn, ProviderError
 
 _TIER_TO_MODEL = {
@@ -136,6 +137,8 @@ class GemmaCloudProvider:
                         slot["name"] = tc.function.name
                     if tc.function and tc.function.arguments:
                         slot["arguments"] += tc.function.arguments
+                        if len(slot["arguments"]) > MAX_TOOL_ARGUMENT_CHARS:
+                            raise ProviderError("Tool call arguments are too large.")
 
             for slot in pending.values():
                 if not slot["id"] or not slot["name"]:

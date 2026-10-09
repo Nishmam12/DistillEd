@@ -1,3 +1,4 @@
+import 'dart:async';
 // The sidebar's "Ask your notes" surface: a query box, a grounded answer
 // streamed from the local model, and the source passages it drew on (each
 // tappable to jump to its page). Shown in place of the live context whenever the
@@ -104,9 +105,9 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           pageId: widget.pageKey.pageId,
         );
     if (!mounted) return;
-    ref
+    unawaited(ref
         .read(askNotesNotifierProvider.notifier)
-        .ask(q, notebookId: widget.notebookId, scope: scope);
+        .ask(q, notebookId: widget.notebookId, scope: scope));
   }
 
   /// Plays the lecture a source passage was said in, from that moment.

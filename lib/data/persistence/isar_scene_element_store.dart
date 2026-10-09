@@ -1,7 +1,6 @@
-// Isar-backed [SceneElementStore]. Methods resolve `IsarService.instance`
-// lazily, so constructing the store never touches the database; it is only
-// exercised once the editor/migration runtime is wired (a later phase registers
-// SceneElementRecordSchema in the Isar open call).
+// Isar-backed [SceneElementStore], the editor's persistence. Methods resolve
+// `IsarService.instance` lazily, so constructing the store never touches the
+// database; `main.dart` registers SceneElementRecordSchema when it opens Isar.
 
 import 'package:isar_community/isar.dart';
 
@@ -46,12 +45,14 @@ class IsarSceneElementStore implements SceneElementStore {
   ) async {
     {
       // Map existing rows by elementId so re-running replaces rather than dupes.
-      final existing = await _isar.sceneElementRecords
-          .filter()
-          .pageIdEqualTo(pageId)
-          .findAll();
+      // Only the two columns, not the rows: a drawn element's points are the big
+      // part, and this runs on every pen-up. Both queries share a filter and so
+      // an order, which pairs the lists up.
+      final pageRows = _isar.sceneElementRecords.filter().pageIdEqualTo(pageId);
+      final rowIds = await pageRows.idProperty().findAll();
+      final elementIds = await pageRows.elementIdProperty().findAll();
       final existingIdByElementId = <String, int>{
-        for (final r in existing) r.elementId: r.id,
+        for (var i = 0; i < rowIds.length; i++) elementIds[i]: rowIds[i],
       };
 
       final records = elements.map((e) {

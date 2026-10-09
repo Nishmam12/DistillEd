@@ -26,6 +26,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'ai_capabilities.dart';
+import 'text_budget.dart' show kLatinTokensPerWord;
 
 /// Small reachability probe: can we resolve a well-known host right now?
 /// (Airplane mode / no network fails in milliseconds; the timeout guards
@@ -81,7 +82,7 @@ class AiRouter {
 
   /// Rough English tokens-per-word ratio used to express the budget in words
   /// (callers count words, not tokens).
-  static const double tokensPerWord = 1.35;
+  static const double tokensPerWord = kLatinTokensPerWord;
 
   /// Capabilities of the local tier — the budget source.
   final AiCapabilities localCapabilities;

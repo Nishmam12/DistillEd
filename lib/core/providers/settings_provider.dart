@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'secret_store.dart';
 
 /// The user's comfort level with the Phase 3 Intelligent Router sending a
 /// request to the cloud gateway. `askEachTime` is the spec-mandated default —
@@ -220,9 +223,13 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   /// default rather than leaving the picker showing no selection at all.
   static const exportFormats = {'PNG', 'PDF'};
 
-  SettingsNotifier() : super(SettingsState()) {
+  SettingsNotifier({SecretStore secrets = const KeystoreSecretStore()})
+      : _secrets = secrets,
+        super(SettingsState()) {
     _restore();
   }
+
+  final SecretStore _secrets;
 
   /// Restores every persisted setting. Runs asynchronously from the
   /// constructor, so the first frame renders defaults and then settles onto the
@@ -245,9 +252,28 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       transcribeLectures: prefs.getBool(_kTranscribeLectures) ?? false,
       snapShapes: prefs.getBool(_kSnapShapes) ?? false,
       scribbleErase: prefs.getBool(_kScribbleErase) ?? false,
-      huggingFaceToken: prefs.getString(_kHuggingFaceToken) ?? '',
-      loaded: true,
     );
+    // The keystore is slower than prefs, so everything else lands first; `loaded`
+    // waits for the token, because the download UI reads it as "nothing stored".
+    final token = await _restoreHuggingFaceToken(prefs);
+    if (!mounted) return;
+    state = state.copyWith(huggingFaceToken: token, loaded: true);
+  }
+
+  /// The token from the keystore. One saved by an older build sits in plain
+  /// SharedPreferences: it moves to the keystore and the plain copy is removed
+  /// (kept only if the keystore refused it, so the token is not lost).
+  Future<String> _restoreHuggingFaceToken(SharedPreferences prefs) async {
+    final secure = await _secrets.read(_kHuggingFaceToken);
+    final legacy = prefs.getString(_kHuggingFaceToken);
+    if (legacy != null) {
+      if (secure == null && await _secrets.write(_kHuggingFaceToken, legacy)) {
+        await prefs.remove(_kHuggingFaceToken);
+        return legacy;
+      }
+      if (secure != null) await prefs.remove(_kHuggingFaceToken);
+    }
+    return secure ?? legacy ?? '';
   }
 
   /// Reads the stored theme mode, falling back to the legacy `ui.darkMode`
@@ -381,15 +407,17 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   Future<void> setHuggingFaceToken(String token) async {
     final cleaned = sanitizeToken(token);
     state = state.copyWith(huggingFaceToken: cleaned);
-    final prefs = await SharedPreferences.getInstance();
-    if (cleaned.isEmpty) {
-      await prefs.remove(_kHuggingFaceToken);
-    } else {
-      await prefs.setString(_kHuggingFaceToken, cleaned);
-    }
+    await _secrets.write(_kHuggingFaceToken, cleaned);
+    // Never leave an older plain copy behind.
+    await (await SharedPreferences.getInstance()).remove(_kHuggingFaceToken);
   }
 }
 
+/// Where secrets live. Overridden with an in-memory store in widget tests, where
+/// the platform keystore never answers.
+final secretStoreProvider =
+    Provider<SecretStore>((ref) => const KeystoreSecretStore());
+
 final settingsProvider = StateNotifierProvider<SettingsNotifier, SettingsState>((ref) {
-  return SettingsNotifier();
+  return SettingsNotifier(secrets: ref.watch(secretStoreProvider));
 });

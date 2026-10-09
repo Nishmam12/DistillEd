@@ -45,6 +45,43 @@ Web Search tool — `{"query": "..."}` → `{"results": [{"title", "url",
 `DAILY_SEARCH_CAP` (default 25) per device per day, tracked independently
 from the LLM token/request cap.
 
+## Limits and abuse protection
+
+The device key is chosen by the client, so it is not an identity. What bounds
+cost instead:
+
+* **Per-device daily caps** (`DAILY_*`) and **global caps across all devices**
+  (`GLOBAL_TOKEN_CAP`, `GLOBAL_REQUEST_CAP`, `GLOBAL_SEARCH_CAP`) — once a global
+  cap is hit the whole service answers 429 until the next UTC day.
+* **Per-address throttle** (`IP_RATE_LIMIT_PER_MINUTE`, keyed on the caller's
+  address from `X-Forwarded-For` — see `TRUSTED_PROXY_HOPS`).
+* **Request shape**: bodies over `MAX_BODY_BYTES` are refused with 413; tools must
+  be `calculator`, `wikipedia` or `web_search`; history may not carry `system`
+  turns; image bytes must match their `mime_type`.
+* **Streams**: at most 40 at once (3 per device), each ends after 120 s.
+* A request that is refused for the deployment's own reasons (no provider
+  configured), or that fails before any output, is **not charged**.
+
+Not done: real attestation (Firebase App Check / Play Integrity). Until then
+anyone can mint device keys; the global caps are the backstop.
+
+The counters live in SQLite at `RATE_LIMIT_DB_PATH`. On Render's free plan the
+disk is wiped on every deploy and spin-down, which resets the caps (including the
+global kill switch). Persisting them needs a paid plan with a disk mounted at
+`/data`, or a database.
+
+## Dependencies
+
+`requirements.txt` lists what the app needs; `requirements.lock` pins every
+package with hashes and is what the image installs. After changing
+`requirements.txt`:
+
+```bash
+uv pip compile requirements.txt --generate-hashes --python-version 3.11 -o requirements.lock
+```
+
+CI runs `pip-audit` against the lock.
+
 ## Tests
 
 ```bash

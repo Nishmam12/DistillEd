@@ -291,6 +291,7 @@ void main() {
 
     expect(f.notifier.state.isRecording, isFalse);
     expect(f.notifier.state.error, contains('Microphone permission'));
+    expect(f.store.recordings, isEmpty, reason: 'no audio, so no orphan row');
   });
 
   test('stop stamps the duration on the stored row', () async {

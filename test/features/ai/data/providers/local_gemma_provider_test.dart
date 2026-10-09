@@ -10,6 +10,7 @@ import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
 import 'package:inkflow/features/ai/data/providers/local_gemma_provider.dart';
 import 'package:inkflow/features/ai/domain/ai_provider.dart';
 import 'package:inkflow/features/ai/domain/compute_backend.dart';
+import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
 
 /// Runtime whose sessions stream scripted chunks and record everything the
 /// provider does with the seams.
@@ -167,7 +168,31 @@ LlmModelSpec _spec({bool shareVisionEngine = true}) => LlmModelSpec(
       shareVisionEngine: shareVisionEngine,
     );
 
+class _TaggedEmbedder implements TextEmbedder {
+  _TaggedEmbedder(this.tag);
+  final double tag;
+
+  @override
+  Future<List<double>> embedOne(String text,
+          {required EmbedTaskType taskType}) async =>
+      [tag];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
+  test('embed asks for the embedder when used, so a model switch needs no rebuild',
+      () async {
+    var current = _TaggedEmbedder(1);
+    final provider = LocalGemmaProvider(
+        runtime: StreamingFakeRuntime(const []), embedderOf: () => current);
+
+    expect(await provider.embed('q'), [1.0]);
+    current = _TaggedEmbedder(2);
+    expect(await provider.embed('q'), [2.0]);
+  });
+
   group('LocalGemmaProvider — streaming contract', () {
     test('streams chunks that concatenate to the full reply, then unloads',
         () async {

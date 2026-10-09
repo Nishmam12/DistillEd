@@ -49,4 +49,16 @@ void main() {
     expect((reread.first.elements.single as SceneShapeElement).geometryData,
         [0, 0, 10, 10]);
   });
+
+  test('a damaged file loads as an empty library and is kept as .bad', () async {
+    final dir = await Directory.systemTemp.createTemp('lib_bad');
+    final file = File('${dir.path}/library.json')..writeAsStringSync('{not json');
+
+    final items = await FileLibraryRepository(file).load();
+
+    expect(items, isEmpty);
+    expect(File('${file.path}.bad').readAsStringSync(), '{not json');
+    expect(file.existsSync(), isFalse);
+    await dir.delete(recursive: true);
+  });
 }

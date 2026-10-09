@@ -13,6 +13,7 @@
 // quietly, never with a red error). Real provider failures ([AiException]) DO
 // propagate for the caller to handle.
 
+import '../untrusted_text.dart';
 import '../ai_provider.dart';
 import '../ai_router.dart';
 import '../context_engine/context_engine.dart';
@@ -96,6 +97,8 @@ class WritingSuggestion {
 
 class WritingAssistant {
   static const String _schemaInstruction = '''
+$kUntrustedDataRule
+
 You are a supportive writing coach reviewing a student's TYPED notes. Point out only real, useful issues — do not invent problems, and never rewrite the whole thing. Reply with ONLY a single JSON object — no markdown, no code fences, no text before or after it — in exactly this shape:
 
 {"suggestions": [
@@ -129,7 +132,7 @@ Rules:
     if (countWords(text) < minWords) return const [];
 
     final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
-    final prompt = 'NOTE:\n${truncateToWords(text, budget)}';
+    final prompt = 'NOTE:\n${fenceUntrusted(truncateToWords(text, budget))}';
 
     var json = ContextEngine.tryExtractJsonObject(await _complete(prompt));
     json ??= ContextEngine.tryExtractJsonObject(

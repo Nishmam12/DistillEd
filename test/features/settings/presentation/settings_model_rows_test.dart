@@ -18,6 +18,8 @@ import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_ser
 import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
 import 'package:inkflow/features/ai/data/llm/model_download_manager.dart';
 import 'package:inkflow/features/ai/data/llm/model_storage_cleaner.dart';
+import 'package:inkflow/core/providers/secret_store.dart';
+import 'package:inkflow/core/providers/settings_provider.dart';
 import 'package:inkflow/features/ai/presentation/ai_providers.dart';
 import 'package:inkflow/features/ai/domain/rag/embedder_rollout.dart';
 import 'package:inkflow/features/audio/data/edge_ai_speech.dart';
@@ -188,6 +190,7 @@ Future<void> _pumpSettings(
   await tester.pumpWidget(ProviderScope(
     overrides: [
       huggingFaceTokenProvider.overrideWithValue('hf_test'),
+      secretStoreProvider.overrideWithValue(InMemorySecretStore()),
       embedderDownloadManagerProvider.overrideWithValue(embedder),
       modelDownloadManagerProvider.overrideWithValue(llm ?? _FakeLlm()),
       handwritingRecognitionServiceProvider

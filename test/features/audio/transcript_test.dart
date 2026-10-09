@@ -415,4 +415,32 @@ void main() {
       expect(await store.exists(recording()), isTrue);
     });
   });
+
+  group('skipped stretches', () {
+    final when = DateTime(2026, 10, 12, 10, 5);
+    const seg = TranscriptSegment(startMs: 0, endMs: 5000, text: 'hello there');
+
+    test('survive a save and load', () {
+      final back = Transcript.fromJson(const Transcript(
+              language: 'en', model: 'm', segments: [seg], skippedWindows: 2)
+          .toJson());
+      expect(back.skippedWindows, 2);
+    });
+
+    test('an older transcript without the field reads as complete', () {
+      final back = Transcript.fromJson({
+        'language': 'en',
+        'model': 'm',
+        'segments': [seg.toJson()],
+      });
+      expect(back.skippedWindows, 0);
+    });
+
+    test('the page text says the lecture has a gap', () {
+      final text = const Transcript(
+              language: 'en', model: 'm', segments: [seg], skippedWindows: 2)
+          .asPageText(recordedAt: when);
+      expect(text, contains('2 stretches of this recording could not be transcribed'));
+    });
+  });
 }

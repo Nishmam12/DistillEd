@@ -11,6 +11,7 @@
 // Privacy invariant: note text reaches [CloudLlmClient] only when the router
 // returned [AiRoute.cloud], which requires the user's explicit cloud opt-in.
 
+import '../../../ai/domain/untrusted_text.dart';
 import '../../../ai/data/llm/cloud_llm_client.dart';
 import '../../../ai/domain/ai_provider.dart';
 import '../../../ai/domain/ai_router.dart';
@@ -146,6 +147,7 @@ class SummarizationService {
   /// of being left to the model's default. Matches the tutor voice [Explainer]
   /// establishes for explanations.
   static const String _voice =
+      '$kUntrustedDataRule\n\n'
       'You are a tutor recapping a student\'s handwritten notes with them, out '
       'loud, the way you would at the end of a session.\n\n'
       '$kTutorVoiceWithMath\n\n'
@@ -313,7 +315,7 @@ class SummarizationService {
     }
 
     final decision = await _router.decide(
-      inputWordCount: countWords(text),
+      inputWordCount: text_budget.budgetWords(text),
       cloudEnabled: cloudEnabled,
       preferCloud: preferCloud,
     );
@@ -336,7 +338,7 @@ class SummarizationService {
         try {
           summary = await _cloud.chatCompletion(messages: [
             const ChatMessage.system(noteInstruction),
-            ChatMessage.user('NOTE:\n$text'),
+            ChatMessage.user('NOTE:\n${fenceUntrusted(text)}'),
           ]);
           modelUsed = 'cloud';
         } on CloudUnavailableException {
@@ -443,7 +445,7 @@ class SummarizationService {
   /// faithful pass; when it exceeds the local context window it is
   /// chunk-and-reduced. Returns the summary and whether reduction ran.
   Future<(String, bool, AnswerTier)> _generateLocally(String text) async {
-    if (countWords(text) <= _router.localInputWordBudget) {
+    if (text_budget.budgetWords(text) <= _router.localInputWordBudget) {
       final result = await _guarded(text, noteInstruction);
       return (result.text.trim(), false, result.tier);
     }
@@ -470,7 +472,7 @@ class SummarizationService {
     }
     try {
       return await guard.run(
-        prompt: 'NOTE:\n$text',
+        prompt: 'NOTE:\n${fenceUntrusted(text)}',
         systemPrompt: instruction,
         options: _summarizeOptions,
       );
@@ -499,7 +501,7 @@ class SummarizationService {
     }
     final combined = partials.join('\n\n');
 
-    if (countWords(combined) <= budget) {
+    if (text_budget.budgetWords(combined) <= budget) {
       return _guarded(combined, reduceInstruction);
     }
     if (pass + 1 >= _maxReducePasses) {
@@ -525,7 +527,7 @@ class SummarizationService {
     try {
       final chunks = await _local
           .generate(
-            prompt: 'NOTE:\n$text',
+            prompt: 'NOTE:\n${fenceUntrusted(text)}',
             systemPrompt: instruction,
             options: _summarizeOptions,
           )

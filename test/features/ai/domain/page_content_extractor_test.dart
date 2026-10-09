@@ -42,6 +42,21 @@ class FakeTranscriber implements ImageTranscriber {
   }
 }
 
+class _CallbackTranscriber implements ImageTranscriber {
+  _CallbackTranscriber(this._reply);
+  final Future<String> Function(String prompt) _reply;
+
+  @override
+  Future<String> transcribeImage(
+    Uint8List imageBytes, {
+    required String prompt,
+    double temperature = 0.0,
+    int maxOutputTokens = 1024,
+    int? randomSeed,
+  }) =>
+      _reply(prompt);
+}
+
 /// The ML Kit readings the next recognise calls will return: (text, score).
 final _inkQueue = <(String, double)>[];
 
@@ -870,6 +885,34 @@ void main() {
       expect(content.recognizedImageText,
           'Corpus: a large, structured set of texts.');
       expect(content.hasUnrecognizedImages, isFalse);
+    });
+
+    test('one image the model fails on does not cost the others their text',
+        () async {
+      const second = ImageElement(
+          id: 'img2',
+          zOrder: 1,
+          geometryData: [0, 120, 100, 220],
+          relativeImagePath: 'imports/page2.png',
+          sourceDescription: 'doc.pdf — Page 2');
+      var call = 0;
+      final flaky = GemmaVisionOcrService(
+          transcriber: _CallbackTranscriber((_) async {
+        call++;
+        if (call == 2) throw StateError('decoder blew up');
+        return 'Slide one: osmosis moves water across a membrane.';
+      }));
+
+      final content = await extractor(
+        [image, second],
+        readImageText: (_) async => '',
+        visionOcr: flaky,
+        loadImageBytes: loadBytes,
+      ).extractPage(1, languageCode: 'en', useVision: true);
+
+      expect(content.recognizedImageText, contains('osmosis'));
+      expect(content.hasUnrecognizedImages, isTrue,
+          reason: 'the failed image is flagged, not silently dropped');
     });
 
     test('a missing Gemma model propagates (so the UI can offer the download)',

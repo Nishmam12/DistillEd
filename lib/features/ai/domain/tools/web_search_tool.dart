@@ -6,6 +6,7 @@
 
 import 'package:dio/dio.dart';
 
+import '../untrusted_text.dart';
 import 'tool.dart';
 
 class WebSearchTool implements Tool {
@@ -70,7 +71,9 @@ class WebSearchTool implements Tool {
           .cast<Map<String, dynamic>>()
           .map((r) => '- ${r['title']} (${r['url']})\n  ${r['snippet']}')
           .join('\n');
-      return ToolExecutionResult.ok(formatted);
+      // Web pages are written by strangers: fenced, so the model treats them as
+      // material to read, not instructions to follow.
+      return ToolExecutionResult.ok(fenceUntrusted(formatted));
     } on DioException catch (e) {
       if (e.response?.statusCode == 429) {
         return const ToolExecutionResult.error(

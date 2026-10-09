@@ -123,6 +123,12 @@ String ankiGuid(String seed) {
   return base64Url.encode(digest).replaceAll('=', '');
 }
 
+/// Anki fields are HTML. Card text is plain, so `x<5` or `List<int>` would lose
+/// text, and a PDF-derived `<img src=…>` would fetch from the network, if left
+/// as is. Escaped, with line breaks kept.
+String _ankiField(String text) =>
+    const HtmlEscape(HtmlEscapeMode.element).convert(text).replaceAll('\n', '<br>');
+
 String _stripHtml(String s) => s.replaceAll(RegExp(r'<[^>]+>'), '');
 
 /// One row of the `notes` table.
@@ -210,8 +216,8 @@ class AnkiCollection {
         id: id,
         guid: ankiGuid('$kAnkiDeckId:$i:${card.front}'),
         modSeconds: modSeconds,
-        front: card.front,
-        back: card.back,
+        front: _ankiField(card.front),
+        back: _ankiField(card.back),
       ));
       cardRows.add(AnkiCard(
         id: id,

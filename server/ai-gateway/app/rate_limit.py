@@ -134,6 +134,28 @@ class RateLimiter:
                 )
 
 
+    def refund(self, device_key: str, estimated_tokens: int) -> None:
+        """Gives back what [check_and_record] charged, for a request that never
+        reached a model (provider missing or failed before any output)."""
+        today = datetime.now(timezone.utc).date().isoformat()
+        with _lock, _transaction(self._config.db_path) as conn:
+            for key in (device_key, _GLOBAL_KEY):
+                conn.execute(
+                    """
+                    UPDATE usage SET
+                        tokens = MAX(0, tokens - ?),
+                        requests = MAX(0, requests - 1)
+                    WHERE device_key = ? AND day = ?
+                    """,
+                    (estimated_tokens, key, today),
+                )
+
+    def ping(self) -> None:
+        """Raises if the counter database cannot be used."""
+        with _lock, _transaction(self._config.db_path) as conn:
+            conn.execute("SELECT 1").fetchone()
+
+
 @dataclass(frozen=True)
 class SearchRateLimitConfig:
     db_path: str

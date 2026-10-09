@@ -116,4 +116,13 @@ void main() {
       expect(conf['nextPos'], 1);
     });
   });
+
+  test('card text is HTML-escaped, with line breaks kept', () {
+    final c = AnkiCollection.fromCards(
+        [card('Is x<5 <img src=http://evil/a.png>?', 'List<int>\nsecond line')],
+        deckName: 'd', nowMillis: 1700000000000);
+
+    expect(c.notes.single.front, 'Is x&lt;5 &lt;img src=http://evil/a.png&gt;?');
+    expect(c.notes.single.back, 'List&lt;int&gt;<br>second line');
+  });
 }

@@ -11,6 +11,7 @@
 // stand); real provider failures ([AiException]) propagate so the caller can
 // offer the model download.
 
+import '../untrusted_text.dart';
 import '../ai_provider.dart';
 import '../ai_router.dart';
 import '../context_engine/context_engine.dart';
@@ -20,6 +21,8 @@ import '../text_budget.dart';
 
 class FlashcardGenerator {
   static const String _schemaInstruction = '''
+$kUntrustedDataRule
+
 You create study flashcards from a student's OWN notes. Use ONLY facts present in the note — never invent content it doesn't support. Reply with ONLY a single JSON object — no markdown, no code fences, no text before or after it — in exactly this shape:
 
 {"cards": [
@@ -89,7 +92,7 @@ Rules:
         ? ''
         : '\n\nPrioritise cards for these concepts: '
             '${context.keyConcepts.join(', ')}.';
-    final prompt = 'NOTE:\n${truncateToWords(pageText.trim(), budget)}$hint';
+    final prompt = 'NOTE:\n${fenceUntrusted(truncateToWords(pageText.trim(), budget))}$hint';
 
     var json = ContextEngine.tryExtractJsonObject(await _complete(prompt));
     json ??= ContextEngine.tryExtractJsonObject(

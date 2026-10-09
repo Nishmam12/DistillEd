@@ -63,6 +63,7 @@ class SceneExportService {
     String title = 'inkflow',
     Color background = Colors.white,
     SceneImageCache? imageCache,
+    void Function(int done, int total)? onProgress,
   }) async {
     // One resolver pass over every page's images, so a picture reused across
     // pages is decoded once rather than per page.
@@ -71,6 +72,7 @@ class SceneExportService {
       pages,
       background: background,
       imageResolver: await _resolver(all, imageCache),
+      onProgress: onProgress,
     );
     if (pdf == null) return false;
     await ExportShareService.sharePdf(pdf, title);

@@ -10,6 +10,7 @@
 // Coding challenges are only requested when the page looks like programming
 // (see [looksLikeProgramming]) — never for, say, a history notebook.
 
+import '../untrusted_text.dart';
 import '../ai_provider.dart';
 import '../ai_router.dart';
 import '../context_engine/context_engine.dart';
@@ -201,8 +202,15 @@ class QuizGenerator {
       ...context.keyConcepts,
       ...context.namedEntities,
     ].join(' ').toLowerCase();
-    return _programmingHints.any((hint) => haystack.contains(hint));
+    return _programmingPattern.hasMatch(haystack);
   }
+
+  /// Whole words only: "classification" is not "class", "trust" is not "rust".
+  static final RegExp _programmingPattern = RegExp(
+    '(?<![\\p{L}\\p{N}])(${_programmingHints.map(RegExp.escape).join('|')})'
+    '(?![\\p{L}\\p{N}])',
+    unicode: true,
+  );
 
   final AiProvider _provider;
   const QuizGenerator({required AiProvider provider}) : _provider = provider;
@@ -217,7 +225,7 @@ class QuizGenerator {
     int count = 5,
   }) async {
     final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
-    final prompt = 'NOTE:\n${truncateToWords(text.trim(), budget)}';
+    final prompt = 'NOTE:\n${fenceUntrusted(truncateToWords(text.trim(), budget))}';
     final system = _schema(count: count, level: level, allowCoding: allowCoding);
 
     var json =
@@ -246,6 +254,8 @@ class QuizGenerator {
       if (allowCoding) '"coding" (a short programming task)',
     ].join(', ');
     return '''
+$kUntrustedDataRule
+
 You write quiz questions to help a student review their OWN notes. Use ONLY facts present in the note — never invent content the note doesn't support. Reply with ONLY a single JSON object — no markdown, no code fences, no text before or after it — in exactly this shape:
 
 {"questions": [

@@ -32,5 +32,10 @@ class PageTextRecord {
   /// and typed text, exactly as the Context Engine extracted it.
   late String text;
 
+  /// What the embedder was given for this page: [text] plus the described
+  /// figures. Null on rows saved before it existed. The embedder rollout reads it,
+  /// so a rebuilt index embeds what the live and bulk indexers embedded.
+  String? indexText;
+
   late DateTime updatedAt;
 }

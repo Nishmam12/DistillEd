@@ -15,11 +15,15 @@ class PageText {
   final int notebookId;
   final String text;
 
+  /// What gets embedded; [text] when no separate one was saved.
+  final String indexText;
+
   const PageText({
     required this.pageId,
     required this.notebookId,
     required this.text,
-  });
+    String? indexText,
+  }) : indexText = indexText ?? text;
 }
 
 abstract class PageTextStore {
@@ -29,6 +33,7 @@ abstract class PageTextStore {
     required int notebookId,
     required int pageId,
     required String text,
+    String? indexText,
   });
 
   /// The stored text for [pageId], or '' when there is none.
@@ -50,6 +55,7 @@ class IsarPageTextStore implements PageTextStore {
     required int notebookId,
     required int pageId,
     required String text,
+    String? indexText,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
@@ -64,6 +70,7 @@ class IsarPageTextStore implements PageTextStore {
         ..pageId = pageId
         ..notebookId = notebookId
         ..text = trimmed
+        ..indexText = indexText?.trim()
         ..updatedAt = DateTime.now());
     });
   }
@@ -85,7 +92,11 @@ class IsarPageTextStore implements PageTextStore {
         .findAll();
     return [
       for (final r in rows)
-        PageText(pageId: r.pageId, notebookId: r.notebookId, text: r.text),
+        PageText(
+            pageId: r.pageId,
+            notebookId: r.notebookId,
+            text: r.text,
+            indexText: r.indexText),
     ];
   }
 
@@ -116,14 +127,18 @@ class InMemoryPageTextStore implements PageTextStore {
     required int notebookId,
     required int pageId,
     required String text,
+    String? indexText,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
       _byPage.remove(pageId);
       return;
     }
-    _byPage[pageId] =
-        PageText(pageId: pageId, notebookId: notebookId, text: trimmed);
+    _byPage[pageId] = PageText(
+        pageId: pageId,
+        notebookId: notebookId,
+        text: trimmed,
+        indexText: indexText?.trim());
   }
 
   @override

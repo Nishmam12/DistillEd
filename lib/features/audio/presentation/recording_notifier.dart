@@ -111,11 +111,12 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
         language == null ? name : withLectureLanguage(name, language);
     final absolute = _absolute(relativePath);
 
+    LectureRecording? inserted;
     try {
       await Directory(File(absolute).parent.path).create(recursive: true);
       // Inserted BEFORE capture begins so the row has an id to stamp strokes
       // with from the very first stroke.
-      final row = await _store.insert(LectureRecording(
+      final row = inserted = await _store.insert(LectureRecording(
         notebookId: _notebookId,
         pageId: pageId,
         relativePath: relativePath,
@@ -129,13 +130,24 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
       if (!mounted) return;
       state = state.copyWith(isRecording: true, active: row);
     } on AudioUnavailableException catch (e) {
+      await _dropUnstarted(inserted);
       if (!mounted) return;
       state = state.copyWith(error: e.message);
     } catch (e) {
       if (kDebugMode) debugPrint('[audio] start failed: $e');
+      await _dropUnstarted(inserted);
       if (!mounted) return;
       state = state.copyWith(error: 'Could not start recording.');
     }
+  }
+
+  /// Capture never began (permission denied, no microphone), so the row inserted
+  /// for it would be a recording with no audio.
+  Future<void> _dropUnstarted(LectureRecording? row) async {
+    if (row == null || _session.isRecording) return;
+    try {
+      await _store.delete(row.id);
+    } catch (_) {}
   }
 
   Future<void> stop(int pageId) async {

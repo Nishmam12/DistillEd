@@ -8,6 +8,7 @@
 // Provider failures ([AiModelNotReadyException] etc.) propagate as the stream's
 // error for the caller to surface — nothing here swallows them.
 
+import '../untrusted_text.dart';
 import '../ai_provider.dart';
 import '../ai_router.dart';
 import '../text_budget.dart';
@@ -59,7 +60,8 @@ class Explainer {
   /// student hears one voice across the app rather than three. What stays here
   /// is only what is specific to explaining: teach the SUBJECT, not the text,
   /// and never contradict the passage.
-  static const String _base = 'You are a patient tutor helping one student '
+  static const String _base = '$kUntrustedDataRule\n\n'
+      'You are a patient tutor helping one student '
       'understand a topic from their own notes.\n\n'
       '$kTutorVoiceWithMath\n\n'
       'Explain the SUBJECT of the passage below, the way a tutor teaches a '
@@ -115,7 +117,7 @@ class Explainer {
 
   /// The user-side prompt for [content]. Exposed alongside [systemPromptFor] so
   /// the quality guard can re-issue an identical request to the cloud tier.
-  static String promptFor(String content) => 'PASSAGE:\n${content.trim()}';
+  static String promptFor(String content) => 'PASSAGE:\n${fenceUntrusted(content.trim())}';
 
   /// Streams the explanation for [input]. Emits incremental chunks (concatenate
   /// in order). Throws/streams-errors from the provider are not caught here.

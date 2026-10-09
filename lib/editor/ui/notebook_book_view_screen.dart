@@ -1,3 +1,4 @@
+import 'dart:async';
 // Read-only "book view" for the unified engine: swipe through page spreads with
 // a thumbnail filmstrip, on the notebook's paper colour. Being a pure viewer, it
 // has no draw input, so there is no swipe-vs-draw gesture conflict (the bug the
@@ -60,11 +61,11 @@ class _NotebookBookViewScreenState
     for (final p in pages) {
       _byPage[p.id] = await store.loadForPage(p.id);
     }
-    _imageCache.ensure([
+    unawaited(_imageCache.ensure([
       for (final els in _byPage.values)
         for (final e in els)
           if (e is ImageElement) e.relativeImagePath,
-    ]);
+    ]));
     if (mounted) {
       setState(() {
         _pageIds = pages.map((p) => p.id).toList();

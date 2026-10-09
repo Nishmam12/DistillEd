@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1002,7 +1003,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
     } catch (_) {
       failure = "Couldn't download $title. Check your connection and try again.";
     }
-    sub?.cancel();
+    unawaited(sub?.cancel());
     if (!mounted) return;
     setState(() {
       _downloading.remove(title);

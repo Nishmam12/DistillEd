@@ -104,14 +104,32 @@ class IsarNoteChunkStore implements NoteChunkStore {
     });
   }
 
+  /// Decoded chunks of the most recently searched notebooks. Decoding every
+  /// embedding (768 floats a chunk) on every question was most of a search's cost.
+  /// A notebook is served from here while its chunk ids are unchanged; ids are
+  /// auto-incremented, so any page re-indexed, added or deleted — by this store or
+  /// by `content_purge.dart` writing around it — changes (count, highest id).
+  final _cache = <int, ({int count, int maxId, List<NoteChunk> chunks})>{};
+  static const _cachedNotebooks = 2;
+
   @override
   Future<List<NoteChunk>> forNotebook(int notebookId) async {
-    final rows = await _isar()
-        .noteChunkRecords
-        .filter()
-        .notebookIdEqualTo(notebookId)
-        .findAll();
-    return [for (final r in rows) r.toDomain()];
+    final query =
+        _isar().noteChunkRecords.filter().notebookIdEqualTo(notebookId);
+    final ids = await query.idProperty().findAll();
+    final maxId = ids.fold<int>(0, (m, id) => id > m ? id : m);
+    final cached = _cache[notebookId];
+    if (cached != null && cached.count == ids.length && cached.maxId == maxId) {
+      return cached.chunks;
+    }
+    final rows = await query.findAll();
+    final chunks = List<NoteChunk>.unmodifiable([for (final r in rows) r.toDomain()]);
+    _cache.remove(notebookId);
+    _cache[notebookId] = (count: ids.length, maxId: maxId, chunks: chunks);
+    while (_cache.length > _cachedNotebooks) {
+      _cache.remove(_cache.keys.first);
+    }
+    return chunks;
   }
 
   @override

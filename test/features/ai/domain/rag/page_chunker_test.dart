@@ -152,4 +152,31 @@ void main() {
       expect(chunkTitle(notebookTitle: '  ', sourceName: ''), isNull);
     });
   });
+
+  group('Indic scripts', () {
+    // A 6-letter Bangla word is ~3 tokens, so 2.2 budget words; English is 1.0.
+    final bangla = List.filled(400, 'বাংলাভাষা').join(' ');
+
+    test('an English word costs exactly one budget word', () {
+      expect(wordCost('internationalization'), 1.0);
+      expect(budgetWords('one two three'), 3);
+    });
+
+    test('a Bangla page is cut into smaller chunks than an English one', () {
+      final english = List.filled(400, 'word').join(' ');
+      final enChunks = chunkPage(text: english, notebookId: 1, pageId: 1);
+      final bnChunks = chunkPage(text: bangla, notebookId: 1, pageId: 1);
+
+      expect(bnChunks.length, greaterThan(enChunks.length));
+      for (final c in bnChunks) {
+        expect(budgetWords(c.text), lessThanOrEqualTo(kChunkWords));
+      }
+    });
+
+    test('truncation keeps whole Bangla words within the budget', () {
+      final cut = truncateToWords(bangla, 100);
+      expect(budgetWords(cut), lessThanOrEqualTo(100));
+      expect(cut.split(' ').length, lessThan(100));
+    });
+  });
 }

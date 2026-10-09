@@ -55,6 +55,12 @@ android {
             // Without key.properties this falls back to the debug key so local
             // `flutter run --release` still works. Such an APK is NOT shippable:
             // Play rejects it and it cannot update a differently signed install.
+            // CI passes -PrequireReleaseSigning=true so a release build that would
+            // quietly use the debug key fails instead.
+            if (keyProps.isEmpty() && project.hasProperty("requireReleaseSigning")) {
+                throw GradleException(
+                    "Release build requires android/key.properties (requireReleaseSigning is set)")
+            }
             signingConfig = if (keyProps.isNotEmpty()) {
                 signingConfigs.getByName("release")
             } else {

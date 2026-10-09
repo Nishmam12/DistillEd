@@ -17,23 +17,28 @@ const PageTextRecordSchema = CollectionSchema(
   name: r'PageTextRecord',
   id: 6468056266432578729,
   properties: {
-    r'notebookId': PropertySchema(
+    r'indexText': PropertySchema(
       id: 0,
+      name: r'indexText',
+      type: IsarType.string,
+    ),
+    r'notebookId': PropertySchema(
+      id: 1,
       name: r'notebookId',
       type: IsarType.long,
     ),
     r'pageId': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'pageId',
       type: IsarType.long,
     ),
     r'text': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'text',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -85,6 +90,12 @@ int _pageTextRecordEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.indexText;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.text.length * 3;
   return bytesCount;
 }
@@ -95,10 +106,11 @@ void _pageTextRecordSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeLong(offsets[0], object.notebookId);
-  writer.writeLong(offsets[1], object.pageId);
-  writer.writeString(offsets[2], object.text);
-  writer.writeDateTime(offsets[3], object.updatedAt);
+  writer.writeString(offsets[0], object.indexText);
+  writer.writeLong(offsets[1], object.notebookId);
+  writer.writeLong(offsets[2], object.pageId);
+  writer.writeString(offsets[3], object.text);
+  writer.writeDateTime(offsets[4], object.updatedAt);
 }
 
 PageTextRecord _pageTextRecordDeserialize(
@@ -109,10 +121,11 @@ PageTextRecord _pageTextRecordDeserialize(
 ) {
   final object = PageTextRecord();
   object.id = id;
-  object.notebookId = reader.readLong(offsets[0]);
-  object.pageId = reader.readLong(offsets[1]);
-  object.text = reader.readString(offsets[2]);
-  object.updatedAt = reader.readDateTime(offsets[3]);
+  object.indexText = reader.readStringOrNull(offsets[0]);
+  object.notebookId = reader.readLong(offsets[1]);
+  object.pageId = reader.readLong(offsets[2]);
+  object.text = reader.readString(offsets[3]);
+  object.updatedAt = reader.readDateTime(offsets[4]);
   return object;
 }
 
@@ -124,12 +137,14 @@ P _pageTextRecordDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readLong(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 1:
       return (reader.readLong(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 3:
+      return (reader.readString(offset)) as P;
+    case 4:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -489,6 +504,160 @@ extension PageTextRecordQueryFilter
   }
 
   QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'indexText',
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'indexText',
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'indexText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'indexText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'indexText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'indexText',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'indexText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'indexText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'indexText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'indexText',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'indexText',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
+      indexTextIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'indexText',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterFilterCondition>
       notebookIdEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -801,6 +970,19 @@ extension PageTextRecordQueryLinks
 
 extension PageTextRecordQuerySortBy
     on QueryBuilder<PageTextRecord, PageTextRecord, QSortBy> {
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterSortBy> sortByIndexText() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'indexText', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterSortBy>
+      sortByIndexTextDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'indexText', Sort.desc);
+    });
+  }
+
   QueryBuilder<PageTextRecord, PageTextRecord, QAfterSortBy>
       sortByNotebookId() {
     return QueryBuilder.apply(this, (query) {
@@ -868,6 +1050,19 @@ extension PageTextRecordQuerySortThenBy
     });
   }
 
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterSortBy> thenByIndexText() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'indexText', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PageTextRecord, PageTextRecord, QAfterSortBy>
+      thenByIndexTextDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'indexText', Sort.desc);
+    });
+  }
+
   QueryBuilder<PageTextRecord, PageTextRecord, QAfterSortBy>
       thenByNotebookId() {
     return QueryBuilder.apply(this, (query) {
@@ -923,6 +1118,13 @@ extension PageTextRecordQuerySortThenBy
 
 extension PageTextRecordQueryWhereDistinct
     on QueryBuilder<PageTextRecord, PageTextRecord, QDistinct> {
+  QueryBuilder<PageTextRecord, PageTextRecord, QDistinct> distinctByIndexText(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'indexText', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<PageTextRecord, PageTextRecord, QDistinct>
       distinctByNotebookId() {
     return QueryBuilder.apply(this, (query) {
@@ -956,6 +1158,12 @@ extension PageTextRecordQueryProperty
   QueryBuilder<PageTextRecord, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<PageTextRecord, String?, QQueryOperations> indexTextProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'indexText');
     });
   }
 

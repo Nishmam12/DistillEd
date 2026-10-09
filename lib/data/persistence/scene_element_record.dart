@@ -6,7 +6,8 @@
 //
 // This is a *superset* schema: each row carries only the fields relevant to its
 // [kind]; the rest stay at their defaults. Conversion to/from the in-memory
-// [SceneElement] model lives in `data/migration/legacy_adapters.dart`.
+// [SceneElement] model lives in `scene_element_record_mapper.dart`. (The 1.x
+// → 2.0 conversion of old pages is `data/migration/legacy_adapters.dart`.)
 
 import 'package:isar_community/isar.dart';
 

@@ -88,6 +88,7 @@ class LectureTranscriber {
       final segments = <TranscriptSegment>[];
       var attempted = 0;
       var succeeded = 0;
+      var skipped = 0;
 
       await for (final window
           in speechWindows(source, windowMs: speechWindowMs(language))) {
@@ -110,7 +111,9 @@ class LectureTranscriber {
           } on SpeechUnavailableException {
             rethrow;
           } catch (_) {
-            // One window the model cannot read costs that window, not the lecture.
+            // One window the model cannot read costs that window, not the lecture;
+            // the count is kept so the transcript says it has a gap.
+            skipped++;
           }
         }
         onProgress?.call(total == 0 ? 1.0 : window.endMs / total);
@@ -119,7 +122,11 @@ class LectureTranscriber {
       if (attempted > 0 && succeeded == 0) {
         throw const SpeechUnavailableException('no window could be transcribed');
       }
-      return Transcript(language: language, model: _modelId, segments: segments);
+      return Transcript(
+          language: language,
+          model: _modelId,
+          segments: segments,
+          skippedWindows: skipped);
     } finally {
       await source.close();
     }

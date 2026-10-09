@@ -8,6 +8,7 @@
 
 #include <file_selector_windows/file_selector_windows.h>
 #include <flutter_edge_ai/flutter_edge_ai_plugin.h>
+#include <flutter_secure_storage_windows/flutter_secure_storage_windows_plugin.h>
 #include <isar_community_flutter_libs/isar_flutter_libs_plugin.h>
 #include <pdfx/pdfx_plugin.h>
 #include <printing/printing_plugin.h>
@@ -20,6 +21,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("FileSelectorWindows"));
   FlutterEdgeAiPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FlutterEdgeAiPlugin"));
+  FlutterSecureStorageWindowsPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FlutterSecureStorageWindowsPlugin"));
   IsarFlutterLibsPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("IsarFlutterLibsPlugin"));
   PdfxPluginRegisterWithRegistrar(

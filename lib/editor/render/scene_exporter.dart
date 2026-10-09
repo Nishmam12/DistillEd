@@ -8,6 +8,7 @@
 
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:isolate';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -18,6 +19,11 @@ import '../../domain/geometry/selection_bounds.dart';
 import '../../domain/model/scene_element.dart';
 import '../../domain/geometry/shape_geometry.dart';
 import 'scene_static_layer.dart';
+
+/// Longest side, in pixels, an export is rendered at. A bitmap this size is
+/// 4 x 4096 x 4096 = 64 MB before encoding; the old 16384 cap allowed a gigabyte
+/// on a phone. 4096 px is still ~350 dpi across an A4 page.
+const int kMaxExportSide = 4096;
 
 class SceneExporter {
   SceneExporter._();
@@ -56,9 +62,12 @@ class SceneExporter {
     final bounds = contentBounds(els, padding: padding);
     if (bounds == null) return null;
 
-    if (maxSide != null) {
-      scale = math.min(scale, maxSide / math.max(bounds.width, bounds.height));
-    }
+    // Shrinks the scale (never the canvas): clamping only the image size would
+    // crop the picture instead of scaling it.
+    scale = math.min(
+        scale,
+        math.min(maxSide ?? kMaxExportSide, kMaxExportSide) /
+            math.max(bounds.width, bounds.height));
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
@@ -73,8 +82,8 @@ class SceneExporter {
 
     final picture = recorder.endRecording();
     final image = await picture.toImage(
-      (bounds.width * scale).ceil().clamp(1, 16384),
-      (bounds.height * scale).ceil().clamp(1, 16384),
+      (bounds.width * scale).ceil().clamp(1, kMaxExportSide),
+      (bounds.height * scale).ceil().clamp(1, kMaxExportSide),
     );
     try {
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -102,15 +111,18 @@ class SceneExporter {
         imageResolver: imageResolver);
     if (png == null) return null;
     final bounds = contentBounds(els, padding: padding)!;
-
-    final doc = pw.Document();
-    final image = pw.MemoryImage(png);
-    final format = PdfPageFormat(bounds.width, bounds.height);
-    doc.addPage(pw.Page(
-      pageFormat: format,
-      build: (_) => pw.Image(image, fit: pw.BoxFit.contain),
-    ));
-    return doc.save();
+    final width = bounds.width, height = bounds.height;
+    // Assembling a PDF is CPU work that would freeze the editor; the rasterising
+    // above has to stay on this isolate, this part does not.
+    return Isolate.run(() {
+      final doc = pw.Document();
+      final image = pw.MemoryImage(png);
+      doc.addPage(pw.Page(
+        pageFormat: PdfPageFormat(width, height),
+        build: (_) => pw.Image(image, fit: pw.BoxFit.contain),
+      ));
+      return doc.save();
+    });
   }
 
   /// A PDF containing every page of a notebook, in order.
@@ -130,6 +142,7 @@ class SceneExporter {
     double scale = 2.0,
     double padding = defaultPadding,
     ui.Image? Function(String relativePath)? imageResolver,
+    void Function(int done, int total)? onProgress,
   }) async {
     if (pages.isEmpty) return null;
 
@@ -145,47 +158,62 @@ class SceneExporter {
     // Every page was empty — there is no document to make.
     if (width <= 0 || height <= 0) return null;
 
-    final doc = pw.Document();
-    final format = PdfPageFormat(width, height);
-    final pdfBackground = PdfColor.fromInt(background.toARGB32());
-
+    // Rasterise every page here (it needs the UI isolate), report progress as
+    // each is done, then assemble the document off it.
+    final pngs = <Uint8List?>[];
     for (var i = 0; i < pages.length; i++) {
-      final box = boxes[i];
-      if (box == null) {
+      onProgress?.call(i, pages.length);
+      pngs.add(boxes[i] == null
+          ? null
+          : await toPng(
+              pages[i],
+              background: background,
+              scale: scale,
+              padding: padding,
+              imageResolver: imageResolver,
+            ));
+    }
+    onProgress?.call(pages.length, pages.length);
+
+    final sizes = [
+      for (final box in boxes) box == null ? null : (box.width, box.height),
+    ];
+    final backgroundArgb = background.toARGB32();
+    return Isolate.run(() {
+      final doc = pw.Document();
+      final format = PdfPageFormat(width, height);
+      final pdfBackground = PdfColor.fromInt(backgroundArgb);
+      for (var i = 0; i < pngs.length; i++) {
+        final size = sizes[i];
+        final png = pngs[i];
+        if (size == null) {
+          doc.addPage(pw.Page(
+            pageFormat: format,
+            build: (_) => pw.Container(color: pdfBackground),
+          ));
+          continue;
+        }
+        if (png == null) continue;
+
+        final image = pw.MemoryImage(png);
         doc.addPage(pw.Page(
           pageFormat: format,
-          build: (_) => pw.Container(color: pdfBackground),
-        ));
-        continue;
-      }
-
-      final png = await toPng(
-        pages[i],
-        background: background,
-        scale: scale,
-        padding: padding,
-        imageResolver: imageResolver,
-      );
-      if (png == null) continue;
-
-      final image = pw.MemoryImage(png);
-      doc.addPage(pw.Page(
-        pageFormat: format,
-        build: (_) => pw.Container(
-          color: pdfBackground,
-          child: pw.Center(
-            // Natural size, not BoxFit.contain — the content keeps the scale it
-            // was drawn at rather than being stretched to the page.
-            child: pw.SizedBox(
-              width: box.width,
-              height: box.height,
-              child: pw.Image(image, fit: pw.BoxFit.fill),
+          build: (_) => pw.Container(
+            color: pdfBackground,
+            child: pw.Center(
+              // Natural size, not BoxFit.contain — the content keeps the scale
+              // it was drawn at rather than being stretched to the page.
+              child: pw.SizedBox(
+                width: size.$1,
+                height: size.$2,
+                child: pw.Image(image, fit: pw.BoxFit.fill),
+              ),
             ),
           ),
-        ),
-      ));
-    }
-    return doc.save();
+        ));
+      }
+      return doc.save();
+    });
   }
 
   // ---- SVG ------------------------------------------------------------------

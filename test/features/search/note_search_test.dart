@@ -25,6 +25,15 @@ List<NoteSearchHit> _search(List<PageText> pages, String query,
 
 void main() {
   group('matching', () {
+    test('offsets stay right after a character whose lowercase is longer', () {
+      // 'İ' lowercases to two code units, which shifted every later offset.
+      final hit = _search([_page(10, 'İİİ then BIG idea')], 'big').single;
+
+      expect(
+          hit.snippet.substring(hit.matchStart, hit.matchStart + hit.matchLength),
+          'BIG');
+    });
+
     test('finds a word and reports its page', () {
       final hits = _search([
         _page(10, 'nothing here'),

@@ -13,7 +13,15 @@ Effort sizes are rough estimates: **S** ≈ a day, **M** ≈ a few days, **L** �
 
 ---
 
-## Where time goes today
+> **Status (Oct 2026):** items 1–6 and 8–13 below are implemented, as are the
+> shared vision engine, the resident embedder, hybrid keyword + vector search
+> (RRF), title-prefixed chunks, the PDF text layer, ML-Kit-first ink, the durable
+> read cache and batch-by-model indexing. "Where time goes today" and the
+> "Today" pipeline describe the code BEFORE that work; they are kept as the
+> baseline the measurements were taken against. What is still open is in
+> `docs/AUDIT_BACKLOG.md`.
+
+## Where time goes today (baseline, before the work above)
 
 Found by reading the AI code paths. The numbers in the first two items come from the codebase's own comments, measured on the Xiaomi Pad 7, not on the Pixel 7 Pro.
 
@@ -33,7 +41,7 @@ Found by reading the AI code paths. The numbers in the first two items come from
 
 ## Target pipeline
 
-**Today: deep read of a page**
+**Before: deep read of a page**
 
 1. Load Gemma (3.6–17 s cold)
 2. Gemma vision reads all the ink as one image
@@ -43,7 +51,7 @@ Found by reading the AI code paths. The numbers in the first two items come from
 6. Context engine call, then embed (embedder loaded and unloaded again)
 7. Repeated in the next session
 
-**Proposed: cheapest source first**
+**Now: cheapest source first**
 
 1. PDF text layer: instant and exact
 2. ML Kit Digital Ink per line: milliseconds, shown right away
@@ -54,7 +62,7 @@ Found by reading the AI code paths. The numbers in the first two items come from
 
 ---
 
-## Now — quick wins, no new models (days)
+## Quick wins, no new models (days) — done
 
 Low risk. Most are a few lines behind existing seams.
 
@@ -122,7 +130,7 @@ The context engine and figure analyzer return JSON. Set `maxOutputTokens` per ca
 
 ---
 
-## Next — restructure the pipeline (1–3 weeks)
+## Restructure the pipeline (1–3 weeks) — done
 
 These change the order of work in the pipeline. Ship each behind a flag and compare with the measurements below.
 

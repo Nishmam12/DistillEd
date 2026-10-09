@@ -1084,14 +1084,14 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
           ),
           onPressed: () async {
             if (state.isRecording) {
-              notifier.stop(widget.pageId);
+              unawaited(notifier.stop(widget.pageId));
               return;
             }
             // Asked first, so the transcript is made in the language the lecture
             // is in. Backing out records nothing.
             final language = await pickLectureLanguage(context);
             if (language == null || !mounted) return;
-            notifier.start(widget.pageId, language: language);
+            unawaited(notifier.start(widget.pageId, language: language));
           },
         ),
       ],

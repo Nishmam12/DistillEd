@@ -1,14 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:inkflow/core/providers/secret_store.dart';
 import 'package:inkflow/core/providers/settings_provider.dart';
 
 const _key = 'ai.huggingFaceToken';
 
 /// The notifier restores from SharedPreferences asynchronously in its
 /// constructor; give that a turn of the loop before asserting.
+late InMemorySecretStore store;
+
 Future<SettingsNotifier> restoredNotifier() async {
-  final notifier = SettingsNotifier();
+  final notifier = SettingsNotifier(secrets: store);
   await Future<void>.delayed(const Duration(milliseconds: 20));
   return notifier;
 }
@@ -16,7 +19,10 @@ Future<SettingsNotifier> restoredNotifier() async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    store = InMemorySecretStore();
+  });
 
   test('there is no token by default, so gated models stay unavailable',
       () async {
@@ -34,12 +40,13 @@ void main() {
     expect(notifier.state.huggingFaceToken, 'hf_abc123');
     expect(notifier.state.hasHuggingFaceToken, isTrue);
 
+    expect(store.values[_key], 'hf_abc123');
     final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString(_key), 'hf_abc123');
+    expect(prefs.getString(_key), isNull, reason: 'never in plain prefs');
   });
 
   test('a stored token survives a restart', () async {
-    SharedPreferences.setMockInitialValues({_key: 'hf_persisted'});
+    store.values[_key] = 'hf_persisted';
 
     final notifier = await restoredNotifier();
     expect(notifier.state.huggingFaceToken, 'hf_persisted');
@@ -47,15 +54,25 @@ void main() {
   });
 
   test('a blank token removes the stored one', () async {
-    SharedPreferences.setMockInitialValues({_key: 'hf_old'});
+    store.values[_key] = 'hf_old';
     final notifier = await restoredNotifier();
 
     await notifier.setHuggingFaceToken('   ');
 
     expect(notifier.state.hasHuggingFaceToken, isFalse);
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString(_key), isNull,
+    expect(store.values.containsKey(_key), isFalse,
         reason: 'clearing must delete the key, not store an empty string');
+  });
+
+  test('a token an older build left in plain prefs moves to the keystore',
+      () async {
+    SharedPreferences.setMockInitialValues({_key: 'hf_legacy'});
+
+    final notifier = await restoredNotifier();
+
+    expect(notifier.state.huggingFaceToken, 'hf_legacy');
+    expect(store.values[_key], 'hf_legacy');
+    expect((await SharedPreferences.getInstance()).getString(_key), isNull);
   });
 
   test('a newline wrapped into the middle of a paste is stripped', () async {
@@ -88,7 +105,7 @@ void main() {
       () async {
     // The download UI keys off this: before it flips, huggingFaceToken is ''
     // because nothing has been read yet — NOT because the user lacks a token.
-    final notifier = SettingsNotifier();
+    final notifier = SettingsNotifier(secrets: store);
     expect(notifier.state.loaded, isFalse);
 
     await Future<void>.delayed(const Duration(milliseconds: 20));

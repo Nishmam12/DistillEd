@@ -71,16 +71,20 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
   /// Backs [embed]. Optional because embedding is a SEPARATE model (Phase 2's
   /// EmbeddingGemma) that a caller may not have wired: without it this provider
   /// honestly reports `supportsEmbeddings: false` rather than pretending.
-  final TextEmbedder? _embedder;
+  ///
+  /// A lookup, not an instance: the embedder changes when a model switch ends, and
+  /// rebuilding this provider for that would swap its load lock while a 2.6 GB
+  /// generation may still hold the old one.
+  final TextEmbedder Function()? _embedderOf;
 
   LocalGemmaProvider({
     this.spec = LlmModelSpec.active,
     LlmRuntime? runtime,
-    TextEmbedder? embedder,
+    TextEmbedder Function()? embedderOf,
     this.idleUnloadDelay = defaultIdleUnloadDelay,
     this.onBackendChanged,
   })  : _runtime = runtime ?? EdgeAiRuntime(),
-        _embedder = embedder;
+        _embedderOf = embedderOf;
 
   /// Mutex: chain of futures; each call awaits the previous one. Held for the
   /// whole stream so the load→generate lifecycle never overlaps.
@@ -207,7 +211,7 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
         // Gemma 4 E2B ships a vision encoder; [transcribeImage] loads it on
         // demand. Text generation ([generate]) still runs the model text-only.
         supportsVision: true,
-        supportsEmbeddings: _embedder != null,
+        supportsEmbeddings: _embedderOf != null,
         isLocal: true,
         approxCostPerCallUsd: 0.0,
       );
@@ -441,11 +445,11 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
   /// only way to amortize the model load across a page's chunks.
   @override
   Future<List<double>> embed(String text) async {
-    final embedder = _embedder;
+    final embedder = _embedderOf?.call();
     if (embedder == null) {
       throw const AiUnsupportedOperationException(
         'This provider was built without an embedder. Construct it with '
-        'LocalGemmaProvider(embedder: ...) to enable embeddings.',
+        'LocalGemmaProvider(embedderOf: ...) to enable embeddings.',
       );
     }
     return embedder.embedOne(text, taskType: EmbedTaskType.query);

@@ -50,6 +50,16 @@ class Settings:
     global_token_cap: int = int(os.getenv("GLOBAL_TOKEN_CAP", "2000000"))
     global_request_cap: int = int(os.getenv("GLOBAL_REQUEST_CAP", "5000"))
     global_search_cap: int = int(os.getenv("GLOBAL_SEARCH_CAP", "500"))
+    # Abuse bounds (see guards.py). The device key is client-chosen, so these are
+    # about the connection, not the person. 0 turns the per-address throttle off.
+    ip_rate_limit_per_minute: int = int(os.getenv("IP_RATE_LIMIT_PER_MINUTE", "240"))
+    # Proxies in front of the app that append to X-Forwarded-For (Render: 1).
+    trusted_proxy_hops: int = int(os.getenv("TRUSTED_PROXY_HOPS", "1"))
+    max_body_bytes: int = int(os.getenv("MAX_BODY_BYTES", str(12 * 1024 * 1024)))
+    # Rough blended price, only for the operational log line.
+    approx_cost_per_1k_tokens_usd: float = float(
+        os.getenv("APPROX_COST_PER_1K_TOKENS_USD", "0.001")
+    )
     rate_limit_db_path: str = os.getenv(
         "RATE_LIMIT_DB_PATH", "rate_limit.sqlite3"
     )

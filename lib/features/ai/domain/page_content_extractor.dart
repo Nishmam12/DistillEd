@@ -755,7 +755,17 @@ class PageContentExtractor {
     if (e.relativeImagePath.isEmpty) return '';
 
     if (vision != null && bytes != null) {
-      final result = await vision.read(bytes, vary: vary);
+      final GemmaOcrResult result;
+      try {
+        result = await vision.read(bytes, vary: vary);
+      } on AiModelNotReadyException {
+        rethrow; // the UI turns this into the "download the model" offer
+      } catch (_) {
+        // One image the model chokes on must not cost the page every other
+        // image's text; it is read by ML Kit instead, and flagged unread if
+        // that finds nothing either.
+        return _readImageTextOrEmpty(e.relativeImagePath);
+      }
       if (result.passed) return result.text;
       final ml = await _readImageTextOrEmpty(e.relativeImagePath);
       return ml.isNotEmpty ? ml : result.text;

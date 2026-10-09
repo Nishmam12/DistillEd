@@ -124,6 +124,26 @@ void main() {
           isNot(contains('100')));
     });
 
+    test('a migrated page the student fully erased does not get its old ink back',
+        () async {
+      final store = InMemorySceneElementStore();
+      final gate = InMemoryMigrationGate(0);
+      final bad = LegacyPageData(notebookId: 1, pageId: 7, unreadable: true);
+      final migrator = SceneMigratorV2(
+        source: _FakeSource([_samplePage(), bad]),
+        store: store,
+        gate: gate,
+      );
+      await migrator.run();
+      await store.deleteElements(42, {'100', '200', 'rect'}); // erased everything
+      expect(await store.loadForPage(42), isEmpty);
+
+      await migrator.run(); // the gate is still open because of page 7
+
+      expect(await store.loadForPage(42), isEmpty,
+          reason: 'recorded as migrated, not inferred from having elements');
+    });
+
     test('does not read the source when already at target version', () async {
       final migrator = SceneMigratorV2(
         source: _ThrowingSource(),

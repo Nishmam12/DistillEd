@@ -91,6 +91,24 @@ class NotebookIndexNotifier extends StateNotifier<NotebookIndexState> {
     }
   }
 
+  /// Like [run], but when a run is already in flight it waits for that to end
+  /// and runs afterwards, instead of being dropped. For a page that changed
+  /// mid-run (a lecture transcript landing): the run in flight may have read the
+  /// page before the change. Gives up after [maxWait].
+  Future<BulkIndexReport?> runWhenFree({
+    required int notebookId,
+    required List<int> pageIds,
+    Duration pollEvery = const Duration(seconds: 5),
+    Duration maxWait = const Duration(minutes: 10),
+  }) async {
+    var waited = Duration.zero;
+    while (_running && waited < maxWait) {
+      await Future<void>.delayed(pollEvery);
+      waited += pollEvery;
+    }
+    return run(notebookId: notebookId, pageIds: pageIds);
+  }
+
   /// Stops at the next page boundary. The pages already indexed stay indexed —
   /// each page is its own transaction, so a cancelled run leaves a consistent,
   /// partially-searchable notebook rather than nothing.

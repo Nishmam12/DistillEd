@@ -14,15 +14,33 @@ class ExportShareService {
     required String mimeType,
   }) async {
     final tempDir = await getTemporaryDirectory();
-    final file = File('${tempDir.path}/$filename');
+    final file = File('${tempDir.path}/${safeFilename(filename)}');
     await file.writeAsBytes(bytes);
 
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path, mimeType: mimeType)],
-        subject: filename,
-      ),
-    );
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: mimeType)],
+          subject: filename,
+        ),
+      );
+    } finally {
+      // The share sheet has what it needs by now; a copy of every export would
+      // otherwise sit in the cache until the OS got round to clearing it.
+      try {
+        await file.delete();
+      } catch (_) {}
+    }
+  }
+
+  /// [name] as a single safe file name. A notebook title is user text, and one
+  /// containing `/` or `..` would otherwise write outside the export directory.
+  static String safeFilename(String name) {
+    final cleaned = name
+        .replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1f]'), '_')
+        .replaceAll(RegExp(r'\.{2,}'), '_')
+        .trim();
+    return cleaned.isEmpty ? 'export' : cleaned;
   }
 
   /// Shares PNG image bytes via the system share sheet.
@@ -55,7 +73,7 @@ class ExportShareService {
     await exportDir.create(recursive: true);
 
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final filename = '${notebookTitle}_$timestamp.png';
+    final filename = safeFilename('${notebookTitle}_$timestamp.png');
     final file = File('${exportDir.path}/$filename');
     await file.writeAsBytes(pngBytes);
 

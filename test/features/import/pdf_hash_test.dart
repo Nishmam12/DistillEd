@@ -24,4 +24,16 @@ void main() {
       expect(RegExp(r'^[0-9a-f]+$').hasMatch(hash), isTrue);
     });
   });
+
+  group('pdfRenderSize', () {
+    test('renders an ordinary page at 2x', () {
+      expect(pdfRenderSize(595, 842), (1190.0, 1684.0));
+    });
+
+    test('caps a poster-sized page at the longest-side limit', () {
+      final (w, h) = pdfRenderSize(3000, 4000);
+      expect(h, kPdfMaxRenderSide);
+      expect(w / h, closeTo(0.75, 1e-9));
+    });
+  });
 }

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/features/ai/domain/ai_provider.dart';
 import 'package:inkflow/features/ai/domain/context_engine/page_context.dart';
 import 'package:inkflow/features/ai/domain/features/flashcard_generator.dart';
+import 'package:inkflow/features/ai/domain/models/flashcard.dart';
 
 class _ScriptedProvider implements AiProvider {
   final List<String> responses;
@@ -53,7 +54,7 @@ void main() {
         confidence: 0.6,
       );
 
-  Future<List<dynamic>> gen(
+  Future<List<Flashcard>> gen(
     List<String> responses, {
     Map<String, String> definitions = const {},
     List<String> keyConcepts = const [],

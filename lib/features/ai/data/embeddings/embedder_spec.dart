@@ -76,6 +76,10 @@ class EmbedderSpec {
   /// "add your token in Settings" prompt instead of an opaque 401.
   final bool needsAuth;
 
+  /// SHA-256 of each file, checked after a fresh download. Null skips the check.
+  final String? modelSha256;
+  final String? tokenizerSha256;
+
   /// A modelId must name its [promptContract]. That is checked by
   /// embedder_spec_identity_test.dart, because a const constructor cannot call
   /// `String.contains`.
@@ -93,6 +97,8 @@ class EmbedderSpec {
     required this.approxSizeBytes,
     required this.dimensions,
     required this.needsAuth,
+    this.modelSha256,
+    this.tokenizerSha256,
   }) : assert(
           format != EmbedderFormat.tfliteWithTokenizer || tokenizerUrl != null,
           'a tflite model needs its tokenizer',
@@ -183,10 +189,19 @@ class EmbedderSpec {
   static const EmbedderSpec embeddingGemma300m = EmbedderSpec(
     displayName: 'EmbeddingGemma 300M',
     modelId: 'embeddinggemma-300m-seq512-titled',
+    // Pinned to a commit (not `main`) and checksums: a re-upload under the same
+    // name would otherwise put different vectors under the same modelId. To
+    // update, take the commit and hashes from
+    // huggingface.co/api/models/<repo>?blobs=true, and change the modelId too.
     modelUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/'
-        'resolve/main/embeddinggemma-300M_seq512_mixed-precision.tflite',
+        'resolve/459f1d37fec9635eb1730ebdbc219bfc3226c8e7/'
+        'embeddinggemma-300M_seq512_mixed-precision.tflite',
     tokenizerUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/'
-        'resolve/main/sentencepiece.model',
+        'resolve/459f1d37fec9635eb1730ebdbc219bfc3226c8e7/sentencepiece.model',
+    modelSha256:
+        'ad09e81557203cb0e177abf9bf8727dfe138a7d394aa0f70f0b2ed16432e121a',
+    tokenizerSha256:
+        'd6daa52d93d7aad10e8388bd526c4e501d914b47177398d1d9621f1fe48438c7',
     format: EmbedderFormat.tfliteWithTokenizer,
     maxInputTokens: 512,
     // ~330 tokens at ~0.75 words per token, inside the 512 window.
@@ -251,7 +266,10 @@ class EmbedderSpec {
   /// up by id (the rollout, the serving model, the files a cleaner keeps), so a
   /// copy installed for a dry run is found there, and the shipped list never names it.
   static List<EmbedderSpec> get registry => [
-        ...all,
+        // A spec this build cannot run (EmbeddingGemma 2, whose id is a
+        // placeholder) must never be found as a serving or rollout target.
+        for (final spec in all)
+          if (spec.runtimeSupported) spec,
         if (kDebugMode) dryRunCopy,
       ];
 

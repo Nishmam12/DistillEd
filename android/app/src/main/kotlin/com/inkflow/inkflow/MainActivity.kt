@@ -2,6 +2,7 @@ package com.inkflow.inkflow
 
 import android.app.ActivityManager
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.BatteryManager
 import android.os.Build
@@ -23,8 +24,33 @@ class MainActivity : FlutterActivity() {
     // runs costs a single platform round trip.
     private val deviceChannel = "com.inkflow.inkflow/device"
 
+    // Starts/stops the microphone foreground service that keeps a lecture
+    // recording alive in the background (see RecordingService).
+    private val recordingChannel = "com.inkflow.inkflow/recording"
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, recordingChannel)
+            .setMethodCallHandler { call, result ->
+                try {
+                    val intent = Intent(this, RecordingService::class.java)
+                    when (call.method) {
+                        "start" -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
+                            else startService(intent)
+                            result.success(null)
+                        }
+                        "stop" -> {
+                            stopService(intent)
+                            result.success(null)
+                        }
+                        else -> result.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    result.error("RECORDING_SERVICE", e.message, null)
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, storageChannel)
             .setMethodCallHandler { call, result ->
                 when (call.method) {

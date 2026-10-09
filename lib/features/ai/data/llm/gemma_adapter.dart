@@ -15,6 +15,7 @@ import 'package:flutter_edge_ai_litertlm/flutter_edge_ai_litertlm.dart';
 import 'package:flutter_edge_ai_speech/flutter_edge_ai_speech.dart';
 
 import '../../domain/compute_backend.dart';
+import 'file_checksum.dart';
 import 'llm_exceptions.dart';
 import 'llm_model_spec.dart';
 
@@ -85,7 +86,9 @@ class EdgeAiInstaller implements ModelInstaller {
     Future<bool> Function(String filename)? isFileInstalled,
     Future<bool> Function(String filename)? isFileOnDisk,
     Future<void> Function(String filename)? forgetFile,
-  })  : _isFileInstalled = isFileInstalled ?? _pluginHas,
+    Future<String> Function(String filename)? pathOf,
+  })  : _pathOf = pathOf ?? _pluginPath,
+        _isFileInstalled = isFileInstalled ?? _pluginHas,
         _isFileOnDisk = isFileOnDisk ?? _pluginOnDisk,
         _forgetFile = forgetFile ?? _pluginForget;
 
@@ -95,6 +98,13 @@ class EdgeAiInstaller implements ModelInstaller {
 
   /// Removes a model's record, and the file if it is still there.
   final Future<void> Function(String filename) _forgetFile;
+
+  final Future<String> Function(String filename) _pathOf;
+
+  static Future<String> _pluginPath(String filename) async {
+    await GemmaBootstrap.ensureInitialized();
+    return FlutterEdgeAi.getModelPath(filename);
+  }
 
   static Future<void> _pluginForget(String filename) async {
     await GemmaBootstrap.ensureInitialized();
@@ -134,6 +144,7 @@ class EdgeAiInstaller implements ModelInstaller {
     CancelToken? cancelToken,
   }) async {
     await GemmaBootstrap.ensureInitialized();
+    final alreadyThere = await isInstalled(spec.filename);
     await forgetStaleRecords(spec.filename);
     var builder = FlutterEdgeAi.installModel(
       modelType: spec.modelType,
@@ -168,6 +179,18 @@ class EdgeAiInstaller implements ModelInstaller {
     if (onProgress != null) builder = builder.withProgress(onProgress);
     if (cancelToken != null) builder = builder.withCancelToken(cancelToken);
     await builder.install();
+    final expected = spec.sha256;
+    if (!alreadyThere && expected != null) {
+      try {
+        await verifySha256(
+            path: await _pathOf(spec.filename),
+            expected: expected,
+            name: spec.displayName);
+      } on ModelDownloadException {
+        await _forgetFile(spec.filename);
+        rethrow;
+      }
+    }
   }
 
   @override
@@ -264,13 +287,16 @@ class EdgeAiRuntime implements LlmRuntime {
     Future<void> Function(LlmModelSpec spec)? ensureReady,
     GemmaModelLoader? loadModel,
     Future<void> Function()? closeCachedModel,
-  })  : _ensureReady = ensureReady ?? _pluginEnsureReady,
+    DateTime Function()? now,
+  })  : _now = now ?? DateTime.now,
+        _ensureReady = ensureReady ?? _pluginEnsureReady,
         _loadModel = loadModel ?? _pluginLoadModel,
         _closeCachedModel = closeCachedModel ?? _pluginCloseCachedModel;
 
   final Future<void> Function(LlmModelSpec spec) _ensureReady;
   final GemmaModelLoader _loadModel;
   final Future<void> Function() _closeCachedModel;
+  final DateTime Function() _now;
 
   static Future<void> _pluginEnsureReady(LlmModelSpec spec) async {
     await GemmaBootstrap.ensureInitialized();
@@ -326,10 +352,18 @@ class EdgeAiRuntime implements LlmRuntime {
   /// can't run the model pays a failed GPU attempt on EVERY load; after the
   /// first one there is no point asking again.
   ///
-  /// ponytail: remembered for the whole process, so a one-off GPU failure (say,
-  /// memory pressure from other apps) pins this session to the CPU until the app
-  /// restarts. Add an expiry if that turns out to bite.
-  bool _gpuUnavailable = false;
+  /// Remembered for [gpuRetryAfter], not for good: a one-off failure (memory
+  /// pressure from other apps) must not pin the session to the CPU, while a GPU
+  /// that really cannot run the model is only retried now and then.
+  DateTime? _gpuRetryAt;
+  static const Duration gpuRetryAfter = Duration(minutes: 30);
+
+  bool get _gpuUnavailable {
+    final retryAt = _gpuRetryAt;
+    return retryAt != null && _now().isBefore(retryAt);
+  }
+
+  void _markGpuUnavailable() => _gpuRetryAt = _now().add(gpuRetryAfter);
 
   @override
   ComputeBackend? get activeBackend => _activeBackend;
@@ -438,7 +472,7 @@ class EdgeAiRuntime implements LlmRuntime {
       // encoder, say) fails the whole load instead of quietly falling back. The
       // feature must degrade to the CPU, not die.
       if (kDebugMode) debugPrint('[AiPerf] GPU load failed ($e); retrying on CPU');
-      _gpuUnavailable = true;
+      _markGpuUnavailable();
       model = await _loadModel(request(PreferredBackend.cpu, false));
       drafterOn = false;
       retriedOnCpu = true;
@@ -448,7 +482,7 @@ class EdgeAiRuntime implements LlmRuntime {
     var backend = _computeBackendOf(model.activeBackend) ??
         (retriedOnCpu ? ComputeBackend.cpu : null);
     if (tryGpu && backend == ComputeBackend.cpu) {
-      _gpuUnavailable = true;
+      _markGpuUnavailable();
       if (drafterOn) {
         await _closeCachedModel();
         model = await _loadModel(request(PreferredBackend.cpu, false));

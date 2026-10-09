@@ -181,6 +181,14 @@ void main() {
       // citation number for a passage that was cut.
       expect(provider.lastPrompt, contains('[1]'));
       expect(provider.lastPrompt, isNot(contains('[2]')));
+
+      // The sources the UI shows are the ones the prompt held, not all found.
+      expect(
+          qa.fitToBudget([
+            RetrievedChunk(chunk: _chunk(big), score: 0.9),
+            RetrievedChunk(chunk: _chunk('second passage', ordinal: 1), score: 0.8),
+          ]),
+          hasLength(1));
     });
   });
 }

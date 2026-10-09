@@ -2,6 +2,7 @@
 // phase 4.5): it counts what is not yet current for the target, and brings it current.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkflow/features/ai/domain/device_state.dart';
 import 'package:inkflow/features/ai/domain/rag/note_chunk.dart';
 import 'package:inkflow/features/ai/domain/rag/notebook_rollout_index.dart';
 import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
@@ -112,5 +113,47 @@ void main() {
     await index.indexPending(_Embedder('serving'));
 
     expect(await index.pendingPages(_Embedder('target')), 2);
+  });
+
+  RagIndexer indexerWith(TextEmbedder target,
+          Future<void> Function(int, List<NoteChunk>) save) =>
+      RagIndexer(
+        embedder: target,
+        saveChunks: save,
+        deleteChunks: store.delete,
+        indexStateOf: store.stateOf,
+        now: () => DateTime(2026, 10, 9),
+      );
+
+  test('a page that fails is skipped and stays pending; the rest are indexed',
+      () async {
+    final failing = NotebookRolloutIndex(
+      pages: () async => pages,
+      indexerFor: (target) => indexerWith(target, (pageId, chunks) async {
+        if (pageId == 1) throw StateError('bad page');
+        await store.replace(pageId, chunks);
+      }),
+    );
+    final target = _Embedder('target');
+
+    await failing.indexPending(target);
+
+    expect(await failing.pendingPages(target), 1);
+    expect(store.saved.keys, [2]);
+  });
+
+  test('indexing waits while the device asks it to pause', () async {
+    var checks = 0;
+    final pausing = NotebookRolloutIndex(
+      pages: () async => pages,
+      indexerFor: (target) => indexerWith(target, store.replace),
+      pauseReason: () async => ++checks <= 2 ? PauseReason.hot : null,
+      pauseCheckEvery: Duration.zero,
+    );
+
+    await pausing.indexPending(_Embedder('target'));
+
+    expect(checks, greaterThan(2));
+    expect(store.saved.keys, [1, 2]);
   });
 }

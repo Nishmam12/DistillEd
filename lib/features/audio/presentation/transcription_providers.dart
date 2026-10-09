@@ -83,7 +83,7 @@ final lectureTranscriptionProvider = StateNotifierProvider<
     onTranscribed: (recording) async {
       await ref
           .read(notebookIndexProvider(recording.notebookId).notifier)
-          .run(notebookId: recording.notebookId, pageIds: [recording.pageId]);
+          .runWhenFree(notebookId: recording.notebookId, pageIds: [recording.pageId]);
     },
   );
 });

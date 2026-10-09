@@ -67,6 +67,10 @@ class LlmModelSpec {
   /// precision.
   final ActivationDataType? activationDataType;
 
+  /// SHA-256 of the file at [downloadUrl], checked after a fresh download. Null
+  /// skips the check.
+  final String? sha256;
+
   const LlmModelSpec({
     required this.displayName,
     required this.filename,
@@ -76,6 +80,7 @@ class LlmModelSpec {
     required this.fileType,
     required this.maxTokens,
     this.authToken,
+    this.sha256,
     this.approxLoadCacheBytes = 512 * 1024 * 1024,
     this.speculativeDecodingOnGpu = true,
     this.shareVisionEngine = true,
@@ -99,6 +104,7 @@ class LlmModelSpec {
       filename: filename,
       downloadUrl: downloadUrl,
       authToken: authToken,
+      sha256: sha256,
       approxSizeBytes: approxSizeBytes,
       approxLoadCacheBytes: approxLoadCacheBytes,
       modelType: modelType,
@@ -120,8 +126,12 @@ class LlmModelSpec {
   static const LlmModelSpec gemma4E2B = LlmModelSpec(
     displayName: 'Gemma 4 E2B',
     filename: 'gemma-4-E2B-it.litertlm',
+    // Pinned to a commit (not `main`) and a checksum, so a re-upload under the
+    // same name cannot swap the model. To update: take the new commit and the
+    // file's sha256 from huggingface.co/api/models/<repo>?blobs=true.
     downloadUrl:
-        'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
+        'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/b3ca0d2f076785a8f4b2219ddbd2bdb99954eae1/gemma-4-E2B-it.litertlm',
+    sha256: '181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c',
     approxSizeBytes: 2600 * 1024 * 1024, // ~2.4 GiB catalog size, rounded up
     modelType: ModelType.gemma4,
     fileType: ModelFileType.litertlm,

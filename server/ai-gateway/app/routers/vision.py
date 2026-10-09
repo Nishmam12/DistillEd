@@ -29,7 +29,14 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from ..config import get_settings
-from ..logging_config import RequestLogEntry, Stopwatch, log_request
+from ..guards import image_matches_mime
+from ..logging_config import (
+    RequestLogEntry,
+    Stopwatch,
+    approx_cost,
+    hash_device,
+    log_request,
+)
 from ..provider_selection import NoVisionProviderError, select_vision_provider
 from ..providers.base import ProviderError
 from ..rate_limit import RateLimitExceededError
@@ -95,15 +102,15 @@ async def vision(
             f"Expected one of {sorted(ALLOWED_MIME_TYPES)}.",
         )
 
-    # Same per-device daily budget as text generation, so a runaway figure loop
-    # cannot bypass the cap by using a different endpoint.
-    try:
-        generate_router._get_rate_limiter().check_and_record(
-            x_device_key, VISION_TOKEN_COST
+    # The claimed type must be what the bytes are, or the upstream is handed
+    # whatever the caller chose to label as a picture.
+    if not image_matches_mime(image_bytes, request.mime_type):
+        raise HTTPException(
+            status_code=400,
+            detail="The image does not match its mime_type.",
         )
-    except RateLimitExceededError as exc:
-        raise HTTPException(status_code=429, detail=exc.message) from exc
 
+    # Everything the deployment can refuse comes before the charge.
     settings = get_settings()
     try:
         provider = select_vision_provider(
@@ -113,6 +120,14 @@ async def vision(
         # 503, not 500: the deployment is simply missing a key, and the app
         # treats this as "cloud unavailable" and keeps its local read.
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    # Same per-device daily budget as text generation, so a runaway figure loop
+    # cannot bypass the cap by using a different endpoint.
+    limiter = generate_router._get_rate_limiter()
+    try:
+        limiter.check_and_record(x_device_key, VISION_TOKEN_COST)
+    except RateLimitExceededError as exc:
+        raise HTTPException(status_code=429, detail=exc.message) from exc
 
     request_id = str(uuid.uuid4())
     watch = Stopwatch()
@@ -125,7 +140,8 @@ async def vision(
             max_tokens=request.max_tokens,
         )
     except ProviderError as exc:
-        _log.warning("provider error: %s", exc)
+        _log.warning("provider error: %s", type(exc).__name__)
+        limiter.refund(x_device_key, VISION_TOKEN_COST)
         log_request(
             RequestLogEntry(
                 request_id=request_id,
@@ -135,6 +151,8 @@ async def vision(
                 latency_ms=watch.elapsed_ms(),
                 approx_cost_usd=0.0,
                 status="error",
+                device=hash_device(x_device_key),
+                error_class=type(exc).__name__,
             )
         )
         raise HTTPException(
@@ -148,8 +166,11 @@ async def vision(
             provider=type(provider).__name__,
             token_count=VISION_TOKEN_COST,
             latency_ms=watch.elapsed_ms(),
-            approx_cost_usd=0.0,
+            approx_cost_usd=approx_cost(
+                VISION_TOKEN_COST, settings.approx_cost_per_1k_tokens_usd
+            ),
             status="ok",
+            device=hash_device(x_device_key),
         )
     )
     return {"text": text, "request_id": request_id}

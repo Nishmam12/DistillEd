@@ -6,7 +6,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, visibleForTesting;
+import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -168,10 +169,37 @@ final localAiProvider = Provider<AiProvider>((ref) => LocalGemmaProvider(
       // A device short on RAM loads a smaller context window.
       spec: LlmModelSpec.active.forProfile(ref.read(deviceProfileProvider)),
       runtime: ref.watch(llmRuntimeProvider),
-      embedder: ref.watch(textEmbedderProvider),
+      // Read when used, not watched: a switch of embedding model must not rebuild
+      // this provider (and its load lock) under a running generation.
+      embedderOf: () => ref.read(textEmbedderProvider),
       onBackendChanged: (backend) =>
           ref.read(localBackendProvider.notifier).state = backend,
     ));
+
+/// Gives the on-device model's memory back when the app leaves the screen. A
+/// resident 2.6 GB model is the first thing Android kills a backgrounded app
+/// for. Waits for any generation in flight (the release takes the same lock), and
+/// the next use simply loads it again.
+final modelLifecycleReleaserProvider = Provider<void>((ref) {
+  final observer = _ReleaseWhenBackgrounded(() {
+    final local = ref.read(localAiProvider);
+    if (local is LocalGemmaProvider) unawaited(local.releaseModel());
+  });
+  WidgetsBinding.instance.addObserver(observer);
+  ref.onDispose(() => WidgetsBinding.instance.removeObserver(observer));
+});
+
+class _ReleaseWhenBackgrounded with WidgetsBindingObserver {
+  _ReleaseWhenBackgrounded(this._release);
+  final void Function() _release;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _release();
+    }
+  }
+}
 
 /// Starts loading the on-device model in the background, so the cold start
 /// (3.6–17 s on the reference tablet) happens behind the user's own reading and
@@ -280,6 +308,26 @@ Future<String?> _pageTitle(Ref ref, int notebookId, int pageId) async {
   return chunkTitle(notebookTitle: notebook?.title, sourceName: source);
 }
 
+/// [_pageTitle] for a batch job: each notebook and its pages are read once, not
+/// once per page. A rename mid-pass is picked up by the next pass.
+Future<String?> Function(int, int) _memoizedPageTitle(Ref ref) {
+  final byNotebook = <int, Future<(String?, Map<int, String?>)>>{};
+  return (notebookId, pageId) async {
+    final (title, sources) = await byNotebook.putIfAbsent(notebookId, () async {
+      final notebook =
+          await ref.read(noteRepositoryProvider).getNotebook(notebookId);
+      final pages = await ref
+          .read(pageRepositoryProvider)
+          .getPagesForNotebook(notebookId);
+      return (
+        notebook?.title,
+        {for (final p in pages) p.id: p.importSourceName},
+      );
+    });
+    return chunkTitle(notebookTitle: title, sourceName: sources[pageId]);
+  };
+}
+
 /// Every page with text, across every notebook, for the rollout's indexing job.
 Future<List<RolloutPage>> _rolloutPages(Ref ref) async {
   final pages = <RolloutPage>[];
@@ -287,11 +335,12 @@ Future<List<RolloutPage>> _rolloutPages(Ref ref) async {
   for (final notebook in notebooks) {
     final texts = await ref.read(pageTextStoreProvider).forNotebook(notebook.id);
     for (final page in texts) {
-      if (page.text.trim().isNotEmpty) {
+      // What the live and bulk indexers embedded, so a rebuilt index matches them.
+      if (page.indexText.trim().isNotEmpty) {
         pages.add(RolloutPage(
           notebookId: notebook.id,
           pageId: page.pageId,
-          text: page.text,
+          text: page.indexText,
         ));
       }
     }
@@ -328,8 +377,11 @@ final embedderRolloutRunnerProvider = Provider<EmbedderRolloutRunner>((ref) {
         saveChunks: store.replaceForPage,
         deleteChunks: store.deleteForPage,
         indexStateOf: store.indexStateForPage,
-        titleOf: (notebookId, pageId) => _pageTitle(ref, notebookId, pageId),
+        titleOf: _memoizedPageTitle(ref),
       ),
+      // The same rule the bulk indexer follows: wait while hot or low on power.
+      pauseReason: () async =>
+          backgroundPauseReason(await ref.read(deviceHealthProvider).read()),
     ),
     embedderFor: (modelId) => LocalTextEmbedder(
       spec: EmbedderSpec.registry.firstWhere(
@@ -466,6 +518,7 @@ final bulkRagIndexerProvider = Provider<BulkRagIndexer>((ref) {
               notebookId: notebookId,
               pageId: pageId,
               text: text,
+              indexText: text,
             ),
   );
 });
@@ -553,7 +606,11 @@ final askNotesNotifierProvider =
   );
 });
 
-/// Cloud tier seam — a no-op stub until Phase 3 stands up the gateway.
+/// Summarize's cloud route, still the no-op stub: it throws, and Summarize
+/// degrades to the on-device model. Deliberately NOT wired to the live gateway
+/// ([cloudGatewayMidProvider]) — Summarize's router checks only the cloud switch,
+/// not the per-call `cloudPrivacy` confirmation, so wiring it would send whole
+/// notebooks off the device without asking.
 final cloudLlmClientProvider =
     Provider<CloudLlmClient>((ref) => StubCloudLlmClient());
 
@@ -588,7 +645,7 @@ final routedImageTranscriberProvider = Provider<ImageTranscriber>((ref) {
   return CloudFirstTranscriber(
     local: ref.watch(imageTranscriberProvider),
     cloud: cloud,
-    preferCloud: () => _mayUploadImages(ref.read(settingsProvider)) &&
+    preferCloud: () => mayUploadImages(ref.read(settingsProvider)) &&
         ref.read(settingsProvider).aiMode.prefersCloud,
   );
 });
@@ -610,7 +667,8 @@ final gemmaVisionOcrServiceProvider = Provider<GemmaVisionOcrService>((ref) =>
 /// Page images are uploaded silently (no per-call prompt), so the cloud being
 /// switched on is not enough: the user must also have allowed cloud use
 /// without asking. `localOnly` and `askEachTime` keep images on the device.
-bool _mayUploadImages(SettingsState s) =>
+@visibleForTesting
+bool mayUploadImages(SettingsState s) =>
     s.cloudAiEnabled && s.cloudPrivacy == CloudPrivacy.allowCloudForNonSensitive;
 
 final figureAnalyzerProvider = Provider<FigureAnalyzer>((ref) {
@@ -619,8 +677,8 @@ final figureAnalyzerProvider = Provider<FigureAnalyzer>((ref) {
   return FigureAnalyzer(
     local: local,
     cloud: cloud,
-    canEscalate: () async => _mayUploadImages(ref.read(settingsProvider)),
-    preferCloud: () => _mayUploadImages(ref.read(settingsProvider)) &&
+    canEscalate: () async => mayUploadImages(ref.read(settingsProvider)),
+    preferCloud: () => mayUploadImages(ref.read(settingsProvider)) &&
         ref.read(settingsProvider).aiMode.prefersCloud,
     localModelId: ref.watch(localAiProvider).capabilities.modelId,
     cloudModelId: cloud.capabilities.modelId,
@@ -1046,6 +1104,7 @@ final pageContextProvider = StateNotifierProvider.autoDispose
             notebookId: key.notebookId,
             pageId: key.pageId,
             text: content.combinedText,
+            indexText: content.combinedTextWithFigures,
           ));
       // Indexing goes FIRST deliberately. ContextEngineNotifier._notifyContent
       // guards the engine from this callback, but nothing guards these two

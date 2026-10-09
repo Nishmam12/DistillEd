@@ -11,7 +11,40 @@ SceneController _controller() =>
 FreehandElement _el(String id, int z) =>
     FreehandElement(id: id, zOrder: z, color: 0, size: 1, points: const []);
 
+class _Throwing implements SceneCommand {
+  bool reverted = false;
+  @override
+  void apply(SceneMutator m) => throw StateError('half way');
+  @override
+  void revert(SceneMutator m) => reverted = true;
+}
+
 void main() {
+  test('a command that throws is rolled back and not recorded', () {
+    final h = HistoryController(_controller());
+    final bad = _Throwing();
+
+    expect(() => h.push(bad), throwsStateError);
+
+    expect(bad.reverted, isTrue);
+    expect(h.state.canUndo, isFalse);
+  });
+
+  test('history keeps only the most recent commands', () {
+    final ctl = _controller();
+    final h = HistoryController(ctl, maxDepth: 3);
+
+    for (var i = 0; i < 10; i++) {
+      h.push(AddElementsCommand([_el('e$i', i)]));
+    }
+
+    expect(h.state.undoDepth, 3);
+    while (h.state.canUndo) {
+      h.undo();
+    }
+    expect(ctl.state.map((e) => e.id).length, 7, reason: 'the first 7 stay');
+  });
+
   test('add command: push applies, undo reverts, redo re-applies', () {
     final ctl = _controller();
     final h = HistoryController(ctl);
