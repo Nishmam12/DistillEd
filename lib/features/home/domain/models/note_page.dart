@@ -40,10 +40,8 @@ class NotePage {
 
   // Phase 4: Imported PDF backgrounds and free images
   List<ImportedContent> importedContents = [];
-  
+
   List<ShapeElement> shapes = [];
 
   late DateTime modifiedAt;
-  
-  // Cache buster
 }

@@ -8,6 +8,8 @@ streams the response back, and forgets it. See
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import Depends, FastAPI, HTTPException, Request
 
 from .config import get_settings
@@ -28,6 +30,9 @@ def _throttle_by_ip(request: Request) -> None:
 app = FastAPI(
     title="InkFlow AI Gateway",
     version="0.1.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
     dependencies=[Depends(_throttle_by_ip)],
 )
 app.add_middleware(BodyLimitMiddleware, max_bytes=_settings.max_body_bytes)
@@ -41,7 +46,7 @@ async def health() -> dict[str, str]:
     # Touches the counter database: a gateway that cannot count usage cannot
     # enforce its caps, so it should not report itself healthy.
     try:
-        generate._get_rate_limiter().ping()
+        await asyncio.to_thread(generate._get_rate_limiter().ping)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=503, detail="Rate-limit store unavailable.") from exc
     return {"status": "ok"}

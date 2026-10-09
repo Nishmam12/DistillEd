@@ -1,5 +1,6 @@
 // Repository providing CRUD operations for Notebook and NotePage collections.
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:isar_community/isar.dart';
 
 import '../../../../data/persistence/content_purge.dart';
@@ -23,18 +24,15 @@ class NoteRepository {
       ..pageCount = 1
       ..templateIndex = templateIndex;
 
+    // One transaction: a crash between the two writes would leave a notebook
+    // that claims a page it does not have.
     await _isar.writeTxn(() async {
       await _isar.notebooks.put(notebook);
-    });
-
-    // Create the first page for this notebook.
-    final firstPage = NotePage()
-      ..notebookId = notebook.id
-      ..pageIndex = 0
-      ..createdAt = DateTime.now()
-      ..modifiedAt = DateTime.now();
-
-    await _isar.writeTxn(() async {
+      final firstPage = NotePage()
+        ..notebookId = notebook.id
+        ..pageIndex = 0
+        ..createdAt = DateTime.now()
+        ..modifiedAt = DateTime.now();
       await _isar.notePages.put(firstPage);
     });
 
@@ -119,10 +117,17 @@ class NoteRepository {
         .deletedAtIsNotNull()
         .deletedAtLessThan(cutoff)
         .findAll();
+    var purged = 0;
     for (final notebook in expired) {
-      await deleteNotebook(notebook.id);
+      // One notebook that will not delete must not strand the rest.
+      try {
+        await deleteNotebook(notebook.id);
+        purged++;
+      } catch (e) {
+        debugPrint('Trash purge of notebook ${notebook.id} failed: $e');
+      }
     }
-    return expired.length;
+    return purged;
   }
 
   /// Permanently deletes everything currently in the trash.
@@ -144,50 +149,46 @@ class NoteRepository {
 
   /// Updates the title of an existing notebook, keeping [modifiedAt] current.
   Future<void> updateTitle(int id, String title) async {
-    final notebook = await _isar.notebooks.get(id);
-    if (notebook != null) {
+    await _isar.writeTxn(() async {
+      final notebook = await _isar.notebooks.get(id);
+      if (notebook == null) return;
       notebook.title = title;
       notebook.modifiedAt = DateTime.now();
-      await _isar.writeTxn(() async {
-        await _isar.notebooks.put(notebook);
-      });
-    }
+      await _isar.notebooks.put(notebook);
+    });
   }
 
   /// Updates the background color of an existing notebook.
   Future<void> updateBackgroundColor(int id, int color) async {
-    final notebook = await _isar.notebooks.get(id);
-    if (notebook != null) {
+    await _isar.writeTxn(() async {
+      final notebook = await _isar.notebooks.get(id);
+      if (notebook == null) return;
       notebook.backgroundColor = color;
       notebook.modifiedAt = DateTime.now();
-      await _isar.writeTxn(() async {
-        await _isar.notebooks.put(notebook);
-      });
-    }
+      await _isar.notebooks.put(notebook);
+    });
   }
 
   /// Updates the page/paper template style of an existing notebook.
   Future<void> updateTemplateIndex(int id, int templateIndex) async {
-    final notebook = await _isar.notebooks.get(id);
-    if (notebook != null) {
+    await _isar.writeTxn(() async {
+      final notebook = await _isar.notebooks.get(id);
+      if (notebook == null) return;
       notebook.templateIndex = templateIndex;
       notebook.modifiedAt = DateTime.now();
-      await _isar.writeTxn(() async {
-        await _isar.notebooks.put(notebook);
-      });
-    }
+      await _isar.notebooks.put(notebook);
+    });
   }
 
   /// Updates the canvas layout mode (0 = infinite, 1 = single page).
   Future<void> updateLayoutMode(int id, int layoutMode) async {
-    final notebook = await _isar.notebooks.get(id);
-    if (notebook != null) {
+    await _isar.writeTxn(() async {
+      final notebook = await _isar.notebooks.get(id);
+      if (notebook == null) return;
       notebook.layoutMode = layoutMode;
       notebook.modifiedAt = DateTime.now();
-      await _isar.writeTxn(() async {
-        await _isar.notebooks.put(notebook);
-      });
-    }
+      await _isar.notebooks.put(notebook);
+    });
   }
 
   /// Gets a notebook by ID.

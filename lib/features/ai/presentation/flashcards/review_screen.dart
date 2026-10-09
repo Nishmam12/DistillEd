@@ -41,6 +41,13 @@ class ReviewScreen extends ConsumerWidget {
           Center(child: CircularProgressIndicator(color: context.ink.accent)),
         ReviewCaughtUp(:final nextDueAt) => _CaughtUp(nextDueAt: nextDueAt),
         ReviewFinished(:final reviewed) => _Finished(reviewed: reviewed),
+        ReviewError() => Center(
+            child: TextButton(
+              onPressed: () =>
+                  ref.read(reviewNotifierProvider(notebookId).notifier).start(),
+              child: const Text("Couldn't load your cards. Tap to retry."),
+            ),
+          ),
         ReviewInProgress() => _Session(notebookId: notebookId, state: state),
       },
     );

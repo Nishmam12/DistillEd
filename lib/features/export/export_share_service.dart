@@ -13,24 +13,23 @@ class ExportShareService {
     required String filename,
     required String mimeType,
   }) async {
-    final tempDir = await getTemporaryDirectory();
+    // share() can return before the target app has read the file (it resolves
+    // when the sheet closes), so the file is NOT deleted afterwards. Instead the
+    // previous exports are swept at the start of the next one.
+    final tempDir = Directory('${(await getTemporaryDirectory()).path}/exports');
+    try {
+      if (await tempDir.exists()) await tempDir.delete(recursive: true);
+    } catch (_) {}
+    await tempDir.create(recursive: true);
     final file = File('${tempDir.path}/${safeFilename(filename)}');
     await file.writeAsBytes(bytes);
 
-    try {
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path, mimeType: mimeType)],
-          subject: filename,
-        ),
-      );
-    } finally {
-      // The share sheet has what it needs by now; a copy of every export would
-      // otherwise sit in the cache until the OS got round to clearing it.
-      try {
-        await file.delete();
-      } catch (_) {}
-    }
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path, mimeType: mimeType)],
+        subject: filename,
+      ),
+    );
   }
 
   /// [name] as a single safe file name. A notebook title is user text, and one

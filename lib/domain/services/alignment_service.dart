@@ -1,5 +1,6 @@
 // Aligns and distributes selected elements using their world bounds. Returns
-// only the moved elements (translated copies); the caller merges them back by id.
+// only the elements that actually moved (translated copies); the caller merges
+// them back by id. Locked elements are never moved or used as a reference.
 
 import 'dart:ui';
 
@@ -15,14 +16,16 @@ enum SceneAxis { horizontal, vertical }
 class AlignmentService {
   AlignmentService._();
 
-  static List<SceneElement> align(List<SceneElement> selected, AlignEdge edge) {
-    if (selected.length < 2) return selected;
+  static List<SceneElement> align(List<SceneElement> all, AlignEdge edge) {
+    final selected = [for (final e in all) if (!e.isLocked) e];
+    if (selected.length < 2) return const [];
     final bounds = {for (final e in selected) e.id: SceneGeometry.worldAabb(e)};
     final union = bounds.values.reduce((a, b) => a.expandToInclude(b));
 
     return [
       for (final e in selected)
-        SceneTransformer.translate(e, _delta(edge, bounds[e.id]!, union)),
+        if (_delta(edge, bounds[e.id]!, union) case final d when d != Offset.zero)
+          SceneTransformer.translate(e, d),
     ];
   }
 
@@ -45,8 +48,9 @@ class AlignmentService {
 
   /// Distributes elements so their centres are evenly spaced along [axis].
   static List<SceneElement> distribute(
-      List<SceneElement> selected, SceneAxis axis) {
-    if (selected.length < 3) return selected;
+      List<SceneElement> all, SceneAxis axis) {
+    final selected = [for (final e in all) if (!e.isLocked) e];
+    if (selected.length < 3) return const [];
     final bounds = {for (final e in selected) e.id: SceneGeometry.worldAabb(e)};
 
     double centre(Rect r) =>
@@ -61,12 +65,10 @@ class AlignmentService {
     final result = <SceneElement>[];
     for (int i = 0; i < sorted.length; i++) {
       final e = sorted[i];
-      if (i == 0 || i == sorted.length - 1) {
-        result.add(e); // endpoints stay put
-        continue;
-      }
+      if (i == 0 || i == sorted.length - 1) continue; // endpoints stay put
       final target = first + step * i;
       final delta = target - centre(bounds[e.id]!);
+      if (delta == 0) continue;
       result.add(SceneTransformer.translate(e,
           axis == SceneAxis.horizontal ? Offset(delta, 0) : Offset(0, delta)));
     }

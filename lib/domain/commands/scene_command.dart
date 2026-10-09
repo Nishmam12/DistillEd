@@ -57,29 +57,9 @@ class UpdateElementsCommand implements SceneCommand {
   void revert(SceneMutator m) => m.applyUpdate(before);
 }
 
-/// One true pixel-erase gesture: removes the originals the cut crossed and
-/// adds the surviving sub-strokes, as a single undo step.
-class PixelEraseCommand implements SceneCommand {
-  final List<SceneElement> removed;
-  final List<SceneElement> added;
-  const PixelEraseCommand({required this.removed, required this.added});
-
-  @override
-  void apply(SceneMutator m) {
-    m.applyRemove({for (final e in removed) e.id});
-    m.applyAdd(added);
-  }
-
-  @override
-  void revert(SceneMutator m) {
-    m.applyRemove({for (final e in added) e.id});
-    m.applyAdd(removed);
-  }
-}
-
 /// Swaps [removed] for [added] as ONE undo step: apply takes the first out and
-/// puts the second in, undo does the reverse. A freehand stroke snapped to a clean
-/// shape is this — undoing it brings the stroke back, as drawn.
+/// puts the second in, undo does the reverse. A pixel-erase cut and a freehand
+/// stroke snapped to a clean shape are this — undoing it brings the stroke back, as drawn.
 class ReplaceElementsCommand implements SceneCommand {
   final List<SceneElement> removed;
   final List<SceneElement> added;

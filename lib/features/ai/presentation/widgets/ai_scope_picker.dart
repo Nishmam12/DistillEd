@@ -114,20 +114,29 @@ class AiScopePicker extends ConsumerWidget {
             ),
           ),
       ],
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.filter_alt_outlined, size: 14, color: fg),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              scopeChoiceLabel(value, sourceName: group?.importSourceName),
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12, color: fg),
-            ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 40),
+        child: Semantics(
+          label:
+              'Search scope: '
+              '${scopeChoiceLabel(value, sourceName: group?.importSourceName)}',
+          excludeSemantics: true,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.filter_alt_outlined, size: 14, color: fg),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  scopeChoiceLabel(value, sourceName: group?.importSourceName),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: fg),
+                ),
+              ),
+              Icon(Icons.arrow_drop_down, size: 16, color: fg),
+            ],
           ),
-          Icon(Icons.arrow_drop_down, size: 16, color: fg),
-        ],
+        ),
       ),
     );
   }

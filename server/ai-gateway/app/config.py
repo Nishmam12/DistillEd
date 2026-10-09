@@ -54,7 +54,8 @@ class Settings:
     # about the connection, not the person. 0 turns the per-address throttle off.
     ip_rate_limit_per_minute: int = int(os.getenv("IP_RATE_LIMIT_PER_MINUTE", "240"))
     # Proxies in front of the app that append to X-Forwarded-For (Render: 1).
-    trusted_proxy_hops: int = int(os.getenv("TRUSTED_PROXY_HOPS", "1"))
+    # Default 0 = trust no header; X-Forwarded-For is client-forgeable otherwise.
+    trusted_proxy_hops: int = int(os.getenv("TRUSTED_PROXY_HOPS", "0"))
     max_body_bytes: int = int(os.getenv("MAX_BODY_BYTES", str(12 * 1024 * 1024)))
     # Rough blended price, only for the operational log line.
     approx_cost_per_1k_tokens_usd: float = float(

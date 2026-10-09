@@ -40,4 +40,22 @@ void main() {
     // even spacing → middle centre at (5 + 105) / 2 = 55 → left = 50
     expect(b.geometryData[0], closeTo(50, 1e-9));
   });
+
+  test('align skips locked elements and returns only what moved', () {
+    final locked = _rect('l', [50, 0, 60, 10]).copyWith(isLocked: true);
+    final out = AlignmentService.align([
+      _rect('a', [0, 0, 10, 10]),
+      _rect('b', [20, 0, 30, 10]),
+      locked,
+    ], AlignEdge.left);
+    expect(out.map((e) => e.id), ['b']);
+  });
+
+  test('align with fewer than two unlocked elements is a no-op', () {
+    final out = AlignmentService.align([
+      _rect('a', [0, 0, 10, 10]),
+      _rect('l', [50, 0, 60, 10]).copyWith(isLocked: true),
+    ], AlignEdge.left);
+    expect(out, isEmpty);
+  });
 }

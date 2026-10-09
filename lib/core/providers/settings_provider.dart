@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 import 'package:flutter_riverpod/legacy.dart';
@@ -123,9 +124,8 @@ class SettingsState {
   ///
   /// Per-user by design: the token is never compiled into the app, so each
   /// person accepts Google's model licence under their own account. Stored in
-  /// app-private SharedPreferences (sandboxed per-app on Android/iOS), which is
-  /// proportionate for a read-only model-download token; if account credentials
-  /// ever live here, revisit with secure storage.
+  /// the platform keystore (see [SecretStore]); an older build's plain
+  /// SharedPreferences copy is migrated on first read.
   final String huggingFaceToken;
 
   /// False until [SettingsNotifier] has finished reading SharedPreferences.
@@ -256,7 +256,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     // waits for the token, because the download UI reads it as "nothing stored".
     final token = await _restoreHuggingFaceToken(prefs);
     if (!mounted) return;
-    state = state.copyWith(huggingFaceToken: token, loaded: true);
+    // A token pasted while the keystore was still being read is newer.
+    state = state.copyWith(
+      huggingFaceToken: state.huggingFaceToken.isEmpty ? token : null,
+      loaded: true,
+    );
   }
 
   /// The token from the keystore. One saved by an older build sits in plain
@@ -400,8 +404,13 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   Future<void> setHuggingFaceToken(String token) async {
     final cleaned = sanitizeToken(token);
     state = state.copyWith(huggingFaceToken: cleaned);
-    await _secrets.write(_kHuggingFaceToken, cleaned);
-    // Never leave an older plain copy behind.
+    // The keystore can refuse; the token then lasts this session only.
+    final stored = await _secrets.write(_kHuggingFaceToken, cleaned);
+    if (!stored) {
+      debugPrint('HuggingFace token could not be saved to the keystore');
+      return;
+    }
+    // Never leave an older plain copy behind (kept if the keystore refused).
     await (await SharedPreferences.getInstance()).remove(_kHuggingFaceToken);
   }
 }

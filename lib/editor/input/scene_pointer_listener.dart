@@ -189,9 +189,12 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
         if (_rejectedPointers.remove(event.pointer)) return;
 
         _activePointers.remove(event.pointer);
+        // Remember before resetting: the last finger of a pinch must not reach
+        // the host as an up without a down.
+        final wasMultiTouch = _isMultiTouch;
         if (_activePointers.isEmpty) _isMultiTouch = false;
 
-        if (_isMultiTouch) return;
+        if (wasMultiTouch) return;
         if (widget.isHandTool) return;
 
         widget.onPointerUp(event, _extractPoint(event));
@@ -201,14 +204,15 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
           _lastStylusActivity = event.timeStamp;
         }
         _activeStylusPointers.remove(event.pointer);
-        _rejectedPointers.remove(event.pointer);
-        _activePointers.remove(event.pointer);
+        if (_rejectedPointers.remove(event.pointer)) return;
+        if (_activePointers.remove(event.pointer) == null) return;
+        final wasMultiTouch = _isMultiTouch;
         if (_activePointers.isEmpty) _isMultiTouch = false;
 
-        if (_isMultiTouch) return;
-        if (widget.isHandTool) return;
+        if (wasMultiTouch || widget.isHandTool) return;
 
-        widget.onPointerUp(event, _extractPoint(event));
+        // A cancelled stroke is discarded, never committed.
+        widget.onStrokeCancel?.call();
       },
       onPointerHover: (event) {
         if (event.kind == PointerDeviceKind.stylus) {

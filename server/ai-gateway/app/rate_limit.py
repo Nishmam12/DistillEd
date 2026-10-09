@@ -22,6 +22,10 @@ from datetime import datetime, timezone
 _lock = threading.Lock()
 
 
+class InvalidDeviceKeyError(Exception):
+    pass
+
+
 class RateLimitExceededError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
@@ -56,7 +60,7 @@ _MAX_KEY_LEN = 128
 
 def _check_key(device_key: str) -> None:
     if not device_key or len(device_key) > _MAX_KEY_LEN or device_key == _GLOBAL_KEY:
-        raise RateLimitExceededError("Invalid device key.")
+        raise InvalidDeviceKeyError("Invalid device key.")
 
 
 class RateLimiter:
@@ -220,5 +224,16 @@ class SearchRateLimiter:
                     ON CONFLICT(device_key, day) DO UPDATE SET
                         searches = searches + 1
                     """,
+                    (key, today),
+                )
+
+    def refund(self, device_key: str) -> None:
+        """Gives back one search charged by [check_and_record] (Exa failed)."""
+        today = datetime.now(timezone.utc).date().isoformat()
+        with _lock, _transaction(self._config.db_path) as conn:
+            for key in (device_key, _GLOBAL_KEY):
+                conn.execute(
+                    "UPDATE search_usage SET searches = MAX(0, searches - 1) "
+                    "WHERE device_key = ? AND day = ?",
                     (key, today),
                 )

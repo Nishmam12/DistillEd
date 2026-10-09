@@ -137,12 +137,16 @@ Future<List<ImportedContent>> _renderPdfIsolate(_PdfRenderPayload payload) async
           // 2x for clarity, capped so a huge page cannot exhaust memory.
           final (renderWidth, renderHeight) =
               pdfRenderSize(page.width, page.height);
-          final pageImage = await page.render(
-            width: renderWidth,
-            height: renderHeight,
-            format: PdfPageImageFormat.png,
-          );
-          await page.close();
+          final PdfPageImage? pageImage;
+          try {
+            pageImage = await page.render(
+              width: renderWidth,
+              height: renderHeight,
+              format: PdfPageImageFormat.png,
+            );
+          } finally {
+            await page.close();
+          }
 
           if (pageImage != null) {
             final bytes = pageImage.bytes;

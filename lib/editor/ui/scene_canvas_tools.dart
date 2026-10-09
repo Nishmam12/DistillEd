@@ -60,7 +60,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
       );
       if (result.isEmpty) return;
       _history.push(
-          PixelEraseCommand(removed: result.removed, added: result.added));
+          ReplaceElementsCommand(removed: result.removed, added: result.added));
       return;
     }
     final ids = _eraserPending.value;
@@ -170,6 +170,14 @@ extension _SceneCanvasTools on _SceneCanvasState {
     _selOriginals =
         mode == _SelMode.move ? _expandMoveTargets(originals) : originals;
     _didTransform = false;
+    // Snap targets are fixed for the whole move; compute them once, not per move.
+    if (mode == _SelMode.move) {
+      final selIds = _selOriginals.map((e) => e.id).toSet();
+      _snapTargets = [
+        for (final e in ref.read(sceneControllerProvider(_key)))
+          if (!selIds.contains(e.id)) SceneGeometry.worldAabb(e),
+      ];
+    }
   }
 
   /// Expands [selected] to include the members of any selected frame, so a move
@@ -179,7 +187,10 @@ extension _SceneCanvasTools on _SceneCanvasState {
     final all = ref.read(sceneControllerProvider(_key));
     final ids =
         FrameService.expandWithMembers(selected.map((e) => e.id).toSet(), all);
-    return all.where((e) => ids.contains(e.id)).toList();
+    // A locked member must stay put even when its frame is dragged.
+    return all
+        .where((e) => ids.contains(e.id) && !e.isLocked)
+        .toList();
   }
 
   void _onSelectMove(StrokePoint p) {
@@ -202,16 +213,11 @@ extension _SceneCanvasTools on _SceneCanvasState {
     final delta = scene - _gestureStartScene;
     final movingBox = _selBoxStart.shift(delta);
     final zoom = ref.read(viewportProvider).zoom;
-    final selIds = _selOriginals.map((e) => e.id).toSet();
-    final targets = [
-      for (final e in ref.read(sceneControllerProvider(_key)))
-        if (!selIds.contains(e.id)) SceneGeometry.worldAabb(e),
-    ];
-    final snap = SnapEngine.snap(movingBox, targets, _kSnapScreen / zoom);
+    final snap = SnapEngine.snap(movingBox, _snapTargets, _kSnapScreen / zoom);
     final finalDelta = delta + snap.adjust;
     _guides.value = [for (final g in snap.guides) (g.a, g.b)];
     _didTransform = true;
-    _scene.updateMany([
+    _scene.updateInMemory([
       for (final e in _selOriginals) SceneTransformer.translate(e, finalDelta)
     ]);
   }
@@ -225,7 +231,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
       fromCenter: HardwareKeyboard.instance.isAltPressed,
     );
     _didTransform = true;
-    _scene.updateMany([
+    _scene.updateInMemory([
       for (final e in _selOriginals)
         SceneTransformer.scaleAbout(e, r.sx, r.sy, r.anchor)
     ]);
@@ -237,7 +243,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
     final cur = scene - center;
     final angle = math.atan2(cur.dy, cur.dx) - math.atan2(start.dy, start.dx);
     _didTransform = true;
-    _scene.updateMany([
+    _scene.updateInMemory([
       for (final e in _selOriginals)
         SceneTransformer.rotateAbout(e, angle, center)
     ]);
@@ -267,6 +273,8 @@ extension _SceneCanvasTools on _SceneCanvasState {
           .read(sceneControllerProvider(_key))
           .where((e) => ids.contains(e.id))
           .toList();
+      // Per-move updates were in-memory only; persist the final state once.
+      _scene.updateMany(after);
       _history.pushApplied(
           UpdateElementsCommand(before: _selOriginals, after: after));
     }

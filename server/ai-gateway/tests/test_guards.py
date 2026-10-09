@@ -254,3 +254,21 @@ def test_web_results_keep_only_http_links_and_are_bounded():
     assert [r.url for r in cleaned] == ["https://a.example/x", "http://b.example"]
     assert cleaned[0].snippet == "fine text"
     assert len(cleaned[1].title) <= 200 and len(cleaned[1].snippet) <= 500
+
+
+def test_ip_throttle_ignores_forwarded_for_by_default_and_caps_tracked_ips():
+    class _Req:
+        headers = {"x-forwarded-for": "6.6.6.6"}
+        client = type("C", (), {"host": "9.9.9.9"})()
+
+    t = IpThrottle(per_minute=5)
+    assert t.client_ip(_Req()) == "9.9.9.9"
+
+    from app import guards
+
+    t = IpThrottle(per_minute=5, trusted_proxy_hops=1)
+    for i in range(guards._MAX_TRACKED_IPS + 50):
+        r = _Req()
+        r.headers = {"x-forwarded-for": f"ip{i}"}
+        t.check(r)
+    assert len(t._calls) == guards._MAX_TRACKED_IPS

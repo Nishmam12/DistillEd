@@ -11,6 +11,7 @@ EmbeddingGemma already covers embeddings; see the phase spec.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -37,7 +38,12 @@ from ..logging_config import (
 )
 from ..provider_selection import UnknownModelTierError, select_provider
 from ..providers.base import ChatTurn, ProviderError
-from ..rate_limit import RateLimitConfig, RateLimiter, RateLimitExceededError
+from ..rate_limit import (
+    InvalidDeviceKeyError,
+    RateLimitConfig,
+    RateLimiter,
+    RateLimitExceededError,
+)
 
 router = APIRouter(prefix="/v1")
 _log = logging.getLogger(__name__)
@@ -86,7 +92,7 @@ class GenerateRequest(BaseModel):
     system_prompt: str | None = Field(default=None, max_length=_MAX_TEXT_CHARS)
     history: list[HistoryTurn] = Field(default=[], max_length=_MAX_HISTORY_TURNS)
     stream: bool = True
-    temperature: float = 0.7
+    temperature: float = Field(default=0.7, ge=0, le=2)
     max_tokens: int = Field(default=_DEFAULT_OUTPUT_TOKENS, ge=1, le=_MAX_OUTPUT_TOKENS)
     # Loop 3.4: OpenAI-shape function declarations
     # (`[{"type":"function","function":{"name","description","parameters"}}]`).
@@ -170,7 +176,9 @@ async def generate(
 
     limiter = _get_rate_limiter()
     try:
-        limiter.check_and_record(x_device_key, estimated_tokens)
+        await asyncio.to_thread(limiter.check_and_record, x_device_key, estimated_tokens)
+    except InvalidDeviceKeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RateLimitExceededError as exc:
         raise HTTPException(status_code=429, detail=exc.message) from exc
 
@@ -189,7 +197,7 @@ async def generate(
         try:
             lease = stream_limiter.acquire(x_device_key)
         except HTTPException:
-            limiter.refund(x_device_key, estimated_tokens)
+            await asyncio.to_thread(limiter.refund, x_device_key, estimated_tokens)
             raise
         events = (
             _sse_stream_with_tools(
@@ -228,7 +236,7 @@ async def generate(
     except (ProviderError, TimeoutError) as exc:
         _log.warning("provider error: %s", type(exc).__name__)
         # No usable reply, so no charge.
-        limiter.refund(x_device_key, estimated_tokens)
+        await asyncio.to_thread(limiter.refund, x_device_key, estimated_tokens)
         _log_done(request_id, request, provider, estimated_tokens, watch,
                   x_device_key, "error", exc)
         raise HTTPException(status_code=502, detail=_UPSTREAM_ERROR) from exc
@@ -285,7 +293,7 @@ async def _stream_events(source, request_id, request, provider, estimated_tokens
     finally:
         lease.release()
         if failure is not None and not produced:
-            limiter.refund(device_key, estimated_tokens)
+            await asyncio.to_thread(limiter.refund, device_key, estimated_tokens)
         _log_done(request_id, request, provider, estimated_tokens, watch,
                   device_key, status, failure)
 

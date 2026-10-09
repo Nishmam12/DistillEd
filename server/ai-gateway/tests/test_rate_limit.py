@@ -4,6 +4,7 @@ import tempfile
 import pytest
 
 from app.rate_limit import (
+    InvalidDeviceKeyError,
     RateLimitConfig,
     RateLimitExceededError,
     RateLimiter,
@@ -121,5 +122,5 @@ def test_global_search_cap_stops_rotating_device_keys():
 
 def test_rejects_oversized_or_reserved_device_key(limiter):
     for bad in ("", "x" * 200, "*"):
-        with pytest.raises(RateLimitExceededError):
+        with pytest.raises(InvalidDeviceKeyError):
             limiter.check_and_record(bad, estimated_tokens=1)

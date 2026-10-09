@@ -9,21 +9,16 @@ import '../../domain/services/selection_editing.dart';
 import '../../features/home/data/repositories/page_repository.dart';
 import '../../features/home/domain/models/note_page.dart';
 import '../../shared/isar/isar_service.dart';
+import 'history_controller.dart';
 import 'scene_controller.dart';
 
 class PageState {
   final int currentPageIndex;
   final List<NotePage> pages;
 
-  const PageState({
-    required this.currentPageIndex,
-    required this.pages,
-  });
+  const PageState({required this.currentPageIndex, required this.pages});
 
-  PageState copyWith({
-    int? currentPageIndex,
-    List<NotePage>? pages,
-  }) {
+  PageState copyWith({int? currentPageIndex, List<NotePage>? pages}) {
     return PageState(
       currentPageIndex: currentPageIndex ?? this.currentPageIndex,
       pages: pages ?? this.pages,
@@ -35,9 +30,14 @@ class PageNotifier extends StateNotifier<PageState> {
   final PageRepository _repository;
   final SceneElementStore _store;
   final int _notebookId;
+  final void Function(int pageId)? _onPageDeleted;
 
-  PageNotifier(this._repository, this._store, this._notebookId)
-      : super(const PageState(currentPageIndex: 0, pages: []));
+  PageNotifier(
+    this._repository,
+    this._store,
+    this._notebookId, {
+    this._onPageDeleted,
+  }) : super(const PageState(currentPageIndex: 0, pages: []));
 
   Future<void> initialize() async {
     List<NotePage> pages = await _repository.getPagesForNotebook(_notebookId);
@@ -57,10 +57,7 @@ class PageNotifier extends StateNotifier<PageState> {
   Future<void> insertPage() async {
     await _repository.createPage(_notebookId);
     final pages = await _repository.getPagesForNotebook(_notebookId);
-    state = PageState(
-      currentPageIndex: pages.length - 1,
-      pages: pages,
-    );
+    state = PageState(currentPageIndex: pages.length - 1, pages: pages);
   }
 
   Future<void> deletePage(int index) async {
@@ -74,6 +71,7 @@ class PageNotifier extends StateNotifier<PageState> {
 
     await _repository.deletePage(_notebookId, index);
     await _store.clearForPage(deletedPageId);
+    _onPageDeleted?.call(deletedPageId);
     final pages = await _repository.getPagesForNotebook(_notebookId);
 
     int newIndex = state.currentPageIndex;
@@ -82,7 +80,7 @@ class PageNotifier extends StateNotifier<PageState> {
     } else if (state.currentPageIndex > index) {
       newIndex--;
     }
-    
+
     state = PageState(currentPageIndex: newIndex, pages: pages);
   }
 
@@ -117,16 +115,13 @@ class PageNotifier extends StateNotifier<PageState> {
     }
 
     final updatedPages = await _repository.getPagesForNotebook(_notebookId);
-    state = PageState(
-      currentPageIndex: index + 1,
-      pages: updatedPages,
-    );
+    state = PageState(currentPageIndex: index + 1, pages: updatedPages);
   }
 
   Future<void> reorderPages(int oldIndex, int newIndex) async {
     await _repository.movePage(_notebookId, oldIndex, newIndex);
     final pages = await _repository.getPagesForNotebook(_notebookId);
-    
+
     int current = state.currentPageIndex;
     if (current == oldIndex) {
       current = newIndex;
@@ -135,15 +130,29 @@ class PageNotifier extends StateNotifier<PageState> {
     } else if (current >= newIndex && current < oldIndex) {
       current++;
     }
-    
+
     state = PageState(currentPageIndex: current, pages: pages);
   }
 }
 
-final pageProvider = StateNotifierProvider.family<PageNotifier, PageState, int>((ref, notebookId) {
+final pageProvider = StateNotifierProvider.family<PageNotifier, PageState, int>((
+  ref,
+  notebookId,
+) {
   final repository = ref.watch(pageRepositoryProvider);
   final store = ref.watch(sceneElementStoreProvider);
-  return PageNotifier(repository, store, notebookId);
+  return PageNotifier(
+    repository,
+    store,
+    notebookId,
+    onPageDeleted: (pageId) {
+      // The deleted page's scene and undo stack would otherwise stay in memory
+      // (and keep a live write queue) for the rest of the session.
+      final key = (notebookId: notebookId, pageId: pageId);
+      ref.invalidate(historyProvider(key));
+      ref.invalidate(sceneControllerProvider(key));
+    },
+  );
 });
 
 final pageRepositoryProvider = Provider<PageRepository>((ref) {

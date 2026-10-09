@@ -39,6 +39,7 @@ class ImageTextRecognitionService {
   /// or a unique id and only ever deleted — so a hit is always valid. Without
   /// this, every debounced page analysis would re-OCR every image on the page.
   final Map<String, List<RecognizedLine>> _cache = {};
+  static const _maxCached = 64;
 
   /// Latin script covers the notes this app is built for. Other scripts are a
   /// separate model and a deliberate future choice, not a per-image guess.
@@ -71,6 +72,7 @@ class ImageTextRecognitionService {
             (text: line.text, bounds: line.boundingBox),
     ];
     _cache[absolutePath] = out;
+    if (_cache.length > _maxCached) _cache.remove(_cache.keys.first);
     return out;
   }
 

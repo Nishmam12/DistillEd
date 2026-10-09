@@ -93,13 +93,14 @@ class LectureTranscriptionNotifier
       while (_queue.isNotEmpty && mounted) {
         await _run(_queue.removeAt(0));
       }
+      // The model is only worth keeping open while there is more to do. Still
+      // pumping until closed, so a new run cannot start on a closing model.
+      try {
+        await _speech.close();
+      } catch (_) {}
     } finally {
       _pumping = false;
     }
-    // The model is only worth keeping open while there is more to do.
-    try {
-      await _speech.close();
-    } catch (_) {}
   }
 
   Future<void> _run(LectureRecording recording) async {

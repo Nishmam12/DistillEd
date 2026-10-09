@@ -5,7 +5,7 @@
 // touched. Analysis runs [debounce] after the last change, is skipped when
 // the page's content signature hasn't changed, and the last successful
 // [PageContext] is cached per page (in [PageContextCache]) so switching away
-// and back is instant. Persistence of contexts belongs to Phase 2's Learning
+// and back is instant. Persistence of contexts belongs to Learning
 // Memory — this cache is session-lifetime only.
 //
 // Cost control: the provider that owns this notifier is autoDispose, so the
@@ -89,7 +89,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
   /// own polling loop. Never allowed to break analysis (see [_notifyContent]).
   final void Function(PageContent content)? _onContent;
 
-  /// Fired with each freshly analyzed [PageContext]. Lets Phase 2's Learning
+  /// Fired with each freshly analyzed [PageContext]. Lets Learning
   /// Memory record concept exposure off this same debounce — again, no second
   /// analysis loop. Never allowed to break analysis (see [_notifyContext]).
   final void Function(PageContext context)? _onContext;
@@ -229,7 +229,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
           'leftDevice=${context.ranOn.leftDevice}');
       _cache.save(_pageId, signature, context);
       if (mounted) state = AsyncValue.data(context);
-      // Durable concept exposure (Phase 2 Learning Memory) — only for a real
+      // Durable concept exposure (Learning Memory) — only for a real
       // analysis; the empty short-circuit above has nothing to remember.
       _notifyContext(context);
       // Fan out the already-extracted content to the Writing Assistant, off the
@@ -237,12 +237,6 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       // (the local runtime serialises them anyway) rather than contending.
       _notifyContent(content);
     } catch (e, st) {
-      // Debug-only: diagnosing the on-device validation pass (2026-07-18) —
-      // remove once the STOP CONDITION investigation wraps up.
-      if (kDebugMode) {
-        debugPrint('[ContextEngine] analyze FAILED (page=$_pageId): '
-            '${e.runtimeType}: $e\n$st');
-      }
       // Surfaced, not swallowed: the sidebar renders the failure kind
       // (model missing → download hint; anything else → gentle retry).
       if (mounted) {

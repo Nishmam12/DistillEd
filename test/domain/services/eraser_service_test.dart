@@ -21,7 +21,7 @@ void main() {
 
   test('hits the element under the eraser point', () {
     final hit = EraserService.hitAlongSegment(
-        a: const Offset(5, 5), b: const Offset(5, 5), radius: 4, elements: els);
+        a: const Offset(5, 5), b: const Offset(5, 5), radius: 6, elements: els);
     expect(hit, {'a'});
   });
 
@@ -50,6 +50,22 @@ void main() {
         b: const Offset(5, 5),
         radius: 4,
         elements: [_rect('a', [0, 0, 10, 10], locked: true)]);
+    expect(hit, isEmpty);
+  });
+
+  test('does not erase a line when only its bounding box is touched', () {
+    final line = SceneShapeElement(
+        id: 'l',
+        zOrder: 0,
+        shapeType: ShapeType.line,
+        geometryData: [0, 0, 100, 100],
+        color: 0xFF000000,
+        strokeWidth: 2);
+    final hit = EraserService.hitAlongSegment(
+        a: const Offset(90, 10),
+        b: const Offset(90, 10),
+        radius: 4,
+        elements: [line]);
     expect(hit, isEmpty);
   });
 }

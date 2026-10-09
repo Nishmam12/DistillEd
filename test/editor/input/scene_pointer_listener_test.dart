@@ -12,11 +12,13 @@ void main() {
   late List<PointerDeviceKind> downs;
   late List<PointerDeviceKind> moves;
   late int cancels;
+  late int ups;
 
   Future<void> pump(WidgetTester tester, {bool handTool = false}) async {
     downs = [];
     moves = [];
     cancels = 0;
+    ups = 0;
     await tester.pumpWidget(
       Directionality(
         textDirection: TextDirection.ltr,
@@ -25,7 +27,7 @@ void main() {
           onStrokeCancel: () => cancels++,
           onPointerDown: (e, StrokePoint _) => downs.add(e.kind),
           onPointerMove: (e, StrokePoint _) => moves.add(e.kind),
-          onPointerUp: (e, StrokePoint _) {},
+          onPointerUp: (e, StrokePoint _) => ups++,
           child: const SizedBox.expand(),
         ),
       ),
@@ -90,6 +92,26 @@ void main() {
       expect(downs, [PointerDeviceKind.touch]);
       expect(moves, [PointerDeviceKind.touch]);
       expect(cancels, 0);
+    });
+
+    testWidgets('a pinch never reports an up without a down', (tester) async {
+      await pump(tester);
+      final a = await tester.startGesture(const Offset(50, 50));
+      final b = await tester.startGesture(const Offset(150, 50));
+      await a.up();
+      await b.up();
+
+      expect(ups, 0);
+    });
+
+    testWidgets('a cancelled pointer cancels the stroke instead of committing',
+        (tester) async {
+      await pump(tester);
+      final finger = await tester.startGesture(const Offset(50, 50));
+      await finger.cancel();
+
+      expect(ups, 0);
+      expect(cancels, 1);
     });
   });
 

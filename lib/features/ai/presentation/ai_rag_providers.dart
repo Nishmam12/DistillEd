@@ -27,7 +27,7 @@ final servingEmbedderSpecProvider = Provider<EmbedderSpec>((ref) {
 /// The effective HuggingFace token for gated downloads.
 ///
 /// The user's Settings token is authoritative. In DEBUG builds only, a local
-/// gitignored dev token ([kDevHuggingFaceToken]) fills in when Settings is
+/// dev token ([kDevHuggingFaceToken], `lib/dev/dev_secrets.dart`) fills in when Settings is
 /// empty, so a developer needn't re-paste after every reinstall. Release builds
 /// never consult it — the [kDebugMode] guard means it can't leak into a shipped
 /// app even if a token-bearing `dev_secrets.dart` were somehow bundled.

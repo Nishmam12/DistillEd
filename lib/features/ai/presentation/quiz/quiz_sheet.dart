@@ -3,7 +3,7 @@
 // answers + explanations.
 //
 // Grading stays UI-local, but checking answers now also files a durable
-// [QuizAttempt] into Phase 2's Learning Memory, attributing each question to the
+// [QuizAttempt] into the Learning Memory, attributing each question to the
 // concepts it tested so a miss decrements those concepts specifically. That
 // write is strictly fire-and-forget: remembering must never break grading.
 
@@ -56,7 +56,13 @@ class _QuizSheet extends ConsumerWidget {
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.92,
         ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        // Keep the answer fields above the keyboard.
+        padding: const EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          16,
+        ).copyWith(bottom: 16 + MediaQuery.of(context).viewInsets.bottom),
         child: switch (state) {
           QuizIdle() || QuizGenerating() =>
             const _Status(label: 'Building your quiz…'),
@@ -69,6 +75,8 @@ class _QuizSheet extends ConsumerWidget {
             :final concepts
           ) =>
             _QuizRunner(
+              // A new question set must never inherit the old one's answers.
+              key: ObjectKey(questions),
               questions: questions,
               notebookId: notebookId,
               pageId: pageId,
@@ -179,6 +187,7 @@ class _QuizRunner extends ConsumerStatefulWidget {
   final List<String> concepts;
 
   const _QuizRunner({
+    super.key,
     required this.questions,
     required this.notebookId,
     required this.pageId,
@@ -244,16 +253,21 @@ class _QuizRunnerState extends ConsumerState<_QuizRunner> {
         pageId: widget.pageId,
         takenAt: DateTime.now(),
         outcomes: [
+          // Coding questions are self-marked *after* this runs, so they would
+          // always be filed as wrong; leave them out rather than mislead
+          // Learning Memory.
           for (var i = 0; i < widget.questions.length; i++)
-            QuizQuestionOutcome(
-              prompt: widget.questions[i].prompt,
-              correct: _isCorrect(i),
-              conceptKeys: conceptKeysMentionedIn(
-                '${widget.questions[i].prompt} '
-                '${widget.questions[i].correctAnswer}',
-                widget.concepts,
+            if (widget.questions[i].isChoice ||
+                widget.questions[i].type == QuestionType.fillBlank)
+              QuizQuestionOutcome(
+                prompt: widget.questions[i].prompt,
+                correct: _isCorrect(i),
+                conceptKeys: conceptKeysMentionedIn(
+                  '${widget.questions[i].prompt} '
+                  '${widget.questions[i].correctAnswer}',
+                  widget.concepts,
+                ),
               ),
-            ),
         ],
       );
       unawaited(ref
@@ -482,7 +496,17 @@ class _OptionRow extends StatelessWidget {
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        enabled: onTap != null,
+        label: switch (state) {
+          _OptionState.correct => '$text, correct answer',
+          _OptionState.wrong => '$text, incorrect',
+          _OptionState.neutral => text,
+        },
+        excludeSemantics: true,
+        child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
@@ -503,6 +527,7 @@ class _OptionRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

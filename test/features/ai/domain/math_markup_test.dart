@@ -172,6 +172,7 @@ Differentiating $f(x) = x^3$ gives $f'(x) = 3x^2$.''';
 
     test('spells a fraction as a division', () {
       expect(mathAsPlainText(r'$\frac{a}{b}$'), 'a/b');
+      expect(mathAsPlainText(r'$x \leq y \left( z \right)$'), r'x ≤ y \left( z \right)');
     });
 
     test('spells a root and a Greek letter', () {

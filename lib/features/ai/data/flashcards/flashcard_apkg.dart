@@ -51,23 +51,26 @@ Uint8List flashcardsToApkg(
 Uint8List _buildCollectionDb(AnkiCollection collection) {
   final dir = Directory.systemTemp.createTempSync('inkflow_apkg');
   final path = '${dir.path}/$_dbEntryName';
-  final db = sqlite3.open(path);
   try {
-    db.execute('BEGIN;');
-    for (final statement in ankiSchemaStatements) {
-      db.execute(statement);
+    final db = sqlite3.open(path);
+    try {
+      db.execute('BEGIN;');
+      for (final statement in ankiSchemaStatements) {
+        db.execute(statement);
+      }
+      _insertRows(db, 'INSERT INTO col VALUES (${_placeholders(13)})',
+          [collection.colValues]);
+      _insertRows(db, 'INSERT INTO notes VALUES (${_placeholders(11)})',
+          [for (final n in collection.notes) n.values]);
+      _insertRows(db, 'INSERT INTO cards VALUES (${_placeholders(18)})',
+          [for (final c in collection.cards) c.values]);
+      db.execute('COMMIT;');
+    } catch (_) {
+      db.execute('ROLLBACK;');
+      rethrow;
+    } finally {
+      db.close();
     }
-    _insertRows(db, 'INSERT INTO col VALUES (${_placeholders(13)})',
-        [collection.colValues]);
-    _insertRows(db, 'INSERT INTO notes VALUES (${_placeholders(11)})',
-        [for (final n in collection.notes) n.values]);
-    _insertRows(db, 'INSERT INTO cards VALUES (${_placeholders(18)})',
-        [for (final c in collection.cards) c.values]);
-    db.execute('COMMIT;');
-  } finally {
-    db.close();
-  }
-  try {
     return File(path).readAsBytesSync();
   } finally {
     dir.deleteSync(recursive: true);

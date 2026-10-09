@@ -181,13 +181,15 @@ class EdgeAiInstaller implements ModelInstaller {
     await builder.install();
     final expected = spec.sha256;
     if (!alreadyThere && expected != null) {
+      final path = await _pathOf(spec.filename);
       try {
         await verifySha256(
-            path: await _pathOf(spec.filename),
-            expected: expected,
-            name: spec.displayName);
+            path: path, expected: expected, name: spec.displayName);
       } on ModelDownloadException {
         await _forgetFile(spec.filename);
+        // The record goes, but a corrupt file must not outlive it.
+        final leftover = File(path);
+        if (await leftover.exists()) await leftover.delete();
         rethrow;
       }
     }

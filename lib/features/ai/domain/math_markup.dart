@@ -160,12 +160,21 @@ String _readableLatex(String latex) {
   out = out.replaceAllMapped(
       RegExp(r'\\sqrt\{([^{}]*)\}'), (m) => '√(${m[1]})');
   out = out.replaceAllMapped(RegExp(r'\^\{?(\d)\}?'), (m) => _superscript(m[1]!));
-  for (final entry in _greek.entries) {
-    out = out.replaceAll(entry.key, entry.value);
+  // A command ends at a non-letter, so `\le` can't eat the front of `\left`.
+  for (final entry in {
+    ..._greek,
+    r'\times': '×',
+    r'\cdot': '·',
+    r'\pm': '±',
+    r'\approx': '≈',
+    r'\leq': '≤',
+    r'\le': '≤',
+    r'\geq': '≥',
+    r'\ge': '≥',
+  }.entries) {
+    out = out.replaceAll(
+        RegExp('${RegExp.escape(entry.key)}(?![a-zA-Z])'), entry.value);
   }
-  out = out.replaceAll(r'\times', '×').replaceAll(r'\cdot', '·');
-  out = out.replaceAll(r'\pm', '±').replaceAll(r'\approx', '≈');
-  out = out.replaceAll(r'\le', '≤').replaceAll(r'\ge', '≥');
   // Leftover grouping braces carry no meaning once the commands are gone.
   return out.replaceAll('{', '').replaceAll('}', '').trim();
 }
@@ -253,4 +262,7 @@ bool _isEscaped(String source, int index) {
   return backslashes.isOdd;
 }
 
-bool _isDigit(String c) => c.codeUnitAt(0) ^ 0x30 <= 9;
+bool _isDigit(String c) {
+  final u = c.codeUnitAt(0);
+  return u >= 0x30 && u <= 0x39;
+}

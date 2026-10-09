@@ -5,6 +5,7 @@
 import 'dart:ui';
 
 import '../geometry/scene_geometry.dart';
+import '../geometry/scene_hit_test.dart';
 import '../model/scene_element.dart';
 
 class EraserService {
@@ -21,17 +22,20 @@ class EraserService {
     for (final e in elements) {
       if (skip.contains(e.id) || e.isLocked) continue;
       final box = SceneGeometry.worldAabb(e).inflate(radius);
-      if (_segmentHitsRect(a, b, box)) hits.add(e.id);
+      if (_segmentTouches(a, b, box, e, radius)) hits.add(e.id);
     }
     return hits;
   }
 
-  static bool _segmentHitsRect(Offset a, Offset b, Rect r) {
-    if (r.contains(a) || r.contains(b)) return true;
+  /// Samples a → b; a sample only counts if it is inside the element's
+  /// inflated world bounds AND actually touches its body (stroke / outline).
+  static bool _segmentTouches(
+      Offset a, Offset b, Rect box, SceneElement e, double radius) {
     final length = (b - a).distance;
     final steps = (length / 4).ceil().clamp(1, 512);
-    for (int i = 1; i < steps; i++) {
-      if (r.contains(Offset.lerp(a, b, i / steps)!)) return true;
+    for (int i = 0; i <= steps; i++) {
+      final pt = Offset.lerp(a, b, i / steps)!;
+      if (box.contains(pt) && SceneHitTest.touches(e, pt, radius)) return true;
     }
     return false;
   }

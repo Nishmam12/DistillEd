@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -104,6 +106,34 @@ void main() {
 
     final ready = n.state as QuizReady;
     expect(ready.questions, hasLength(1));
+    expect(gen.calls, 1);
+  });
+
+  test('a request for another page supersedes the one still building',
+      () async {
+    final slow = Completer<String>();
+    final gen = _FakeGenerator(result: const [
+      QuizQuestion(
+          type: QuestionType.trueFalse,
+          prompt: 'New page question',
+          options: ['True', 'False'],
+          correctIndex: 0,
+          correctAnswer: 'True'),
+    ]);
+    final n = notifier(gen);
+
+    final first = n.generate(QuizRequest(
+        resolveText: () => slow.future,
+        level: KnowledgeLevel.intermediate,
+        pageId: 1));
+    await n.generate(QuizRequest(
+        resolveText: () async => enough,
+        level: KnowledgeLevel.intermediate,
+        pageId: 2));
+    slow.complete(enough);
+    await first;
+
+    expect((n.state as QuizReady).pageId, 2);
     expect(gen.calls, 1);
   });
 

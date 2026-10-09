@@ -55,7 +55,7 @@ class _FlashcardSheet extends ConsumerWidget {
           FlashcardDownloadingModel(:final progress) =>
             _Downloading(progress: progress),
           FlashcardReady(:final cards, :final deckName) =>
-            _Deck(cards: cards, deckName: deckName),
+            _Deck(key: ObjectKey(cards), cards: cards, deckName: deckName),
           FlashcardError() => _ErrorView(state: state),
         },
       ),
@@ -158,7 +158,7 @@ class _ErrorView extends ConsumerWidget {
 class _Deck extends StatefulWidget {
   final List<Flashcard> cards;
   final String deckName;
-  const _Deck({required this.cards, required this.deckName});
+  const _Deck({super.key, required this.cards, required this.deckName});
 
   @override
   State<_Deck> createState() => _DeckState();
@@ -181,18 +181,21 @@ class _DeckState extends State<_Deck> {
     setState(() => _exporting = true);
     try {
       if (apkg) {
+        Uint8List? bytes;
         try {
-          final bytes =
-              flashcardsToApkg(widget.cards, deckName: widget.deckName);
-          await _share(bytes, 'apkg', 'application/octet-stream');
-          return;
+          bytes = flashcardsToApkg(widget.cards, deckName: widget.deckName);
         } catch (_) {
           // The native SQLite engine is unavailable (or the build failed) — fall
           // back to the directive CSV so the user still gets an importable file.
-          await _shareCsv();
-          _notify('Exported as CSV — the .apkg deck format is unavailable here.');
+          // Only the build is caught: a share failure must not re-share as CSV.
+        }
+        if (bytes != null) {
+          await _share(bytes, 'apkg', 'application/octet-stream');
           return;
         }
+        await _shareCsv();
+        _notify('Exported as CSV — the .apkg deck format is unavailable here.');
+        return;
       }
       await _shareCsv();
     } catch (_) {
@@ -350,7 +353,12 @@ class _CardFace extends StatelessWidget {
     final labelBg = showBack ? context.ink.accentStrong : context.ink.surface;
     final labelFg = showBack ? context.ink.textOnAccent : context.ink.textSecondary;
 
-    return Material(
+    return Semantics(
+      button: true,
+      label: showBack ? 'Answer: ${card.back}' : 'Prompt: ${card.front}',
+      hint: showBack ? 'Double tap to show the prompt' : 'Double tap to flip',
+      excludeSemantics: true,
+      child: Material(
       color: bg,
       borderRadius: BorderRadius.circular(28),
       clipBehavior: Clip.antiAlias,
@@ -399,7 +407,7 @@ class _CardFace extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

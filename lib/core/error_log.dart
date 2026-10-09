@@ -13,8 +13,14 @@ class ErrorLog {
   static const _name = 'error_log.txt';
   static const _maxBytes = 100 * 1024;
 
+  static Future<void> _last = Future.value();
+
   /// Appends one entry. Never throws: logging must not become the next error.
-  static Future<void> record(Object error, StackTrace? stack) async {
+  /// Calls are chained so concurrent errors cannot interleave or race the trim.
+  static Future<void> record(Object error, StackTrace? stack) =>
+      _last = _last.then((_) => _record(error, stack));
+
+  static Future<void> _record(Object error, StackTrace? stack) async {
     try {
       final file = await _file();
       final entry = '${DateTime.now().toIso8601String()}\n$error\n'
@@ -22,7 +28,9 @@ class ErrorLog {
       if (await file.exists() && await file.length() > _maxBytes) {
         // Keep the newest half rather than growing without bound.
         final text = await file.readAsString();
-        await file.writeAsString(text.substring(text.length ~/ 2));
+        // Cut at an entry boundary so no half entry is left at the top.
+        final cut = text.indexOf('----\n', text.length ~/ 2);
+        await file.writeAsString(cut < 0 ? '' : text.substring(cut + 5));
       }
       await file.writeAsString(entry, mode: FileMode.append, flush: true);
     } catch (e) {

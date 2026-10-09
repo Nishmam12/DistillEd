@@ -127,8 +127,8 @@ $kMathMarkup''';
   static String _buildPrompt(String noteText, PageContext? previous) {
     final continuity = previous != null && previous.currentTopic.isNotEmpty
         ? '\n\nFor continuity: the previous analysis of this page detected '
-            'the topic "${previous.currentTopic}". The note may have stayed '
-            'on it or moved on — judge from the text alone.'
+            'the topic:\n${fenceUntrusted(previous.currentTopic)}\nThe note may '
+            'have stayed on it or moved on — judge from the text alone.'
         : '';
     return 'NOTE:\n${fenceUntrusted(noteText)}$continuity';
   }

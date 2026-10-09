@@ -16,6 +16,10 @@ void main() {
       expect(truncateToWords('a b c', 5), 'a b c');
       expect(truncateToWords('a b c d e f', 3), 'a b c');
     });
+
+    test('keeps newlines inside the kept part', () {
+      expect(truncateToWords('a\nb\n\nc d e', 3), 'a\nb\n\nc');
+    });
   });
 
   group('chunkByWords', () {

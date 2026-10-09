@@ -44,6 +44,8 @@ class SceneController extends StateNotifier<List<SceneElement>>
 
   /// Loads this page's elements from the store (ordered by zOrder).
   Future<void> load() async {
+    // Let in-flight writes land first so the read can't return stale rows.
+    await _tail;
     state = List.unmodifiable(await _store.loadForPage(_pageId));
   }
 
@@ -72,6 +74,15 @@ class SceneController extends StateNotifier<List<SceneElement>>
       for (final e in state) byId[e.id] ?? e,
     ]);
     await _enqueue(() => _store.upsertForPage(_notebookId, _pageId, elements));
+  }
+
+  /// Replaces elements in memory only (no store write). For per-move updates
+  /// during a drag; the caller persists the final state once via [updateMany].
+  void updateInMemory(List<SceneElement> elements) {
+    final byId = {for (final e in elements) e.id: e};
+    state = List.unmodifiable([
+      for (final e in state) byId[e.id] ?? e,
+    ]);
   }
 
   Future<void> removeMany(Set<String> ids) async {

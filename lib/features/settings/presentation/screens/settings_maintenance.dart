@@ -71,6 +71,10 @@ class _ReclaimSpaceRowState extends ConsumerState<_ReclaimSpaceRow> {
       // Includes the refuse-to-delete guard, whose message is the whole point
       // of it firing — surface it rather than silently doing nothing.
       if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = "Couldn't free up space. Try again.");
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -178,9 +182,9 @@ Future<void> _advanceRollout(
 ) async {
   try {
     await container.read(embedderRolloutRunnerProvider).advance(servingModelId);
-  } catch (e) {
-    messenger.showSnackBar(
-        SnackBar(content: Text('Search model upgrade stopped: $e')));
+  } catch (_) {
+    messenger.showSnackBar(const SnackBar(
+        content: Text('Search model upgrade stopped. Press Continue to resume.')));
   } finally {
     container.invalidate(embedderRolloutStatusProvider);
   }

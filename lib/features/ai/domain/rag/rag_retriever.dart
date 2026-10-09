@@ -5,8 +5,6 @@
 // Storage-agnostic: chunks arrive through a loader callback, so this is unit
 // tested with a list and no Isar.
 
-import 'package:flutter/foundation.dart';
-
 import '../ai_exception.dart';
 import 'hybrid_search.dart';
 import 'note_chunk.dart';
@@ -95,12 +93,7 @@ class RagRetriever {
     if (query.trim().isEmpty) return const [];
     if (pageIds != null && pageIds.isEmpty) return const [];
 
-    // Debug-only: real device numbers for the open STOP CONDITION (tune
-    // kMinRelevance / decide on a heavier vector store) don't exist yet.
-    // Remove once that's settled — see rag_retriever.dart's kMinRelevance doc.
-    final loadWatch = kDebugMode ? (Stopwatch()..start()) : null;
     final chunks = await _loadChunks(notebookId);
-    loadWatch?.stop();
 
     // Only chunks from the CURRENT model are comparable: vectors from a
     // different embedder live in a different space, and cosine over them
@@ -123,25 +116,14 @@ class RagRetriever {
     // load just to compare the query against nothing.
     var hits = const <ScoredItem<NoteChunk>>[];
     if (searchable.isEmpty) {
-      if (kDebugMode) {
-        debugPrint(
-          '[RAG] search: 0/${chunks.length} chunks searchable for notebook '
-          '$notebookId (embedder modelId=${_embedder.modelId}, stored '
-          'modelIds=${chunks.map((c) => c.embeddingModelId).toSet()}), '
-          '${keywordOrder.length} keyword hits',
-        );
-      }
       if (_loadPageTexts == null) return const [];
     } else {
-      final embedWatch = kDebugMode ? (Stopwatch()..start()) : null;
       try {
         final queryVector = await _embedder.embedOne(
           query,
           taskType: EmbedTaskType.query,
         );
-        embedWatch?.stop();
 
-        final sweepWatch = kDebugMode ? (Stopwatch()..start()) : null;
         hits = topKSimilar<NoteChunk>(
           query: queryVector,
           candidates: searchable,
@@ -149,18 +131,6 @@ class RagRetriever {
           topK: topK,
           minScore: minScore,
         );
-        sweepWatch?.stop();
-
-        if (kDebugMode) {
-          debugPrint(
-            '[RAG] search: ${searchable.length}/${chunks.length} chunks '
-            '(load ${loadWatch?.elapsedMilliseconds}ms, '
-            'embed ${embedWatch?.elapsedMilliseconds}ms, '
-            'sweep ${sweepWatch?.elapsedMilliseconds}ms), '
-            '${keywordOrder.length} keyword hits, '
-            'top score ${hits.isEmpty ? "n/a" : hits.first.score.toStringAsFixed(3)}',
-          );
-        }
       } on AiModelNotReadyException {
         // Keyword hits stand alone when the search model is missing. With none,
         // the error must still reach the caller: it is what turns into the

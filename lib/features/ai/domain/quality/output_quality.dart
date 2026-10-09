@@ -123,7 +123,10 @@ const double kMinSourceOverlap = 0.18;
 /// answer legitimately shares few words with a 250-word passage.
 const int kOverlapMinWords = 12;
 
-final RegExp _wordPattern = RegExp(r"[a-zA-Z0-9][a-zA-Z0-9'’\-]*");
+/// Unicode-aware, so Bangla/Devanagari answers are not "empty".
+final RegExp _wordPattern = RegExp(
+    r"[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N}'’\-]*",
+    unicode: true);
 
 /// Checks [output] against [context].
 ///
@@ -208,8 +211,13 @@ String _withoutCitations(String text) =>
 
 /// Bare numeric tokens (not part of an identifier like "h2o").
 Iterable<String> _numbersIn(String text) sync* {
-  for (final m in RegExp(r'(?<![a-zA-Z0-9])\d+(?:[.,]\d+)*(?![a-zA-Z0-9])')
-      .allMatches(text)) {
+  // List ordinals ("1." / "2)" at a line start) are numbering, not claims.
+  final body = text.replaceAll(
+      RegExp(r'^[ \t]*\d+[.)](?=\s)', multiLine: true), ' ');
+  for (final m in RegExp(
+          r'(?<![\p{L}\p{M}\p{N}])\d+(?:[.,]\d+)*(?![\p{L}\p{M}\p{N}])',
+          unicode: true)
+      .allMatches(body)) {
     yield m[0]!.toLowerCase();
   }
 }

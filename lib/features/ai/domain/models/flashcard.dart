@@ -88,6 +88,6 @@ List<Flashcard> selectDue(Iterable<Flashcard> cards, DateTime now) {
     for (final card in cards)
       if (card.isDue(now)) card,
   ];
-  due.sort((a, b) => compareForReview(a.schedule, b.schedule, now));
+  due.sort((a, b) => compareForReview(a.schedule, b.schedule));
   return due;
 }

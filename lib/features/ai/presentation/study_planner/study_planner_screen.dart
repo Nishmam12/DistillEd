@@ -39,8 +39,7 @@ class StudyPlannerScreen extends ConsumerWidget {
             IconButton(
               tooltip: 'New plan',
               icon: const Icon(Icons.refresh),
-              onPressed: () =>
-                  ref.read(studyPlannerProvider(notebookId).notifier).clear(),
+              onPressed: () => _confirmNewPlan(context, ref, notebookId),
             ),
         ],
       ),
@@ -49,13 +48,38 @@ class StudyPlannerScreen extends ConsumerWidget {
         error: (e, _) => _Centered(
           icon: Icons.error_outline,
           title: "Couldn't load your plan",
-          subtitle: '$e',
+          subtitle: 'Something went wrong. Go back and try again.',
         ),
         data: (plan) => plan == null
             ? _GeneratePane(notebookId: notebookId)
             : _PlanView(notebookId: notebookId, plan: plan),
       ),
     );
+  }
+}
+
+Future<void> _confirmNewPlan(
+    BuildContext context, WidgetRef ref, int notebookId) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Replace this plan?'),
+      content: const Text(
+          'Your current study plan and its progress will be discarded.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('New plan'),
+        ),
+      ],
+    ),
+  );
+  if (ok == true && context.mounted) {
+    await ref.read(studyPlannerProvider(notebookId).notifier).clear();
   }
 }
 

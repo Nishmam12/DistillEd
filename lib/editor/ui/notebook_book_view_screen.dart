@@ -47,6 +47,7 @@ class _NotebookBookViewScreenState
 
   Future<void> _load() async {
     await ref.read(pageProvider(widget.notebookId).notifier).initialize();
+    if (!mounted) return;
     await _refresh();
   }
 
@@ -55,6 +56,7 @@ class _NotebookBookViewScreenState
   /// Used after a page mutation, since this screen caches its own page list.
   Future<void> _refresh() async {
     final nb = await IsarService.instance.notebooks.get(widget.notebookId);
+    if (!mounted) return;
     final pages = ref.read(pageProvider(widget.notebookId)).pages;
     final store = ref.read(sceneElementStoreProvider);
     _byPage.clear();

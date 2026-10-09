@@ -20,6 +20,7 @@ Privacy: an image reaches this endpoint only when the user enabled cloud AI
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
 import logging
@@ -39,7 +40,7 @@ from ..logging_config import (
 )
 from ..provider_selection import NoVisionProviderError, select_vision_provider
 from ..providers.base import ProviderError
-from ..rate_limit import RateLimitExceededError
+from ..rate_limit import InvalidDeviceKeyError, RateLimitExceededError
 # Imported as a MODULE, not `from .generate import _get_rate_limiter`, so both
 # routers resolve the limiter through the same attribute at call time — one
 # process-wide daily counter, and one place for a test to substitute it.
@@ -71,7 +72,7 @@ class VisionRequest(BaseModel):
     image_base64: str = Field(max_length=MAX_IMAGE_BYTES * 4 // 3 + 16)
     mime_type: str = "image/png"
     prompt: str = Field(max_length=20_000)
-    temperature: float = 0.0
+    temperature: float = Field(default=0.0, ge=0, le=2)
     max_tokens: int = Field(default=1536, ge=1, le=4096)
     provider_hint: str | None = None
 
@@ -125,7 +126,9 @@ async def vision(
     # cannot bypass the cap by using a different endpoint.
     limiter = generate_router._get_rate_limiter()
     try:
-        limiter.check_and_record(x_device_key, VISION_TOKEN_COST)
+        await asyncio.to_thread(limiter.check_and_record, x_device_key, VISION_TOKEN_COST)
+    except InvalidDeviceKeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RateLimitExceededError as exc:
         raise HTTPException(status_code=429, detail=exc.message) from exc
 
@@ -141,7 +144,7 @@ async def vision(
         )
     except ProviderError as exc:
         _log.warning("provider error: %s", type(exc).__name__)
-        limiter.refund(x_device_key, VISION_TOKEN_COST)
+        await asyncio.to_thread(limiter.refund, x_device_key, VISION_TOKEN_COST)
         log_request(
             RequestLogEntry(
                 request_id=request_id,

@@ -80,7 +80,8 @@ void main() {
       final result = await tool.execute({'query': 'Ada Lovelace'});
 
       expect(result.success, isTrue);
-      expect(result.content, 'Ada Lovelace was an English mathematician.');
+      expect(result.content, contains('Ada Lovelace was an English mathematician.'));
+      expect(result.content, contains('<<DATA-'));
       expect(adapter.requestedUrls, hasLength(1),
           reason: 'a direct hit must not also call the search API');
     });
@@ -106,7 +107,7 @@ void main() {
       final result = await tool.execute({'query': 'mitocondria'});
 
       expect(result.success, isTrue);
-      expect(result.content, 'The powerhouse of the cell.');
+      expect(result.content, contains('The powerhouse of the cell.'));
       expect(adapter.requestedUrls, hasLength(3));
     });
 
@@ -152,6 +153,14 @@ void main() {
 
       expect(result.success, isFalse);
       expect(adapter.requestedUrls, isEmpty);
+    });
+
+    test('a non-string extract is an error result, never a throw', () async {
+      final adapter = _FakeAdapter(const [
+        MapEntry('rest_v1/page/summary', _StubResponse.ok({'extract': 5})),
+      ]);
+      final result = await _toolWith(adapter).execute({'query': 'x'});
+      expect(result.success, isFalse);
     });
 
     test('a very long extract is truncated', () async {

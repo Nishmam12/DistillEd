@@ -5,6 +5,7 @@
 
 import 'package:dio/dio.dart';
 
+import '../untrusted_text.dart';
 import 'tool.dart';
 
 class WikipediaTool implements Tool {
@@ -14,8 +15,11 @@ class WikipediaTool implements Tool {
   static const _maxExtractChars = 1200;
 
   final Dio _dio;
+  final bool Function() _isCloudAllowed;
 
-  WikipediaTool({Dio? dio}) : _dio = dio ?? Dio();
+  WikipediaTool({Dio? dio, bool Function()? isCloudAllowed})
+      : _isCloudAllowed = isCloudAllowed ?? (() => true),
+        _dio = dio ?? Dio();
 
   @override
   String get name => 'wikipedia';
@@ -45,6 +49,10 @@ class WikipediaTool implements Tool {
       return const ToolExecutionResult.error(
           'Missing or empty "query" argument.');
     }
+    if (!_isCloudAllowed()) {
+      return const ToolExecutionResult.error(
+          'Cloud AI is turned off in Settings, so Wikipedia is unavailable.');
+    }
     final trimmed = query.trim();
     try {
       final direct = await _trySummary(trimmed);
@@ -53,9 +61,13 @@ class WikipediaTool implements Tool {
         return ToolExecutionResult.error(
             'No Wikipedia article found for "$trimmed".');
       }
-      return ToolExecutionResult.ok(_truncate(extract));
+      // Wikipedia is user-editable: fenced like web results.
+      return ToolExecutionResult.ok(fenceUntrusted(_truncate(extract)));
     } on DioException catch (e) {
       return ToolExecutionResult.error('Wikipedia lookup failed: ${e.message}');
+    } catch (e) {
+      // Tool.execute never throws: a malformed payload becomes an error result.
+      return ToolExecutionResult.error('Wikipedia lookup failed: $e');
     }
   }
 

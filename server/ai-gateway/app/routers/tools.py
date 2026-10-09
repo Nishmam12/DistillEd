@@ -9,6 +9,7 @@ reasoning as every other provider key in this gateway — see
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from urllib.parse import urlparse
@@ -19,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from ..config import get_settings
 from ..rate_limit import (
+    InvalidDeviceKeyError,
     RateLimitExceededError,
     SearchRateLimitConfig,
     SearchRateLimiter,
@@ -95,8 +97,11 @@ async def search(
             detail="Web search is not configured.",
         )
 
+    limiter = _get_search_rate_limiter()
     try:
-        _get_search_rate_limiter().check_and_record(x_device_key)
+        await asyncio.to_thread(limiter.check_and_record, x_device_key)
+    except InvalidDeviceKeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RateLimitExceededError as exc:
         raise HTTPException(status_code=429, detail=exc.message) from exc
 
@@ -104,6 +109,7 @@ async def search(
         data = await _search_exa(settings, request.query)
     except httpx.HTTPError as exc:
         _log.warning("exa search failed: %s", type(exc).__name__)
+        await asyncio.to_thread(limiter.refund, x_device_key)
         raise HTTPException(
             status_code=502, detail="Web search failed. Try again."
         ) from exc

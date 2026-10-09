@@ -65,7 +65,7 @@ class ElementBounds {
   }
 }
 
-extension on Rect {
+extension RectNormalized on Rect {
   /// Returns a rect with left<=right and top<=bottom.
   Rect normalized() => Rect.fromLTRB(
         left < right ? left : right,

@@ -188,10 +188,14 @@ class ReviewSchedule {
 /// New-cards-last is a deliberate choice — clearing today's due backlog matters
 /// more than meeting new material, and burying the backlog under new cards is
 /// how a deck becomes unmanageable.
-int compareForReview(ReviewSchedule a, ReviewSchedule b, DateTime now) {
+int compareForReview(ReviewSchedule a, ReviewSchedule b) {
   if (a.isNew != b.isNew) return a.isNew ? 1 : -1;
   final aDue = a.dueAt;
   final bDue = b.dueAt;
-  if (aDue == null || bDue == null) return 0;
-  return aDue.compareTo(bDue);
+  if (aDue != null && bDue != null) {
+    final byDue = aDue.compareTo(bDue);
+    if (byDue != 0) return byDue;
+  }
+  // Tie-break (Dart's sort is not stable): the card that has lapsed more first.
+  return b.lapses.compareTo(a.lapses);
 }

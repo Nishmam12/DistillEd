@@ -6,6 +6,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -92,6 +93,9 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   late final Ticker _ticker;
   late final SceneImageCache _imageCache;
 
+  List<SceneElement>? _imageScanFor;
+  List<String> _imagePaths = const [];
+
   Offset? _shapeStart;
   int _shapeSeed = 0;
   int _seq = 0;
@@ -103,6 +107,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   Rect _selBoxStart = Rect.zero;
   Offset _gestureStartScene = Offset.zero;
   List<SceneElement> _selOriginals = const [];
+  List<Rect> _snapTargets = const [];
   bool _didTransform = false;
 
   // Last viewport configuration pushed to the controller, to avoid redundant
@@ -258,7 +263,15 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     _marquee.value = null;
     _guides.value = const [];
     _eraserPending.value = const {};
+    // A transform already applied in memory (never persisted) must not stay on
+    // screen without a history entry: put the originals back.
+    if (_didTransform && _selOriginals.isNotEmpty) {
+      _scene.updateInMemory(_selOriginals);
+    }
     _selMode = _SelMode.none;
+    _activeHandle = null;
+    _selOriginals = const [];
+    _didTransform = false;
   }
 
   void _onViewportUpdate(Offset panDelta, Offset focal, double scaleDelta) {
@@ -310,11 +323,19 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     final elements = ref.watch(sceneControllerProvider(_key));
     final selectedIds = ref.watch(selectionProvider);
 
-    // Kick off decoding of any referenced images (idempotent / deduped).
-    _imageCache.ensure([
-      for (final e in elements)
-        if (e is ImageElement) e.relativeImagePath,
-    ]);
+    // Kick off decoding of any referenced images (idempotent / deduped). The
+    // path scan only reruns when the element list changes, not on every pan
+    // frame; a changed path set also gives earlier failures another chance.
+    if (!identical(elements, _imageScanFor)) {
+      _imageScanFor = elements;
+      final paths = [
+        for (final e in elements)
+          if (e is ImageElement) e.relativeImagePath,
+      ];
+      if (!listEquals(paths, _imagePaths)) _imageCache.retryFailed();
+      _imagePaths = paths;
+    }
+    _imageCache.ensure(_imagePaths);
 
     Rect? boxScreen;
     List<Offset> handleScreen = const [];

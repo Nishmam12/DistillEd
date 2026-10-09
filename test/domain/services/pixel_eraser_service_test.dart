@@ -16,6 +16,27 @@ Path midSwipe() => eraserHole(const [
     ], 12);
 
 void main() {
+  test('interpolated points keep an interpolated capture timestamp', () {
+    final stroke = FreehandElement(
+      id: 'ink',
+      zOrder: 0,
+      color: 0xFF000000,
+      size: 4,
+      points: const [
+        StrokePoint(x: 0, y: 0, pressure: 0.5, t: 0),
+        StrokePoint(x: 100, y: 0, pressure: 0.5, t: 1000),
+      ],
+    );
+    final result = ScenePixelEraserService.erase(
+        eraserPath: midSwipe(), elements: [stroke]);
+    final pts = result.added.expand((e) => e.points);
+    expect(pts, isNotEmpty);
+    expect(pts.map((p) => p.t), everyElement(isNotNull));
+    for (final p in pts) {
+      expect(p.t, closeTo(p.x * 10, 1));
+    }
+  });
+
   group('ScenePixelEraserService.erase — freehand elements', () {
     test('cutting the middle of a stroke splits it into two sub-strokes', () {
       final stroke = FreehandElement(

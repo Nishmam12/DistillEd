@@ -45,7 +45,7 @@ class RecordAudioCapture implements AudioCapturePort {
   bool _recording = false;
 
   RecordAudioCapture({AudioRecorder? recorder})
-      : _recorder = recorder ?? AudioRecorder();
+    : _recorder = recorder ?? AudioRecorder();
 
   @override
   bool get isRecording => _recording;
@@ -56,21 +56,27 @@ class RecordAudioCapture implements AudioCapturePort {
   /// What to ask the plugin for to record in [format].
   @visibleForTesting
   static RecordConfig configFor(AudioFormat format) => switch (format) {
-        // AAC in an m4a container: small, and playable by just_audio on every
-        // target without a codec dependency.
-        AudioFormat.aac => const RecordConfig(encoder: AudioEncoder.aacLc),
-        // What the speech models take as they are — 16 kHz mono 16-bit — so
-        // nothing has to decode or resample it later. just_audio plays WAV too.
-        AudioFormat.speechWav => const RecordConfig(
-            encoder: AudioEncoder.wav,
-            sampleRate: 16000,
-            numChannels: 1,
-          ),
-      };
+    // AAC in an m4a container: small, and playable by just_audio on every
+    // target without a codec dependency.
+    AudioFormat.aac => const RecordConfig(encoder: AudioEncoder.aacLc),
+    // What the speech models take as they are — 16 kHz mono 16-bit — so
+    // nothing has to decode or resample it later. just_audio plays WAV too.
+    AudioFormat.speechWav => const RecordConfig(
+      encoder: AudioEncoder.wav,
+      sampleRate: 16000,
+      numChannels: 1,
+    ),
+  };
 
   @override
-  Future<void> start(String absolutePath,
-      {AudioFormat format = AudioFormat.aac}) async {
+  Future<void> start(
+    String absolutePath, {
+    AudioFormat format = AudioFormat.aac,
+  }) async {
+    // Two notebooks share this recorder; a second start would clobber the first.
+    if (_recording) {
+      throw const AudioUnavailableException('Already recording.');
+    }
     await _service.start();
     try {
       await _recorder.start(configFor(format), path: absolutePath);
@@ -89,8 +95,11 @@ class RecordAudioCapture implements AudioCapturePort {
     if (!_recording) return 0;
     _elapsed.stop();
     _recording = false;
-    await _recorder.stop();
-    await _service.stop();
+    try {
+      await _recorder.stop();
+    } finally {
+      await _service.stop();
+    }
     return _elapsed.elapsedMilliseconds;
   }
 
@@ -100,8 +109,11 @@ class RecordAudioCapture implements AudioCapturePort {
     _elapsed.stop();
     _recording = false;
     // Deletes the partial file as well as stopping the encoder.
-    await _recorder.cancel();
-    await _service.stop();
+    try {
+      await _recorder.cancel();
+    } finally {
+      await _service.stop();
+    }
   }
 
   Future<void> dispose() async {

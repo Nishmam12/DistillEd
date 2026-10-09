@@ -56,6 +56,10 @@ class SceneImageCache extends ChangeNotifier {
     return image;
   }
 
+  /// Forgets past failures so the next [ensure] retries them (e.g. a file that
+  /// had not finished being written when first read).
+  void retryFailed() => _failed.clear();
+
   /// Ensures every path in [relativePaths] is decoded and cached. Idempotent and
   /// safe to call from build(): in-flight and ready paths are skipped.
   Future<void> ensure(Iterable<String> relativePaths) async {

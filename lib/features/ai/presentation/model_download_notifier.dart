@@ -61,11 +61,13 @@ class LlmDownloadNotifier extends StateNotifier<LlmDownloadState> {
   /// [_adopt] can't stack a second waiter per progress tick.
   bool _awaiting = false;
 
+  StreamSubscription<int>? _progressSub;
+
   LlmDownloadNotifier(this._downloads) : super(const LlmDownloadIdle()) {
     // Listened for the whole app lifetime, not just for the duration of
     // [start]: a download the user kicked off from another surface drives this
     // state too, so the sidebar reopens onto live progress whoever started it.
-    _downloads.progress.listen((p) {
+    _progressSub = _downloads.progress.listen((p) {
       if (!mounted) return;
       state = LlmDownloadRunning(p);
       _adopt();
@@ -106,6 +108,12 @@ class LlmDownloadNotifier extends StateNotifier<LlmDownloadState> {
   void _adopt() {
     if (_awaiting || !_downloads.isDownloading) return;
     unawaited(_await());
+  }
+
+  @override
+  void dispose() {
+    _progressSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _await() async {

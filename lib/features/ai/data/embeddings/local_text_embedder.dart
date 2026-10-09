@@ -151,6 +151,14 @@ class LocalTextEmbedder implements TextEmbedder, EmbedderSlotOwner {
         '${spec.displayName} failed to start.',
         cause: e,
       );
+    } on AiException {
+      rethrow;
+    } catch (e) {
+      // UnsupportedError / PlatformException from the native layer.
+      throw AiGenerationException(
+        '${spec.displayName} failed to start.',
+        cause: e,
+      );
     }
 
     try {

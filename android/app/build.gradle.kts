@@ -24,7 +24,6 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.inkflow.inkflow"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
@@ -42,10 +41,13 @@ android {
     signingConfigs {
         if (keyProps.isNotEmpty()) {
             create("release") {
-                storeFile = file(keyProps.getProperty("storeFile"))
-                storePassword = keyProps.getProperty("storePassword")
-                keyAlias = keyProps.getProperty("keyAlias")
-                keyPassword = keyProps.getProperty("keyPassword")
+                fun prop(name: String) = requireNotNull(keyProps.getProperty(name)) {
+                    "android/key.properties is missing '$name'"
+                }
+                storeFile = file(prop("storeFile"))
+                storePassword = prop("storePassword")
+                keyAlias = prop("keyAlias")
+                keyPassword = prop("keyPassword")
             }
         }
     }

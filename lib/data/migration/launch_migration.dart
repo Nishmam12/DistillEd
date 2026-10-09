@@ -26,7 +26,11 @@ Future<void> _backupBeforeMigrating() async {
     final dir = (await getApplicationDocumentsDirectory()).path;
     final backup = File('$dir/inkflow_before_v2.isar');
     if (await backup.exists()) return;
-    await IsarService.instance.copyToFile(backup.path);
+    // Written aside and renamed so an interrupted copy isn't mistaken for done.
+    final tmp = File('${backup.path}.tmp');
+    if (await tmp.exists()) await tmp.delete();
+    await IsarService.instance.copyToFile(tmp.path);
+    await tmp.rename(backup.path);
   } catch (e) {
     debugPrint('Pre-migration backup skipped: $e');
   }

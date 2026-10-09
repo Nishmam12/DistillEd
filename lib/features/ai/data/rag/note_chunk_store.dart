@@ -92,10 +92,11 @@ class IsarNoteChunkStore implements NoteChunkStore {
     final db = _isar();
     return db.writeTxn(() async {
       final collection = db.noteChunkRecords;
-      final models = {
-        for (final row in await collection.filter().idGreaterThan(Isar.minId).findAll())
-          row.embeddingModelId,
-      };
+      final models = await collection
+          .where()
+          .distinctByEmbeddingModelId()
+          .embeddingModelIdProperty()
+          .findAll();
       for (final model in models) {
         if (!keep.contains(model)) {
           await collection.filter().embeddingModelIdEqualTo(model).deleteAll();

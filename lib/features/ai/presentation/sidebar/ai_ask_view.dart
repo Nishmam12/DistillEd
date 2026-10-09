@@ -77,7 +77,9 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
   void initState() {
     super.initState();
     // Autofocus the box the moment the Ask surface opens.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
     // And start loading the model: the student is about to type, and the cold
     // start (3.6–17 s on the reference tablet) overlaps that instead of
     // following the Enter key.
@@ -91,10 +93,20 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
     super.dispose();
   }
 
+  bool _submitting = false;
+
   Future<void> _submit() async {
     final q = _controller.text.trim();
-    if (q.isEmpty) return;
+    if (q.isEmpty || _submitting) return;
+    _submitting = true;
+    try {
+      await _resolveAndAsk(q);
+    } finally {
+      _submitting = false;
+    }
+  }
 
+  Future<void> _resolveAndAsk(String q) async {
     final group = ref.read(pageImportGroupProvider(widget.pageKey)).value;
     // Resolved to concrete page ids ONCE, here, and carried with the question:
     // re-deriving it later could widen what an in-flight answer was allowed to
@@ -168,7 +180,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
         IconButton(
           tooltip: 'Close',
           visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           padding: EdgeInsets.zero,
           icon: Icon(Icons.close, size: 18, color: context.ink.textSecondary),
           onPressed: () => ref.read(askNotesNotifierProvider.notifier).reset(),

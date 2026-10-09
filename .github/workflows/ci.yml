@@ -3,7 +3,10 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, tech-migration]
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   app:
@@ -51,5 +54,6 @@ jobs:
           cache-dependency-path: server/ai-gateway/requirements-dev.txt
       - run: pip install -r requirements-dev.txt
       - run: pytest -q
+      - run: docker build .
       # Known-vulnerable pinned dependencies fail the build.
       - run: pip install pip-audit && pip-audit --require-hashes -r requirements.lock

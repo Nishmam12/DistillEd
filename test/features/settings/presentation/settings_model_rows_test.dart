@@ -162,7 +162,7 @@ class _FakeSpeechInstaller implements SpeechModelInstaller {
 }
 
 /// The row titles, as the screen shows them.
-final _gemmaTitle = '${LlmModelSpec.active.displayName} (summarization)';
+final _gemmaTitle = '${LlmModelSpec.active.displayName} (on-device AI)';
 final _embedTitle = '${EmbedderSpec.active.displayName} (search)';
 final _whisperTitle = SpeechModelSpec.active.displayName;
 const _englishTitle = 'English handwriting model';

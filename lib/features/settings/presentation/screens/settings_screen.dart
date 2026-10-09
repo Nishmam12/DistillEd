@@ -99,7 +99,9 @@ class SettingsScreen extends ConsumerWidget {
                 title: 'Trash',
                 subtitle: 'Restore deleted notes for '
                     '${NoteRepository.trashRetention.inDays} days',
+                onTap: () => context.push('/trash'),
                 trailing: IconButton(
+                  tooltip: 'Open Trash',
                   icon: Icon(PhosphorIconsRegular.caretRight,
                       color: c.textSecondary),
                   onPressed: () => context.push('/trash'),

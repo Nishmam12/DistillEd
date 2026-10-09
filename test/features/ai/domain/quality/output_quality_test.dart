@@ -24,6 +24,17 @@ void main() {
       expect(checkOutputQuality(answer, context: _grounded).passed, isTrue);
     });
 
+    test('a Bangla answer is not read as empty', () {
+      expect(
+          checkOutputQuality('সালোকসংশ্লেষণ ক্লোরোপ্লাস্টে ঘটে।').passed, isTrue);
+    });
+
+    test('numbered list ordinals are not unsupported numbers', () {
+      const answer = 'Two stages happen:\n1. Photosynthesis happens in the '
+          'chloroplast.\n2) Respiration happens in the mitochondria.';
+      expect(checkOutputQuality(answer, context: _grounded).passed, isTrue);
+    });
+
     test('an ordinary grounded answer', () {
       const answer = 'Photosynthesis happens in the chloroplast, where the '
           'light-dependent reactions take place in the thylakoid membrane [1].';

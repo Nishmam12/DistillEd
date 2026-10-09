@@ -142,7 +142,11 @@ class StudyHorizon {
     if (exam == null) return 1;
     // Inclusive of the exam day; clamped so a past/absurd date still yields a
     // sane plan.
-    final span = exam.difference(startDate).inDays + 1;
+    // UTC calendar dates, so a DST shift can't make a day 23h and truncate.
+    final span = DateTime.utc(exam.year, exam.month, exam.day)
+            .difference(DateTime.utc(startDate.year, startDate.month, startDate.day))
+            .inDays +
+        1;
     return span.clamp(1, examDayCap);
   }
 }

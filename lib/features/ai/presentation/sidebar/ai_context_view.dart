@@ -64,9 +64,22 @@ class AiContextView extends ConsumerWidget {
           onReread: reread,
         ),
       AsyncLoading() => const _ReadingState(),
-      AsyncError(:final error) => _ErrorState(pageKey: pageKey, error: error),
+      AsyncError() when previous != null && !previous.isEmpty => _ContextBody(
+          pageKey: pageKey,
+          context: previous,
+          onExplainGap: (g) => explainGap(g, previous.currentTopic),
+          onReread: reread,
+        ),
+      AsyncError(:final error, :final stackTrace) => _logAndShowError(
+          pageKey, error, stackTrace),
     };
   }
+}
+
+Widget _logAndShowError(ScenePageKey pageKey, Object error, StackTrace st) {
+  debugPrint('[AiContextView] analysis failed (page=${pageKey.pageId}): '
+      '${error.runtimeType}: $error\n$st');
+  return _ErrorState(pageKey: pageKey, error: error);
 }
 
 /// Content sent when a knowledge-gap flag is tapped: explain the flagged term,
@@ -360,7 +373,7 @@ class _RereadingBanner extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text('Re-reading your page with Gemma…',
+                child: Text('Re-reading your page…',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -384,9 +397,6 @@ class _RereadingBanner extends StatelessWidget {
   }
 }
 
-/// "Read this page again" — forces a fresh, differently-sampled Gemma-vision
-/// transcription. A real Material button (not a bare InkWell) so the tap target
-/// and ripple are guaranteed, with a comfortable hit area in the topic row.
 /// Says where THIS analysis ran — not what the settings allow.
 ///
 /// The distinction is the whole point. The sidebar's cloud switch shows a
@@ -441,6 +451,9 @@ class _RanOnBadge extends StatelessWidget {
   }
 }
 
+/// "Read this page again" — forces a fresh, differently-sampled vision
+/// transcription. A real Material button (not a bare InkWell) so the tap target
+/// and ripple are guaranteed, with a comfortable hit area in the topic row.
 class _RereadButton extends StatelessWidget {
   final VoidCallback onTap;
   const _RereadButton({required this.onTap});
@@ -556,7 +569,7 @@ class _SuggestionCard extends StatelessWidget {
           IconButton(
             tooltip: 'Dismiss',
             visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
             padding: EdgeInsets.zero,
             icon: Icon(Icons.close, size: 16, color: context.ink.textMuted),
             onPressed: onDismiss,
@@ -690,11 +703,18 @@ class _GapFlag extends StatelessWidget {
       ),
     );
 
-    if (onTap == null) return content;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: content,
+    if (onTap == null) {
+      return Semantics(label: 'Knowledge gap: $text', child: content);
+    }
+    return Semantics(
+      button: true,
+      label: 'Knowledge gap: $text. Double tap to explain',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: content,
+      ),
     );
   }
 }

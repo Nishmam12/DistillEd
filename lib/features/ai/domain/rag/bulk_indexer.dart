@@ -81,12 +81,18 @@ class BulkIndexReport {
   /// download picks all of them up.
   final bool stoppedModelNotReady;
 
+  /// Set when the run stopped early because the vision (page-reading) model
+  /// isn't installed. [stoppedModelNotReady] is also set then (some model is
+  /// missing); this says which.
+  final bool stoppedVisionNotReady;
+
   const BulkIndexReport({
     this.indexed = 0,
     this.unchanged = 0,
     this.cleared = 0,
     this.failedPageIds = const [],
     this.stoppedModelNotReady = false,
+    this.stoppedVisionNotReady = false,
   });
 
   int get pagesTouched => indexed + unchanged + cleared;
@@ -216,6 +222,7 @@ class BulkRagIndexer {
     final texts = <int, String>{}; // in page order
     final failed = <int>[];
     var stopped = false;
+    var visionStopped = false;
     var cancelledWhileReading = false;
 
     void report(BulkIndexPhase phase, int done, int total) => onProgress?.call(
@@ -243,7 +250,7 @@ class BulkRagIndexer {
         texts[pageId] = text;
         await _saveText(notebookId, pageId, text);
       } on AiModelNotReadyException {
-        stopped = true;
+        visionStopped = true;
         break;
       } catch (_) {
         failed.add(pageId);
@@ -297,7 +304,8 @@ class BulkRagIndexer {
       unchanged: unchanged,
       cleared: cleared,
       failedPageIds: failed,
-      stoppedModelNotReady: stopped,
+      stoppedModelNotReady: stopped || visionStopped,
+      stoppedVisionNotReady: visionStopped,
     );
   }
 

@@ -14,14 +14,8 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
-}
-subprojects {
     project.evaluationDependsOn(":app")
-}
 
-
-
-subprojects {
     val configureProject = {
         val androidExtension = extensions.findByName("android")
         if (androidExtension != null) {
@@ -35,12 +29,14 @@ subprojects {
                     println("Dynamically set namespace for subproject ${project.name} to $ns")
                 }
             } catch (e: Exception) {
-                // Ignore if method not found or other reflection errors
+                logger.warn("namespace hack skipped for ${project.name}: $e")
             }
             try {
                 val setCompileSdk = androidExtension.javaClass.getMethod("setCompileSdkVersion", Int::class.java)
                 setCompileSdk.invoke(androidExtension, 36)
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                logger.warn("compileSdk hack skipped for ${project.name}: $e")
+            }
         }
     }
     if (state.executed) {

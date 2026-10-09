@@ -83,6 +83,9 @@ class WebSearchTool implements Tool {
             'Web search is not available right now.');
       }
       return ToolExecutionResult.error('Web search failed: ${e.message}');
+    } catch (e) {
+      // Tool.execute never throws: a malformed payload becomes an error result.
+      return ToolExecutionResult.error('Web search failed: $e');
     }
   }
 }

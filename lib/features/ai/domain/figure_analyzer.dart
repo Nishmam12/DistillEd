@@ -138,13 +138,6 @@ Reply with ONLY a JSON object with keys: kind (chart|diagram|table|equation|illu
 
 Read the real values, labels and relationships off the image — precision matters more than completeness. If the image holds no such visual, reply {"kind": "none"}. No markdown fences, no commentary.''';
 
-  /// Analyses [imageBytes], returning null when the image holds no figure, when
-  /// every attempt failed to produce a usable reading, or when a read too poor
-  /// to be worth showing could not be escalated.
-  ///
-  /// Rethrows [AiModelNotReadyException] from the LOCAL model so the caller can
-  /// offer the download — the same contract [GemmaVisionOcrService] follows. A
-  /// cloud failure is never fatal: it degrades to the local read.
   /// One vision call that yields BOTH halves of an image read: the figure
   /// description and the transcription that comes back in `verbatim_text`.
   ///
@@ -160,6 +153,7 @@ Read the real values, labels and relationships off the image — precision matte
   /// not hold up — see [PageContentExtractor]. This method does not judge it,
   /// because the quality bar for a transcription is the OCR gate's business,
   /// not the figure bar's.
+  ///
   /// Note the transcription survives a `{"kind": "none"}` reply. That is the
   /// COMMON case for a page of plain handwriting, and [analyze] correctly
   /// returns null for it — but the model still transcribed the page on its way
@@ -215,6 +209,13 @@ Read the real values, labels and relationships off the image — precision matte
     return _str(json['verbatim_text']).trim();
   }
 
+  /// Analyses [imageBytes], returning null when the image holds no figure, when
+  /// every attempt failed to produce a usable reading, or when a read too poor
+  /// to be worth showing could not be escalated.
+  ///
+  /// Rethrows [AiModelNotReadyException] from the LOCAL model so the caller can
+  /// offer the download — the same contract [GemmaVisionOcrService] follows. A
+  /// cloud failure is never fatal: it degrades to the local read.
   Future<FigureDescription?> analyze(Uint8List imageBytes) async {
     // Cloud-first: the point of the mode is that the on-device model does not
     // run, so this returns without ever calling [_readLocal] when the cloud

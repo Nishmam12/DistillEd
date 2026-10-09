@@ -7,7 +7,7 @@
 // A missing model surfaces as an error offering the (explicit) download, like
 // Summarize/Explain. Taking + scoring the quiz remains UI-local state, but the
 // notifier now carries the quiz's provenance (notebook/page/concepts) through to
-// [QuizReady] so the sheet can file the graded result into Phase 2's Learning
+// [QuizReady] so the sheet can file the graded result into the Learning
 // Memory. This notifier still persists nothing itself.
 
 import 'package:flutter_riverpod/legacy.dart';
@@ -106,14 +106,20 @@ class QuizNotifier extends StateNotifier<QuizState> {
 
   QuizRequest? _last;
   bool _running = false;
+  int _run = 0;
 
+  /// Starts a quiz. A second tap for the same page while one is building is
+  /// ignored; a request for a different page supersedes the in-flight one
+  /// (whose result is then discarded) so the sheet never shows the old page.
   Future<void> generate(QuizRequest request) async {
-    if (_running) return;
+    if (_running && _last?.pageId == request.pageId) return;
     _last = request;
     _running = true;
+    final run = ++_run;
     try {
       state = const QuizGenerating();
       final text = await request.resolveText();
+      if (!mounted || run != _run) return;
       if (text_budget.countWords(text) < _minWords) {
         state = const QuizError(
           "There isn't enough on this page to build a quiz yet.",
@@ -128,7 +134,7 @@ class QuizNotifier extends StateNotifier<QuizState> {
         allowCoding: request.allowCoding,
         count: request.count,
       );
-      if (!mounted) return;
+      if (!mounted || run != _run) return;
       state = questions.isEmpty
           ? const QuizError(
               "Couldn't put a quiz together from this page. Try again.")
@@ -139,10 +145,10 @@ class QuizNotifier extends StateNotifier<QuizState> {
               concepts: request.concepts,
             );
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || run != _run) return;
       state = _mapError(e);
     } finally {
-      _running = false;
+      if (run == _run) _running = false;
     }
   }
 

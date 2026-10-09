@@ -15,7 +15,12 @@ class SharedPrefsRolloutStateStore implements RolloutStateStore {
   Future<EmbedderRollout> load(String servingModelId) async {
     final raw = (await SharedPreferences.getInstance()).getString(_key);
     if (raw == null) return EmbedderRollout(servingModelId: servingModelId);
-    return EmbedderRollout.fromJson(jsonDecode(raw) as Map<String, Object?>);
+    try {
+      return EmbedderRollout.fromJson(jsonDecode(raw) as Map<String, Object?>);
+    } catch (_) {
+      // Corrupt saved state restarts the rollout rather than blocking it.
+      return EmbedderRollout(servingModelId: servingModelId);
+    }
   }
 
   @override

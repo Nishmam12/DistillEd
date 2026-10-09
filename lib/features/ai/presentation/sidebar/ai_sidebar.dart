@@ -127,18 +127,24 @@ Future<void> showAiSidebarSheet(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.75,
         ),
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          8,
+          24,
+          24 + MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _SidebarHeader(onClose: () => Navigator.of(context).pop()),
             const SizedBox(height: 8),
             Flexible(
-                child: _SidebarBody(
-              pageKey: pageKey,
-              onInsertNote: onInsertNote,
-              onJumpToSource: onJumpToSource,
-            )),
+              child: _SidebarBody(
+                pageKey: pageKey,
+                onInsertNote: onInsertNote,
+                onJumpToSource: onJumpToSource,
+              ),
+            ),
             _SidebarFooter(pageKey: pageKey, onSummarize: onSummarize),
           ],
         ),
@@ -225,14 +231,11 @@ class _SidebarFooter extends ConsumerWidget {
 class _AskBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
+    return _ActionChip(
+      icon: Icons.travel_explore_outlined,
+      label: 'Ask notes',
+      enabled: true,
       onTap: () => ref.read(askNotesNotifierProvider.notifier).startComposing(),
-      child: const _ActionChip(
-        icon: Icons.travel_explore_outlined,
-        label: 'Ask notes',
-        enabled: true,
-      ),
     );
   }
 }
@@ -244,14 +247,11 @@ class _AskBar extends ConsumerWidget {
 class _ResearchBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
+    return _ActionChip(
+      icon: Icons.manage_search,
+      label: 'Research',
+      enabled: true,
       onTap: () => ref.read(researchNotifierProvider.notifier).startComposing(),
-      child: const _ActionChip(
-        icon: Icons.manage_search,
-        label: 'Research',
-        enabled: true,
-      ),
     );
   }
 }
@@ -289,8 +289,12 @@ class _SummarizeBar extends ConsumerWidget {
         if (group != null)
           PopupMenuItem(
             value: SummarizeScopeChoice.importGroup,
-            child: Text(scopeChoiceLabel(AiScopeKind.importGroup,
-                sourceName: group.importSourceName)),
+            child: Text(
+              scopeChoiceLabel(
+                AiScopeKind.importGroup,
+                sourceName: group.importSourceName,
+              ),
+            ),
           ),
         const PopupMenuItem(
           value: SummarizeScopeChoice.notebook,
@@ -353,17 +357,25 @@ class _ExplainBar extends ConsumerWidget {
     final ids = ref.read(selectionProvider);
     final pageId = pageKey.pageId;
 
-    ref.read(explainNotifierProvider.notifier).run(ExplainRequest(
-          mode: mode,
-          resolveContent: () async {
-            await recognition.ensureModelDownloaded(languageCode);
-            // Explicit user action → deep read, so a selected chart is
-            // explained rather than reduced to its axis labels.
-            final content = await extractor.extractSelection(pageId, ids,
-                languageCode: languageCode, useVision: true);
-            return content.combinedTextWithFigures;
-          },
-        ));
+    ref
+        .read(explainNotifierProvider.notifier)
+        .run(
+          ExplainRequest(
+            mode: mode,
+            resolveContent: () async {
+              await recognition.ensureModelDownloaded(languageCode);
+              // Explicit user action → deep read, so a selected chart is
+              // explained rather than reduced to its axis labels.
+              final content = await extractor.extractSelection(
+                pageId,
+                ids,
+                languageCode: languageCode,
+                useVision: true,
+              );
+              return content.combinedTextWithFigures;
+            },
+          ),
+        );
   }
 }
 
@@ -376,14 +388,11 @@ class _QuizBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
+    return _ActionChip(
+      icon: Icons.quiz_outlined,
+      label: 'Quiz',
+      enabled: true,
       onTap: () => _startQuiz(context, ref),
-      child: const _ActionChip(
-        icon: Icons.quiz_outlined,
-        label: 'Quiz',
-        enabled: true,
-      ),
     );
   }
 
@@ -398,23 +407,30 @@ class _QuizBar extends ConsumerWidget {
     final allowCoding =
         context0 != null && QuizGenerator.looksLikeProgramming(context0);
 
-    ref.read(quizNotifierProvider.notifier).generate(QuizRequest(
-          level: level,
-          allowCoding: allowCoding,
-          notebookId: pageKey.notebookId,
-          pageId: pageId,
-          // The page's concepts, so each graded question can be attributed back
-          // to what it actually tested (Phase 2 Learning Memory).
-          concepts: context0?.keyConcepts ?? const [],
-          resolveText: () async {
-            await recognition.ensureModelDownloaded(languageCode);
-            // Deep read: "what does this graph show" is exactly the kind of
-            // question a quiz should be able to ask.
-            final content = await extractor.extractPage(pageId,
-                languageCode: languageCode, useVision: true);
-            return content.combinedTextWithFigures;
-          },
-        ));
+    ref
+        .read(quizNotifierProvider.notifier)
+        .generate(
+          QuizRequest(
+            level: level,
+            allowCoding: allowCoding,
+            notebookId: pageKey.notebookId,
+            pageId: pageId,
+            // The page's concepts, so each graded question can be attributed back
+            // to what it actually tested (Learning Memory).
+            concepts: context0?.keyConcepts ?? const [],
+            resolveText: () async {
+              await recognition.ensureModelDownloaded(languageCode);
+              // Deep read: "what does this graph show" is exactly the kind of
+              // question a quiz should be able to ask.
+              final content = await extractor.extractPage(
+                pageId,
+                languageCode: languageCode,
+                useVision: true,
+              );
+              return content.combinedTextWithFigures;
+            },
+          ),
+        );
     showQuizSheet(context);
   }
 }
@@ -427,14 +443,11 @@ class _FlashcardBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
+    return _ActionChip(
+      icon: Icons.style_outlined,
+      label: 'Cards',
+      enabled: true,
       onTap: () => _startCards(context, ref),
-      child: const _ActionChip(
-        icon: Icons.style_outlined,
-        label: 'Cards',
-        enabled: true,
-      ),
     );
   }
 
@@ -442,56 +455,82 @@ class _FlashcardBar extends ConsumerWidget {
     final extractor = ref.read(pageContentExtractorProvider);
     final recognition = ref.read(handwritingRecognitionServiceProvider);
     final languageCode = ref.read(settingsProvider).recognitionLanguage;
-    final pageContext = ref.read(pageContextProvider(pageKey).notifier).shown ??
+    final pageContext =
+        ref.read(pageContextProvider(pageKey).notifier).shown ??
         PageContext.empty;
     final pageId = pageKey.pageId;
 
-    ref.read(flashcardNotifierProvider.notifier).generate(FlashcardRequest(
-          notebookId: pageKey.notebookId,
-          pageId: pageId,
-          context: pageContext,
-          resolveText: () async {
-            await recognition.ensureModelDownloaded(languageCode);
-            final content = await extractor.extractPage(pageId,
-                languageCode: languageCode, useVision: true);
-            return content.combinedTextWithFigures;
-          },
-        ));
+    ref
+        .read(flashcardNotifierProvider.notifier)
+        .generate(
+          FlashcardRequest(
+            notebookId: pageKey.notebookId,
+            pageId: pageId,
+            context: pageContext,
+            resolveText: () async {
+              await recognition.ensureModelDownloaded(languageCode);
+              final content = await extractor.extractPage(
+                pageId,
+                languageCode: languageCode,
+                useVision: true,
+              );
+              return content.combinedTextWithFigures;
+            },
+          ),
+        );
     showFlashcardSheet(context);
   }
 }
 
 /// A pill-styled action trigger shared by the Summarize/Explain launchers.
+///
+/// [onTap] is null when a surrounding widget (a popup menu) owns the tap.
 class _ActionChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool enabled;
+  final VoidCallback? onTap;
   const _ActionChip({
     required this.icon,
     required this.label,
     required this.enabled,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final fg = enabled ? context.ink.accentStrong : context.ink.textMuted;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-      decoration: BoxDecoration(
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      child: Material(
         color: enabled ? context.ink.accentWash : context.ink.surfaceHighlight,
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: fg),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600, color: fg),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 16, color: fg),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: fg,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -510,19 +549,22 @@ class _SidebarHeader extends StatelessWidget {
           Icon(Icons.auto_awesome, size: 18, color: context.ink.accent),
           const SizedBox(width: 8),
           Flexible(
-            child: Text('AI insights',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: context.ink.textPrimary,
-                )),
+            child: Text(
+              'AI insights',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: context.ink.textPrimary,
+              ),
+            ),
           ),
           const Spacer(),
           const CloudModelToggle(),
           IconButton(
             tooltip: 'Close',
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
             icon: Icon(Icons.close, size: 20, color: context.ink.textSecondary),
             onPressed: onClose,
           ),
@@ -567,40 +609,49 @@ class CloudModelToggle extends ConsumerWidget {
       message: switch (settings.aiMode) {
         AiProcessingMode.onDevice =>
           'On-device only — everything runs on your device',
-        AiProcessingMode.auto => asksEachTime
-            ? "Auto — on-device first; you're asked before anything is sent"
-            : 'Auto — on-device first, cloud if it fails',
+        AiProcessingMode.auto =>
+          asksEachTime
+              ? "Auto — on-device first; you're asked before anything is sent"
+              : 'Auto — on-device first, cloud if it fails',
         AiProcessingMode.cloudFirst =>
           'Cloud-first — pages are read in the cloud. Change in Settings',
       },
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => ref
-            .read(settingsProvider.notifier)
-            .setCloudAiEnabled(!on),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                on ? Icons.cloud_outlined : Icons.cloud_off_outlined,
-                size: 17,
-                color: on ? context.ink.accent : context.ink.textMuted,
+      child: Semantics(
+        label: 'Cloud AI',
+        toggled: on,
+        excludeSemantics: true,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () =>
+              ref.read(settingsProvider.notifier).setCloudAiEnabled(!on),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    on ? Icons.cloud_outlined : Icons.cloud_off_outlined,
+                    size: 17,
+                    color: on ? context.ink.accent : context.ink.textMuted,
+                  ),
+                  const SizedBox(width: 4),
+                  // A real Switch, scaled down: the affordance has to read as a
+                  // setting the student controls, not as a status light.
+                  Transform.scale(
+                    scale: 0.7,
+                    // Taps are handled by the surrounding InkWell, so there is a
+                    // single toggle path (and a single semantics node).
+                    child: IgnorePointer(
+                      child: ExcludeSemantics(
+                        child: Switch(value: on, onChanged: (_) {}),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              // A real Switch, scaled down: the affordance has to read as a
-              // setting the student controls, not as a status light.
-              Transform.scale(
-                scale: 0.7,
-                child: Switch(
-                  value: on,
-                  onChanged: (value) => ref
-                      .read(settingsProvider.notifier)
-                      .setCloudAiEnabled(value),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

@@ -1,5 +1,6 @@
 // StateNotifier that manages the list of notebooks via NoteRepository.
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -64,7 +65,12 @@ class HomeNotifier extends StateNotifier<List<Notebook>> {
   /// Startup path: clear out expired trash, then load the live list. Runs once
   /// when the provider is first read, which in practice is app launch.
   Future<void> initialize() async {
-    await purgeExpiredTrash();
+    try {
+      await purgeExpiredTrash();
+    } catch (e) {
+      // Housekeeping: the list must load even when the purge fails.
+      debugPrint('Trash purge failed: $e');
+    }
     await loadNotebooks();
   }
 

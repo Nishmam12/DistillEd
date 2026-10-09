@@ -430,8 +430,7 @@ class SceneElementPainter {
     }
   }
 
-  // ---- image (placeholder; real bitmap loading lands with the image
-  //      lifecycle in a later phase) -------------------------------------------
+  // ---- image (draws the decoded bitmap, or a placeholder until it loads) ----
 
   static void _image(Canvas canvas, ImageElement im, ui.Image? bitmap) {
     final rect = _rectFromLTRB(im.geometryData);
@@ -489,13 +488,4 @@ class SceneElementPainter {
     if (g.length < 4) return Rect.zero;
     return Rect.fromLTRB(g[0], g[1], g[2], g[3]).normalized();
   }
-}
-
-extension on Rect {
-  Rect normalized() => Rect.fromLTRB(
-        left < right ? left : right,
-        top < bottom ? top : bottom,
-        left < right ? right : left,
-        top < bottom ? bottom : top,
-      );
 }

@@ -39,8 +39,11 @@ class SelectionBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.read(historyProvider(pageKey).notifier);
     final sel = ref.read(selectionProvider.notifier);
-    final ids = ref.read(selectionProvider);
-    final all = ref.read(sceneControllerProvider(pageKey));
+    // Watched, not read: the z-order buttons and the text toggles below
+    // snapshot `all`, and a stale one would revert edits made since the last
+    // rebuild.
+    final ids = ref.watch(selectionProvider);
+    final all = ref.watch(sceneControllerProvider(pageKey));
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -110,6 +113,7 @@ class SelectionBar extends ConsumerWidget {
             icon: const Icon(Icons.join_full),
             onPressed: () {
               final before = _sel(ref);
+              if (before.length < 2) return;
               final gid = editorNewId();
               history.push(UpdateElementsCommand(
                 before: before,
@@ -124,6 +128,7 @@ class SelectionBar extends ConsumerWidget {
             icon: const Icon(Icons.join_inner),
             onPressed: () {
               final before = _sel(ref);
+              if (before.every((e) => e.groupId.isEmpty)) return;
               history.push(UpdateElementsCommand(
                 before: before,
                 after: [
@@ -144,6 +149,7 @@ class SelectionBar extends ConsumerWidget {
               tooltip: allLocked ? 'Unlock' : 'Lock',
               icon: Icon(allLocked ? Icons.lock_open_outlined : Icons.lock_outline),
               onPressed: () {
+                if (before.isEmpty) return;
                 history.push(UpdateElementsCommand(
                   before: before,
                   after: [
@@ -188,11 +194,8 @@ class SelectionBar extends ConsumerWidget {
             icon: const Icon(Icons.horizontal_distribute),
             onPressed: () {
               final before = _sel(ref);
-              history.push(UpdateElementsCommand(
-                before: before,
-                after:
-                    AlignmentService.distribute(before, SceneAxis.horizontal),
-              ));
+              _pushMoved(history, before,
+                  AlignmentService.distribute(before, SceneAxis.horizontal));
             },
           ),
         ],
@@ -202,9 +205,18 @@ class SelectionBar extends ConsumerWidget {
 
   void _align(WidgetRef ref, HistoryController history, AlignEdge edge) {
     final before = _sel(ref);
+    _pushMoved(history, before, AlignmentService.align(before, edge));
+  }
+
+  /// Pushes one undo step for [moved] (the elements an align/distribute
+  /// actually changed); nothing when it changed nothing.
+  void _pushMoved(HistoryController history, List<SceneElement> selected,
+      List<SceneElement> moved) {
+    if (moved.isEmpty) return;
+    final ids = {for (final e in moved) e.id};
     history.push(UpdateElementsCommand(
-      before: before,
-      after: AlignmentService.align(before, edge),
+      before: [for (final e in selected) if (ids.contains(e.id)) e],
+      after: moved,
     ));
   }
 
@@ -346,9 +358,6 @@ class SelectionBar extends ConsumerWidget {
     return painter.width;
   }
 
-  /// The single [ImageElement] in the selection that has a file behind it, or
-  /// null when the selection is anything else. Locked is fine — a page-sized
-  /// import is locked by default, and reading it changes nothing about it.
   /// A single selected stroke that was drawn during a recording, or null.
   static FreehandElement? _recordedStroke(
       Set<String> ids, List<SceneElement> all) {
@@ -357,6 +366,9 @@ class SelectionBar extends ConsumerWidget {
     return e is FreehandElement && e.hasAudio ? e : null;
   }
 
+  /// The single [ImageElement] in the selection that has a file behind it, or
+  /// null when the selection is anything else. Locked is fine — a page-sized
+  /// import is locked by default, and reading it changes nothing about it.
   static ImageElement? _singleImage(Set<String> ids, List<SceneElement> all) {
     if (ids.length != 1) return null;
     final e = all.where((e) => e.id == ids.first).firstOrNull;
@@ -432,7 +444,8 @@ class SelectionBar extends ConsumerWidget {
           fontSize: p.fontSize,
         ),
     ];
-    ref.read(historyProvider(pageKey).notifier).push(AddElementsCommand(added));
+    final history = ref.read(historyProvider(pageKey).notifier);
+    history.push(AddElementsCommand(added));
 
     messenger.showSnackBar(SnackBar(
       content: Text('Extracted ${added.length} line'
@@ -440,9 +453,9 @@ class SelectionBar extends ConsumerWidget {
       duration: const Duration(seconds: 6),
       action: SnackBarAction(
         label: 'Remove picture',
-        onPressed: () => ref
-            .read(historyProvider(pageKey).notifier)
-            .push(RemoveElementsCommand([im])),
+        // `history` is captured above: `ref` may be dead by the time this
+        // fires (the bar unmounts when the selection changes).
+        onPressed: () => history.push(RemoveElementsCommand([im])),
       ),
     ));
   }

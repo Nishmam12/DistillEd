@@ -30,7 +30,9 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
   }
 
   @override
@@ -87,7 +89,7 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
         IconButton(
           tooltip: 'Close',
           visualDensity: VisualDensity.compact,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           padding: EdgeInsets.zero,
           icon: Icon(Icons.close, size: 18, color: context.ink.textSecondary),
           onPressed: () => ref.read(researchNotifierProvider.notifier).reset(),

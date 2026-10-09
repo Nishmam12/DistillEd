@@ -24,14 +24,15 @@
 // frames are never touched. Bound text survives its cut container as a
 // standalone TextElement.
 //
-// Interpolated points introduced by densification carry no capture timestamp
-// (t = null), so a split stroke falls back to synthesized timing in
-// handwriting recognition — deltas within surviving original points are lost
-// only at the cut seams.
+// Interpolated points introduced by densification get an interpolated capture
+// timestamp, so handwriting recognition keeps real timing on a split stroke —
+// deltas are lost only at the cut seams.
 
 import 'dart:math' as math;
 import 'dart:ui';
 
+import '../geometry/geometry_utils.dart';
+import '../geometry/scene_geometry.dart';
 import '../geometry/shape_geometry.dart';
 import '../model/scene_element.dart';
 
@@ -225,8 +226,8 @@ class ScenePixelEraserService {
 
   // ---- Densification --------------------------------------------------------
 
-  /// Interpolated points get no capture timestamp (t stays null) — see the
-  /// library-level note on recognition timing.
+  /// Interpolated points get an interpolated capture timestamp (null only when
+  /// an endpoint has none) — see the library-level note on recognition timing.
   static List<StrokePoint> _densifyPoints(List<StrokePoint> pts) {
     if (pts.length < 2) return List<StrokePoint>.from(pts);
     final out = <StrokePoint>[pts.first];
@@ -242,6 +243,9 @@ class ScenePixelEraserService {
           y: a.y + (b.y - a.y) * f,
           pressure: a.pressure + (b.pressure - a.pressure) * f,
           simulatePressure: a.simulatePressure,
+          t: a.t == null || b.t == null
+              ? null
+              : (a.t! + (b.t! - a.t!) * f).round(),
         ));
       }
     }
@@ -276,9 +280,9 @@ class ScenePixelEraserService {
   /// centre. Elbowed arrows are approximated by their straight line.
   static List<(List<Offset>, bool)> _shapeOutlines(SceneShapeElement shape) {
     final data = shape.geometryData;
-    final centre = _shapeCentre(shape);
+    final centre = SceneGeometry.shapeCenter(shape);
     final rot = shape.rotation;
-    Offset r(Offset p) => rot == 0 ? p : _rotateAround(p, centre, rot);
+    Offset r(Offset p) => rot == 0 ? p : GeometryUtils.rotatePoint(p, centre, rot);
     List<Offset> rl(List<Offset> l) => [for (final p in l) r(p)];
 
     switch (shape.shapeType) {
@@ -331,32 +335,6 @@ class ScenePixelEraserService {
           cy + math.sin(i / steps * 2 * math.pi) * ry,
         ),
     ];
-  }
-
-  static Offset _rotateAround(Offset p, Offset c, double angle) {
-    final cosA = math.cos(angle), sinA = math.sin(angle);
-    final dx = p.dx - c.dx, dy = p.dy - c.dy;
-    return Offset(c.dx + dx * cosA - dy * sinA, c.dy + dx * sinA + dy * cosA);
-  }
-
-  static Offset _shapeCentre(SceneShapeElement shape) {
-    switch (shape.shapeType) {
-      case ShapeType.circle:
-      case ShapeType.rectangle:
-      case ShapeType.textBox:
-      case ShapeType.svgImage:
-        return ShapeGeometry.rectFromGeometry(shape.geometryData).center;
-      case ShapeType.line:
-      case ShapeType.arrow:
-        final (start, end) =
-            ShapeGeometry.lineFromGeometry(shape.geometryData);
-        return Offset((start.dx + end.dx) / 2, (start.dy + end.dy) / 2);
-      case ShapeType.triangle:
-      case ShapeType.polygon:
-      case ShapeType.diamond:
-        final verts = ShapeGeometry.verticesFromGeometry(shape.geometryData);
-        return verts.isEmpty ? Offset.zero : ShapeGeometry.centroid(verts);
-    }
   }
 
   // ---- Bounds / id helpers --------------------------------------------------

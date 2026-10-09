@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../domain/geometry/scene_geometry.dart';
 import '../../domain/geometry/selection_bounds.dart';
 import '../../domain/model/scene_element.dart';
 import '../../domain/geometry/shape_geometry.dart';
@@ -348,7 +349,7 @@ class SceneExporter {
 
   static String? _rotateAttr(SceneElement e) {
     if (e.rotation == 0) return null;
-    final c = SelectionBounds.union([e])?.center ?? Offset.zero;
+    final c = SceneGeometry.center(e);
     final deg = e.rotation * 180 / math.pi;
     return 'rotate(${_n(deg)} ${_n(c.dx)} ${_n(c.dy)})';
   }

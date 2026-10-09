@@ -48,7 +48,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
         _modelRow(
           key: ValueKey('llm-$_refresh'),
           icon: PhosphorIconsRegular.brain,
-          title: '${LlmModelSpec.active.displayName} (summarization)',
+          title: '${LlmModelSpec.active.displayName} (on-device AI)',
           sizeLabel: '${sizeGb.toStringAsFixed(1)} GB',
           isInstalled: downloads.isInstalled,
           confirmDelete: true,
@@ -256,7 +256,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           title: const Text('Delete model?'),
           content: Text(
               '$title will be removed from this device. It will need to be '
-              'downloaded again to summarize notes offline.'),
+              'downloaded again to use AI features offline.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -272,7 +272,14 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
       );
       if (sure != true) return;
     }
-    await onDelete();
+    try {
+      await onDelete();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Couldn't delete $title. Try again.")));
+      }
+    }
     if (mounted) setState(() => _refresh++);
   }
 }
@@ -424,7 +431,15 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
   }
 
   Future<void> _delete() async {
-    await ref.read(embedderDownloadManagerProvider).delete();
+    try {
+      await ref.read(embedderDownloadManagerProvider).delete();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Couldn't delete the search model. Try again.")));
+      }
+      return;
+    }
     if (!mounted) return;
     setState(() => _failure = null);
     _refreshInstalled();

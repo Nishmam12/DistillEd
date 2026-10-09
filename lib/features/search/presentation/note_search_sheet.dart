@@ -65,18 +65,25 @@ class _NoteSearchSheetState extends ConsumerState<_NoteSearchSheet> {
   /// keystroke — a notebook's worth of text is small, and re-querying storage
   /// per character would be pointless work.
   Future<void> _load() async {
-    final pages =
-        await ref.read(pageRepositoryProvider).getPagesForNotebook(widget.notebookId);
-    final texts =
-        await ref.read(pageTextStoreProvider).forNotebook(widget.notebookId);
-    if (!mounted) return;
-    setState(() {
+    try {
+      final pages = await ref
+          .read(pageRepositoryProvider)
+          .getPagesForNotebook(widget.notebookId);
+      final texts =
+          await ref.read(pageTextStoreProvider).forNotebook(widget.notebookId);
+      if (!mounted) return;
       _pages = texts;
       _pageIndexById = {
         for (var i = 0; i < pages.length; i++) pages[i].id: i,
       };
-      _loading = false;
-    });
+    } finally {
+      // Never leave the spinner up on an error; the empty state shows instead.
+      if (mounted) {
+        setState(() => _loading = false);
+        // The user may have typed while this was loading.
+        _onQueryChanged(_controller.text);
+      }
+    }
   }
 
   void _onQueryChanged(String query) {
@@ -116,6 +123,7 @@ class _NoteSearchSheetState extends ConsumerState<_NoteSearchSheet> {
                   suffixIcon: query.isEmpty
                       ? null
                       : IconButton(
+                          tooltip: 'Clear',
                           icon: const Icon(Icons.clear),
                           onPressed: () {
                             _controller.clear();
@@ -165,8 +173,9 @@ class _NoteSearchSheetState extends ConsumerState<_NoteSearchSheet> {
     if (query.isEmpty) {
       return _message(
         _pages.isEmpty
-            ? 'Nothing has been read from this notebook yet. Handwriting and '
-                'imported pages become searchable shortly after you write them.'
+            ? 'Nothing is searchable in this notebook yet. A page becomes '
+                'searchable once the AI sidebar has read it, or after it is '
+                'indexed in the background.'
             : 'Type to search this notebook.',
       );
     }

@@ -9,16 +9,24 @@ import 'stroke.dart';
 
 class InkFileStorage {
   /// Returns the directory path for a notebook's ink files.
-  static Future<String> _notebookDir(int notebookId) async {
+  /// Created only when [create] (saving); read and delete must not make dirs.
+  static Future<String> _notebookDir(
+    int notebookId, {
+    bool create = false,
+  }) async {
     final appDir = await getApplicationDocumentsDirectory();
     final dir = '${appDir.path}/notes/$notebookId';
-    await Directory(dir).create(recursive: true);
+    if (create) await Directory(dir).create(recursive: true);
     return dir;
   }
 
   /// Returns the file path for a specific page's ink data.
-  static Future<String> _pageFilePath(int notebookId, int pageId) async {
-    final dir = await _notebookDir(notebookId);
+  static Future<String> _pageFilePath(
+    int notebookId,
+    int pageId, {
+    bool create = false,
+  }) async {
+    final dir = await _notebookDir(notebookId, create: create);
     return '$dir/page_$pageId.ink';
   }
 
@@ -27,7 +35,7 @@ class InkFileStorage {
     required int pageId,
     required List<Stroke> strokes,
   }) async {
-    final filePath = await _pageFilePath(notebookId, pageId);
+    final filePath = await _pageFilePath(notebookId, pageId, create: true);
     final tmpFile = File('$filePath.tmp');
     final finalFile = File(filePath);
     final bakFile = File('$filePath.bak');
@@ -42,7 +50,7 @@ class InkFileStorage {
       }
 
       // 2. Write to the temporary file
-      await tmpFile.writeAsString(jsonString);
+      await tmpFile.writeAsString(jsonString, flush: true);
 
       // 3. Atomically replace the final file
       await tmpFile.rename(finalFile.path);
@@ -82,7 +90,7 @@ class InkFileStorage {
         finalFile.copySync(bakFile.path);
       }
 
-      tmpFile.writeAsStringSync(jsonString);
+      tmpFile.writeAsStringSync(jsonString, flush: true);
       tmpFile.renameSync(finalFile.path);
 
       // Remove backup only after a confirmed successful rename.

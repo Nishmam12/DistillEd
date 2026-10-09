@@ -1,11 +1,8 @@
-// The real notebook editor on the unified engine (Canvas 2.0). Opens a notebook
+// The notebook editor on the unified engine. Opens a notebook
 // by id, drives page navigation through the existing [pageProvider], and binds
 // the unified [SceneCanvas] to the real Isar-backed scene store (so edits load
 // and autosave through [SceneElementRecord]). Paper colour + template come from
 // the [Notebook]. All chrome is shared with the dev playground.
-//
-// Reachable from Home when "Canvas 2.0" is enabled in Settings; the legacy
-// editor stays intact and is removed only in a later, separately-approved phase.
 
 import 'dart:async';
 
@@ -142,7 +139,9 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
   Future<void> _init() async {
     await ref.read(pageProvider(widget.notebookId).notifier).initialize();
+    if (!mounted) return;
     final nb = await IsarService.instance.notebooks.get(widget.notebookId);
+    if (!mounted) return;
     await ref.read(libraryProvider.notifier).load();
     if (mounted) setState(() => _notebook = nb);
   }
@@ -420,6 +419,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: width);
     final height = painter.height + 16 / zoom;
+    painter.dispose();
 
     // Slide the box down past anything already on the page, staying inside the
     // visible area. Bounds come from the canonical [ElementBounds]; degenerate

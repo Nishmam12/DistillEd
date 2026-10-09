@@ -111,7 +111,7 @@ class _Header extends ConsumerWidget {
             IconButton(
               tooltip: 'Close',
               visualDensity: VisualDensity.compact,
-              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
               padding: EdgeInsets.zero,
               icon: Icon(Icons.close,
                   size: 18, color: context.ink.textSecondary),

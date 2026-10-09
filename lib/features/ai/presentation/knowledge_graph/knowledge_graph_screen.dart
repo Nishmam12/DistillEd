@@ -82,7 +82,7 @@ class _KnowledgeGraphScreenState extends ConsumerState<KnowledgeGraphScreen> {
         error: (e, _) => _Message(
           icon: Icons.error_outline,
           title: "Couldn't build the graph",
-          subtitle: '$e',
+          subtitle: 'Something went wrong. Tap refresh to try again.',
         ),
         data: (graph) => graph.isEmpty
             ? _Message(
@@ -179,12 +179,18 @@ class _GraphViewState extends State<_GraphView> {
                   child: SizedBox(
                     width: side,
                     height: side,
-                    child: CustomPaint(
-                      painter: _GraphPainter(
-                        graph: widget.graph,
-                        layout: _layout,
-                        textDirection: Directionality.of(context),
-                        ink: context.ink,
+                    child: Semantics(
+                      label: 'Knowledge graph: ${widget.graph.nodes.length} '
+                          'concepts and ${widget.graph.edges.length} '
+                          'connections. Concepts: '
+                          '${widget.graph.nodes.take(12).map((n) => n.name).join(', ')}',
+                      child: CustomPaint(
+                        painter: _GraphPainter(
+                          graph: widget.graph,
+                          layout: _layout,
+                          textDirection: Directionality.of(context),
+                          ink: context.ink,
+                        ),
                       ),
                     ),
                   ),

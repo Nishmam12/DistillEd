@@ -34,8 +34,15 @@ class GemmaOcrResult {
   /// reachable and the call threw before any attempt).
   final int attempts;
 
+  /// The last error when every attempt threw, so "Gemma could not run" is
+  /// distinguishable from "Gemma ran and read nothing". Null otherwise.
+  final AiException? error;
+
   const GemmaOcrResult(
-      {required this.text, required this.passed, required this.attempts});
+      {required this.text,
+      required this.passed,
+      required this.attempts,
+      this.error});
 
   static const empty = GemmaOcrResult(text: '', passed: false, attempts: 0);
 }
@@ -135,6 +142,8 @@ class GemmaVisionOcrService {
   }) async {
     var best = '';
     var attempts = 0;
+    var ran = false;
+    AiException? lastError;
 
     for (var i = 0; i < maxAttempts; i++) {
       // Deterministic only for the first attempt of a normal read; a re-read
@@ -155,9 +164,11 @@ class GemmaVisionOcrService {
             .trim();
       } on AiModelNotReadyException {
         rethrow;
-      } on AiException {
+      } on AiException catch (e) {
+        lastError = e;
         continue; // this attempt failed to run; try the next / fall back
       }
+      ran = true;
 
       if (best.isEmpty) best = text; // keep the first non-empty as the backstop
       if (text.isNotEmpty && _gate.evaluate(text).passed) {
@@ -165,6 +176,10 @@ class GemmaVisionOcrService {
       }
     }
 
-    return GemmaOcrResult(text: best, passed: false, attempts: attempts);
+    return GemmaOcrResult(
+        text: best,
+        passed: false,
+        attempts: attempts,
+        error: ran ? null : lastError);
   }
 }

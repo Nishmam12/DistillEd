@@ -23,4 +23,16 @@ void main() {
   test('the default settings never upload', () {
     expect(mayUploadImages(SettingsState()), isFalse);
   });
+
+  test('background page analysis goes to the cloud only when pre-allowed', () {
+    for (final mode in AiProcessingMode.values) {
+      for (final privacy in CloudPrivacy.values) {
+        expect(
+            mayAnalyzeInCloud(_s(mode, privacy)),
+            mode == AiProcessingMode.cloudFirst &&
+                privacy == CloudPrivacy.allowCloudForNonSensitive,
+            reason: '$mode / $privacy');
+      }
+    }
+  });
 }

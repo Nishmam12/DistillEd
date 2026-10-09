@@ -66,6 +66,11 @@ class ReviewFinished extends ReviewState {
   const ReviewFinished({required this.reviewed});
 }
 
+/// The queue couldn't be loaded; the screen offers a retry.
+class ReviewError extends ReviewState {
+  const ReviewError();
+}
+
 class ReviewNotifier extends StateNotifier<ReviewState> {
   final FlashcardStore _store;
   final int _notebookId;
@@ -79,20 +84,25 @@ class ReviewNotifier extends StateNotifier<ReviewState> {
 
   Future<void> start() async {
     state = const ReviewLoading();
-    final now = _now();
-    final due = await _store.dueForNotebook(_notebookId, now);
-    if (!mounted) return;
+    try {
+      final now = _now();
+      final due = await _store.dueForNotebook(_notebookId, now);
+      if (!mounted) return;
 
-    if (due.isEmpty) {
-      state = ReviewCaughtUp(nextDueAt: await _nextDueAt());
-      return;
+      if (due.isEmpty) {
+        final next = await _nextDueAt();
+        if (mounted) state = ReviewCaughtUp(nextDueAt: next);
+        return;
+      }
+      state = ReviewInProgress(
+        queue: due,
+        index: 0,
+        revealed: false,
+        completed: 0,
+      );
+    } catch (_) {
+      if (mounted) state = const ReviewError();
     }
-    state = ReviewInProgress(
-      queue: due,
-      index: 0,
-      revealed: false,
-      completed: 0,
-    );
   }
 
   /// Shows the answer. Grading is only offered after the learner has committed
@@ -103,12 +113,19 @@ class ReviewNotifier extends StateNotifier<ReviewState> {
     state = current.copyWith(revealed: true);
   }
 
-  /// Grades the current card and advances.
+  bool _grading = false;
+
+  /// Grades the current card and advances. A second tap while the first is
+  /// still saving is ignored, so one card is never graded (and skipped) twice.
   Future<void> grade(ReviewGrade grade) async {
     final current = state;
-    if (current is! ReviewInProgress || !current.revealed) return;
-
-    await _store.updateSchedule(current.current.graded(grade, now: _now()));
+    if (_grading || current is! ReviewInProgress || !current.revealed) return;
+    _grading = true;
+    try {
+      await _store.updateSchedule(current.current.graded(grade, now: _now()));
+    } finally {
+      _grading = false;
+    }
     if (!mounted) return;
 
     final next = current.index + 1;

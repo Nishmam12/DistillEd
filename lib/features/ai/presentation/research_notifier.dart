@@ -216,7 +216,7 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
 
   @override
   void dispose() {
-    _sub?.cancel();
+    _cancelInFlight();
     super.dispose();
   }
 

@@ -86,14 +86,20 @@ class FlashcardNotifier extends StateNotifier<FlashcardState> {
 
   FlashcardRequest? _last;
   bool _running = false;
+  int _run = 0;
 
+  /// Starts a deck. A second tap for the same page while one is building is
+  /// ignored; a request for a different page supersedes the in-flight one
+  /// (whose result is then discarded) so the sheet never shows the old page.
   Future<void> generate(FlashcardRequest request) async {
-    if (_running) return;
+    if (_running && _last?.pageId == request.pageId) return;
     _last = request;
     _running = true;
+    final run = ++_run;
     try {
       state = const FlashcardGenerating();
       final text = await request.resolveText();
+      if (!mounted || run != _run) return;
       if (text_budget.countWords(text) < _minWords) {
         state = const FlashcardError(
           "There isn't enough on this page to make flashcards yet.",
@@ -108,6 +114,7 @@ class FlashcardNotifier extends StateNotifier<FlashcardState> {
         notebookId: request.notebookId,
         pageId: request.pageId,
       );
+      if (!mounted || run != _run) return;
       if (cards.isEmpty) {
         state = const FlashcardError(
             "Couldn't find enough to turn into flashcards here.");
@@ -115,13 +122,13 @@ class FlashcardNotifier extends StateNotifier<FlashcardState> {
       }
 
       await _store.replaceForPage(request.notebookId, request.pageId, cards);
-      if (!mounted) return;
+      if (!mounted || run != _run) return;
       state = FlashcardReady(cards, deckName: request.context.currentTopic);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || run != _run) return;
       state = _mapError(e);
     } finally {
-      _running = false;
+      if (run == _run) _running = false;
     }
   }
 

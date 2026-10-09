@@ -2,6 +2,7 @@
 
 import 'package:isar_community/isar.dart';
 
+import '../../../../core/constants/storage_paths.dart';
 import '../../../../data/persistence/content_purge.dart';
 import '../../../../data/persistence/page_text_record.dart';
 import '../../../../data/persistence/scene_element_record.dart';
@@ -61,6 +62,7 @@ class PageRepository {
   /// Deletes the page at [pageIndex] and decrements subsequent indexes.
   Future<void> deletePage(int notebookId, int pageIndex) async {
     var audio = <String>[];
+    final files = <String>[];
     await _isar.writeTxn(() async {
       final notebook = await _isar.notebooks.get(notebookId);
       if (notebook == null) throw StateError('Notebook not found');
@@ -84,10 +86,28 @@ class PageRepository {
             .pageIdEqualTo(pageToDelete.id)
             .deleteAll();
         // In the same transaction, so a crash cannot strand the page's strokes.
-        await _isar.sceneElementRecords
-            .filter()
-            .pageIdEqualTo(pageToDelete.id)
-            .deleteAll();
+        final scene = _isar.sceneElementRecords.filter().pageIdEqualTo(
+          pageToDelete.id,
+        );
+        final images = (await scene.findAll())
+            .map((e) => e.relativeImagePath)
+            .where((p) => p.isNotEmpty)
+            .toSet();
+        await scene.deleteAll();
+        // An image another page still shows (the same PDF imported twice shares
+        // its cache) must stay.
+        for (final img in images) {
+          final shared = await _isar.sceneElementRecords
+              .filter()
+              .relativeImagePathEqualTo(img)
+              .count();
+          if (shared == 0) {
+            files
+              ..add(img)
+              ..add(StoragePaths.pdfTextSidecar(img));
+          }
+        }
+        files.add('notes/$notebookId/page_${pageToDelete.id}.ink');
         audio = await purgePageRows(
           _isar,
           notebookId: notebookId,
@@ -113,7 +133,10 @@ class PageRepository {
       await _isar.notebooks.put(notebook);
     });
 
-    await deleteContentFiles(audioRelativePaths: audio);
+    await deleteContentFiles(
+      audioRelativePaths: audio,
+      fileRelativePaths: files,
+    );
     await _enforceContiguity(notebookId);
   }
 

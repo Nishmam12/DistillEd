@@ -36,7 +36,8 @@ class IsarLegacyPageSource implements LegacyPageSource {
             pageId: p.id,
             strict: true,
           );
-        } on FormatException {
+        } catch (_) {
+          // Corrupt or unreadable (I/O): retried next launch, not fatal to the rest.
           unreadable = true;
         }
         pages.add(LegacyPageData(

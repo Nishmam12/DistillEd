@@ -91,8 +91,19 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
     state = state.copyWith(onPage: await _store.forPage(pageId));
   }
 
+  bool _starting = false;
+
   Future<void> start(int pageId, {String? language}) async {
-    if (_session.isRecording) return;
+    if (_session.isRecording || _starting) return;
+    _starting = true;
+    try {
+      await _start(pageId, language);
+    } finally {
+      _starting = false;
+    }
+  }
+
+  Future<void> _start(int pageId, String? language) async {
     state = state.copyWith(clearError: true);
 
     final startedAt = DateTime.now();
@@ -145,6 +156,7 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
 
   Future<void> stop(int pageId) async {
     if (!_session.isRecording) return;
+    String? stopError;
     try {
       final finished = await _session.stop();
       await _store.setDuration(finished.id, finished.durationMs);
@@ -153,9 +165,11 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
       if (finished.isSpeechAudio) _onFinished?.call(finished);
     } catch (e) {
       if (kDebugMode) debugPrint('[audio] stop failed: $e');
+      stopError = 'Could not save the recording cleanly.';
     }
     if (!mounted) return;
     state = state.copyWith(
+      error: stopError,
       isRecording: false,
       clearActive: true,
       onPage: await _store.forPage(pageId),
@@ -202,9 +216,13 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
       await _playback.load(_absolute(recording.relativePath));
       await _playback.seek(Duration(milliseconds: offsetMs));
       await _playback.play();
-    } on AudioUnavailableException catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
-      state = state.copyWith(error: e.message);
+      state = state.copyWith(
+        error: e is AudioUnavailableException
+            ? e.message
+            : 'Could not play the recording.',
+      );
     }
   }
 

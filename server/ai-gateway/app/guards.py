@@ -109,16 +109,19 @@ def stream_deadline() -> "asyncio.Timeout":
     return asyncio.timeout(STREAM_TIMEOUT_SECONDS)
 
 
+_MAX_TRACKED_IPS = 10_000
+
+
 class IpThrottle:
     """Sliding-window calls-per-minute per client address.
 
     Not durable and per-process, like the rest of the rate limiting here.
     """
 
-    def __init__(self, per_minute: int, trusted_proxy_hops: int = 1) -> None:
+    def __init__(self, per_minute: int, trusted_proxy_hops: int = 0) -> None:
         self._per_minute = per_minute
         self._hops = trusted_proxy_hops
-        self._calls: dict[str, deque[float]] = defaultdict(deque)
+        self._calls: dict[str, deque[float]] = {}
 
     def client_ip(self, request: Request) -> str:
         # The right-most `hops` entries of X-Forwarded-For were added by our own
@@ -136,7 +139,8 @@ class IpThrottle:
             return
         now = time.monotonic()
         ip = self.client_ip(request)
-        window = self._calls[ip]
+        window = self._calls.pop(ip, None) or deque()
+        self._calls[ip] = window  # re-insert last: dict order is LRU order
         while window and now - window[0] > 60:
             window.popleft()
         if len(window) >= self._per_minute:
@@ -144,9 +148,8 @@ class IpThrottle:
                 status_code=429, detail="Too many requests. Slow down."
             )
         window.append(now)
-        if len(self._calls) > 10_000:  # forget idle addresses
-            for key in [k for k, w in self._calls.items() if not w or now - w[-1] > 60]:
-                del self._calls[key]
+        while len(self._calls) > _MAX_TRACKED_IPS:  # evict least recently seen
+            del self._calls[next(iter(self._calls))]
 
 
 class BodyLimitMiddleware:

@@ -15,7 +15,7 @@ import '../domain/page_content.dart';
 
 /// Session cache of the last suggestions per page, keyed by the typed-text
 /// signature they were computed from — so switching away and back is instant
-/// (durable persistence belongs to Phase 2's Learning Memory).
+/// (durable persistence belongs to the Learning Memory).
 class PageWritingCache {
   final _entries =
       <int, ({String signature, List<WritingSuggestion> suggestions})>{};
@@ -53,6 +53,7 @@ class WritingAssistantNotifier extends StateNotifier<List<WritingSuggestion>> {
   /// Fed by the Context Engine's debounced onContent. Reviews only the typed
   /// text; skips when it hasn't changed since the last review.
   void review(PageContent content) {
+    if (!mounted) return;
     final signature = content.typedText.trim();
     if (signature == _lastSignature) return;
     if (_running) {
@@ -89,5 +90,8 @@ class WritingAssistantNotifier extends StateNotifier<List<WritingSuggestion>> {
       for (final s in state)
         if (!identical(s, suggestion)) s,
     ];
+    // Keep the cache in step, or reopening the page would bring it back.
+    final signature = _lastSignature;
+    if (signature != null) _cache.save(_pageId, signature, state);
   }
 }

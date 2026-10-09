@@ -439,6 +439,7 @@ void main() {
       final report = await b.bulk.indexPages(notebookId: 1, pageIds: [10, 11, 12]);
 
       expect(report.stoppedModelNotReady, isTrue);
+      expect(report.stoppedVisionNotReady, isTrue);
       expect(report.indexed, 2, reason: 'pages 10 and 11 were read first');
     });
 

@@ -54,14 +54,17 @@ int budgetWords(String text) {
 /// Keeps the first [maxWords] budget words; returns [text] unchanged when it fits.
 String truncateToWords(String text, int maxWords) {
   if (budgetWords(text) <= maxWords) return text;
-  final kept = <String>[];
   var cost = 0.0;
-  for (final word in text.trim().split(_whitespace)) {
-    cost += wordCost(word);
-    if (cost > maxWords && kept.isNotEmpty) break;
-    kept.add(word);
+  var kept = 0;
+  var end = 0;
+  // Cut the original string at a word boundary so newlines are kept.
+  for (final m in RegExp(r'\S+').allMatches(text)) {
+    cost += wordCost(m[0]!);
+    if (cost > maxWords && kept > 0) break;
+    kept++;
+    end = m.end;
   }
-  return kept.join(' ');
+  return text.substring(text.length - text.trimLeft().length, end);
 }
 
 /// Splits [text] into chunks that each fit [maxWords], for chunk-and-reduce

@@ -234,6 +234,17 @@ void main() {
       expect(call.arguments, {'expression': '2+2'});
     });
 
+    test('a tool_call with non-string call_id is an AiGenerationException',
+        () async {
+      final provider = _providerWith(_FakeAdapter(
+        sseBody: 'data: {"tool_call": {"call_id": 1, "name": "calculator"}}\n\n',
+      ));
+      expect(
+        provider.generateWithTools(prompt: 'x', tools: [_FakeTool()]).toList(),
+        throwsA(isA<AiGenerationException>()),
+      );
+    });
+
     test('sends the tools field mapped to OpenAI function-schema shape',
         () async {
       final adapter = _FakeAdapter(sseBody: 'data: {"text": "ok"}\n\n');

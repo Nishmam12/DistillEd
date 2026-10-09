@@ -8,6 +8,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, visibleForTesting;
 import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -269,14 +270,6 @@ final gemmaVisionOcrServiceProvider = Provider<GemmaVisionOcrService>((ref) =>
     GemmaVisionOcrService(
         transcriber: ref.watch(routedImageTranscriberProvider)));
 
-/// Reads charts and diagrams as structured figures — on-device first, cloud
-/// only when the on-device read misses the quality bar.
-///
-/// The escalation predicate is the privacy control for this feature: an image
-/// leaves the device only when the user has turned cloud AI on AND the local
-/// VLM already failed to read the figure. Read (not watched) at call time so
-/// toggling the setting takes effect on the next read without rebuilding the
-/// extractor.
 /// Page images are uploaded silently (no per-call prompt), so the cloud being
 /// switched on is not enough: the user must also have allowed cloud use
 /// without asking. `localOnly` and `askEachTime` keep images on the device.
@@ -284,6 +277,14 @@ final gemmaVisionOcrServiceProvider = Provider<GemmaVisionOcrService>((ref) =>
 bool mayUploadImages(SettingsState s) =>
     s.cloudAiEnabled && s.cloudPrivacy == CloudPrivacy.allowCloudForNonSensitive;
 
+/// Reads charts and diagrams as structured figures — on-device first, cloud
+/// only when the on-device read misses the quality bar.
+///
+/// The escalation predicate ([mayUploadImages]) is the privacy control for this
+/// feature: an image leaves the device only when the user has turned cloud AI on
+/// AND the local VLM already failed to read the figure. Read (not watched) at
+/// call time so toggling the setting takes effect on the next read without
+/// rebuilding the extractor.
 final figureAnalyzerProvider = Provider<FigureAnalyzer>((ref) {
   final local = ref.watch(imageTranscriberProvider);
   final cloud = ref.watch(cloudGatewayMidProvider);
@@ -366,13 +367,13 @@ final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
     // ML Kit's Latin text recognition answers with noise on Bengali script; this
     // keeps that noise out of a page's text. See [isUnreadable].
     languageDetector: ref.watch(languageDetectorProvider),
-    // The text PDFium read off each imported PDF page at import, kept beside the
-    // page's image. A page that has some is read without OCR or a model.
     // What was SAID in the lectures recorded on a page, transcribed on the
     // device: read as part of the page, so every feature sees it.
     lectureTranscript: (pageId) async => lectureTextOf(
         await ref.read(lectureRecordingStoreProvider).forPage(pageId),
         ref.read(transcriptStoreProvider)),
+    // The text PDFium read off each imported PDF page at import, kept beside the
+    // page's image. A page that has some is read without OCR or a model.
     pdfTextLayer: (relative) async {
       final file = File(SceneImageCache.resolvePath(
           docsDir, StoragePaths.pdfTextSidecar(relative)));
@@ -397,10 +398,18 @@ Future<Uint8List?> _readFileBytes(String absolutePath) async {
 }
 
 /// Session-lifetime cache of the last PageContext per page; survives the
-/// sidebar closing and page switches (durable persistence is Phase 2's
+/// sidebar closing and page switches (durable persistence is the
 /// Learning Memory).
 final pageContextCacheProvider =
     Provider<PageContextCache>((ref) => PageContextCache());
+
+/// Page analysis runs on a background debounce with no per-call prompt, so the
+/// cloud is used only in cloud-first mode AND when the user has allowed cloud
+/// use without asking; `askEachTime` and `localOnly` stay on the device.
+@visibleForTesting
+bool mayAnalyzeInCloud(SettingsState s) =>
+    s.aiMode.prefersCloud &&
+    s.cloudPrivacy == CloudPrivacy.allowCloudForNonSensitive;
 
 /// Page analysis. Runs on the cloud tier directly under
 /// [AiProcessingMode.cloudFirst], on-device otherwise.
@@ -413,7 +422,10 @@ final pageContextCacheProvider =
 /// retry: it surfaces as an error the panel can show. Analysis that silently
 /// degraded is what made a failed read indistinguishable from a blank page.
 final contextEngineProvider = Provider<ContextEngine>((ref) {
-  final preferCloud = ref.watch(settingsProvider).aiMode.prefersCloud;
+  // Analysis runs on a background debounce with no per-call prompt, so cloud is
+  // used only when the user has allowed that without asking; `askEachTime`
+  // falls back to the on-device model.
+  final preferCloud = mayAnalyzeInCloud(ref.watch(settingsProvider));
   return ContextEngine(
     provider: preferCloud
         ? ref.watch(cloudGatewayMidProvider)
@@ -494,7 +506,13 @@ final explainerProvider = Provider<Explainer>(
 /// Exa directly, using the same [sessionDeviceKey] identity as the LLM calls.
 final toolsProvider = Provider<List<Tool>>((ref) => [
       const CalculatorTool(),
-      WikipediaTool(),
+      WikipediaTool(
+        dio: Dio(BaseOptions(
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 15),
+        )),
+        isCloudAllowed: () => _mayUseCloud(ref),
+      ),
       WebSearchTool(
         baseUrl: cloudGatewayBaseUrl,
         deviceKey: sessionDeviceKey,
@@ -518,7 +536,12 @@ final researchNotifierProvider =
     StateNotifierProvider<ResearchNotifier, ResearchState>((ref) {
   return ResearchNotifier(
     researcher: ref.watch(researcherProvider),
-    privacy: () => ref.read(settingsProvider).cloudPrivacy,
+    // Cloud switched off (header toggle / on-device mode) reads as localOnly:
+    // no cloud offer is made at all.
+    privacy: () {
+      final s = ref.read(settingsProvider);
+      return s.cloudAiEnabled ? s.cloudPrivacy : CloudPrivacy.localOnly;
+    },
     hasSeenFirstCloudCall: () => ref.read(settingsProvider).hasSeenFirstCloudCall,
     markFirstCloudCallSeen: () =>
         ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
@@ -563,7 +586,7 @@ final flashcardNotifierProvider =
 });
 
 /// Durable Learning Memory (Isar) — concept mastery, quiz history, preferences.
-/// Phase 2's counterpart to the session-only [pageContextCacheProvider].
+/// The durable counterpart to the session-only [pageContextCacheProvider].
 final learningMemoryProvider =
     Provider<LearningMemoryRepository>((ref) => IsarLearningMemoryRepository());
 
@@ -593,7 +616,7 @@ typedef KnowledgeGraphRequest = ({
 /// so narrowing is a filter over what it already recorded rather than a second,
 /// differently-behaved pipeline.
 final knowledgeGraphProvider =
-    FutureProvider.family<KnowledgeGraph, KnowledgeGraphRequest>(
+    FutureProvider.autoDispose.family<KnowledgeGraph, KnowledgeGraphRequest>(
         (ref, request) async {
   final memory = ref.watch(learningMemoryProvider);
   final notebookId = request.notebookId;
@@ -694,6 +717,13 @@ final explainNotifierProvider =
 final pageContextProvider = StateNotifierProvider.autoDispose
     .family<ContextEngineNotifier, AsyncValue<PageContext>, ScenePageKey>(
         (ref, key) {
+  // An analysis in flight when the sidebar closes still finishes; its callbacks
+  // must not touch the disposed [ref]. Stores are captured up front so the
+  // searchable-text save still lands.
+  var alive = true;
+  ref.onDispose(() => alive = false);
+  final pageTextStore = ref.read(pageTextStoreProvider);
+  final learningMemory = ref.read(learningMemoryProvider);
   final notifier = ContextEngineNotifier(
     engine: ref.watch(contextEngineProvider),
     extractor: ref.watch(pageContentExtractorProvider),
@@ -709,12 +739,15 @@ final pageContextProvider = StateNotifierProvider.autoDispose
       // 20s debounce or its embedding step. Search must work for someone who
       // has never downloaded the embedding model, so this write is the one
       // thing here that cannot be allowed to depend on the AI stack.
-      unawaited(ref.read(pageTextStoreProvider).save(
+      unawaited(pageTextStore
+          .save(
             notebookId: key.notebookId,
             pageId: key.pageId,
             text: content.combinedText,
             indexText: content.combinedTextWithFigures,
-          ));
+          )
+          .catchError((Object _) {}));
+      if (!alive) return;
       // Indexing goes FIRST deliberately. ContextEngineNotifier._notifyContent
       // guards the engine from this callback, but nothing guards these two
       // listeners from each other: a throw in the first would silently starve
@@ -734,8 +767,7 @@ final pageContextProvider = StateNotifierProvider.autoDispose
     // the learner was exposed to. Fire-and-forget — a storage hiccup must never
     // surface as an analysis failure.
     onContext: (context) => unawaited(
-      ref
-          .read(learningMemoryProvider)
+      learningMemory
           .observePageContext(
             notebookId: key.notebookId,
             pageId: key.pageId,

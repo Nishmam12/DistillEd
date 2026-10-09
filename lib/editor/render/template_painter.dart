@@ -1,5 +1,7 @@
 // Paints vector template patterns (ruled, dotted, grid, engineering) onto the canvas.
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../domain/model/template_type.dart';
@@ -100,16 +102,18 @@ class TemplatePainter {
 
   /// Paints evenly spaced dots across the canvas.
   static void _paintDotted(Canvas canvas, Rect region, TemplateConfig config) {
+    // One batched call of round-capped points instead of a drawCircle per dot.
     final dotPaint = Paint()
       ..color = config.lineColor
-      ..style = PaintingStyle.fill;
+      ..strokeWidth = config.dotRadius * 2
+      ..strokeCap = StrokeCap.round;
 
-    for (final tx in _ticks(region.left, region.right, config.dotSpacing)) {
-      for (final ty in _ticks(region.top, region.bottom, config.dotSpacing)) {
-        canvas.drawCircle(
-            Offset(tx.value, ty.value), config.dotRadius, dotPaint);
-      }
-    }
+    final dots = <Offset>[
+      for (final tx in _ticks(region.left, region.right, config.dotSpacing))
+        for (final ty in _ticks(region.top, region.bottom, config.dotSpacing))
+          Offset(tx.value, ty.value),
+    ];
+    canvas.drawPoints(ui.PointMode.points, dots, dotPaint);
   }
 
   /// Paints a uniform grid of horizontal and vertical lines.

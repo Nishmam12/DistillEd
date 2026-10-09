@@ -36,10 +36,14 @@ class IsarFlashcardStore implements FlashcardStore {
     int pageId,
     List<Flashcard> cards,
   ) async {
-    final existing = await forPage(pageId);
-    final kept = preserveSchedules(cards, existing);
     return IsarService.instance.writeTxn(() async {
       final collection = IsarService.instance.flashcardRecords;
+      // Read inside the write txn so a concurrent grade can't be lost.
+      final existing = [
+        for (final r in await collection.filter().pageIdEqualTo(pageId).findAll())
+          r.toDomain(),
+      ];
+      final kept = preserveSchedules(cards, existing);
       await collection.filter().pageIdEqualTo(pageId).deleteAll();
       await collection
           .putAll([for (final c in kept) FlashcardRecord.fromDomain(c)]);

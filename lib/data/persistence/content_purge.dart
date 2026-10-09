@@ -24,10 +24,12 @@ import 'lecture_recording_record.dart';
 /// transaction; returns the recordings' relative audio paths so the caller can
 /// delete the files once the transaction has committed.
 Future<List<String>> purgeNotebookRows(Isar isar, int notebookId) async {
-  final recordings =
-      isar.lectureRecordingRecords.filter().notebookIdEqualTo(notebookId);
-  final audio =
-      (await recordings.findAll()).map((r) => r.relativePath).toList();
+  final recordings = isar.lectureRecordingRecords.filter().notebookIdEqualTo(
+    notebookId,
+  );
+  final audio = (await recordings.findAll())
+      .map((r) => r.relativePath)
+      .toList();
   await recordings.deleteAll();
   await isar.noteChunkRecords
       .filter()
@@ -69,10 +71,12 @@ Future<List<String>> purgePageRows(
   required int notebookId,
   required int pageId,
 }) async {
-  final recordings =
-      isar.lectureRecordingRecords.filter().pageIdEqualTo(pageId);
-  final audio =
-      (await recordings.findAll()).map((r) => r.relativePath).toList();
+  final recordings = isar.lectureRecordingRecords.filter().pageIdEqualTo(
+    pageId,
+  );
+  final audio = (await recordings.findAll())
+      .map((r) => r.relativePath)
+      .toList();
   await recordings.deleteAll();
   await isar.noteChunkRecords.filter().pageIdEqualTo(pageId).deleteAll();
   await isar.flashcardRecords.filter().pageIdEqualTo(pageId).deleteAll();
@@ -82,26 +86,41 @@ Future<List<String>> purgePageRows(
 }
 
 /// Best-effort file cleanup after the rows are gone. A leftover file is
-/// storage waste, not corruption, so failures are swallowed.
+/// storage waste, not corruption, so failures are swallowed — per file, so one
+/// that will not delete does not strand the rest or the notebook directory.
+/// [fileRelativePaths] are any other files (page ink, imported images and their
+/// text sidecars) relative to app documents.
 Future<void> deleteContentFiles({
   int? notebookDirId,
   List<String> audioRelativePaths = const [],
+  List<String> fileRelativePaths = const [],
 }) async {
+  String docs;
   try {
-    final docs = (await getApplicationDocumentsDirectory()).path;
-    for (final rel in audioRelativePaths) {
-      for (final path in [
-        '$docs/$rel',
-        '$docs/${StoragePaths.transcriptSidecar(rel)}',
-      ]) {
-        final f = File(path);
-        if (await f.exists()) await f.delete();
-      }
-    }
-    if (notebookDirId != null) {
-      final dir =
-          Directory(StoragePaths.getNotebookDir(docs, '$notebookDirId'));
+    docs = (await getApplicationDocumentsDirectory()).path;
+  } catch (_) {
+    return;
+  }
+  Future<void> rm(String path) async {
+    try {
+      final f = File(path);
+      if (await f.exists()) await f.delete();
+    } catch (_) {}
+  }
+
+  for (final rel in audioRelativePaths) {
+    await rm('$docs/$rel');
+    await rm('$docs/${StoragePaths.transcriptSidecar(rel)}');
+  }
+  for (final rel in fileRelativePaths) {
+    await rm('$docs/$rel');
+  }
+  if (notebookDirId != null) {
+    try {
+      final dir = Directory(
+        StoragePaths.getNotebookDir(docs, '$notebookDirId'),
+      );
       if (await dir.exists()) await dir.delete(recursive: true);
-    }
-  } catch (_) {}
+    } catch (_) {}
+  }
 }

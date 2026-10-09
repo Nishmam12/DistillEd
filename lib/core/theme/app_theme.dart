@@ -45,9 +45,8 @@ class AppTheme {
       // while screens are migrated to the navy/gold spec one at a time. It is
       // additive and changes nothing on its own: an extension nobody reads
       // paints no pixels, and every colour this theme actually applies still
-      // comes from the coral [InkPalette] above. The switch to the navy/gold
-      // base theme happens in `distill_theme.dart`, wired from `app/app.dart`
-      // once there is a migrated screen to look at.
+      // comes from the coral [InkPalette] above. `app/app.dart` still uses this
+      // theme; `distill_theme.dart` (navy/gold) is not wired in.
       extensions: [
         InkColors(p),
         brightness == Brightness.dark ? AppColors.dark : AppColors.light,

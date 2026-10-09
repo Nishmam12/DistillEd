@@ -161,3 +161,26 @@ async def test_search_devices_are_tracked_independently(client, monkeypatch):
         assert b.status_code == 200
     finally:
         os.remove(path)
+
+
+@pytest.mark.asyncio
+async def test_failed_search_is_refunded(client, monkeypatch):
+    monkeypatch.setattr(tools_module, "get_settings", _configured_settings)
+    monkeypatch.setattr(tools_module, "_search_exa", _fake_search_exa_error)
+    fd, path = tempfile.mkstemp(suffix=".sqlite3")
+    os.close(fd)
+    limiter = SearchRateLimiter(
+        SearchRateLimitConfig(db_path=path, daily_search_cap=1)
+    )
+    monkeypatch.setattr(tools_module, "_get_search_rate_limiter", lambda: limiter)
+    try:
+        async with client as c:
+            for _ in range(2):  # a cap of 1 would 429 the second if not refunded
+                resp = await c.post(
+                    "/v1/tools/search",
+                    headers={"X-Device-Key": "test-device"},
+                    json={"query": "x"},
+                )
+                assert resp.status_code == 502
+    finally:
+        os.remove(path)

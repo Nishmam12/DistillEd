@@ -212,6 +212,8 @@ void main() {
       ),
     );
 
+    // The 44dp footer chips leave the body short; scroll the flag into view.
+    await tester.ensureVisible(find.text('ATP synthase'));
     await tester.tap(find.text('ATP synthase'));
     await tester.pump();
 

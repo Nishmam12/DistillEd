@@ -141,56 +141,17 @@ class CloudGatewayProvider
     List<AiMessage>? history,
     AiGenerationOptions? options,
   }) async* {
-    _requireCloudAllowed();
-    final cancelToken = CancelToken();
-    final Response<ResponseBody> response;
-    try {
-      response = await _dio.post<ResponseBody>(
-        '/v1/generate',
-        data: {
-          'model_tier': _modelTier,
-          'prompt': prompt,
-          'system_prompt': ?systemPrompt,
-          'history': [
-            for (final m in history ?? const <AiMessage>[])
-              {'role': m.role.name, 'content': m.content},
-          ],
-          'stream': true,
-          'temperature': options?.temperature ?? 0.7,
-          if (options?.maxTokens != null) 'max_tokens': options!.maxTokens,
-        },
-        options: Options(
-          headers: {'X-Device-Key': sessionDeviceKey},
-          responseType: ResponseType.stream,
-        ),
-        cancelToken: cancelToken,
-      );
-    } on DioException catch (e) {
-      throw _mapError(e);
-    }
-
-    final lines = response.data!.stream
-        .cast<List<int>>()
-        .transform(utf8.decoder)
-        .transform(const LineSplitter());
-
-    try {
-      await for (final line in lines) {
-        if (!line.startsWith('data: ')) continue;
-        final decoded = _decodeEvent(line);
-        final error = decoded['error'] as String?;
-        if (error != null) {
-          throw AiGenerationException(error);
-        }
-        final text = decoded['text'] as String?;
-        if (text != null) yield text;
-      }
-    } on DioException catch (e) {
-      // A cancelled request (caller stopped listening — e.g. navigated away
-      // mid-stream) is expected teardown, not a failure to surface.
-      if (!cancelToken.isCancelled) throw _mapError(e);
-    } finally {
-      if (!cancelToken.isCancelled) cancelToken.cancel();
+    await for (final event in _streamEvents(
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      history: [
+        for (final m in history ?? const <AiMessage>[])
+          {'role': m.role.name, 'content': m.content},
+      ],
+      options: options,
+    )) {
+      final text = event['text'] as String?;
+      if (text != null) yield text;
     }
   }
 
@@ -209,6 +170,51 @@ class CloudGatewayProvider
     required List<Tool> tools,
     AiGenerationOptions? options,
   }) async* {
+    await for (final event in _streamEvents(
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      history: [
+        for (final m in history ?? const <AiMessage>[])
+          {
+            'role': m.role.name,
+            'content': m.content,
+            if (m.toolCallId != null) 'tool_call_id': m.toolCallId,
+            if (m.toolCalls != null) 'tool_calls': m.toolCalls,
+          },
+      ],
+      tools: [for (final t in tools) toolSchema(t)],
+      options: options,
+    )) {
+      final text = event['text'] as String?;
+      if (text != null) {
+        yield ToolTextChunk(text);
+        continue;
+      }
+      final toolCall = event['tool_call'];
+      if (toolCall != null) {
+        try {
+          final call = toolCall as Map<String, dynamic>;
+          yield ToolCallRequested(
+            callId: call['call_id'] as String,
+            name: call['name'] as String,
+            arguments: (call['arguments'] as Map<String, dynamic>?) ?? const {},
+          );
+        } on TypeError {
+          throw const AiGenerationException('Malformed response from the cloud.');
+        }
+      }
+    }
+  }
+
+  /// One gateway round-trip: posts to `/v1/generate` and yields each decoded
+  /// SSE `data:` event, raising the `error` events as [AiGenerationException].
+  Stream<Map<String, dynamic>> _streamEvents({
+    required String prompt,
+    String? systemPrompt,
+    required List<Map<String, dynamic>> history,
+    List<Map<String, dynamic>>? tools,
+    AiGenerationOptions? options,
+  }) async* {
     _requireCloudAllowed();
     final cancelToken = CancelToken();
     final Response<ResponseBody> response;
@@ -219,16 +225,8 @@ class CloudGatewayProvider
           'model_tier': _modelTier,
           'prompt': prompt,
           'system_prompt': ?systemPrompt,
-          'history': [
-            for (final m in history ?? const <AiMessage>[])
-              {
-                'role': m.role.name,
-                'content': m.content,
-                if (m.toolCallId != null) 'tool_call_id': m.toolCallId,
-                if (m.toolCalls != null) 'tool_calls': m.toolCalls,
-              },
-          ],
-          'tools': [for (final t in tools) toolSchema(t)],
+          'history': history,
+          'tools': ?tools,
           'stream': true,
           'temperature': options?.temperature ?? 0.7,
           if (options?.maxTokens != null) 'max_tokens': options!.maxTokens,
@@ -256,21 +254,11 @@ class CloudGatewayProvider
         if (error != null) {
           throw AiGenerationException(error);
         }
-        final text = decoded['text'] as String?;
-        if (text != null) {
-          yield ToolTextChunk(text);
-          continue;
-        }
-        final toolCall = decoded['tool_call'] as Map<String, dynamic>?;
-        if (toolCall != null) {
-          yield ToolCallRequested(
-            callId: toolCall['call_id'] as String,
-            name: toolCall['name'] as String,
-            arguments: (toolCall['arguments'] as Map<String, dynamic>?) ?? const {},
-          );
-        }
+        yield decoded;
       }
     } on DioException catch (e) {
+      // A cancelled request (caller stopped listening — e.g. navigated away
+      // mid-stream) is expected teardown, not a failure to surface.
       if (!cancelToken.isCancelled) throw _mapError(e);
     } finally {
       if (!cancelToken.isCancelled) cancelToken.cancel();
@@ -293,6 +281,7 @@ class CloudGatewayProvider
     int? randomSeed,
   }) async {
     _requireCloudAllowed();
+    final cancelToken = CancelToken();
     final Response<Map<String, dynamic>> response;
     try {
       response = await _dio.post<Map<String, dynamic>>(
@@ -307,10 +296,12 @@ class CloudGatewayProvider
           'max_tokens': maxOutputTokens,
         },
         options: Options(headers: {'X-Device-Key': sessionDeviceKey}),
+        cancelToken: cancelToken,
       ).timeout(visionTimeout);
     } on DioException catch (e) {
       throw _mapError(e);
     } on TimeoutException catch (e) {
+      cancelToken.cancel();
       throw AiUnavailableException(
           'Cloud figure analysis timed out after ${visionTimeout.inSeconds}s.',
           cause: e);

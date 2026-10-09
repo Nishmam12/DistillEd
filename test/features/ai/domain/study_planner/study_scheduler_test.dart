@@ -185,6 +185,15 @@ void main() {
       expect(h.dayCount, 5); // 20,21,22,23,24
     });
 
+    test('exam countdown is not shortened by a DST spring-forward', () {
+      final h = StudyHorizon(
+        kind: StudyHorizonKind.exam,
+        startDate: DateTime(2026, 3, 7),
+        examDate: DateTime(2026, 3, 10),
+      );
+      expect(h.dayCount, 4);
+    });
+
     test('a past or missing exam date still yields a sane one-day plan', () {
       expect(
         StudyHorizon(kind: StudyHorizonKind.exam, startDate: DateTime(2026, 7, 20))

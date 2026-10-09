@@ -248,17 +248,24 @@ class _LectureTranscriptsRow extends ConsumerWidget {
     final model = ref.watch(speechModelProvider);
     final settings = ref.read(settingsProvider.notifier);
     final speech = ref.read(speechModelProvider.notifier);
+    // The model state already carries a failure; this only keeps an escaped
+    // error from becoming an unhandled async exception.
+    Future<void> download() async {
+      try {
+        await speech.download();
+      } catch (_) {}
+    }
 
     return _SettingsRow(
       icon: PhosphorIconsRegular.microphone,
       title: 'Transcribe lectures',
       subtitle: lectureTranscriptsSubtitle(on: on, model: model),
-      onTap: on && model.phase == SpeechModelPhase.failed ? speech.download : null,
+      onTap: on && model.phase == SpeechModelPhase.failed ? download : null,
       trailing: Switch(
         value: on,
         onChanged: (value) {
           settings.setTranscribeLectures(value);
-          if (value) speech.download();
+          if (value) download();
         },
       ),
     );
