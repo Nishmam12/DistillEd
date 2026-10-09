@@ -1,23 +1,16 @@
 // Wraps ML Kit Digital Ink Recognition (stroke-based, NOT image OCR) for the
 // AI platform: language-model management, ink → ML Kit Ink conversion (with
-// timestamp synthesis for legacy strokes), per-page recognition, page-order
-// concatenation, and the meaningfulness gate.
-//
-// Two ink sources feed the same conversion core: legacy [Stroke] lists and
-// editor-2.0 [FreehandElement]s — both carry the same [StrokePoint]s
-// (including the capture timestamp `t`).
+// timestamp synthesis for strokes lacking `t`), and per-page recognition from
+// [FreehandElement]s.
 
 import 'package:google_mlkit_digital_ink_recognition/google_mlkit_digital_ink_recognition.dart'
     as mlkit;
 
 import '../../../../domain/model/scene_element.dart';
-import '../../../../data/migration/legacy_models/stroke.dart';
 import '../../domain/handwriting/ink_lines.dart';
 import '../../domain/recognition_result.dart';
-import '../../domain/meaningfulness_gate.dart';
 
-/// The per-stroke fields the ML Kit conversion needs, shared by legacy
-/// [Stroke] and editor-2.0 [FreehandElement].
+/// The per-stroke fields the ML Kit conversion needs, from a [FreehandElement].
 typedef _InkSource = ({List<StrokePoint> points, bool isEraser});
 
 /// Thrown when recognition fails at the platform layer (e.g. language model
@@ -32,20 +25,18 @@ class RecognitionException implements Exception {
 }
 
 class HandwritingRecognitionService {
-  /// Synthetic timing for strokes that predate the `t` field (legacy .ink
-  /// files): ~10 ms between points, 300 ms between strokes (per spec; also the
-  /// gap used when rebasing real-timestamped strokes onto the shared timeline).
+  /// Synthetic timing for strokes that predate the `t` field: ~10 ms between
+  /// points, 300 ms between strokes (also the gap used when rebasing
+  /// real-timestamped strokes onto the shared timeline).
   static const int synthPointGapMs = 10;
   static const int synthStrokeGapMs = 300;
 
-  final MeaningfulnessGate _gate;
   final mlkit.DigitalInkRecognizerModelManager _modelManager;
 
   /// One recognizer per language, created lazily and closed on [dispose].
   final Map<String, mlkit.DigitalInkRecognizer> _recognizers = {};
 
   HandwritingRecognitionService({
-    this._gate = const MeaningfulnessGate(),
     mlkit.DigitalInkRecognizerModelManager? modelManager,
   })  : _modelManager =
             modelManager ?? mlkit.DigitalInkRecognizerModelManager();
@@ -72,24 +63,19 @@ class HandwritingRecognitionService {
 
   // ---- Stroke → Ink conversion ---------------------------------------------
 
-  /// Converts InkFlow strokes to an ML Kit [mlkit.Ink], skipping eraser and
-  /// empty strokes.
+  /// Converts the freehand ink among [elements] to an ML Kit [mlkit.Ink],
+  /// skipping eraser and empty strokes. Non-ink elements (shapes, text, images,
+  /// frames) are ignored.
   ///
   /// All strokes are rebased onto one continuous, monotonic timeline:
   /// * a stroke whose every point carries a real `t` keeps its internal deltas
   ///   (real pen dynamics) but starts [synthStrokeGapMs] after the previous
   ///   stroke ends;
-  /// * a stroke with any missing `t` (legacy files, pre-`t` pixel-erase splits)
-  ///   is fully synthesized at [synthPointGapMs] per point.
+  /// * a stroke with any missing `t` (pre-`t` pixel-erase splits) is fully
+  ///   synthesized at [synthPointGapMs] per point.
   /// Rebasing matters because real timestamps are monotonic-since-boot while
   /// synthetic ones start at 0 — mixing them raw would produce wild gaps and
   /// out-of-order strokes, which degrades recognition.
-  static mlkit.Ink strokesToInk(List<Stroke> strokes) => _toInk([
-        for (final s in strokes) (points: s.points, isEraser: s.isEraser),
-      ]);
-
-  /// Editor-2.0 variant: converts the freehand ink among [elements]. Non-ink
-  /// elements (shapes, text, images, frames) are ignored.
   static mlkit.Ink elementsToInk(List<SceneElement> elements) => _toInk([
         for (final e in elements)
           if (e is FreehandElement) (points: e.points, isEraser: e.isEraser),
@@ -101,7 +87,7 @@ class HandwritingRecognitionService {
       ]);
 
   /// Builds the ML Kit ink from already-filtered stroke point lists, rebasing
-  /// them onto one monotonic timeline (see [strokesToInk] for the rules).
+  /// them onto one monotonic timeline (see [elementsToInk] for the rules).
   static mlkit.Ink _pointsToInk(List<List<StrokePoint>> strokes) {
     final ink = mlkit.Ink();
     int clock = 0;
@@ -145,20 +131,8 @@ class HandwritingRecognitionService {
 
   // ---- Recognition ----------------------------------------------------------
 
-  /// Recognizes one page of strokes. Returns [PageRecognition.empty] when the
-  /// page has no recognizable ink.
-  Future<PageRecognition> recognizePage(
-    List<Stroke> strokes,
-    String languageCode, {
-    mlkit.WritingArea? writingArea,
-  }) {
-    return _recognizeSources([
-      for (final s in strokes) (points: s.points, isEraser: s.isEraser),
-    ], languageCode, writingArea: writingArea);
-  }
-
-  /// Editor-2.0 variant of [recognizePage]: recognizes the freehand ink among
-  /// one page's [elements].
+  /// Recognizes the freehand ink among one page's [elements]. Returns
+  /// [PageRecognition.empty] when the page has no recognizable ink.
   Future<PageRecognition> recognizeElements(
     List<SceneElement> elements,
     String languageCode, {
@@ -342,34 +316,6 @@ class HandwritingRecognitionService {
     // Candidates are ordered most-likely first.
     final top = candidates.first;
     return PageRecognition(text: top.text, topScore: top.score, hasInk: true);
-  }
-
-  /// Recognizes a whole notebook: [pagesStrokes] must be in page order. Page
-  /// texts are concatenated with blank lines and run through the
-  /// meaningfulness gate.
-  Future<RecognitionOutcome> recognizeNotebook(
-    List<List<Stroke>> pagesStrokes,
-    String languageCode, {
-    mlkit.WritingArea? writingArea,
-  }) async {
-    final pages = <PageRecognition>[];
-    for (final strokes in pagesStrokes) {
-      pages.add(
-          await recognizePage(strokes, languageCode, writingArea: writingArea));
-    }
-
-    final text =
-        pages.map((p) => p.text.trim()).where((t) => t.isNotEmpty).join('\n\n');
-    final scores = [
-      for (final p in pages)
-        if (p.topScore != null) p.topScore!,
-    ];
-
-    return RecognitionOutcome(
-      text: text,
-      pages: pages,
-      gate: _gate.evaluate(text, topScores: scores),
-    );
   }
 
   /// Closes all cached recognizers.

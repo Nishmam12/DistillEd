@@ -27,17 +27,7 @@ final pageImportGroupProvider =
 });
 
 /// The scope kinds available on [key]'s page, in menu order.
-///
-/// [withSelection] adds the selection row for features that can act on one
-/// (Summarize); Ask searches an index, which has no notion of a lasso, so it
-/// never offers it.
-List<AiScopeKind> scopeChoicesFor({
-  required bool hasImportGroup,
-  bool withSelection = false,
-  bool hasSelection = false,
-}) =>
-    [
-      if (withSelection && hasSelection) AiScopeKind.selection,
+List<AiScopeKind> scopeChoicesFor({required bool hasImportGroup}) => [
       AiScopeKind.page,
       if (hasImportGroup) AiScopeKind.importGroup,
       AiScopeKind.notebook,

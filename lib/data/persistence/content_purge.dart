@@ -14,7 +14,6 @@ import '../../features/ai/data/flashcards/flashcard_record.dart';
 import '../../features/ai/data/memory/concept_mastery_record.dart';
 import '../../features/ai/data/memory/concept_relation_record.dart';
 import '../../features/ai/data/memory/quiz_attempt_record.dart';
-import '../../features/ai/data/memory/study_session_record.dart';
 import '../../features/ai/data/rag/note_chunk_record.dart';
 import '../../features/ai/data/study_planner/study_plan_record.dart';
 import '../../features/summarize/data/cache/summary_cache.dart';
@@ -41,10 +40,6 @@ Future<List<String>> purgeNotebookRows(Isar isar, int notebookId) async {
       .notebookIdEqualTo(notebookId)
       .deleteAll();
   await isar.quizAttemptRecords
-      .filter()
-      .notebookIdEqualTo(notebookId)
-      .deleteAll();
-  await isar.studySessionRecords
       .filter()
       .notebookIdEqualTo(notebookId)
       .deleteAll();

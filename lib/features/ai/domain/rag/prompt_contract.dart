@@ -12,9 +12,6 @@ enum PromptAppliedBy {
 
   /// The app prepends the prefix itself, and asks the runtime for none.
   app,
-
-  /// Not decided yet. A spec with this contract cannot run.
-  undecided,
 }
 
 /// What a model's input looks like: its prefixes, and whether the notebook title
@@ -26,7 +23,6 @@ class PromptContract {
     required this.titleInText,
     this.documentPrefix,
     this.queryPrefix,
-    this.candidates = const {},
   });
 
   /// Short and stable. A spec's modelId must contain it, so the index is
@@ -44,10 +40,6 @@ class PromptContract {
   final String? documentPrefix;
   final String? queryPrefix;
 
-  /// Candidate (document, query) prefix pairs for a model whose contract is not
-  /// chosen yet, recorded as each published source gives them. Never applied.
-  final Map<String, (String document, String query)> candidates;
-
   /// EmbeddingGemma 300M, as flutter_edge_ai applies it. The plugin writes
   /// `title: none` for documents, so the app puts the title in the text instead.
   static const pluginGemma300m = PromptContract(
@@ -56,25 +48,6 @@ class PromptContract {
     titleInText: true,
     documentPrefix: 'title: none | text: ',
     queryPrefix: 'task: search result | query: ',
-  );
-
-  /// EmbeddingGemma 2, until phase 5 decides its contract from the evaluation.
-  static const undecided = PromptContract(
-    id: 'UNSET',
-    appliedBy: PromptAppliedBy.undecided,
-    titleInText: false,
-    candidates: {
-      // The Hugging Face model card.
-      'huggingface-card': (
-        'title: {title} | text: {content}',
-        'task: search result | query: {q}',
-      ),
-      // Google's LiteRT-LM documentation.
-      'litert-lm-docs': (
-        'task: search result | text:',
-        'task: search query | text:',
-      ),
-    },
   );
 
   /// The text to embed for [passage], given the notebook [title] (null when there

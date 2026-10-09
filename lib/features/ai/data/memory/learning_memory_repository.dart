@@ -1,11 +1,10 @@
-// The Learning Memory store: durable concept mastery + quiz history.
+// The Learning Memory store: durable concept mastery + quiz attempts.
 //
-// A seam over Isar (like FlashcardStore) so the rest of Phase 2 — and its tests
-// — never touch IsarService directly. Deliberately rule-free: every transition
+// A seam over Isar (like FlashcardStore) so its callers — and their tests —
+// never touch IsarService directly. Deliberately rule-free: every transition
 // is computed by the pure domain (`domain/memory/`), and this class only
-// persists the result. The queries the rest of Phase 2 needs (weak / mastered /
-// due) filter in Dart rather than in Isar, so the definition of "weak" lives in
-// exactly one place — the domain — and notebook-scale data makes that free.
+// persists the result. The queries (weak / due) filter in Dart rather than in
+// Isar, so the definition of "weak" lives in exactly one place — the domain — and notebook-scale data makes that free.
 
 import 'package:isar_community/isar.dart';
 
@@ -14,12 +13,10 @@ import '../../domain/knowledge_graph/concept_relation.dart';
 import '../../domain/memory/concept_mastery.dart';
 import '../../domain/memory/learning_preferences.dart';
 import '../../domain/memory/quiz_attempt.dart';
-import '../../domain/memory/study_session.dart';
 import 'concept_mastery_record.dart';
 import 'concept_relation_record.dart';
 import 'learning_preferences_record.dart';
 import 'quiz_attempt_record.dart';
-import 'study_session_record.dart';
 
 abstract class LearningMemoryRepository {
   /// The Context Engine feed for one analyzed page.
@@ -67,15 +64,9 @@ abstract class LearningMemoryRepository {
   /// Concepts the learner is measurably struggling with, weakest first.
   Future<List<ConceptMastery>> weakConcepts(int notebookId);
 
-  /// Concepts at [MasteryLevel.mastered].
-  Future<List<ConceptMastery>> masteredConcepts(int notebookId);
-
   /// Concepts whose review interval has elapsed, most overdue first. Omit
   /// [notebookId] to sweep every notebook.
   Future<List<ConceptMastery>> dueForReview({int? notebookId, DateTime? now});
-
-  /// Quiz attempts for a notebook, newest first.
-  Future<List<QuizAttempt>> quizHistory(int notebookId);
 
   /// The learner's preferences, with the derived pace signal recomputed from
   /// current mastery data. Returns [LearningPreferences.empty] when nothing has
@@ -84,12 +75,6 @@ abstract class LearningMemoryRepository {
 
   /// Persists the *stored* half of [prefs] (the derived pace signal is ignored).
   Future<void> savePreferences(LearningPreferences prefs);
-
-  /// Appends a coarse session log entry.
-  Future<void> recordStudySession(StudySession session);
-
-  /// Session log for a notebook, newest first.
-  Future<List<StudySession>> studyHistory(int notebookId);
 }
 
 class IsarLearningMemoryRepository implements LearningMemoryRepository {
@@ -239,10 +224,6 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
       selectWeak(await allConcepts(notebookId));
 
   @override
-  Future<List<ConceptMastery>> masteredConcepts(int notebookId) async =>
-      selectMastered(await allConcepts(notebookId));
-
-  @override
   Future<List<ConceptMastery>> dueForReview({
     int? notebookId,
     DateTime? now,
@@ -254,14 +235,6 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
       [for (final r in rows) r.toDomain()],
       now ?? DateTime.now(),
     );
-  }
-
-  @override
-  Future<List<QuizAttempt>> quizHistory(int notebookId) async {
-    final rows =
-        await _attempts.filter().notebookIdEqualTo(notebookId).findAll();
-    rows.sort((a, b) => b.takenAt.compareTo(a.takenAt));
-    return [for (final r in rows) r.toDomain()];
   }
 
   @override
@@ -285,24 +258,6 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
       await IsarService.instance.learningPreferencesRecords
           .put(LearningPreferencesRecord.fromDomain(prefs));
     });
-  }
-
-  @override
-  Future<void> recordStudySession(StudySession session) {
-    return IsarService.instance.writeTxn(() async {
-      await IsarService.instance.studySessionRecords
-          .put(StudySessionRecord.fromDomain(session));
-    });
-  }
-
-  @override
-  Future<List<StudySession>> studyHistory(int notebookId) async {
-    final rows = await IsarService.instance.studySessionRecords
-        .filter()
-        .notebookIdEqualTo(notebookId)
-        .findAll();
-    rows.sort((a, b) => b.startedAt.compareTo(a.startedAt));
-    return [for (final r in rows) r.toDomain()];
   }
 
   Future<ConceptMasteryRecord?> _findConcept(int notebookId, String key) =>

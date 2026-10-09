@@ -38,8 +38,6 @@ class _NoopProvider implements AiProvider {
     AiGenerationOptions? options,
   }) =>
       throw UnimplementedError();
-  @override
-  Future<List<double>> embed(String text) => throw UnimplementedError();
 }
 
 /// A notifier pinned to a fixed state — no timers, no analysis — so the view's

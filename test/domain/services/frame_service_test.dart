@@ -42,19 +42,4 @@ void main() {
     expect(clip.keys, ['in']);
     expect(clip['in'], const Rect.fromLTRB(0, 0, 100, 100));
   });
-
-  test('frameAt finds the topmost frame under a point', () {
-    final nested = [
-      _frame('big', [0, 0, 100, 100], z: 0),
-      _frame('small', [10, 10, 50, 50], z: 1),
-    ];
-    expect(FrameService.frameAt(const Offset(20, 20), nested)?.id, 'small');
-    expect(FrameService.frameAt(const Offset(70, 70), nested)?.id, 'big');
-    expect(FrameService.frameAt(const Offset(999, 999), nested), isNull);
-  });
-
-  test('deleteIds optionally takes the members with the frame', () {
-    expect(FrameService.deleteIds(frame, all), {'f'});
-    expect(FrameService.deleteIds(frame, all, withMembers: true), {'f', 'in'});
-  });
 }

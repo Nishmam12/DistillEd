@@ -40,10 +40,6 @@ class _ScriptedProvider implements AiProvider {
       yield c;
     }
   }
-
-  @override
-  Future<List<double>> embed(String text) async =>
-      throw const AiUnsupportedOperationException('not needed');
 }
 
 /// Returns a fixed query vector so canned chunks with the same vector score 1.0.

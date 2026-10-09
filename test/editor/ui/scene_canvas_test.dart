@@ -124,7 +124,7 @@ void main() {
     await _pump(tester, container);
 
     // Seed a rectangle at (100,100)-(160,140).
-    await container.read(sceneControllerProvider(_key).notifier).add(
+    await container.read(sceneControllerProvider(_key).notifier).addMany([
           const SceneShapeElement(
             id: 'r',
             zOrder: 0,
@@ -133,7 +133,7 @@ void main() {
             color: 0xFF000000,
             strokeWidth: 2,
           ),
-        );
+        ]);
     container.read(editorToolProvider.notifier).setTool(EditorTool.select);
     await tester.pump();
 
@@ -204,16 +204,18 @@ void main() {
     await _pump(tester, container);
 
     final ctl = container.read(sceneControllerProvider(_key).notifier);
-    await ctl.add(const FrameElement(
-        id: 'frame', zOrder: 0, geometryData: [50, 50, 200, 200], name: 'F'));
-    await ctl.add(const SceneShapeElement(
-      id: 'r',
-      zOrder: 1,
-      shapeType: ShapeType.rectangle,
-      geometryData: [100, 100, 140, 140],
-      color: 0xFF000000,
-      strokeWidth: 2,
-    ));
+    await ctl.addMany(const [
+      FrameElement(
+          id: 'frame', zOrder: 0, geometryData: [50, 50, 200, 200], name: 'F'),
+      SceneShapeElement(
+        id: 'r',
+        zOrder: 1,
+        shapeType: ShapeType.rectangle,
+        geometryData: [100, 100, 140, 140],
+        color: 0xFF000000,
+        strokeWidth: 2,
+      ),
+    ]);
     container.read(editorToolProvider.notifier).setTool(EditorTool.select);
     container.read(selectionProvider.notifier).selectMany({'frame'});
     await tester.pump();
@@ -256,7 +258,7 @@ void main() {
     addTearDown(container.dispose);
     await _pump(tester, container);
 
-    await container.read(sceneControllerProvider(_key).notifier).add(
+    await container.read(sceneControllerProvider(_key).notifier).addMany([
           const SceneShapeElement(
             id: 'r',
             zOrder: 0,
@@ -265,7 +267,7 @@ void main() {
             color: 0xFF000000,
             strokeWidth: 2,
           ),
-        );
+        ]);
     container.read(editorToolProvider.notifier).setTool(EditorTool.eraser);
     await tester.pump();
 

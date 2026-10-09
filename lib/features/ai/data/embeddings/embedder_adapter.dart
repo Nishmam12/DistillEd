@@ -306,7 +306,7 @@ class EdgeAiEmbeddingRuntime implements EmbeddingRuntime {
   Future<EmbeddingSession> open(EmbedderSpec spec) async {
     // flutter_edge_ai always prepends its own prefix for a TaskType, and has no
     // way to embed raw text, so an app-owned prompt would be doubled. Refused
-    // before the plugin is touched. Phase 5 decides whether this is needed.
+    // before the plugin is touched.
     if (spec.promptContract.appliedBy == PromptAppliedBy.app) {
       throw UnsupportedError(
         '${spec.displayName}: app-owned prompts are not supported',

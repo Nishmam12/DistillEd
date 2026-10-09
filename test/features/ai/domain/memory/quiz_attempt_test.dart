@@ -25,9 +25,6 @@ void main() {
     final a = attempt([outcome('q1', true), outcome('q2', false)]);
     expect(a.totalCount, 2);
     expect(a.correctCount, 1);
-    expect(a.scoreFraction, 0.5);
-
-    expect(attempt(const []).scoreFraction, 0, reason: 'no divide-by-zero');
   });
 
   test('a concept is correct only when every question testing it was right', () {

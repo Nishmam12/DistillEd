@@ -294,7 +294,6 @@ void main() {
       expect(content.combinedText, 'Revenue notes');
       expect(content.combinedTextWithFigures, startsWith('Revenue notes\n\n['));
       expect(content.combinedTextWithFigures, contains('Quarterly revenue'));
-      expect(content.hasFigures, isTrue);
     });
 
     test('a page that is nothing but a graph still has prompt text', () {

@@ -1,7 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:inkflow/data/migration/legacy_models/stroke.dart';
 import 'package:inkflow/domain/model/scene_element.dart';
 import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
 
@@ -44,17 +43,21 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
-  Stroke inkStroke(double y, {int? t0}) => Stroke(
-        id: 'y$y',
+  /// A stroke of ink as the editor stores it: 20 units tall so lines have height
+  /// (a perfectly flat stroke cannot be split into columns), starting at [x],[y].
+  FreehandElement element(String id, double y, {double x = 0}) =>
+      FreehandElement(
+        id: id,
+        zOrder: 0,
         color: 0xFF000000,
         size: 4,
         points: [
-          StrokePoint(x: 0, y: y, t: t0),
-          StrokePoint(x: 10, y: y, t: t0 == null ? null : t0 + 16),
+          StrokePoint(x: x, y: y, t: 0),
+          StrokePoint(x: x + 10, y: y + 20, t: 16),
         ],
       );
 
-  group('recognizePage', () {
+  group('recognizeElements — single page', () {
     test('returns the top candidate and sends timestamped ink', () async {
       final service = HandwritingRecognitionService();
       recognizeResponses = [
@@ -65,7 +68,7 @@ void main() {
       ];
 
       final page =
-          await service.recognizePage([inkStroke(0, t0: 5000)], 'en');
+          await service.recognizeElements([element('a', 0)], 'en');
 
       expect(page.text, 'hello world');
       expect(page.topScore, 1.5);
@@ -83,10 +86,15 @@ void main() {
     test('page with no ink returns empty without calling the channel',
         () async {
       final service = HandwritingRecognitionService();
-      final page = await service.recognizePage(
-          [const Stroke(id: 'e', color: 0, size: 4, isEraser: true, points: [
-        StrokePoint(x: 0, y: 0),
-      ])], 'en');
+      final page = await service.recognizeElements(const [
+        FreehandElement(
+            id: 'e',
+            zOrder: 0,
+            color: 0,
+            size: 4,
+            isEraser: true,
+            points: [StrokePoint(x: 0, y: 0)]),
+      ], 'en');
 
       expect(page.hasInk, isFalse);
       expect(page.text, isEmpty);
@@ -97,7 +105,7 @@ void main() {
     test('zero candidates → empty text but hasInk stays true', () async {
       final service = HandwritingRecognitionService();
       recognizeResponses = [[]];
-      final page = await service.recognizePage([inkStroke(0)], 'en');
+      final page = await service.recognizeElements([element('a', 0)], 'en');
       expect(page.text, isEmpty);
       expect(page.topScore, isNull);
       expect(page.hasInk, isTrue);
@@ -110,25 +118,11 @@ void main() {
       });
       final service = HandwritingRecognitionService();
       expect(
-        () => service.recognizePage([inkStroke(0)], 'en'),
+        () => service.recognizeElements([element('a', 0)], 'en'),
         throwsA(isA<RecognitionException>()),
       );
     });
   });
-
-  /// A stroke of ink as the editor stores it: 20 units tall so lines have height
-  /// (a perfectly flat stroke cannot be split into columns), starting at [x],[y].
-  FreehandElement element(String id, double y, {double x = 0}) =>
-      FreehandElement(
-        id: id,
-        zOrder: 0,
-        color: 0xFF000000,
-        size: 4,
-        points: [
-          StrokePoint(x: x, y: y, t: 0),
-          StrokePoint(x: x + 10, y: y + 20, t: 16),
-        ],
-      );
 
   group('recognizeElements — page-level behaviour (pinned before refactoring)',
       () {
@@ -285,52 +279,6 @@ void main() {
       expect(lines, isEmpty);
       expect(log.where((c) => c.method == 'vision#startDigitalInkRecognizer'),
           isEmpty);
-    });
-  });
-
-  group('recognizeNotebook', () {
-    test('concatenates pages in order, skipping empty pages', () async {
-      final service = HandwritingRecognitionService();
-      recognizeResponses = [
-        [
-          {'text': 'the quick brown fox jumps over the lazy dog', 'score': 1.0},
-        ],
-        [
-          {'text': 'and runs far away again', 'score': 2.0},
-        ],
-      ];
-
-      final outcome = await service.recognizeNotebook(
-        [
-          [inkStroke(0)], // page 1
-          [], // page 2 — no ink, must be skipped without a channel call
-          [inkStroke(10)], // page 3
-        ],
-        'en',
-      );
-
-      expect(outcome.text,
-          'the quick brown fox jumps over the lazy dog\n\nand runs far away again');
-      expect(outcome.pages, hasLength(3));
-      expect(outcome.pages[1].hasInk, isFalse);
-      expect(outcome.gate.passed, isTrue); // 14 words, alphabetic, scores low
-      expect(
-        log.where((c) => c.method == 'vision#startDigitalInkRecognizer'),
-        hasLength(2),
-      );
-    });
-
-    test('gate failure surfaces on gibberish notebooks', () async {
-      final service = HandwritingRecognitionService();
-      recognizeResponses = [
-        [
-          {'text': '7 42 --', 'score': 30.0},
-        ],
-      ];
-      final outcome = await service.recognizeNotebook([
-        [inkStroke(0)],
-      ], 'en');
-      expect(outcome.gate.passed, isFalse);
     });
   });
 

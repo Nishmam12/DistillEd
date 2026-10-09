@@ -118,10 +118,6 @@ class CloudGatewayProvider
           // Gemma 4's 26B/31B both report a 256K context window upstream —
           // see server/ai-gateway/app/config.py.
           contextWindowTokens: 256000,
-          // The gateway's /v1/vision endpoint backs [transcribeImage] — see
-          // server/ai-gateway/app/routers/vision.py.
-          supportsVision: true,
-          approxCostPerCallUsd: modelTier == 'cloud-frontier' ? 0.02 : 0.005,
         );
 
   @override
@@ -352,12 +348,4 @@ class CloudGatewayProvider
             cause: e);
     }
   }
-
-  @override
-  Future<List<double>> embed(String text) async =>
-      throw const AiUnsupportedOperationException(
-        'CloudGatewayProvider has no embedding endpoint (Phase 2\'s '
-        'on-device EmbeddingGemma covers embeddings) — see /v1/embed in the '
-        'phase spec, deliberately deferred.',
-      );
 }

@@ -8,8 +8,6 @@ Also save the two mockups in the repo:
 
 ```
 design/THEME_SPEC.md                    <- this file
-design/mockups/settings_light_dark.png  <- image 1
-design/mockups/home_light_dark.png      <- image 2
 ```
 
 Do **not** add the current note-editor screenshots. Reasons in "Do I upload the
@@ -371,7 +369,6 @@ inventory from THEME-13. Then STOP.
 # Task: Restyle the settings screen to the new theme
 
 ## References
-- Target mockup: `design/mockups/settings_light_dark.png`
   Left half = light mode, right half = dark mode.
 - Tokens, hierarchy, and asymmetries: `design/THEME_SPEC.md`
 
@@ -507,7 +504,6 @@ Then STOP.
 # Task: Restyle the home screen to the new theme
 
 ## References
-- Target mockup: `design/mockups/home_light_dark.png`
   Top half = light mode, bottom half = dark mode.
 - Tokens, hierarchy, and asymmetries: `design/THEME_SPEC.md`
 - Precedence: spec wins on color and hierarchy, image wins on layout.

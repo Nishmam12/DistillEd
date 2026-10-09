@@ -55,11 +55,6 @@ class SceneController extends StateNotifier<List<SceneElement>>
     await _enqueue(() => _store.replaceForPage(_notebookId, _pageId, elements));
   }
 
-  Future<void> add(SceneElement element) async {
-    state = List.unmodifiable([...state, element]);
-    await _enqueue(() => _store.upsertForPage(_notebookId, _pageId, [element]));
-  }
-
   Future<void> addMany(List<SceneElement> elements) async {
     if (elements.isEmpty) return;
     state = List.unmodifiable([...state, ...elements]);
@@ -93,23 +88,6 @@ class SceneController extends StateNotifier<List<SceneElement>>
     ];
     state = List.unmodifiable(remaining);
     await _enqueue(() => _store.deleteElements(_pageId, ids));
-  }
-
-  Future<void> update(SceneElement element) async {
-    state = List.unmodifiable([
-      for (final e in state)
-        if (e.id == element.id) element else e,
-    ]);
-    await _enqueue(() => _store.upsertForPage(_notebookId, _pageId, [element]));
-  }
-
-  Future<void> remove(String id) async {
-    final remaining = [
-      for (final e in state)
-        if (e.id != id) e,
-    ];
-    state = List.unmodifiable(remaining);
-    await _enqueue(() => _store.deleteElements(_pageId, {id}));
   }
 
   // ---- SceneMutator (used by undo/redo commands; state updates are sync) ----

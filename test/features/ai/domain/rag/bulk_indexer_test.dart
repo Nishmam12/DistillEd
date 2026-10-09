@@ -393,7 +393,6 @@ void main() {
       final report = await b.bulk.indexPages(notebookId: 1, pageIds: [10, 11, 12]);
 
       expect(report.stoppedModelNotReady, isTrue);
-      expect(report.pagesTouched, 0);
       expect(b.events, ['ready?'], reason: 'no read, no release, no embed');
     });
 
@@ -596,14 +595,13 @@ void main() {
       final bulk = gated(events, () => PauseReason.hot); // never cools
       var polls = 0;
 
-      final report = await bulk.indexPages(
+      await bulk.indexPages(
         notebookId: 1,
         pageIds: [10, 11],
         isCancelled: () => polls++ >= 3,
       );
 
       expect(events, isEmpty);
-      expect(report.pagesTouched, 0);
     });
 
     test('the one-at-a-time loop waits too', () async {

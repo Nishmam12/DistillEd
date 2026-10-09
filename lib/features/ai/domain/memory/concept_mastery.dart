@@ -130,10 +130,6 @@ List<ConceptMastery> selectWeak(Iterable<ConceptMastery> all) {
   return weak;
 }
 
-/// Concepts at [MasteryLevel.mastered].
-List<ConceptMastery> selectMastered(Iterable<ConceptMastery> all) =>
-    all.where((c) => c.level == MasteryLevel.mastered).toList();
-
 /// Concepts whose review interval has elapsed by [now], most overdue first.
 List<ConceptMastery> selectDueForReview(
   Iterable<ConceptMastery> all,

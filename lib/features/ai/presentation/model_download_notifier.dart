@@ -98,11 +98,6 @@ class LlmDownloadNotifier extends StateNotifier<LlmDownloadState> {
   /// this deliberately does not set the state itself.
   void cancel() => _downloads.cancelDownload();
 
-  /// Dismisses a failure so the view offers the download again.
-  void clearFailure() {
-    if (state is LlmDownloadFailed) state = const LlmDownloadIdle();
-  }
-
   /// Joins a run this notifier did not start, so it still reaches a terminal
   /// state. No-op when nothing is running or we are already waiting.
   void _adopt() {

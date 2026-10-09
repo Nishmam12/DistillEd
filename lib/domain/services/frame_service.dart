@@ -28,17 +28,6 @@ class FrameService {
     ];
   }
 
-  /// The frame whose bounds contain [point], topmost first; null if none.
-  static FrameElement? frameAt(Offset point, Iterable<SceneElement> els) {
-    FrameElement? hit;
-    for (final f in framesIn(els)) {
-      if (f.boundsRect.contains(point)) {
-        if (hit == null || f.zOrder > hit.zOrder) hit = f;
-      }
-    }
-    return hit;
-  }
-
   /// Maps each member element id → the bounds of the frame that contains it,
   /// used by the renderer to clip members. When an element falls inside several
   /// frames, the topmost (highest zOrder) frame wins.
@@ -68,13 +57,5 @@ class FrameService {
       }
     }
     return out;
-  }
-
-  /// Ids to remove when deleting [frame]; optionally its members too.
-  static Set<String> deleteIds(FrameElement frame, List<SceneElement> els,
-      {bool withMembers = false}) {
-    final ids = {frame.id};
-    if (withMembers) ids.addAll(membersOf(frame, els).map((e) => e.id));
-    return ids;
   }
 }

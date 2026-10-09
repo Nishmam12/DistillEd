@@ -31,7 +31,7 @@ This file is written to be executed by Claude Code, one phase at a time. Follow 
 6. **Keep the codebase's comment style.** This codebase documents *why* in long comments. When code changes, update the comments that describe it (many mention `flutter_gemma` by name). Don't strip existing rationale.
 7. **Never delete user data without a backup step first.** Phase 2 and Phase 4.5 touch stored data; follow their order exactly.
 8. **Phase 5 is gated.** Check the condition in 5.0 first. If it is not met, do nothing in Phase 5 and report what you checked.
-9. **At the end of each phase:** update `CHANGELOG.md`, the tech-stack table in `PROJECT_CONTEXT_PROMPT.md`, and any affected lines in `docs/AI_PIPELINE_PLAN.md` and `docs/ARCHITECTURE.md`; run `graphify update .` if `graphify-out/` exists; tick the phase in the **Progress log** at the bottom of this file with the date and a one-line summary of what changed.
+9. **At the end of each phase:** update `CHANGELOG.md` and any affected lines in `docs/AI_PIPELINE_PLAN.md` and `docs/ARCHITECTURE.md`; run `graphify update .` if `graphify-out/` exists; tick the phase in the **Progress log** at the bottom of this file with the date and a one-line summary of what changed.
 
 ---
 
@@ -340,7 +340,7 @@ The generic file is the right one for the Pixel 7 Pro: its Tensor G2 (GS201) mat
 
 Benchmarks don't cover Bangla or OCR'd handwriting, which is most of what DistillEd embeds. Build a harness the user runs on a computer:
 
-- `tool/embedding_eval/eval.py` + `requirements.txt` (`sentence-transformers>=6.1`, `torch`, `numpy`) + `README.md`.
+- (Removed from the repo after the eval ran.) `tool/embedding_eval/eval.py` + `requirements.txt` (`sentence-transformers>=6.1`, `torch`, `numpy`) + `README.md`.
 - Input: `eval_set.jsonl`, one line per question: `{"query": "...", "lang": "en|bn", "relevant_ids": ["page-12-c0", ...]}`, plus `corpus.jsonl`: `{"id": "...", "title": "...", "text": "..."}`.
 - Add a debug-only "Export RAG corpus" action in Settings that writes `corpus.jsonl` from the current chunk store (chunk id, notebook title, chunk text) to the share sheet. The user writes the questions.
 - The script embeds the corpus and queries with `google/embeddinggemma-300m` and `google/embeddinggemma-2` (bf16 or fp32, never fp16), under each candidate prompt contract, at chunk sizes 250 / 500 / 1000 words and at 768 and 512 dimensions, and prints recall@1/5/10 and MRR per language as a table, plus a CSV.

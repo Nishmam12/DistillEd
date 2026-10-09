@@ -106,23 +106,6 @@ class ChecklistText {
     return lines.join('\n');
   }
 
-  /// Sets every item's state at once — drives "check all" / "uncheck all".
-  static String setAll(String text, {required bool done}) {
-    final lines = text.split('\n');
-    for (var i = 0; i < lines.length; i++) {
-      final match = _itemPattern.firstMatch(lines[i]);
-      if (match == null) continue;
-      lines[i] = '${match.group(1)}[${done ? 'x' : ' '}] ${match.group(3)}';
-    }
-    return lines.join('\n');
-  }
-
-  /// How many items are ticked, out of how many.
-  static ({int done, int total}) progress(String text) {
-    final all = items(text);
-    return (done: all.where((i) => i.done).length, total: all.length);
-  }
-
   static List<String> _contentLines(String text) => [
         for (final line in text.split('\n'))
           if (line.trim().isNotEmpty) line,

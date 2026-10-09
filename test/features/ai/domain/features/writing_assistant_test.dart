@@ -38,9 +38,6 @@ class _ScriptedProvider implements AiProvider {
     calls++;
     yield r;
   }
-
-  @override
-  Future<List<double>> embed(String text) async => throw UnimplementedError();
 }
 
 void main() {

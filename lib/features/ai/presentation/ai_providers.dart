@@ -173,9 +173,6 @@ final localAiProvider = Provider<AiProvider>((ref) => LocalGemmaProvider(
       // A device short on RAM loads a smaller context window.
       spec: LlmModelSpec.active.forProfile(ref.read(deviceProfileProvider)),
       runtime: ref.watch(llmRuntimeProvider),
-      // Read when used, not watched: a switch of embedding model must not rebuild
-      // this provider (and its load lock) under a running generation.
-      embedderOf: () => ref.read(textEmbedderProvider),
       onBackendChanged: (backend) =>
           ref.read(localBackendProvider.notifier).state = backend,
     ));

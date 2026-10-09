@@ -61,10 +61,6 @@ class QuizAttempt {
   int get totalCount => outcomes.length;
   int get correctCount => outcomes.where((o) => o.correct).length;
 
-  /// 0.0–1.0; an attempt with no questions scores 0 rather than dividing by zero.
-  double get scoreFraction =>
-      totalCount == 0 ? 0 : correctCount / totalCount;
-
   /// Per-concept verdict for feeding [ConceptMastery.afterQuiz].
   ///
   /// A concept counts as correct only when **every** question testing it was

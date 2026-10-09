@@ -42,10 +42,6 @@ class ScriptedAiProvider implements AiProvider {
     this.options.add(options);
     yield replies[prompts.length - 1];
   }
-
-  @override
-  Future<List<double>> embed(String text) async =>
-      throw const AiUnsupportedOperationException('not needed here');
 }
 
 // ---- Tests ------------------------------------------------------------------

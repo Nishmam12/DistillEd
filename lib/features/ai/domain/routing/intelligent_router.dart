@@ -149,8 +149,6 @@ class RoutedAiProvider implements AiProvider {
         contextWindowTokens: [local, cloudMid, cloudFrontier]
             .map((p) => p.capabilities.contextWindowTokens)
             .reduce(max),
-        supportsEmbeddings: local.capabilities.supportsEmbeddings,
-        approxCostPerCallUsd: 0, // depends on the per-call decision
       );
 
   Future<RouteTarget> _decide(String prompt) => router.decide(
@@ -194,7 +192,4 @@ class RoutedAiProvider implements AiProvider {
       options: options,
     );
   }
-
-  @override
-  Future<List<double>> embed(String text) => local.embed(text);
 }

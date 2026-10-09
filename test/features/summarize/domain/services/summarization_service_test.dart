@@ -65,10 +65,6 @@ class FakeAiProvider implements AiProvider {
     lastOptions = options;
     yield reply;
   }
-
-  @override
-  Future<List<double>> embed(String text) async =>
-      throw const AiUnsupportedOperationException('not needed here');
 }
 
 class RecordingCloudClient implements CloudLlmClient {

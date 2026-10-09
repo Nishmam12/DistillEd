@@ -90,9 +90,6 @@ class FakeNoteRepository implements NoteRepository {
       notebooks.where((n) => n.id == id).firstOrNull;
 
   @override
-  Future<void> updateNotebook(Notebook notebook) async {}
-
-  @override
   Future<void> updateTitle(int id, String title) async {}
 
   @override

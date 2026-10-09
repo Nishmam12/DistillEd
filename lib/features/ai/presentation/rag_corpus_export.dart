@@ -1,6 +1,6 @@
 // Debug builds only (Settings → AI → Export RAG corpus): reads every notebook's
 // pages, with the same title each page is indexed under, and returns the corpus
-// as JSON lines for tool/embedding_eval/eval.py.
+// as JSON lines for an external embedding eval.
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -16,7 +16,7 @@ import 'package:inkflow/features/home/data/repositories/note_repository.dart';
 import 'package:inkflow/features/home/data/repositories/page_repository.dart';
 import 'package:inkflow/features/home/presentation/home_notifier.dart';
 
-Future<String> buildRagCorpus({
+Future<String> _buildRagCorpus({
   required NoteRepository notes,
   required PageRepository pages,
   required PageTextStore texts,
@@ -47,7 +47,7 @@ Future<String> buildRagCorpus({
 /// Shares the corpus through the system share sheet. Only the debug-only Settings
 /// row calls this.
 Future<void> shareRagCorpus(WidgetRef ref) async {
-  final corpus = await buildRagCorpus(
+  final corpus = await _buildRagCorpus(
     notes: ref.read(noteRepositoryProvider),
     pages: ref.read(pageRepositoryProvider),
     texts: ref.read(pageTextStoreProvider),

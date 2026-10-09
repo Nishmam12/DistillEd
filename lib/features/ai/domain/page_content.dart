@@ -124,10 +124,6 @@ class PageContent {
 
   bool get hasText => combinedText.isNotEmpty;
 
-  /// True when the page carries understood visual content, even if it holds no
-  /// readable words at all — a page that is nothing but a hand-drawn graph.
-  bool get hasFigures => figures.isNotEmpty;
-
   /// True when the page holds images the pipeline cannot read yet.
   bool get hasUnrecognizedImages => sources.any((s) => s.needsOcr);
 }

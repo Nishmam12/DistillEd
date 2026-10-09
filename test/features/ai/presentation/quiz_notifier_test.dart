@@ -29,8 +29,6 @@ class _NoopProvider implements AiProvider {
     AiGenerationOptions? options,
   }) =>
       throw UnimplementedError();
-  @override
-  Future<List<double>> embed(String text) => throw UnimplementedError();
 }
 
 /// Scripts `generate` directly so the notifier is isolated from parsing.

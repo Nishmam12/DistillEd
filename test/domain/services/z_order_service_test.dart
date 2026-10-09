@@ -24,18 +24,4 @@ void main() {
     expect(z['a'], 1);
     expect(z['b'], 2);
   });
-
-  test('bringForward moves the selection up one step', () {
-    final z = _z(ZOrderService.bringForward(base, {'a'}));
-    expect(z['b'], 0);
-    expect(z['a'], 1);
-    expect(z['c'], 2);
-  });
-
-  test('sendBackward moves the selection down one step', () {
-    final z = _z(ZOrderService.sendBackward(base, {'c'}));
-    expect(z['a'], 0);
-    expect(z['c'], 1);
-    expect(z['b'], 2);
-  });
 }

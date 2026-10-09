@@ -37,8 +37,6 @@ class _NoopProvider implements AiProvider {
     AiGenerationOptions? options,
   }) =>
       const Stream.empty();
-  @override
-  Future<List<double>> embed(String text) async => const [];
 }
 
 class _NoopEmbedder implements TextEmbedder {

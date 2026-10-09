@@ -73,12 +73,6 @@ class HomeNotifier extends StateNotifier<List<Notebook>> {
     }
     await loadNotebooks();
   }
-
-  /// Updates an existing notebook and refreshes the list.
-  Future<void> updateNotebook(Notebook notebook) async {
-    await _repository.updateNotebook(notebook);
-    await loadNotebooks();
-  }
 }
 
 /// Provider for the NoteRepository, depends on the Isar instance.

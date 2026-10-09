@@ -3,7 +3,6 @@
 import 'dart:ui';
 
 import '../../../domain/model/stroke_point.dart';
-import 'meaningfulness_gate.dart';
 
 /// Recognition output for a single page.
 class PageRecognition {
@@ -62,21 +61,4 @@ class RecognizedInkLine {
   double? get score => segmentScores.isEmpty
       ? null
       : segmentScores.reduce((a, b) => a + b) / segmentScores.length;
-}
-
-/// Recognition output for a whole notebook: page texts concatenated in page
-/// order plus the meaningfulness-gate verdict.
-class RecognitionOutcome {
-  /// Page-order concatenation of non-empty page texts ('\n\n'-joined).
-  final String text;
-
-  final List<PageRecognition> pages;
-
-  final GateResult gate;
-
-  const RecognitionOutcome({
-    required this.text,
-    required this.pages,
-    required this.gate,
-  });
 }

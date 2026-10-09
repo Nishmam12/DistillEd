@@ -45,11 +45,9 @@ app.*.map.json
 /android/app/release
 /android/build/
 
-# dev_secrets.dart is intentionally NOT ignored: this repo is PRIVATE and the
-# file carries a shared dev-only HuggingFace token so teammates don't each
-# need their own. Read only in debug builds (see huggingFaceTokenProvider).
-# If this repo is ever made public again, revert this and rotate the token
-# immediately (see lib/dev/dev_secrets.dart for details).
+# lib/dev/dev_secrets.dart is tracked on purpose: it holds an empty debug-only
+# HuggingFace token fallback (see huggingFaceTokenProvider). Never commit a real
+# token there.
 
 # Python (server/ai-gateway/ — the Phase 3 FastAPI gateway)
 __pycache__/
@@ -71,3 +69,6 @@ ios/Flutter/Generated.xcconfig
 ios/Flutter/flutter_export_environment.sh
 ios/Flutter/ephemeral/
 ios/Runner/GeneratedPluginRegistrant.*
+
+# Android only; pub get regenerates windows/flutter/ephemeral symlinks.
+/windows/

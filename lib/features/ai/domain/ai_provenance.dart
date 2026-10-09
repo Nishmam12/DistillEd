@@ -45,17 +45,3 @@ enum AiRanOn {
               'in the cloud. This page was sent to the gateway.',
       };
 }
-
-/// Where the RETRIEVAL half of RAG runs.
-///
-/// Deliberately not a variable: embeddings are model-locked and never routed
-/// (`domain/rag/text_embedder.dart`), the embedder provider is hardcoded to
-/// [LocalTextEmbedder], and `CloudGatewayProvider.embed` throws
-/// [AiUnsupportedOperationException] because no embedding endpoint exists.
-///
-/// So note chunks are embedded on-device and the vectors are stored in Isar on
-/// the device. Search is brute-force cosine similarity in Dart over those local
-/// vectors. This is a constant so the UI can state it as fact rather than
-/// implying it might sometimes be otherwise — and so that if a cloud embedder
-/// is ever added, every place that made this promise fails to compile.
-const bool kRagRetrievalIsAlwaysOnDevice = true;

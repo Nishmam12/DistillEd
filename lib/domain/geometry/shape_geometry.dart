@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 
 class ShapeGeometry {
@@ -28,52 +27,6 @@ class ShapeGeometry {
       sumY += p.dy;
     }
     return Offset(sumX / points.length, sumY / points.length);
-  }
-
-  static List<Offset> rdpSimplify(List<Offset> points, double epsilon) {
-    if (points.length < 3) return points;
-
-    double dmax = 0;
-    int index = 0;
-    final int end = points.length - 1;
-
-    for (int i = 1; i < end; i++) {
-      double d = _perpendicularDistance(points[i], points[0], points[end]);
-      if (d > dmax) {
-        index = i;
-        dmax = d;
-      }
-    }
-
-    if (dmax > epsilon) {
-      final List<Offset> recResults1 = rdpSimplify(points.sublist(0, index + 1), epsilon);
-      final List<Offset> recResults2 = rdpSimplify(points.sublist(index, end + 1), epsilon);
-
-      final List<Offset> result = List.from(recResults1);
-      result.removeLast();
-      result.addAll(recResults2);
-      return result;
-    } else {
-      return [points[0], points[end]];
-    }
-  }
-
-  static double _perpendicularDistance(Offset point, Offset lineStart, Offset lineEnd) {
-    final double dx = lineEnd.dx - lineStart.dx;
-    final double dy = lineEnd.dy - lineStart.dy;
-
-    if (dx == 0 && dy == 0) {
-      return (point - lineStart).distance;
-    }
-
-    final double num = (dy * point.dx - dx * point.dy + lineEnd.dx * lineStart.dy - lineEnd.dy * lineStart.dx).abs();
-    final double den = sqrt(dx * dx + dy * dy);
-    return num / den;
-  }
-
-  static bool isClosed(List<Offset> points, double closeThreshold) {
-    if (points.length < 3) return false;
-    return (points.first - points.last).distance <= closeThreshold;
   }
 
   static Rect rectFromGeometry(List<double> data) {

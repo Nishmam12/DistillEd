@@ -30,7 +30,6 @@ import 'dart:typed_data';
 import '../../domain/ai_provider.dart';
 import '../../domain/compute_backend.dart';
 import '../../domain/image_transcriber.dart';
-import '../../domain/rag/text_embedder.dart';
 import '../llm/gemma_adapter.dart';
 import '../llm/llm_exceptions.dart';
 import '../llm/llm_model_spec.dart';
@@ -68,19 +67,9 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
   /// the GPU and the plugin falls back to the CPU without saying so.
   final void Function(ComputeBackend backend)? onBackendChanged;
 
-  /// Backs [embed]. Optional because embedding is a SEPARATE model (Phase 2's
-  /// EmbeddingGemma) that a caller may not have wired: without it this provider
-  /// honestly reports `supportsEmbeddings: false` rather than pretending.
-  ///
-  /// A lookup, not an instance: the embedder changes when a model switch ends, and
-  /// rebuilding this provider for that would swap its load lock while a 2.6 GB
-  /// generation may still hold the old one.
-  final TextEmbedder Function()? _embedderOf;
-
   LocalGemmaProvider({
     this.spec = LlmModelSpec.active,
     LlmRuntime? runtime,
-    this._embedderOf,
     this.idleUnloadDelay = defaultIdleUnloadDelay,
     this.onBackendChanged,
   })  : _runtime = runtime ?? EdgeAiRuntime();
@@ -206,13 +195,7 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
         modelId: spec.filename,
         displayName: spec.displayName,
         contextWindowTokens: spec.maxTokens,
-        supportsStreaming: true,
-        // Gemma 4 E2B ships a vision encoder; [transcribeImage] loads it on
-        // demand. Text generation ([generate]) still runs the model text-only.
-        supportsVision: true,
-        supportsEmbeddings: _embedderOf != null,
         isLocal: true,
-        approxCostPerCallUsd: 0.0,
       );
 
   @override
@@ -333,7 +316,7 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
       session = await _runtime.open(
         spec: spec,
         temperature: opts.temperature,
-        // Greedy decoding when temperature is 0 (the `precise` preset);
+        // Greedy decoding when temperature is 0 (temperature 0);
         // otherwise Gemma's conventional top-k unless the caller overrides.
         topK: opts.topK ?? (opts.temperature == 0.0 ? 1 : 40),
         topP: opts.topP ?? 0.95,
@@ -431,26 +414,5 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
       if (i >= 0 && (earliest == null || i < earliest)) earliest = i;
     }
     return earliest;
-  }
-
-  /// The platform contract's single-vector entry point, delegated to the
-  /// embedding model (a different model from [spec] — see `text_embedder.dart`).
-  ///
-  /// Embeds with QUERY semantics, because a one-off `embed(text)` on the
-  /// router-facing contract is a search. INDEXING MUST NOT COME THROUGH HERE:
-  /// EmbeddingGemma is asymmetric, and storing query-prefixed vectors would
-  /// degrade retrieval without failing. Indexing goes through
-  /// [TextEmbedder.embedAll] with [EmbedTaskType.document] — which is also the
-  /// only way to amortize the model load across a page's chunks.
-  @override
-  Future<List<double>> embed(String text) async {
-    final embedder = _embedderOf?.call();
-    if (embedder == null) {
-      throw const AiUnsupportedOperationException(
-        'This provider was built without an embedder. Construct it with '
-        'LocalGemmaProvider(embedderOf: ...) to enable embeddings.',
-      );
-    }
-    return embedder.embedOne(text, taskType: EmbedTaskType.query);
   }
 }

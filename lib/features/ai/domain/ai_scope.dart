@@ -92,10 +92,6 @@ class AiScope {
     this.importSourceName,
   });
 
-  /// True when this scope reads more than the page the user is on — the
-  /// condition for showing a "reading N pages" note in the UI.
-  bool get spansMultiplePages => pageIds.length > 1;
-
   /// Page ids as a set, for the retrieval filter.
   Set<int> get pageIdSet => pageIds.toSet();
 

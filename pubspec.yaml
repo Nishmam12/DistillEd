@@ -179,11 +179,6 @@ dev_dependencies:
   isar_community_generator: ^3.3.2
 
   # ── Testing ───────────────────────────────────────────────
-  mocktail: ^1.0.4
-
-  # integration_test is NOT listed here: a dev dependency in the app's pubspec
-  # breaks release builds. tool/run_golden.sh adds it for one run and restores this file.
-
 flutter:
   uses-material-design: true
 

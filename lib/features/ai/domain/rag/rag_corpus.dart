@@ -1,6 +1,6 @@
 // The corpus the embedding evaluation reads (docs/TECH_MIGRATION_PLAN.md, phase
 // 4.9): every page of the student's notes, cut at each candidate chunk size, one
-// JSON object per line. tool/embedding_eval/eval.py embeds it.
+// JSON object per line. an external eval script (removed from the repo) embedded it.
 //
 // Pages carry their id into every chunk. A chunk id changes with its size, so
 // the eval set names PAGES as the answers and a question scores at every size.

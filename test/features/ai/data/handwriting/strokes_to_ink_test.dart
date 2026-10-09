@@ -1,16 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/domain/model/scene_element.dart';
-import 'package:inkflow/data/migration/legacy_models/stroke.dart';
 import 'package:inkflow/features/ai/data/handwriting/handwriting_recognition_service.dart';
 
 void main() {
-  Stroke stroke(String id, List<StrokePoint> pts, {bool isEraser = false}) =>
-      Stroke(id: id, color: 0xFF000000, size: 4, isEraser: isEraser, points: pts);
+  FreehandElement stroke(String id, List<StrokePoint> pts,
+          {bool isEraser = false}) =>
+      FreehandElement(
+          id: id,
+          zOrder: 0,
+          color: 0xFF000000,
+          size: 4,
+          isEraser: isEraser,
+          points: pts);
 
-  group('HandwritingRecognitionService.strokesToInk', () {
+  group('HandwritingRecognitionService.elementsToInk', () {
     test('filters out eraser strokes and empty strokes', () {
-      final ink = HandwritingRecognitionService.strokesToInk([
+      final ink = HandwritingRecognitionService.elementsToInk([
         stroke('e', [const StrokePoint(x: 0, y: 0)], isEraser: true),
         stroke('empty', []),
         stroke('real', [const StrokePoint(x: 1, y: 1)]),
@@ -19,8 +25,8 @@ void main() {
       expect(ink.strokes.single.points.single.x, 1);
     });
 
-    test('legacy strokes (no t) are synthesized: 10 ms/point, 300 ms gap', () {
-      final ink = HandwritingRecognitionService.strokesToInk([
+    test('strokes without t are synthesized: 10 ms/point, 300 ms gap', () {
+      final ink = HandwritingRecognitionService.elementsToInk([
         stroke('a', const [
           StrokePoint(x: 0, y: 0),
           StrokePoint(x: 1, y: 0),
@@ -39,7 +45,7 @@ void main() {
 
     test('real timestamps keep their internal deltas but are rebased', () {
       // Simulates monotonic-since-boot timestamps (huge absolute values).
-      final ink = HandwritingRecognitionService.strokesToInk([
+      final ink = HandwritingRecognitionService.elementsToInk([
         stroke('a', const [
           StrokePoint(x: 0, y: 0, t: 8000000),
           StrokePoint(x: 1, y: 0, t: 8000016),
@@ -51,7 +57,7 @@ void main() {
     });
 
     test('a stroke with ANY missing t is fully synthesized', () {
-      final ink = HandwritingRecognitionService.strokesToInk([
+      final ink = HandwritingRecognitionService.elementsToInk([
         stroke('mixed', const [
           StrokePoint(x: 0, y: 0, t: 5000),
           StrokePoint(x: 1, y: 0), // pre-t pixel-erase split point
@@ -63,7 +69,7 @@ void main() {
     });
 
     test('timeline stays monotonic when real and legacy strokes mix', () {
-      final ink = HandwritingRecognitionService.strokesToInk([
+      final ink = HandwritingRecognitionService.elementsToInk([
         // Legacy stroke first (synthetic clock near 0)…
         stroke('legacy', const [
           StrokePoint(x: 0, y: 0),
@@ -90,7 +96,7 @@ void main() {
     });
 
     test('non-monotonic real timestamps are clamped, never decreasing', () {
-      final ink = HandwritingRecognitionService.strokesToInk([
+      final ink = HandwritingRecognitionService.elementsToInk([
         stroke('weird', const [
           StrokePoint(x: 0, y: 0, t: 1000),
           StrokePoint(x: 1, y: 0, t: 990), // goes backwards (defensive case)
@@ -99,42 +105,6 @@ void main() {
       ]);
 
       expect(ink.strokes.single.points.map((p) => p.t), [0, 0, 20]);
-    });
-  });
-
-  group('HandwritingRecognitionService.elementsToInk (editor 2.0)', () {
-    test('converts freehand elements identically to the stroke path, '
-        'skipping erasers and non-ink elements', () {
-      const points = [
-        StrokePoint(x: 0, y: 0, t: 5000),
-        StrokePoint(x: 1, y: 0, t: 5016),
-      ];
-      final fromElements = HandwritingRecognitionService.elementsToInk(const [
-        FreehandElement(
-            id: 'ink', zOrder: 0, color: 0xFF000000, size: 4, points: points),
-        FreehandElement(
-            id: 'eraser',
-            zOrder: 1,
-            color: 0,
-            size: 20,
-            isEraser: true,
-            points: points),
-        TextElement(
-            id: 't',
-            zOrder: 2,
-            geometryData: [0, 0, 10, 10],
-            text: 'typed',
-            color: 0xFF000000),
-      ]);
-      final fromStrokes = HandwritingRecognitionService.strokesToInk([
-        stroke('ink', points),
-      ]);
-
-      expect(fromElements.strokes, hasLength(1));
-      expect(
-        fromElements.strokes.single.points.map((p) => (p.x, p.y, p.t)),
-        fromStrokes.strokes.single.points.map((p) => (p.x, p.y, p.t)),
-      );
     });
   });
 }

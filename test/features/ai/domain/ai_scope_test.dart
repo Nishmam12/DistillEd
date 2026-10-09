@@ -27,7 +27,6 @@ void main() {
           .resolve(kind: AiScopeKind.page, notebookId: 1, pageId: 3);
 
       expect(scope.pageIds, [3]);
-      expect(scope.spansMultiplePages, isFalse);
       expect(scope.label, 'this page');
     });
 
@@ -45,7 +44,6 @@ void main() {
 
       expect(scope.pageIds, [2, 3, 4]);
       expect(scope.importGroupId, 'import-a');
-      expect(scope.spansMultiplePages, isTrue);
     });
 
     test('does not leak pages from a different import', () async {

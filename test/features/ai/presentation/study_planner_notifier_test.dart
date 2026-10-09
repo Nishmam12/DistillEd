@@ -7,7 +7,6 @@ import 'package:inkflow/features/ai/domain/knowledge_graph/concept_relation.dart
 import 'package:inkflow/features/ai/domain/memory/concept_mastery.dart';
 import 'package:inkflow/features/ai/domain/memory/learning_preferences.dart';
 import 'package:inkflow/features/ai/domain/memory/quiz_attempt.dart';
-import 'package:inkflow/features/ai/domain/memory/study_session.dart';
 import 'package:inkflow/features/ai/domain/study_planner/study_plan.dart';
 import 'package:inkflow/features/ai/presentation/study_planner_notifier.dart';
 
@@ -55,8 +54,6 @@ class _FakeMemory implements LearningMemoryRepository {
       const [];
 
   @override
-  Future<List<ConceptMastery>> masteredConcepts(int notebookId) async => const [];
-  @override
   Future<void> observePageContext({
     required int notebookId,
     required Iterable<String> keyConcepts,
@@ -68,16 +65,10 @@ class _FakeMemory implements LearningMemoryRepository {
   @override
   Future<void> recordQuizAttempt(QuizAttempt attempt) async {}
   @override
-  Future<List<QuizAttempt>> quizHistory(int notebookId) async => const [];
-  @override
   Future<LearningPreferences> loadPreferences() async =>
       LearningPreferences.empty;
   @override
   Future<void> savePreferences(LearningPreferences prefs) async {}
-  @override
-  Future<void> recordStudySession(StudySession session) async {}
-  @override
-  Future<List<StudySession>> studyHistory(int notebookId) async => const [];
 }
 
 class _FakeStore implements StudyPlanStore {

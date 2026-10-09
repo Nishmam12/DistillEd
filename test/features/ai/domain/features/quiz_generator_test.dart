@@ -36,9 +36,6 @@ class _ScriptedProvider implements AiProvider {
     calls++;
     yield r;
   }
-
-  @override
-  Future<List<double>> embed(String text) async => throw UnimplementedError();
 }
 
 void main() {
@@ -147,17 +144,6 @@ void main() {
   });
 
   group('grading helpers', () {
-    test('choice grading compares the index', () {
-      const q = QuizQuestion(
-          type: QuestionType.mcq,
-          prompt: 'q',
-          options: ['a', 'b'],
-          correctIndex: 1,
-          correctAnswer: 'b');
-      expect(q.isCorrectChoice(1), isTrue);
-      expect(q.isCorrectChoice(0), isFalse);
-    });
-
     test('text grading is case/space/punctuation-insensitive', () {
       const q = QuizQuestion(
           type: QuestionType.fillBlank, prompt: 'q', correctAnswer: 'H2O');

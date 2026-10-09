@@ -74,8 +74,6 @@ class _NotLocal implements AiProvider {
     AiGenerationOptions? options,
   }) =>
       const Stream.empty();
-  @override
-  Future<List<double>> embed(String text) async => const [];
 }
 
 void main() {

@@ -51,9 +51,6 @@ class NoopAiProvider implements AiProvider {
     AiGenerationOptions? options,
   }) =>
       throw UnimplementedError();
-
-  @override
-  Future<List<double>> embed(String text) => throw UnimplementedError();
 }
 
 /// SummarizationService whose summarize() is fully scripted per call.

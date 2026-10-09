@@ -20,34 +20,6 @@ class ZOrderService {
     return _reindex([...sel, ...rest]);
   }
 
-  static List<SceneElement> bringForward(List<SceneElement> els, Set<String> ids) {
-    final list = _sorted(els);
-    for (int i = list.length - 1; i >= 0; i--) {
-      if (ids.contains(list[i].id) &&
-          i + 1 < list.length &&
-          !ids.contains(list[i + 1].id)) {
-        final tmp = list[i];
-        list[i] = list[i + 1];
-        list[i + 1] = tmp;
-      }
-    }
-    return _reindex(list);
-  }
-
-  static List<SceneElement> sendBackward(List<SceneElement> els, Set<String> ids) {
-    final list = _sorted(els);
-    for (int i = 0; i < list.length; i++) {
-      if (ids.contains(list[i].id) &&
-          i - 1 >= 0 &&
-          !ids.contains(list[i - 1].id)) {
-        final tmp = list[i];
-        list[i] = list[i - 1];
-        list[i - 1] = tmp;
-      }
-    }
-    return _reindex(list);
-  }
-
   static List<SceneElement> _sorted(List<SceneElement> els) =>
       [...els]..sort((a, b) => a.zOrder.compareTo(b.zOrder));
 

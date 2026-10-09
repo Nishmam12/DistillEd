@@ -10,7 +10,6 @@ import 'package:inkflow/features/ai/data/llm/llm_model_spec.dart';
 import 'package:inkflow/features/ai/data/providers/local_gemma_provider.dart';
 import 'package:inkflow/features/ai/domain/ai_provider.dart';
 import 'package:inkflow/features/ai/domain/compute_backend.dart';
-import 'package:inkflow/features/ai/domain/rag/text_embedder.dart';
 
 /// Runtime whose sessions stream scripted chunks and record everything the
 /// provider does with the seams.
@@ -168,31 +167,7 @@ LlmModelSpec _spec({bool shareVisionEngine = true}) => LlmModelSpec(
       shareVisionEngine: shareVisionEngine,
     );
 
-class _TaggedEmbedder implements TextEmbedder {
-  _TaggedEmbedder(this.tag);
-  final double tag;
-
-  @override
-  Future<List<double>> embedOne(String text,
-          {required EmbedTaskType taskType}) async =>
-      [tag];
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
 void main() {
-  test('embed asks for the embedder when used, so a model switch needs no rebuild',
-      () async {
-    var current = _TaggedEmbedder(1);
-    final provider = LocalGemmaProvider(
-        runtime: StreamingFakeRuntime(const []), embedderOf: () => current);
-
-    expect(await provider.embed('q'), [1.0]);
-    current = _TaggedEmbedder(2);
-    expect(await provider.embed('q'), [2.0]);
-  });
-
   group('LocalGemmaProvider — streaming contract', () {
     test('streams chunks that concatenate to the full reply, then unloads',
         () async {
@@ -235,9 +210,11 @@ void main() {
         prompt: 'now answer',
         systemPrompt: 'be brief',
         history: const [
-          AiMessage.system('ignored — goes via systemInstruction'),
+          AiMessage(
+              role: AiRole.system,
+              content: 'ignored — goes via systemInstruction'),
           AiMessage.user('earlier question'),
-          AiMessage.assistant('earlier answer'),
+          AiMessage(role: AiRole.assistant, content: 'earlier answer'),
         ],
       ).toList();
 
@@ -272,12 +249,12 @@ void main() {
       expect(runtime.lastRandomSeed, 42);
     });
 
-    test('precise preset (temperature 0) defaults to greedy top-k 1', () async {
+    test('temperature 0 defaults to greedy top-k 1', () async {
       final runtime = StreamingFakeRuntime(['x']);
       final provider = LocalGemmaProvider(runtime: runtime);
 
       await provider
-          .generate(prompt: 'p', options: AiGenerationOptions.precise)
+          .generate(prompt: 'p', options: const AiGenerationOptions(temperature: 0.0))
           .toList();
 
       expect(runtime.lastTopK, 1);
@@ -354,15 +331,6 @@ void main() {
         throwsA(isA<AiModelNotReadyException>()),
       );
     });
-
-    test('embed reports a typed unsupported-operation error', () {
-      final provider =
-          LocalGemmaProvider(runtime: StreamingFakeRuntime(const ['x']));
-      expect(
-        provider.embed('anything'),
-        throwsA(isA<AiUnsupportedOperationException>()),
-      );
-    });
   });
 
   group('LocalGemmaProvider — capabilities', () {
@@ -372,11 +340,6 @@ void main() {
       final caps = provider.capabilities;
 
       expect(caps.isLocal, isTrue);
-      expect(caps.supportsStreaming, isTrue);
-      expect(caps.supportsVision, isTrue,
-          reason: 'Gemma E2B ships a vision encoder; transcribeImage uses it');
-      expect(caps.supportsEmbeddings, isFalse);
-      expect(caps.approxCostPerCallUsd, 0.0);
       expect(caps.modelId, LlmModelSpec.active.filename);
       expect(caps.contextWindowTokens, LlmModelSpec.active.maxTokens);
     });

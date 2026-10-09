@@ -198,16 +198,6 @@ class PageRepository {
     await _enforceContiguity(notebookId);
   }
 
-  /// Returns a single page by notebookId and pageIndex. Null if not found.
-  Future<NotePage?> loadPage(int notebookId, int pageIndex) async {
-    return await _isar.notePages
-        .filter()
-        .notebookIdEqualTo(notebookId)
-        .and()
-        .pageIndexEqualTo(pageIndex)
-        .findFirst();
-  }
-
   /// Marks [pageId] as having arrived from one import.
   ///
   /// Written as its own small transaction after the page exists, rather than as
@@ -229,18 +219,6 @@ class PageRepository {
     });
   }
 
-  /// Every page of one import, in page order.
-  Future<List<NotePage>> pagesInImportGroup(
-      int notebookId, String importGroupId) async {
-    return await _isar.notePages
-        .filter()
-        .notebookIdEqualTo(notebookId)
-        .and()
-        .importGroupIdEqualTo(importGroupId)
-        .sortByPageIndex()
-        .findAll();
-  }
-
   /// Returns all pages for [notebookId] sorted by pageIndex ascending.
   Future<List<NotePage>> getPagesForNotebook(int notebookId) async {
     return await _isar.notePages
@@ -248,31 +226,5 @@ class PageRepository {
         .notebookIdEqualTo(notebookId)
         .sortByPageIndex()
         .findAll();
-  }
-
-  /// Updates the modifiedAt timestamp for a specific page.
-  Future<void> updateModifiedAt(int notebookId, int pageIndex) async {
-    await _isar.writeTxn(() async {
-      final page = await loadPage(notebookId, pageIndex);
-      if (page != null) {
-        page.modifiedAt = DateTime.now();
-        await _isar.notePages.put(page);
-      }
-    });
-  }
-
-  void updateModifiedAtSync(int notebookId, int pageIndex) {
-    _isar.writeTxnSync(() {
-      final page = _isar.notePages
-          .filter()
-          .notebookIdEqualTo(notebookId)
-          .and()
-          .pageIndexEqualTo(pageIndex)
-          .findFirstSync();
-      if (page != null) {
-        page.modifiedAt = DateTime.now();
-        _isar.notePages.putSync(page);
-      }
-    });
   }
 }

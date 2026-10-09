@@ -256,7 +256,7 @@ void main() {
         (tester) async {
       final classifier = _FakeClassifier({kGestureModel: 'scribble'});
       final c = await _open(tester, classifier: classifier);
-      await c.read(sceneControllerProvider(_key).notifier).add(_word);
+      await c.read(sceneControllerProvider(_key).notifier).addMany([_word]);
 
       await _scrub(tester);
 
@@ -267,7 +267,7 @@ void main() {
     testWidgets('one undo brings back what was erased', (tester) async {
       final c = await _open(tester,
           classifier: _FakeClassifier({kGestureModel: 'scribble'}));
-      await c.read(sceneControllerProvider(_key).notifier).add(_word);
+      await c.read(sceneControllerProvider(_key).notifier).addMany([_word]);
       await _scrub(tester);
 
       c.read(historyProvider(_key).notifier).undo();
@@ -281,7 +281,7 @@ void main() {
       final classifier = _FakeClassifier({kGestureModel: 'scribble'})
         ..hold = Completer<void>();
       final c = await _open(tester, classifier: classifier);
-      await c.read(sceneControllerProvider(_key).notifier).add(_word);
+      await c.read(sceneControllerProvider(_key).notifier).addMany([_word]);
       await _scrub(tester);
 
       // Meanwhile the student removes the word themselves.
@@ -302,7 +302,7 @@ void main() {
     testWidgets('a scrub the model calls writing is just ink', (tester) async {
       final c = await _open(tester,
           classifier: _FakeClassifier({kGestureModel: 'writing'}));
-      await c.read(sceneControllerProvider(_key).notifier).add(_word);
+      await c.read(sceneControllerProvider(_key).notifier).addMany([_word]);
 
       await _scrub(tester);
 
@@ -322,7 +322,7 @@ void main() {
     testWidgets('with the setting off nothing is erased', (tester) async {
       final classifier = _FakeClassifier({kGestureModel: 'scribble'});
       final c = await _open(tester, classifier: classifier, erase: false);
-      await c.read(sceneControllerProvider(_key).notifier).add(_word);
+      await c.read(sceneControllerProvider(_key).notifier).addMany([_word]);
 
       await _scrub(tester);
 

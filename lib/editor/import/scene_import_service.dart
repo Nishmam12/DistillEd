@@ -1,18 +1,6 @@
-// Brings PDFs and photos into Canvas 2.0 as ordinary [ImageElement]s.
+// Brings PDFs and photos into the editor as ordinary [ImageElement]s.
 //
-// Canvas 2.0 had no import path at all: `lib/features/import/` and the
-// `ImportedContent` model belong to the legacy 1.0 editor, and 2.0 could render
-// an [ImageElement] but never create one. This is that missing half.
-//
-// What is deliberately NOT reused from the legacy side:
-//  * `ImportedContent` — an Isar-embedded model whose `pdfBackground` factory
-//    hardcodes a zero rect, because the legacy renderer drew backgrounds
-//    full-page and ignored it. 2.0 computes real rects (see fit_image_rect.dart).
-//  * `ImageService` — coupled to `PdfCacheManager`; 2.0 caches through
-//    [SceneImageCache] instead, and needs the source pixel size back, which the
-//    legacy path never returned.
-//
-// What IS reused: [PDFService.renderAll], which already renders every page in a
+// Reuses [PDFService.renderAll], which already renders every page in a
 // background isolate and caches it on disk under a content hash, so re-importing
 // the same PDF costs nothing and cannot collide with a different one.
 
@@ -45,7 +33,7 @@ typedef ImportedImage = ({
   String description,
 });
 
-/// Largest edge an imported photo is kept at. Matches the legacy import: past
+/// Largest edge an imported photo is kept at. Past
 /// this, a phone photo is mostly storage and decode time, not detail.
 const int kMaxImportedImageEdge = 2048;
 

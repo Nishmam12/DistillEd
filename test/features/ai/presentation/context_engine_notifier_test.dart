@@ -37,9 +37,6 @@ class NoopAiProvider implements AiProvider {
     AiGenerationOptions? options,
   }) =>
       throw UnimplementedError();
-
-  @override
-  Future<List<double>> embed(String text) => throw UnimplementedError();
 }
 
 class FakeExtractor extends PageContentExtractor {

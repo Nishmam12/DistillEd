@@ -51,8 +51,6 @@ class _RecordingProvider implements AiProvider {
     yield reply;
   }
 
-  @override
-  Future<List<double>> embed(String text) async => const [];
 
   @override
   AiCapabilities get capabilities => const AiCapabilities(

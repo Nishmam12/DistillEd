@@ -40,21 +40,9 @@ class AiMessage {
     this.toolCalls,
   });
 
-  /// System / instruction message.
-  const AiMessage.system(this.content)
-      : role = AiRole.system,
-        toolCallId = null,
-        toolCalls = null;
-
   /// End-user turn.
   const AiMessage.user(this.content)
       : role = AiRole.user,
-        toolCallId = null,
-        toolCalls = null;
-
-  /// Model turn.
-  const AiMessage.assistant(this.content)
-      : role = AiRole.assistant,
         toolCallId = null,
         toolCalls = null;
 

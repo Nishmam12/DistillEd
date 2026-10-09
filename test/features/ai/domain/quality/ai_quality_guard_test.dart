@@ -32,8 +32,6 @@ class FakeProvider implements AiProvider {
     }
   }
 
-  @override
-  Future<List<double>> embed(String text) async => const [];
 
   @override
   AiCapabilities get capabilities => const AiCapabilities(

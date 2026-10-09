@@ -163,23 +163,6 @@ class ReviewSchedule {
       from.microsecond,
     );
   }
-
-  ReviewSchedule copyWith({
-    int? repetitions,
-    double? easeFactor,
-    int? intervalDays,
-    DateTime? dueAt,
-    DateTime? lastReviewedAt,
-    int? lapses,
-  }) =>
-      ReviewSchedule(
-        repetitions: repetitions ?? this.repetitions,
-        easeFactor: easeFactor ?? this.easeFactor,
-        intervalDays: intervalDays ?? this.intervalDays,
-        dueAt: dueAt ?? this.dueAt,
-        lastReviewedAt: lastReviewedAt ?? this.lastReviewedAt,
-        lapses: lapses ?? this.lapses,
-      );
 }
 
 /// Orders a review queue: most overdue first, new cards after cards that are

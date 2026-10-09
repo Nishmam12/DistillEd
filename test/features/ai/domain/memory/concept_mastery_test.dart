@@ -233,14 +233,6 @@ void main() {
           ['learning-b', 'learning-a', 'mastered-but-missed']);
     });
 
-    test('mastered selects only mastered', () {
-      final all = [
-        concept('a', level: MasteryLevel.mastered),
-        concept('b', level: MasteryLevel.learning),
-      ];
-      expect(selectMastered(all).map((c) => c.conceptName), ['a']);
-    });
-
     test('due sorts most-overdue first and excludes the not-yet-due', () {
       final all = [
         // mastered + 7d => due 7/16, still resting.

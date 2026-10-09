@@ -54,8 +54,6 @@ class QuizQuestion {
   /// Coding answers can't be graded objectively — the taker self-marks.
   bool get isSelfAssessed => type == QuestionType.coding;
 
-  bool isCorrectChoice(int index) => index == correctIndex;
-
   bool isCorrectText(String input) =>
       _normalize(input) == _normalize(correctAnswer);
 

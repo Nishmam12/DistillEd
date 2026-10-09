@@ -33,5 +33,5 @@ needs keep rules for the on-device ML libraries and a run on a real device.
 
 ## Docs
 
-`docs/ARCHITECTURE.md`, `docs/AI_PIPELINE_PLAN.md`, `docs/AUDIT_BACKLOG.md` (what
-is still open), and `server/ai-gateway/README.md` for the cloud gateway.
+`docs/ARCHITECTURE.md`, `docs/AI_PIPELINE_PLAN.md`, and
+`server/ai-gateway/README.md` for the cloud gateway.

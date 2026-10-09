@@ -4,9 +4,7 @@ import 'package:inkflow/features/ai/domain/ai_message.dart';
 void main() {
   group('AiMessage', () {
     test('convenience constructors set the matching role', () {
-      expect(const AiMessage.system('s').role, AiRole.system);
       expect(const AiMessage.user('u').role, AiRole.user);
-      expect(const AiMessage.assistant('a').role, AiRole.assistant);
       expect(const AiMessage.user('hello').content, 'hello');
     });
 
@@ -17,7 +15,7 @@ void main() {
       );
       expect(
         const AiMessage.user('hi'),
-        isNot(const AiMessage.assistant('hi')),
+        isNot(const AiMessage(role: AiRole.assistant, content: 'hi')),
       );
       expect(
         const AiMessage.user('hi'),
@@ -34,7 +32,8 @@ void main() {
     });
 
     test('round-trips through map form', () {
-      const message = AiMessage.assistant('the answer is 42');
+      const message =
+          AiMessage(role: AiRole.assistant, content: 'the answer is 42');
       final restored = AiMessage.fromMap(message.toMap());
       expect(restored, message);
       // Role is persisted by name, not index, so reordering the enum is safe.

@@ -25,12 +25,6 @@ class _EchoProvider implements AiProvider {
       yield '$word ';
     }
   }
-
-  @override
-  Future<List<double>> embed(String text) async =>
-      throw const AiUnsupportedOperationException(
-        'echo provider has no embedding support',
-      );
 }
 
 void main() {
@@ -44,18 +38,8 @@ void main() {
       expect(chunks.join().trim(), 'hello there world');
     });
 
-    test('capabilities describe a local, streaming, embedding-less provider', () {
+    test('capabilities describe a local provider', () {
       expect(provider.capabilities.isLocal, isTrue);
-      expect(provider.capabilities.supportsStreaming, isTrue);
-      expect(provider.capabilities.supportsEmbeddings, isFalse);
-      expect(provider.capabilities.approxCostPerCallUsd, 0.0);
-    });
-
-    test('embed reports a typed AiException when unsupported', () {
-      expect(
-        provider.embed('anything'),
-        throwsA(isA<AiUnsupportedOperationException>()),
-      );
     });
 
     test('AiException hierarchy is sealed under a common base', () {

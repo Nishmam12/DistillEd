@@ -37,10 +37,6 @@ class AiGenerationOptions {
     this.seed,
   });
 
-  /// Deterministic preset for factual/extraction tasks (grammar, recognition
-  /// cleanup, structured output) where creativity is unwanted.
-  static const AiGenerationOptions precise = AiGenerationOptions(temperature: 0.0);
-
   AiGenerationOptions copyWith({
     double? temperature,
     int? maxTokens,

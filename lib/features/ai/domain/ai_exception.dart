@@ -33,15 +33,7 @@ final class AiUnavailableException extends AiException {
   const AiUnavailableException(super.message, {super.cause});
 }
 
-/// Generation or embedding started but failed partway.
+/// Generation started but failed partway.
 final class AiGenerationException extends AiException {
   const AiGenerationException(super.message, {super.cause});
-}
-
-/// The provider does not implement the requested operation at all — e.g.
-/// `embed` on a runtime without embedding support. Distinct from
-/// [AiUnavailableException]: retrying or routing won't help unless a different
-/// provider supports it.
-final class AiUnsupportedOperationException extends AiException {
-  const AiUnsupportedOperationException(super.message, {super.cause});
 }

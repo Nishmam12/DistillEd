@@ -35,10 +35,6 @@ class _ScriptedProvider implements AiProvider {
       yield c;
     }
   }
-
-  @override
-  Future<List<double>> embed(String text) async =>
-      throw const AiUnsupportedOperationException('n/a');
 }
 
 class _FixedEmbedder implements TextEmbedder {

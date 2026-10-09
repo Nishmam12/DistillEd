@@ -18,7 +18,6 @@ import 'package:inkflow/features/ai/data/flashcards/flashcard_record.dart';
 import 'package:inkflow/features/ai/data/memory/concept_mastery_record.dart';
 import 'package:inkflow/features/ai/data/memory/concept_relation_record.dart';
 import 'package:inkflow/features/ai/data/memory/quiz_attempt_record.dart';
-import 'package:inkflow/features/ai/data/memory/study_session_record.dart';
 import 'package:inkflow/features/ai/data/rag/note_chunk_record.dart';
 import 'package:inkflow/features/ai/data/study_planner/study_plan_record.dart';
 import 'package:inkflow/features/home/data/repositories/note_repository.dart';
@@ -94,7 +93,6 @@ Future<void> main() async {
           SummaryCacheSchema,
           FlashcardRecordSchema,
           QuizAttemptRecordSchema,
-          StudySessionRecordSchema,
           StudyPlanRecordSchema,
           ConceptMasteryRecordSchema,
           ConceptRelationRecordSchema,

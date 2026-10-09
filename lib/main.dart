@@ -24,7 +24,6 @@ import 'features/ai/data/memory/concept_mastery_record.dart';
 import 'features/ai/data/memory/learning_preferences_record.dart';
 import 'features/ai/data/memory/quiz_attempt_record.dart';
 import 'features/ai/data/memory/concept_relation_record.dart';
-import 'features/ai/data/memory/study_session_record.dart';
 import 'features/ai/data/ocr/read_cache_record.dart';
 import 'features/ai/data/rag/note_chunk_record.dart';
 import 'features/ai/data/study_planner/study_plan_record.dart';
@@ -55,7 +54,6 @@ Future<void> _logCollectionCounts(Isar isar) async {
     'QuizAttemptRecord': await isar.collection<QuizAttemptRecord>().count(),
     'LearningPreferencesRecord':
         await isar.collection<LearningPreferencesRecord>().count(),
-    'StudySessionRecord': await isar.collection<StudySessionRecord>().count(),
     'NoteChunkRecord': await isar.collection<NoteChunkRecord>().count(),
     'ConceptRelationRecord':
         await isar.collection<ConceptRelationRecord>().count(),
@@ -179,7 +177,6 @@ Future<void> _openAndRun() async {
     ConceptMasteryRecordSchema,
     QuizAttemptRecordSchema,
     LearningPreferencesRecordSchema,
-    StudySessionRecordSchema,
     NoteChunkRecordSchema,
     ConceptRelationRecordSchema,
     StudyPlanRecordSchema,

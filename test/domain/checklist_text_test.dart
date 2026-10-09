@@ -126,35 +126,5 @@ void main() {
     test('preserves indentation', () {
       expect(ChecklistText.toggleItem('  [ ] a', 0), '  [x] a');
     });
-
-    test('setAll ticks everything', () {
-      expect(
-        ChecklistText.setAll('[ ] a\n[x] b', done: true),
-        '[x] a\n[x] b',
-      );
-    });
-
-    test('setAll unticks everything', () {
-      expect(
-        ChecklistText.setAll('[x] a\n[x] b', done: false),
-        '[ ] a\n[ ] b',
-      );
-    });
-  });
-
-  group('progress', () {
-    test('counts ticked out of total', () {
-      final p = ChecklistText.progress('[x] a\n[ ] b\n[x] c');
-
-      expect(p.done, 2);
-      expect(p.total, 3);
-    });
-
-    test('is zero for plain text', () {
-      final p = ChecklistText.progress('just words');
-
-      expect(p.done, 0);
-      expect(p.total, 0);
-    });
   });
 }

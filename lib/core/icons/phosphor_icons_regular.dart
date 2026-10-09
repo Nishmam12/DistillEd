@@ -11,7 +11,7 @@
 // ships with the app rather than a package, no `fontPackage` is set.
 //
 // Trimmed to the icons the app uses. To add one, copy its declaration from
-// tool/gen_phosphor.py output (full set) or phosphor_flutter 2.1.0 Regular.
+// phosphor_flutter 2.1.0 Regular.
 
 import 'package:flutter/widgets.dart';
 

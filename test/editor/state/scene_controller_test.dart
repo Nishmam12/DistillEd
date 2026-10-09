@@ -24,8 +24,8 @@ void main() {
     final store = _SlowUpsertStore();
     final ctl = SceneController(store, notebookId: 1, pageId: 1);
 
-    final add = ctl.add(_el('a', 0)); // slow write in flight
-    final remove = ctl.remove('a'); // must land AFTER the add
+    final add = ctl.addMany([_el('a', 0)]); // slow write in flight
+    final remove = ctl.removeMany({'a'}); // must land AFTER the add
     await Future.wait([add, remove]);
 
     expect(await store.loadForPage(1), isEmpty);
@@ -46,8 +46,8 @@ void main() {
     final store = _FailOnceStore();
     final ctl = SceneController(store, notebookId: 1, pageId: 1);
 
-    await expectLater(ctl.add(_el('a', 0)), throwsStateError);
-    await ctl.add(_el('b', 1));
+    await expectLater(ctl.addMany([_el('a', 0)]), throwsStateError);
+    await ctl.addMany([_el('b', 1)]);
 
     expect((await store.loadForPage(1)).map((e) => e.id), ['b']);
   });

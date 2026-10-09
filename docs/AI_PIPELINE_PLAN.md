@@ -18,8 +18,7 @@ Effort sizes are rough estimates: **S** ≈ a day, **M** ≈ a few days, **L** �
 > (RRF), title-prefixed chunks, the PDF text layer, ML-Kit-first ink, the durable
 > read cache and batch-by-model indexing. "Where time goes today" and the
 > "Today" pipeline describe the code BEFORE that work; they are kept as the
-> baseline the measurements were taken against. What is still open is in
-> `docs/AUDIT_BACKLOG.md`.
+> baseline the measurements were taken against.
 
 ## Where time goes today (baseline, before the work above)
 

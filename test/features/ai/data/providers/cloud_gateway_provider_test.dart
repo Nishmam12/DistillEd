@@ -195,21 +195,11 @@ void main() {
     });
   });
 
-  group('CloudGatewayProvider capabilities/embed', () {
+  group('CloudGatewayProvider capabilities', () {
     test('capabilities report non-local with a tier-specific id', () {
       final provider = _providerWith(_FakeAdapter(sseBody: ''), tier: 'cloud-frontier');
       expect(provider.capabilities.isLocal, isFalse);
       expect(provider.capabilities.modelId, contains('cloud-frontier'));
-      expect(provider.capabilities.supportsEmbeddings, isFalse);
-    });
-
-    test('embed throws AiUnsupportedOperationException — no /v1/embed yet',
-        () async {
-      final provider = _providerWith(_FakeAdapter(sseBody: ''));
-      expect(
-        provider.embed('anything'),
-        throwsA(isA<AiUnsupportedOperationException>()),
-      );
     });
   });
 

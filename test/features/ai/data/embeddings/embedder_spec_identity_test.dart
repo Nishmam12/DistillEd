@@ -11,7 +11,6 @@
 import 'package:flutter_edge_ai/flutter_edge_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkflow/features/ai/data/embeddings/embedder_spec.dart';
-import 'package:inkflow/features/ai/domain/rag/prompt_contract.dart';
 
 void main() {
   test('the filenames the app looks for are the ones the plugin installs under',
@@ -83,13 +82,6 @@ void main() {
             spec.format == EmbedderFormat.tfliteWithTokenizer ? 2 : 1;
         expect(spec.files, hasLength(expected), reason: spec.displayName);
       }
-    });
-
-    test('the EmbeddingGemma 2 spec is not runnable, and has no contract yet',
-        () {
-      expect(EmbedderSpec.embeddingGemma2.runtimeSupported, isFalse);
-      expect(EmbedderSpec.embeddingGemma2.promptContract.appliedBy,
-          PromptAppliedBy.undecided);
     });
   });
 

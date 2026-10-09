@@ -11,7 +11,7 @@ import 'package:crypto/crypto.dart' show sha256;
 
 import 'llm_exceptions.dart';
 
-Future<String> sha256OfFile(String path) => Isolate.run(
+Future<String> _sha256OfFile(String path) => Isolate.run(
     () async => (await sha256.bind(File(path).openRead()).first).toString());
 
 /// Throws [ModelDownloadException] unless the file at [path] hashes to
@@ -21,7 +21,7 @@ Future<void> verifySha256({
   required String expected,
   required String name,
 }) async {
-  final actual = await sha256OfFile(path);
+  final actual = await _sha256OfFile(path);
   if (actual != expected.toLowerCase()) {
     throw ModelDownloadException(
         '$name did not download correctly (checksum mismatch). Try again.');

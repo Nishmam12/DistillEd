@@ -114,7 +114,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           key: ValueKey('reclaim-$_refresh'),
           onChanged: () => setState(() => _refresh++),
         ),
-        // Debug builds only: the notes as the corpus tool/embedding_eval reads.
+        // Debug builds only: the notes as the corpus the embedding eval reads.
         if (kDebugMode)
           // A transparent Material gives the tile its ink over the card's own
           // background, which a bare ListTile refuses to paint over.

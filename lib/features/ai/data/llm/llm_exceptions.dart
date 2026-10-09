@@ -144,12 +144,6 @@ class StorageCleanupUnsafeException extends LlmException {
             'looks inconsistent. Restart the app and try again.');
 }
 
-/// Generation did not finish within the allowed time.
-class LlmTimeoutException extends LlmException {
-  LlmTimeoutException(Duration timeout)
-      : super('The model did not respond within ${timeout.inSeconds}s.');
-}
-
 /// The local model is not downloaded/installed yet.
 class LlmNotReadyException extends LlmException {
   LlmNotReadyException()

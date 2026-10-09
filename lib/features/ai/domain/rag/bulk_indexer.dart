@@ -95,8 +95,6 @@ class BulkIndexReport {
     this.stoppedVisionNotReady = false,
   });
 
-  int get pagesTouched => indexed + unchanged + cleared;
-
   /// True when nothing at all went wrong — the notebook is fully searchable.
   bool get isComplete => failedPageIds.isEmpty && !stoppedModelNotReady;
 }

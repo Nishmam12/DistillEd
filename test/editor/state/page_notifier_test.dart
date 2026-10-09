@@ -40,14 +40,6 @@ class FakePageRepository implements PageRepository {
   }
 
   @override
-  Future<List<NotePage>> pagesInImportGroup(
-          int notebookId, String importGroupId) async =>
-      [
-        for (final p in pages)
-          if (p.notebookId == notebookId && p.importGroupId == importGroupId) p
-      ];
-
-  @override
   Future<NotePage> createPage(int notebookId) async {
     final page = NotePage()
       ..id = _nextId++
@@ -83,18 +75,8 @@ class FakePageRepository implements PageRepository {
   }
 
   @override
-  Future<NotePage?> loadPage(int notebookId, int pageIndex) async =>
-      pageIndex >= 0 && pageIndex < pages.length ? pages[pageIndex] : null;
-
-  @override
   Future<List<NotePage>> getPagesForNotebook(int notebookId) async =>
       List.of(pages);
-
-  @override
-  Future<void> updateModifiedAt(int notebookId, int pageIndex) async {}
-
-  @override
-  void updateModifiedAtSync(int notebookId, int pageIndex) {}
 }
 
 FreehandElement _stroke(String id, {int zOrder = 0, String groupId = ''}) {

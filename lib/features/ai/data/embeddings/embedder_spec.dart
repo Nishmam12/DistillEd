@@ -20,8 +20,7 @@ enum EmbedderFormat {
   /// TFLite embedding backend.
   tfliteWithTokenizer,
 
-  /// A single .litertlm bundle with its tokenizer inside. Not runnable yet
-  /// (phase 5).
+  /// A single .litertlm bundle with its tokenizer inside. Not runnable yet.
   litertlmBundle,
 }
 
@@ -214,25 +213,6 @@ class EmbedderSpec {
     needsAuth: true,
   );
 
-  /// EmbeddingGemma 2, LiteRT-LM bundle. NOT RUNNABLE YET: its window, chunk sizes
-  /// and prompt contract are decided in phase 5 from the evaluation. The values
-  /// marked TODO are placeholders, and the modelId says so.
-  static const EmbedderSpec embeddingGemma2 = EmbedderSpec(
-    displayName: 'EmbeddingGemma 2 (740M)',
-    modelId: 'embeddinggemma-2-740m-UNSET',
-    modelUrl: 'https://huggingface.co/litert-community/'
-        'embeddinggemma-2-740m-litert-lm/resolve/main/embeddinggemma-2-740m.litertlm',
-    format: EmbedderFormat.litertlmBundle,
-    maxInputTokens: 512, // TODO(phase 5): decide from the evaluation
-    chunkWords: 250, // TODO(phase 5): decide from the evaluation
-    chunkOverlapWords: 30, // TODO(phase 5): decide from the evaluation
-    promptContract: PromptContract.undecided,
-    runtimeSupported: false,
-    approxSizeBytes: 484622336,
-    dimensions: 768,
-    needsAuth: false,
-  );
-
   /// EmbeddingGemma 300M under other file names, for a rollout dry run (phase 4.5).
   /// The same weights and the same vector space: only its names differ, and so
   /// its id, and therefore its chunks.
@@ -260,20 +240,16 @@ class EmbedderSpec {
 
   /// Every spec the shipped app knows about. Each one's identity is checked by
   /// embedder_spec_identity_test.dart.
-  static const List<EmbedderSpec> all = [embeddingGemma300m, embeddingGemma2];
+  static const List<EmbedderSpec> all = [embeddingGemma300m];
 
   /// What this build knows: [all], plus the dry-run copy in a debug build. Looked
   /// up by id (the rollout, the serving model, the files a cleaner keeps), so a
   /// copy installed for a dry run is found there, and the shipped list never names it.
   static List<EmbedderSpec> get registry => [
-        // A spec this build cannot run (EmbeddingGemma 2, whose id is a
-        // placeholder) must never be found as a serving or rollout target.
+        // A spec this build cannot run must never be found as a serving or
+        // rollout target.
         for (final spec in all)
           if (spec.runtimeSupported) spec,
         if (kDebugMode) dryRunCopy,
       ];
-
-  /// Specs whose files are removed once a rollout to another spec has completed
-  /// (phase 4.6). Empty until a swap is made.
-  static const List<EmbedderSpec> retired = [];
 }

@@ -139,14 +139,6 @@ class NoteRepository {
     return trashed.length;
   }
 
-  /// Updates the title and modifiedAt timestamp of an existing notebook.
-  Future<void> updateNotebook(Notebook notebook) async {
-    notebook.modifiedAt = DateTime.now();
-    await _isar.writeTxn(() async {
-      await _isar.notebooks.put(notebook);
-    });
-  }
-
   /// Updates the title of an existing notebook, keeping [modifiedAt] current.
   Future<void> updateTitle(int id, String title) async {
     await _isar.writeTxn(() async {

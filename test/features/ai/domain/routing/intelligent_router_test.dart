@@ -38,9 +38,6 @@ class _ScriptedProvider implements AiProvider {
       yield c;
     }
   }
-
-  @override
-  Future<List<double>> embed(String text) async => [1.0, 2.0, 3.0];
 }
 
 const _localCapabilities = AiCapabilities(
@@ -225,13 +222,6 @@ void main() {
           task: TaskType.explain, online: true, privacy: CloudPrivacy.askEachTime);
       // All three fakes report 4096 here, so just confirm it's at least that.
       expect(provider.capabilities.contextWindowTokens, greaterThanOrEqualTo(4096));
-    });
-
-    test('embed delegates to the local provider', () async {
-      final provider = makeProvider(
-          task: TaskType.explain, online: true, privacy: CloudPrivacy.askEachTime);
-      final vector = await provider.embed('hello');
-      expect(vector, [1.0, 2.0, 3.0]);
     });
   });
 

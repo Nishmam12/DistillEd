@@ -2,7 +2,6 @@
 
 import 'package:flutter/widgets.dart' show GlobalKey, NavigatorState;
 import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/home/presentation/screens/notes_screen.dart';
 import '../features/home/presentation/screens/trash_screen.dart';
@@ -89,5 +88,3 @@ final GoRouter appRouter = GoRouter(
     ),
   ],
 );
-
-final routerProvider = Provider<GoRouter>((ref) => appRouter);

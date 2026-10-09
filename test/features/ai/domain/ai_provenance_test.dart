@@ -36,11 +36,7 @@ class StubProvider implements AiProvider {
         modelId: isLocal ? 'local-model' : 'cloud-model',
         displayName: isLocal ? 'Local' : 'Cloud',
         contextWindowTokens: 4096,
-        supportsStreaming: true,
-        supportsVision: true,
-        supportsEmbeddings: false,
         isLocal: isLocal,
-        approxCostPerCallUsd: 0.0,
       );
 
   @override
@@ -53,10 +49,6 @@ class StubProvider implements AiProvider {
     calls++;
     yield reply;
   }
-
-  @override
-  Future<List<double>> embed(String text) async =>
-      throw UnimplementedError();
 }
 
 void main() {
@@ -132,12 +124,5 @@ void main() {
       expect(const PageContext(currentTopic: 'x').ranOn, AiRanOn.onDevice);
       expect(PageContext.empty.ranOn, AiRanOn.onDevice);
     });
-  });
-
-  test('RAG retrieval is on-device by construction', () {
-    // A constant, not a runtime check: the embedder provider is hardcoded to
-    // the local model and CloudGatewayProvider.embed throws. If a cloud
-    // embedder is ever wired, this promise must be revisited deliberately.
-    expect(kRagRetrievalIsAlwaysOnDevice, isTrue);
   });
 }

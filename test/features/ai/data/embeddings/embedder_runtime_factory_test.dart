@@ -31,6 +31,21 @@ EmbedderSpec _appOwned() => const EmbedderSpec(
       needsAuth: false,
     );
 
+EmbedderSpec _bundle() => const EmbedderSpec(
+      displayName: 'Bundle (test)',
+      modelId: 'bundle-test-titled',
+      modelUrl: 'https://example.com/model.litertlm',
+      format: EmbedderFormat.litertlmBundle,
+      maxInputTokens: 512,
+      chunkWords: 250,
+      chunkOverlapWords: 30,
+      promptContract: PromptContract.pluginGemma300m,
+      runtimeSupported: false,
+      approxSizeBytes: 1024,
+      dimensions: 768,
+      needsAuth: false,
+    );
+
 void main() {
   test('a tflite model runs on the flutter_edge_ai runtime', () {
     expect(
@@ -40,7 +55,7 @@ void main() {
   });
 
   test('a bundle has no runtime in this build', () async {
-    const spec = EmbedderSpec.embeddingGemma2;
+    final spec = _bundle();
     await expectLater(
       embeddingRuntimeFor(spec).open(spec),
       throwsA(isA<EmbedderRuntimeUnsupportedException>()),
@@ -49,7 +64,7 @@ void main() {
 
   test('an embedder for a bundle reports it as not ready, with the reason',
       () async {
-    final embedder = LocalTextEmbedder(spec: EmbedderSpec.embeddingGemma2);
+    final embedder = LocalTextEmbedder(spec: _bundle());
     await expectLater(
       embedder.embedOne('hello', taskType: EmbedTaskType.query),
       throwsA(

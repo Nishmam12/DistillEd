@@ -196,20 +196,6 @@ void main() {
     expect(notifier.state, isA<LlmDownloadIdle>());
   });
 
-  test('clearFailure re-offers the download', () async {
-    final installer = _FakeInstaller();
-    final notifier = LlmDownloadNotifier(_manager(installer));
-
-    final started = notifier.start();
-    await _settle();
-    installer.fail(StateError('boom'));
-    await started;
-    expect(notifier.state, isA<LlmDownloadFailed>());
-
-    notifier.clearFailure();
-    expect(notifier.state, isA<LlmDownloadIdle>());
-  });
-
   test('start is a no-op while a run is already in flight', () async {
     final installer = _FakeInstaller();
     final notifier = LlmDownloadNotifier(_manager(installer));

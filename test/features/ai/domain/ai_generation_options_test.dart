@@ -11,10 +11,6 @@ void main() {
       expect(options.topP, isNull);
     });
 
-    test('precise preset is deterministic', () {
-      expect(AiGenerationOptions.precise.temperature, 0.0);
-    });
-
     test('copyWith overrides only the given fields', () {
       const base = AiGenerationOptions(temperature: 0.5, maxTokens: 128);
       final tweaked = base.copyWith(temperature: 0.2);

@@ -30,48 +30,6 @@ class InkFileStorage {
     return '$dir/page_$pageId.ink';
   }
 
-  static Future<void> saveStrokes({
-    required int notebookId,
-    required int pageId,
-    required List<Stroke> strokes,
-  }) async {
-    final filePath = await _pageFilePath(notebookId, pageId, create: true);
-    final tmpFile = File('$filePath.tmp');
-    final finalFile = File(filePath);
-    final bakFile = File('$filePath.bak');
-
-    final data = strokes.map((s) => s.toMap()).toList();
-    final jsonString = jsonEncode(data);
-
-    try {
-      // 1. Create a backup of the current file if it exists
-      if (await finalFile.exists()) {
-        await finalFile.copy(bakFile.path);
-      }
-
-      // 2. Write to the temporary file
-      await tmpFile.writeAsString(jsonString, flush: true);
-
-      // 3. Atomically replace the final file
-      await tmpFile.rename(finalFile.path);
-
-      // 4. Remove backup only after a confirmed successful rename
-      if (await bakFile.exists()) {
-        await bakFile.delete();
-      }
-    } catch (e) {
-      // On failure, remove a partial temp file so it cannot be mistaken for a
-      // valid page by the load fallback. The original .ink / .bak are left
-      // intact for recovery. Rethrow so the caller is aware the save failed.
-      if (await tmpFile.exists()) {
-        try {
-          await tmpFile.delete();
-        } catch (_) {}
-      }
-      rethrow;
-    }
-  }
-
   static void saveStrokesSync({
     required String notebookDir,
     required int pageId,
@@ -145,17 +103,5 @@ class InkFileStorage {
       throw FormatException('No readable ink file for page $pageId');
     }
     return [];
-  }
-
-  /// Deletes the ink file for a specific page.
-  static Future<void> deletePageInkFile({
-    required int notebookId,
-    required int pageId,
-  }) async {
-    final filePath = await _pageFilePath(notebookId, pageId);
-    final file = File(filePath);
-    if (await file.exists()) {
-      await file.delete();
-    }
   }
 }

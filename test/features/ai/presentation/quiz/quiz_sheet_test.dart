@@ -14,7 +14,6 @@ import 'package:inkflow/features/ai/domain/knowledge_graph/concept_relation.dart
 import 'package:inkflow/features/ai/domain/memory/concept_mastery.dart';
 import 'package:inkflow/features/ai/domain/memory/learning_preferences.dart';
 import 'package:inkflow/features/ai/domain/memory/quiz_attempt.dart';
-import 'package:inkflow/features/ai/domain/memory/study_session.dart';
 import 'package:inkflow/features/ai/presentation/ai_providers.dart';
 import 'package:inkflow/features/ai/presentation/quiz_notifier.dart';
 import 'package:inkflow/features/ai/presentation/quiz/quiz_sheet.dart';
@@ -57,21 +56,13 @@ class _FakeMemory implements LearningMemoryRepository {
   @override
   Future<List<ConceptMastery>> weakConcepts(int notebookId) async => const [];
   @override
-  Future<List<ConceptMastery>> masteredConcepts(int notebookId) async => const [];
-  @override
   Future<List<ConceptMastery>> dueForReview({int? notebookId, DateTime? now}) async =>
       const [];
-  @override
-  Future<List<QuizAttempt>> quizHistory(int notebookId) async => const [];
   @override
   Future<LearningPreferences> loadPreferences() async =>
       LearningPreferences.empty;
   @override
   Future<void> savePreferences(LearningPreferences prefs) async {}
-  @override
-  Future<void> recordStudySession(StudySession session) async {}
-  @override
-  Future<List<StudySession>> studyHistory(int notebookId) async => const [];
 }
 
 class _NoopProvider implements AiProvider {
@@ -89,8 +80,6 @@ class _NoopProvider implements AiProvider {
     AiGenerationOptions? options,
   }) =>
       throw UnimplementedError();
-  @override
-  Future<List<double>> embed(String text) => throw UnimplementedError();
 }
 
 class _FakeInstaller implements ModelInstaller {
