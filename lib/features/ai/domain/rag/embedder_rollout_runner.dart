@@ -83,6 +83,37 @@ class EmbedderRolloutRunner {
     ));
   }
 
+  /// Launch hook: pins the serving model on first run, starts a rollout when a
+  /// release made [activeModelId] differ from the serving model, and resumes one
+  /// that an earlier launch left part way (including a half-done switch).
+  ///
+  /// [mayDownload] is asked only when the next step would download the target;
+  /// when it says no, the rollout waits (state saved) and this returns true so
+  /// the caller can ask again later.
+  Future<bool> resume(
+    String activeModelId, {
+    Future<bool> Function()? mayDownload,
+  }) async {
+    if (isAdvancing) return false;
+    final saved = await states.load(activeModelId);
+    await states.save(saved); // first run: remember what serves, before any bump
+    if (!saved.isRunning && saved.servingModelId != activeModelId) {
+      await start(
+        servingModelId: saved.servingModelId,
+        targetModelId: activeModelId,
+      );
+    }
+    final current = await states.load(activeModelId);
+    if (current.status == RolloutStatus.downloading &&
+        mayDownload != null &&
+        !await models.isInstalled(current.targetModelId!) &&
+        !await mayDownload()) {
+      return true;
+    }
+    await advance(saved.servingModelId);
+    return false;
+  }
+
   /// The pass in progress, if one is. A second [advance] joins it, rather than
   /// running the same pages twice.
   Future<EmbedderRollout>? _advancing;

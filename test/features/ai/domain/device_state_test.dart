@@ -116,6 +116,7 @@ void main() {
         'batteryPercent': 55,
         'charging': true,
         'powerSave': false,
+        'metered': true,
       });
 
       expect(s.totalRamBytes, 7400000000);
@@ -124,6 +125,7 @@ void main() {
       expect(s.batteryPercent, 55);
       expect(s.charging, isTrue);
       expect(s.powerSave, isFalse);
+      expect(s.metered, isTrue);
     });
 
     test('a missing or oddly-typed field is "unknown", never an exception', () {

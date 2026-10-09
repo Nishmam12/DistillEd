@@ -6,7 +6,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -39,6 +39,7 @@ import '../data/providers/local_gemma_provider.dart';
 import '../data/embeddings/embedder_adapter.dart' show embedderInstallerFor;
 import '../data/embeddings/embedder_rollout_models.dart';
 import '../data/embeddings/embedder_spec.dart';
+import '../data/rag/embedder_mobile_data_choice.dart';
 import '../data/rag/embedder_rollout_state_store.dart';
 import '../data/rag/note_chunk_store.dart';
 import '../../audio/data/transcript_store.dart' show lectureTextOf;
@@ -203,7 +204,7 @@ final textEmbedderProvider = Provider<TextEmbedder>(
 /// and be wrong.
 final servingEmbedderSpecProvider = Provider<EmbedderSpec>((ref) {
   final serving =
-      ref.watch(embedderRolloutStatusProvider).value?.servingModelId;
+      ref.watch(embedderRolloutStatusProvider).value?.answeringModelId;
   if (serving == null) return EmbedderSpec.active;
   return EmbedderSpec.registry.firstWhere(
     (spec) => spec.modelId == serving,
@@ -300,7 +301,7 @@ Future<List<RolloutPage>> _rolloutPages(Ref ref) async {
 
 /// The shadow re-index (docs/TECH_MIGRATION_PLAN.md, phase 4.5): downloads a target
 /// model, builds its chunks beside the serving ones, and switches once every page
-/// is current. Nothing starts a rollout yet.
+/// is current. [embedderRolloutResumeProvider] starts and resumes it at launch.
 final embedderRolloutRunnerProvider = Provider<EmbedderRolloutRunner>((ref) {
   final store = ref.watch(noteChunkStoreProvider);
   return EmbedderRolloutRunner(
@@ -338,6 +339,45 @@ final embedderRolloutRunnerProvider = Provider<EmbedderRolloutRunner>((ref) {
     ),
     now: DateTime.now,
   );
+});
+
+/// True while a new search model waits on the user's mobile-data answer.
+final embedderMobileDataPromptProvider = StateProvider<bool>((ref) => false);
+
+/// Launch hook for the rollout (see [EmbedderRolloutRunner.resume]). The
+/// download needs the HuggingFace token, and on a metered network it needs the
+/// user's say-so: until they answer, or while they chose Wi-Fi only, the rollout
+/// waits and this checks again every few minutes. Failures leave the saved state,
+/// so the next launch retries.
+final embedderRolloutResumeProvider = FutureProvider<void>((ref) async {
+  var waiting = false;
+  try {
+    waiting = await ref.read(embedderRolloutRunnerProvider).resume(
+      EmbedderSpec.active.modelId,
+      mayDownload: () async {
+        if (ref.read(huggingFaceTokenProvider).isEmpty) return false;
+        if (!(await ref.read(deviceHealthProvider).read()).metered) return true;
+        switch (await loadMobileDataChoice()) {
+          case MobileDataChoice.allow:
+            return true;
+          case MobileDataChoice.wifiOnly:
+            return false;
+          case MobileDataChoice.ask:
+            ref.read(embedderMobileDataPromptProvider.notifier).state = true;
+            return false;
+        }
+      },
+    );
+  } catch (e) {
+    debugPrint('embedder rollout resume failed: $e');
+  }
+  ref.invalidate(embedderRolloutStatusProvider);
+  if (waiting) {
+    // ponytail: polls while the app is open; a connectivity listener would react
+    // the moment Wi-Fi joins.
+    final timer = Timer(const Duration(minutes: 2), ref.invalidateSelf);
+    ref.onDispose(timer.cancel);
+  }
 });
 
 /// The rollout as it was last saved, for the Settings row and for the model that
@@ -718,8 +758,10 @@ final contextEngineProvider = Provider<ContextEngine>((ref) {
 /// (`server/ai-gateway`, built from the repo-root `render.yaml`). Free plan,
 /// so the first request after ~15 min idle pays a cold start. Not
 /// user-configurable yet; for local gateway work, point this at
-/// `http://localhost:8000` (`cd server/ai-gateway && uvicorn app.main:app`).
-const String cloudGatewayBaseUrl = 'https://inkflow-ai-gateway.onrender.com';
+/// `http://localhost:8000` (`cd server/ai-gateway && uvicorn app.main:app`), or
+/// build with `--dart-define=GATEWAY_URL=http://localhost:8000`.
+const String cloudGatewayBaseUrl = String.fromEnvironment('GATEWAY_URL',
+    defaultValue: 'https://inkflow-ai-gateway.onrender.com');
 
 /// The two cloud tiers the Phase 3 gateway serves, each a thin [AiProvider]
 /// over the same gateway with a different `model_tier`. [cloudGatewayMidProvider]
@@ -727,10 +769,24 @@ const String cloudGatewayBaseUrl = 'https://inkflow-ai-gateway.onrender.com';
 /// (Loop 3.4) also needs its [ToolCallingClient]-only `generateWithTools` —
 /// every existing [AiProvider]-typed consumer still works unchanged since
 /// [CloudGatewayProvider] implements that interface too.
-final cloudGatewayMidProvider = Provider<CloudGatewayProvider>(
-    (ref) => CloudGatewayProvider(baseUrl: cloudGatewayBaseUrl, modelTier: 'cloud-mid'));
+final cloudGatewayMidProvider = Provider<CloudGatewayProvider>((ref) =>
+    CloudGatewayProvider(
+        baseUrl: cloudGatewayBaseUrl,
+        modelTier: 'cloud-mid',
+        isCloudAllowed: () => _mayUseCloud(ref)));
 final cloudGatewayFrontierProvider = Provider<AiProvider>((ref) =>
-    CloudGatewayProvider(baseUrl: cloudGatewayBaseUrl, modelTier: 'cloud-frontier'));
+    CloudGatewayProvider(
+        baseUrl: cloudGatewayBaseUrl,
+        modelTier: 'cloud-frontier',
+        isCloudAllowed: () => _mayUseCloud(ref)));
+
+/// The transport-level opt-in: no request to the gateway leaves the device unless
+/// the mode allows cloud and privacy is not `localOnly`. Callers still ask for
+/// their own confirmations; this is the floor under all of them.
+bool _mayUseCloud(Ref ref) {
+  final s = ref.read(settingsProvider);
+  return s.aiMode.allowsCloud && s.cloudPrivacy != CloudPrivacy.localOnly;
+}
 
 /// Decides local vs. cloud-mid vs. cloud-frontier per request. Additive
 /// alongside the existing, simpler [AiRouter] (still serves Summarize).
@@ -768,7 +824,12 @@ final explainerProvider = Provider<Explainer>(
 final toolsProvider = Provider<List<Tool>>((ref) => [
       const CalculatorTool(),
       WikipediaTool(),
-      WebSearchTool(baseUrl: cloudGatewayBaseUrl, deviceKey: sessionDeviceKey),
+      WebSearchTool(
+        baseUrl: cloudGatewayBaseUrl,
+        deviceKey: sessionDeviceKey,
+        dio: gatewayDio(cloudGatewayBaseUrl),
+        isCloudAllowed: () => _mayUseCloud(ref),
+      ),
     ]);
 
 /// Research feature — free-form questions that may reach outside the notes

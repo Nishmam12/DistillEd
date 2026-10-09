@@ -50,6 +50,10 @@ class DeviceSnapshot {
   /// Battery saver is on — the user has asked the phone to do less.
   final bool powerSave;
 
+  /// The active network is metered (mobile data, or a hotspot marked so). False
+  /// when unknown: a platform that cannot say never holds a download back.
+  final bool metered;
+
   const DeviceSnapshot({
     this.totalRamBytes,
     this.thermalStatus = 0,
@@ -57,6 +61,7 @@ class DeviceSnapshot {
     this.batteryPercent,
     this.charging = false,
     this.powerSave = false,
+    this.metered = false,
   });
 
   /// Reads the map the platform channel sends, tolerating anything missing or
@@ -78,6 +83,7 @@ class DeviceSnapshot {
           : null,
       charging: map['charging'] == true,
       powerSave: map['powerSave'] == true,
+      metered: map['metered'] == true,
     );
   }
 }

@@ -13,6 +13,7 @@ import '../../../../widgets/app_chip_group.dart';
 import '../../../../widgets/app_segmented_control.dart';
 import '../../../ai/data/embeddings/embedder_dry_run_copy.dart';
 import '../../../ai/data/embeddings/embedder_spec.dart';
+import '../../../ai/data/rag/embedder_mobile_data_choice.dart';
 import '../../../ai/data/llm/hf_token_check.dart';
 import '../../../ai/data/llm/llm_exceptions.dart';
 import '../../../ai/data/llm/llm_model_spec.dart';
@@ -21,6 +22,7 @@ import '../../../ai/domain/compute_backend.dart';
 import '../../../ai/presentation/ai_providers.dart'
     show
         dryRunCopyInstalledProvider,
+        embedderRolloutResumeProvider,
         embedderRolloutRunnerProvider,
         embedderRolloutStatusProvider,
         localBackendProvider;
@@ -573,6 +575,49 @@ class _LectureTranscriptsRow extends ConsumerWidget {
   }
 }
 
+/// Whether a new search model may download over mobile data. Off means it waits
+/// for Wi-Fi; switching on lets a waiting download go ahead at once.
+class _MobileDataRow extends ConsumerStatefulWidget {
+  const _MobileDataRow();
+
+  @override
+  ConsumerState<_MobileDataRow> createState() => _MobileDataRowState();
+}
+
+class _MobileDataRowState extends ConsumerState<_MobileDataRow> {
+  MobileDataChoice _choice = MobileDataChoice.ask;
+
+  @override
+  void initState() {
+    super.initState();
+    loadMobileDataChoice().then((c) {
+      if (mounted) setState(() => _choice = c);
+    });
+  }
+
+  Future<void> _set(bool allow) async {
+    final choice = allow ? MobileDataChoice.allow : MobileDataChoice.wifiOnly;
+    setState(() => _choice = choice);
+    await saveMobileDataChoice(choice);
+    ref.invalidate(embedderRolloutResumeProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final allow = _choice == MobileDataChoice.allow;
+    return _SettingsRow(
+      icon: PhosphorIconsRegular.cellSignalFull,
+      title: 'Download model updates on mobile data',
+      subtitle: switch (_choice) {
+        MobileDataChoice.allow => 'On — updates download on any network',
+        MobileDataChoice.wifiOnly => 'Off — updates wait for Wi-Fi',
+        MobileDataChoice.ask => 'Not set — you are asked when an update needs it',
+      },
+      trailing: Switch(value: allow, onChanged: _set),
+    );
+  }
+}
+
 class _SettingsRow extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -906,6 +951,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           onDelete: () => ref.read(speechModelProvider.notifier).delete(),
           onDownload: _downloadWhisper,
         ),
+        const _MobileDataRow(),
         const _RolloutRow(),
         if (kDebugMode) const _DryRunRow(),
         _ReclaimSpaceRow(

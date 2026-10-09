@@ -1,6 +1,9 @@
+import 'dart:io' show X509Certificate;
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart' show sha256;
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:inkflow/features/ai/data/providers/cloud_gateway_provider.dart';
@@ -63,7 +66,55 @@ CloudGatewayProvider _providerWith(_FakeAdapter adapter, {String tier = 'cloud-m
   return CloudGatewayProvider(baseUrl: 'http://fake-gateway', modelTier: tier, dio: dio);
 }
 
+class _Cert implements X509Certificate {
+  _Cert(this.der);
+  @override
+  final Uint8List der;
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
+
 void main() {
+  group('gatewayDio certificate pin', () {
+    final cert = _Cert(Uint8List.fromList([1, 2, 3]));
+    final digest = sha256.convert(cert.der).toString();
+    bool Function(X509Certificate?, String, int)? check(String pins) =>
+        (gatewayDio('https://h', pins: pins).httpClientAdapter
+                as IOHttpClientAdapter)
+            .validateCertificate;
+
+    test('no pins accepts any certificate', () {
+      expect(check(''), isNull);
+    });
+
+    test('a listed digest is accepted, anything else is refused', () {
+      expect(check('bad, ${digest.toUpperCase()}')!(cert, 'h', 443), isTrue);
+      expect(check('bad')!(cert, 'h', 443), isFalse);
+      expect(check(digest)!(null, 'h', 443), isFalse);
+    });
+  });
+
+  test('sends nothing while cloud is not allowed', () async {
+    final adapter = _FakeAdapter(sseBody: 'data: {"text": "x"}\n\n');
+    final dio = Dio(BaseOptions(baseUrl: 'http://fake-gateway'))
+      ..httpClientAdapter = adapter;
+    final provider = CloudGatewayProvider(
+        baseUrl: 'http://fake-gateway',
+        modelTier: 'cloud-mid',
+        dio: dio,
+        isCloudAllowed: () => false);
+
+    await expectLater(provider.generate(prompt: 'hi').toList(),
+        throwsA(isA<AiUnavailableException>()));
+    await expectLater(
+        provider.generateWithTools(prompt: 'hi', tools: const []).toList(),
+        throwsA(isA<AiUnavailableException>()));
+    await expectLater(
+        provider.transcribeImage(Uint8List(1), prompt: 'p'),
+        throwsA(isA<AiUnavailableException>()));
+    expect(adapter.lastOptions, isNull);
+  });
+
   group('CloudGatewayProvider.generate', () {
     test('yields each SSE text chunk in order', () async {
       final adapter = _FakeAdapter(

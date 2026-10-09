@@ -2,6 +2,7 @@ package com.inkflow.inkflow
 
 import android.app.ActivityManager
 import android.content.Context
+import android.net.ConnectivityManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.PowerManager
@@ -83,6 +84,11 @@ class MainActivity : FlutterActivity() {
                 battery.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY),
             "charging" to battery.isCharging,
             "powerSave" to power.isPowerSaveMode,
+            // Mobile data, or a Wi-Fi hotspot the user marked metered: big
+            // downloads ask first. Needs ACCESS_NETWORK_STATE (declared).
+            "metered" to
+                (getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
+                    .isActiveNetworkMetered,
         )
     }
 }

@@ -6,15 +6,14 @@ Paths are relative to the repo root. Severity is the auditor's call; items were 
 
 ## Suggested next
 
-1. Embedder rollout trigger + startup resume (AI index, High)
-2. Cloud opt-in enforced at the transport (gateway client, Medium)
+1. ~~Embedder rollout trigger + startup resume (AI index, High)~~ — done
+2. ~~Cloud opt-in enforced at the transport (gateway client, Medium)~~ — done
 3. Token-based chunking (Bangla/Devanagari truncation, Medium)
 
 ## AI pipeline
 
 ### High
-- **Embedder upgrade has no trigger.** `runner.start` is only called by the debug `_DryRunRow` (`settings_screen.dart`). If a release bumps `EmbedderSpec.active`, serving silently switches to a model with zero chunks. Nothing resumes an interrupted rollout at launch; if the app dies after `deleteModelsExcept` but before `completeCutover` (`embedder_rollout_runner.dart`), serving stays on the old model with no chunks until the user presses Continue.
-  Fix: persist the serving id on first run; at startup compare `active` with serving and call `start` + `advance`; while `cuttingOver`, resolve serving to the target.
+- ~~**Embedder upgrade has no trigger.**~~ **Done.** `EmbedderRolloutRunner.resume` (called from `embedderRolloutResumeProvider` at launch) pins the serving id, starts a rollout when `EmbedderSpec.active` changes, and resumes an interrupted one; `EmbedderRollout.answeringModelId` points questions at the target during a cut-over. The download needs the HuggingFace token, and on a metered network waits for the user's answer (dialog, then a Settings toggle); it re-checks every 2 minutes while the app is open (a connectivity listener would react at once).
 
 ### Medium
 - **Rollout embeds different text than the live/bulk paths.** `_rolloutPages` (`ai_providers.dart`) reads `PageTextRecord.text`; live path writes `combinedText` (no figures, with transcript), bulk writes `combinedTextWithFigures`. After cutover, target chunks lack figure descriptions or mismatch signatures. Store one canonical indexable text.
@@ -40,7 +39,7 @@ Paths are relative to the repo root. Severity is the auditor's call; items were 
 - `quiz_generator.dart` ~190: `looksLikeProgramming` uses substring hints ("class", "api", "rust") — "classification"/"trust" get coding questions.
 - `study_scheduler.dart` ~70: `startDate.add(Duration(days: i))` drifts across DST.
 - `EmbedderSpec.all` ships `embeddingGemma2` with `modelId` `'UNSET'`; `_DryRunRow`/`dryRunCopy` use a URL that doesn't exist upstream (debug only).
-- Stale comments: `ai_providers.dart` ~241/302 "Nothing starts a rollout yet"; `cloudLlmClientProvider` is a stub while the gateway is live.
+- Stale comment: `cloudLlmClientProvider` is a stub while the gateway is live. (The "Nothing starts a rollout yet" comment is fixed.)
 
 ## Gateway (server/ai-gateway)
 
@@ -54,7 +53,7 @@ Paths are relative to the repo root. Severity is the auditor's call; items were 
 - **Docker/ops:** no `HEALTHCHECK`; `/health` never touches SQLite (add `SELECT 1`); logs omit a hashed device key and error class; `approx_cost_usd` is always 0.0.
 - **Provider clients are built per request** (`provider_selection.py`) → new connection pool each time. Cache per settings.
 - **Exa search results** are returned verbatim to the model (prompt-injection vector from the web); validate http/https URLs and delimit as untrusted data.
-- **Client:** cloud opt-in is checked by individual callers, not at the transport — inject an `isCloudAllowed()` guard into `CloudGatewayProvider` and `WebSearchTool`. Base URL is hard-coded (`ai_providers.dart` ~706); use a `--dart-define`. No cert pinning.
+- ~~**Client:** cloud opt-in at the transport, hard-coded base URL, cert pinning.~~ **Done.** `CloudGatewayProvider` and `WebSearchTool` take `isCloudAllowed` (mode allows cloud and privacy is not `localOnly`); the base URL is `--dart-define=GATEWAY_URL`; `--dart-define=GATEWAY_CERT_SHA256=<hex>[,<hex>]` pins the leaf certificate (off by default; leaf certs rotate, so ship current and next digests together).
 
 ## Editor, data and build
 

@@ -54,6 +54,22 @@ WebSearchTool _toolWith(_FakeAdapter adapter) {
 
 void main() {
   group('WebSearchTool', () {
+    test('makes no request while cloud is not allowed', () async {
+      final adapter = _FakeAdapter(jsonBody: '{"results": []}');
+      final dio = Dio(BaseOptions(baseUrl: 'http://fake-gateway'))
+        ..httpClientAdapter = adapter;
+      final tool = WebSearchTool(
+          baseUrl: 'http://fake-gateway',
+          deviceKey: 'd',
+          dio: dio,
+          isCloudAllowed: () => false);
+
+      final result = await tool.execute({'query': 'q'});
+
+      expect(result.success, isFalse);
+      expect(adapter.lastOptions, isNull);
+    });
+
     test('formats results with title, url, and snippet', () async {
       final adapter = _FakeAdapter(jsonBody: jsonEncode({
         'results': [

@@ -335,4 +335,80 @@ void main() {
     final finished = await runner.advance('serving');
     expect(finished.servingModelId, 'target');
   });
+
+  group('resume', () {
+    test('a bumped active model starts and completes a rollout', () async {
+      final states = _States(const EmbedderRollout(servingModelId: 'serving'));
+      final chunks = _Chunks(['serving', 'serving']);
+      final runner = _runner(
+        states: states,
+        models: _Models({'serving'}),
+        chunks: chunks,
+        index: _Index(chunks, total: 2, pending: 2),
+      );
+
+      await runner.resume('target');
+
+      expect(states.saved!.servingModelId, 'target');
+      expect(chunks.rows, ['target', 'target']);
+    });
+
+    test('a refused download waits, then goes ahead once allowed', () async {
+      final states = _States(const EmbedderRollout(servingModelId: 'serving'));
+      final models = _Models({'serving'});
+      final chunks = _Chunks(['serving']);
+      final runner = _runner(
+        states: states,
+        models: models,
+        chunks: chunks,
+        index: _Index(chunks, total: 1, pending: 1),
+      );
+
+      expect(await runner.resume('target', mayDownload: () async => false),
+          isTrue);
+      expect(states.saved!.status, RolloutStatus.downloading);
+      expect(models.log, isEmpty);
+
+      expect(await runner.resume('target', mayDownload: () async => true),
+          isFalse);
+      expect(states.saved!.servingModelId, 'target');
+    });
+
+    test('an unchanged active model only pins the serving id', () async {
+      final states = _States();
+      final chunks = _Chunks(['serving']);
+      final runner = _runner(
+        states: states,
+        models: _Models({'serving'}),
+        chunks: chunks,
+        index: _Index(chunks, total: 1, pending: 0),
+      );
+
+      await runner.resume('serving');
+
+      expect(states.saved!.servingModelId, 'serving');
+      expect(states.saved!.isRunning, isFalse);
+    });
+
+    test('a switch interrupted by a crash is finished', () async {
+      final states = _States(_saved(RolloutStatus.cuttingOver));
+      final chunks = _Chunks(['target', 'target', 'target']);
+      final runner = _runner(
+        states: states,
+        models: _Models({'serving', 'target'}),
+        chunks: chunks,
+        index: _Index(chunks, total: 3, pending: 0),
+      );
+
+      await runner.resume('target');
+
+      expect(states.saved!.servingModelId, 'target');
+      expect(states.saved!.isRunning, isFalse);
+    });
+  });
+
+  test('during a switch the target answers', () {
+    expect(_saved(RolloutStatus.ready).answeringModelId, 'serving');
+    expect(_saved(RolloutStatus.cuttingOver).answeringModelId, 'target');
+  });
 }

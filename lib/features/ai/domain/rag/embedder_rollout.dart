@@ -57,6 +57,12 @@ class EmbedderRollout {
   /// Whether a rollout is in progress: anything but idle.
   bool get isRunning => status != RolloutStatus.idle;
 
+  /// The model that answers questions right now. A switch under way has already
+  /// removed the old model's chunks, so the target answers from then on, and a
+  /// crash mid-switch must not leave questions on a model with none.
+  String get answeringModelId =>
+      status == RolloutStatus.cuttingOver ? targetModelId! : servingModelId;
+
   /// Begins a rollout to [targetModelId], which must not be the serving model.
   EmbedderRollout start({
     required String targetModelId,

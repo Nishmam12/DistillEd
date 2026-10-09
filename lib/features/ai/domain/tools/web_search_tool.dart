@@ -12,13 +12,16 @@ class WebSearchTool implements Tool {
   final Dio _dio;
   final String _baseUrl;
   final String _deviceKey;
+  final bool Function() _isCloudAllowed;
 
   WebSearchTool({
     required String baseUrl,
     required String deviceKey,
     Dio? dio,
+    bool Function()? isCloudAllowed,
   })  : _baseUrl = baseUrl,
         _deviceKey = deviceKey,
+        _isCloudAllowed = isCloudAllowed ?? (() => true),
         _dio = dio ?? Dio();
 
   @override
@@ -48,6 +51,10 @@ class WebSearchTool implements Tool {
     if (query is! String || query.trim().isEmpty) {
       return const ToolExecutionResult.error(
           'Missing or empty "query" argument.');
+    }
+    if (!_isCloudAllowed()) {
+      return const ToolExecutionResult.error(
+          'Cloud AI is turned off in Settings, so web search is unavailable.');
     }
     try {
       final resp = await _dio.post<Map<String, dynamic>>(

@@ -12,7 +12,9 @@ import 'dart:convert';
 import 'dart:math' show Random;
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart' show sha256;
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/ai_provider.dart';
@@ -31,6 +33,35 @@ import '../../domain/tools/tool_generation_event.dart';
 /// search usage are still tracked in separate tables server-side).
 String _deviceKey = _randomDeviceKey();
 String get sessionDeviceKey => _deviceKey;
+
+/// Comma-separated SHA-256 hex digests of the gateway's leaf certificate
+/// (`--dart-define=GATEWAY_CERT_SHA256=ab12…,cd34…`). Empty, the default, pins
+/// nothing. A leaf certificate rotates every few weeks on a managed host, so
+/// ship the current AND the next digest, or an old app stops connecting.
+const String kGatewayCertSha256 = String.fromEnvironment('GATEWAY_CERT_SHA256');
+
+/// The Dio every gateway call goes through: base URL, timeouts, and the pin.
+Dio gatewayDio(String baseUrl, {String pins = kGatewayCertSha256}) {
+  final allowed = pins
+      .split(',')
+      .map((p) => p.trim().toLowerCase())
+      .where((p) => p.isNotEmpty)
+      .toSet();
+  return Dio(BaseOptions(
+    baseUrl: baseUrl,
+    // Render's free tier cold-starts in 30-60 s; beyond that, give
+    // up and let the caller fall back on-device. receiveTimeout is
+    // the gap between stream chunks, not the whole reply.
+    connectTimeout: const Duration(seconds: 60),
+    receiveTimeout: const Duration(seconds: 60),
+  ))
+    ..httpClientAdapter = IOHttpClientAdapter(
+      validateCertificate: allowed.isEmpty
+          ? null
+          : (cert, host, port) =>
+              cert != null && allowed.contains(sha256.convert(cert.der).toString()),
+    );
+}
 
 const _kDeviceKeyPref = 'ai.deviceKey';
 
@@ -65,7 +96,10 @@ class CloudGatewayProvider
   final Dio _dio;
   final String _modelTier;
   final AiCapabilities _capabilities;
+  final bool Function() _isCloudAllowed;
 
+  /// [isCloudAllowed] is asked before every request, so no caller can reach the
+  /// network while the user has cloud AI off. It is read per call, never cached.
   /// [baseUrl] e.g. `http://localhost:8000` in dev. [modelTier] is
   /// `cloud-mid` or `cloud-frontier` — one instance per tier, matching the
   /// gateway's `GenerateRequest.model_tier`.
@@ -73,16 +107,10 @@ class CloudGatewayProvider
     required String baseUrl,
     required String modelTier,
     Dio? dio,
+    bool Function()? isCloudAllowed,
   })  : _modelTier = modelTier,
-        _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: baseUrl,
-              // Render's free tier cold-starts in 30-60 s; beyond that, give
-              // up and let the caller fall back on-device. receiveTimeout is
-              // the gap between stream chunks, not the whole reply.
-              connectTimeout: const Duration(seconds: 60),
-              receiveTimeout: const Duration(seconds: 60),
-            )),
+        _isCloudAllowed = isCloudAllowed ?? (() => true),
+        _dio = dio ?? gatewayDio(baseUrl),
         _capabilities = AiCapabilities(
           modelId: 'cloud-gateway-$modelTier',
           displayName:
@@ -99,6 +127,13 @@ class CloudGatewayProvider
   @override
   AiCapabilities get capabilities => _capabilities;
 
+  void _requireCloudAllowed() {
+    if (!_isCloudAllowed()) {
+      throw const AiUnavailableException(
+          'Cloud AI is turned off in Settings, so nothing was sent.');
+    }
+  }
+
   @override
   Stream<String> generate({
     required String prompt,
@@ -106,6 +141,7 @@ class CloudGatewayProvider
     List<AiMessage>? history,
     AiGenerationOptions? options,
   }) async* {
+    _requireCloudAllowed();
     final cancelToken = CancelToken();
     final Response<ResponseBody> response;
     try {
@@ -173,6 +209,7 @@ class CloudGatewayProvider
     required List<Tool> tools,
     AiGenerationOptions? options,
   }) async* {
+    _requireCloudAllowed();
     final cancelToken = CancelToken();
     final Response<ResponseBody> response;
     try {
@@ -255,6 +292,7 @@ class CloudGatewayProvider
     int maxOutputTokens = 1024,
     int? randomSeed,
   }) async {
+    _requireCloudAllowed();
     final Response<Map<String, dynamic>> response;
     try {
       response = await _dio.post<Map<String, dynamic>>(

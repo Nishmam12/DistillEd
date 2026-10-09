@@ -1,5 +1,6 @@
 // GoRouter configuration — defines all app routes.
 
+import 'package:flutter/widgets.dart' show GlobalKey, NavigatorState;
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,7 +15,10 @@ import '../features/ai/presentation/flashcards/review_screen.dart';
 import '../features/ai/presentation/knowledge_graph/knowledge_graph_screen.dart';
 import '../features/ai/presentation/study_planner/study_planner_screen.dart';
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final GoRouter appRouter = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   routes: [
     GoRoute(
