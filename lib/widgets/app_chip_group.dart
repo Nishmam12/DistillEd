@@ -121,7 +121,7 @@ class _Chip extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'ModulusPro',
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: text,

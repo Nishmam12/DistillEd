@@ -1,6 +1,6 @@
-// The navy/gold token layer: every hex matches design/THEME_SPEC.md, the
+// The sage token layer: every hex matches design/THEME_SPEC.md, the
 // three-tier hierarchy holds in both brightnesses, `copyWith`/`lerp` reach all
-// nine fields, and the text the app actually draws stays legible.
+// eleven fields, and the text the app actually draws stays legible.
 //
 // These exist because the two failure modes here are silent. A field missing
 // from `lerp` holds its old value through a whole transition and then snaps at
@@ -52,34 +52,40 @@ Map<String, Color> _fields(AppColors c) => {
       'textSecondary': c.textSecondary,
       'border': c.border,
       'accentMuted': c.accentMuted,
+      'brand': c.brand,
+      'fieldFill': c.fieldFill,
     };
 
 void main() {
   group('spec values', () {
     test('light matches THEME_SPEC.md § Design tokens → Light', () {
       const c = AppColors.light;
-      expect(c.bgPrimary, const Color(0xFFF4F2EE));
+      expect(c.bgPrimary, const Color(0xFFF6F3EC));
       expect(c.surface, const Color(0xFFFFFFFF));
-      expect(c.surfaceSubtle, const Color(0xFFF0EDE7));
-      expect(c.accent, const Color(0xFF192841));
+      expect(c.surfaceSubtle, const Color(0xFFC9D6C3));
+      expect(c.accent, const Color(0xFF4F6B5A));
       expect(c.onAccent, const Color(0xFFFFFFFF));
-      expect(c.textPrimary, const Color(0xFF192841));
-      expect(c.textSecondary, const Color(0xFF6E6A64));
-      expect(c.border, const Color(0xFFE6E2DA));
-      expect(c.accentMuted, const Color(0x1F192841));
+      expect(c.textPrimary, const Color(0xFF171D1B));
+      expect(c.textSecondary, const Color(0xFF4A574F));
+      expect(c.border, const Color(0xFFD5DCCF));
+      expect(c.accentMuted, const Color(0x1F4F6B5A));
+      expect(c.brand, const Color(0xFF385343));
+      expect(c.fieldFill, const Color(0xFF8ABD9E));
     });
 
     test('dark matches THEME_SPEC.md § Design tokens → Dark', () {
       const c = AppColors.dark;
-      expect(c.bgPrimary, const Color(0xFF0D0D0F));
-      expect(c.surface, const Color(0xFF1A1A1C));
-      expect(c.surfaceSubtle, const Color(0xFF232326));
-      expect(c.accent, const Color(0xFFDDAC5F));
-      expect(c.onAccent, const Color(0xFF14140F));
-      expect(c.textPrimary, const Color(0xFFE6E2DB));
-      expect(c.textSecondary, const Color(0xFF8E8A84));
-      expect(c.border, const Color(0xFF2A2A2D));
-      expect(c.accentMuted, const Color(0x29DDAC5F));
+      expect(c.bgPrimary, const Color(0xFF121614));
+      expect(c.surface, const Color(0xFF1A201D));
+      expect(c.surfaceSubtle, const Color(0xFF222B26));
+      expect(c.accent, const Color(0xFF9CC5AB));
+      expect(c.onAccent, const Color(0xFF0F1A14));
+      expect(c.textPrimary, const Color(0xFFE8E4DA));
+      expect(c.textSecondary, const Color(0xFF9AA59E));
+      expect(c.border, const Color(0xFF2C3631));
+      expect(c.accentMuted, const Color(0x299CC5AB));
+      expect(c.brand, const Color(0xFFB3D3BE));
+      expect(c.fieldFill, const Color(0xFF2E4638));
     });
 
     test('accentMuted is the accent at the spec alpha, not a separate hue', () {
@@ -97,13 +103,13 @@ void main() {
   group('colour hierarchy', () {
     // THEME_SPEC.md § Color hierarchy. Both halves must hold; either one alone
     // is the bug the other prevents.
-    test('light: accent and textPrimary are the same navy, deliberately', () {
-      expect(AppColors.light.textPrimary, AppColors.light.accent);
+    test('light: textPrimary is near-black, NOT the sage accent', () {
+      expect(AppColors.light.textPrimary, isNot(AppColors.light.accent));
     });
 
-    test('dark: textPrimary is cream, NOT the gold accent', () {
+    test('dark: textPrimary is cream, NOT the light-sage accent', () {
       expect(AppColors.dark.textPrimary, isNot(AppColors.dark.accent));
-      expect(AppColors.dark.textPrimary, const Color(0xFFE6E2DB));
+      expect(AppColors.dark.textPrimary, const Color(0xFFE8E4DA));
     });
 
     test('secondary sits below primary in both modes', () {
@@ -139,18 +145,26 @@ void main() {
         expect(_contrast(c.accent, c.surface), greaterThanOrEqualTo(3.0));
         expect(_contrast(c.onAccent, c.accent), greaterThanOrEqualTo(3.0));
       });
+
+      test('$name: wordmark and field text read on their grounds', () {
+        expect(_contrast(c.brand, c.bgPrimary), greaterThanOrEqualTo(4.5));
+        expect(_contrast(c.brand, c.surfaceSubtle),
+            greaterThanOrEqualTo(4.5));
+        expect(_contrast(c.textPrimary, c.fieldFill),
+            greaterThanOrEqualTo(4.5));
+      });
     }
   });
 
   group('field coverage', () {
-    test('the set is exactly nine tokens', () {
-      expect(_fields(AppColors.light), hasLength(9));
+    test('the set is exactly eleven tokens', () {
+      expect(_fields(AppColors.light), hasLength(11));
     });
 
     test('no token was copied verbatim from light into dark', () {
       // A role identical in both brightnesses is almost always one that was
       // added to `light` and forgotten in `dark`. This palette has no genuine
-      // exception — even `onAccent` differs (#FFFFFF vs #14140F).
+      // exception — even `onAccent` differs (#FFFFFF vs #0F1A14).
       final light = _fields(AppColors.light);
       final dark = _fields(AppColors.dark);
       for (final name in light.keys) {
@@ -160,7 +174,7 @@ void main() {
     });
 
     test('copyWith reaches every field', () {
-      // Overwrite all nine with sentinels; any field `copyWith` forgot keeps
+      // Overwrite all eleven with sentinels; any field `copyWith` forgot keeps
       // its light value and fails here.
       const sentinel = Color(0xFF010203);
       final all = AppColors.light.copyWith(
@@ -173,6 +187,8 @@ void main() {
         textSecondary: sentinel,
         border: sentinel,
         accentMuted: sentinel,
+        brand: sentinel,
+        fieldFill: sentinel,
       );
       for (final entry in _fields(all).entries) {
         expect(entry.value, sentinel, reason: 'copyWith dropped ${entry.key}');
@@ -236,10 +252,10 @@ void main() {
         expect(t.titleMedium?.color, c.textPrimary);
         expect(t.titleSmall?.color, c.textPrimary);
       }
-      // In dark the two are different hexes, so this actually asserts something
-      // that light mode cannot (there, textPrimary == accent by design).
       expect(DistillTheme.dark.textTheme.bodyMedium?.color,
           isNot(AppColors.dark.accent));
+      expect(DistillTheme.light.textTheme.bodyMedium?.color,
+          isNot(AppColors.light.accent));
     });
 
     test('shadows do not carry into dark', () {
@@ -250,8 +266,8 @@ void main() {
     });
 
     test('snack bar actions are not the accent', () {
-      // In light the accent is the snack bar's own navy background, so an
-      // accent action would be invisible on it.
+      // The snack bar background is textPrimary; keep the action off the accent
+      // so it stays legible on it.
       final snack = DistillTheme.light.snackBarTheme;
       expect(snack.actionTextColor, isNot(AppColors.light.accent));
       expect(snack.backgroundColor, AppColors.light.textPrimary);

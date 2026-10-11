@@ -67,7 +67,7 @@ class _SheetTitle extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        fontFamily: 'Poppins',
+        fontFamily: 'ModulusPro',
         fontSize: 17,
         fontWeight: FontWeight.w600,
         color: context.colors.textPrimary,

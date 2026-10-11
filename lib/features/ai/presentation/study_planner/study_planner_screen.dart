@@ -131,7 +131,7 @@ class _GeneratePaneState extends ConsumerState<_GeneratePane> {
         Text('Plan your study',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'ModulusPro',
               fontSize: 20,
               fontWeight: FontWeight.w600,
               color: context.colors.textPrimary,
@@ -576,7 +576,7 @@ class _Centered extends StatelessWidget {
             Text(title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontFamily: 'Poppins',
+                  fontFamily: 'ModulusPro',
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: context.colors.textPrimary,

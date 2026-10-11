@@ -16,13 +16,18 @@ class NoteRepository {
   NoteRepository(this._isar);
 
   /// Creates a new notebook with the given title and returns it.
-  Future<Notebook> createNotebook(String title, {int templateIndex = 0}) async {
+  Future<Notebook> createNotebook(
+    String title, {
+    int templateIndex = 0,
+    int? backgroundColor,
+  }) async {
     final notebook = Notebook()
       ..title = title
       ..createdAt = DateTime.now()
       ..modifiedAt = DateTime.now()
       ..pageCount = 1
       ..templateIndex = templateIndex;
+    if (backgroundColor != null) notebook.backgroundColor = backgroundColor;
 
     // One transaction: a crash between the two writes would leave a notebook
     // that claims a page it does not have.

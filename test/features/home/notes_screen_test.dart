@@ -7,15 +7,23 @@ import 'package:distill_ed/features/home/presentation/note_cards_provider.dart';
 import 'package:distill_ed/features/home/presentation/notes_palette.dart';
 import 'package:distill_ed/features/home/presentation/screens/notes_screen.dart';
 import 'package:distill_ed/features/home/presentation/widgets/note_card.dart';
+import 'package:distill_ed/features/home/presentation/widgets/home_sidebar.dart';
+import 'package:distill_ed/features/home/presentation/widgets/new_note_dialog.dart';
 import 'package:distill_ed/features/home/presentation/widgets/search_bar_widget.dart';
 
-NoteCardData _card(int id, String title, {DateTime? createdAt}) {
+NoteCardData _card(
+  int id,
+  String title, {
+  DateTime? createdAt,
+  bool pinned = false,
+}) {
   return NoteCardData(
     id: id,
     title: title,
     createdAt: createdAt ?? DateTime(2021, 7, 26),
     pages: 3,
     type: NoteType.text,
+    pinned: pinned,
   );
 }
 
@@ -32,7 +40,7 @@ final _cards = [
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   List<NoteCardData>? cards,
-  Size surface = const Size(430, 932),
+  Size surface = const Size(1280, 800),
 }) async {
   tester.view.physicalSize = surface;
   tester.view.devicePixelRatio = 1.0;
@@ -40,9 +48,7 @@ Future<ProviderContainer> _pump(
 
   final container = ProviderContainer(
     retry: (_, _) => null,
-    overrides: [
-      noteCardsProvider.overrideWith((ref) async => cards ?? _cards),
-    ],
+    overrides: [noteCardsProvider.overrideWith((ref) async => cards ?? _cards)],
   );
   addTearDown(container.dispose);
 
@@ -56,150 +62,238 @@ Future<ProviderContainer> _pump(
   return container;
 }
 
-int _fullyVisibleCards(WidgetTester tester, Rect viewport) {
-  return find
-      .byType(NoteCard)
-      .evaluate()
-      .map((element) => tester.getRect(find.byWidget(element.widget)))
-      .where((rect) => rect.bottom <= viewport.bottom)
-      .length;
-}
-
 void main() {
   group('chrome', () {
-    testWidgets('sits on the near-white canvas', (tester) async {
+    testWidgets('sits on the cream canvas', (tester) async {
       await _pump(tester);
 
       final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
       expect(scaffold.backgroundColor, AppColors.light.bgPrimary);
     });
 
-    testWidgets('leads with a large bold DistillEd title', (tester) async {
+    testWidgets('leads with a large semibold Notes title', (tester) async {
       await _pump(tester);
 
-      final title = tester.widget<Text>(find.text('DistillEd'));
-      expect(title.style!.fontSize, 38);
-      expect(title.style!.fontWeight, FontWeight.w700);
+      // One in the sidebar, one as the page title.
+      expect(find.text('Notes'), findsNWidgets(2));
+      final title = tester
+          .widgetList<Text>(find.text('Notes'))
+          .firstWhere((t) => t.style!.fontSize == 40);
+      expect(title.style!.fontWeight, FontWeight.w600);
     });
 
-    testWidgets('keeps its chrome inside the safe area', (tester) async {
+    testWidgets('has search, profile and settings up top', (tester) async {
       await _pump(tester);
 
-      expect(find.byType(SafeArea), findsWidgets);
-      expect(find.byType(SearchBarWidget), findsOneWidget);
+      expect(find.byTooltip('Search'), findsOneWidget);
+      expect(find.byTooltip('About'), findsOneWidget);
+      expect(find.byTooltip('Settings'), findsOneWidget);
     });
 
-    testWidgets('counts the notes on show', (tester) async {
+    testWidgets('shows the current sort beside the sort glyph', (tester) async {
       await _pump(tester);
 
-      expect(find.text('7 Notes'), findsOneWidget);
+      expect(find.text(NotesSort.recent.label), findsOneWidget);
     });
 
-    testWidgets('singularises a lone note', (tester) async {
-      await _pump(tester, cards: [_card(1, 'IDs')]);
+    testWidgets('floats a "+ new" pill bottom-right', (tester) async {
+      await _pump(tester);
 
-      expect(find.text('1 Note'), findsOneWidget);
+      final screen = tester.getRect(find.byType(NotesScreen));
+      final pill = tester.getRect(find.text('new'));
+      expect(pill.center.dx, greaterThan(screen.center.dx));
+      expect(pill.center.dy, greaterThan(screen.center.dy));
+      expect(find.text('new'), findsOneWidget);
     });
   });
 
-  group('list', () {
-    testWidgets('spaces cards 16px apart with the spec padding',
-        (tester) async {
+  group('sidebar', () {
+    testWidgets('is pinned beside the grid on a wide screen', (tester) async {
       await _pump(tester);
 
-      final list = tester.widget<ListView>(find.byType(ListView));
-      expect(list.padding, NotesPalette.listPadding);
-      expect(NotesPalette.listPadding, const EdgeInsets.fromLTRB(18, 20, 18, 120));
-
-      final first = tester.getRect(find.byType(NoteCard).at(0));
-      final second = tester.getRect(find.byType(NoteCard).at(1));
-      expect(second.top - first.bottom, NotesPalette.cardGap);
-    });
-
-    testWidgets('sizes cards so five fit, within the 150–170 band',
-        (tester) async {
-      await _pump(tester);
-
-      final height = tester.getSize(find.byType(NoteCard).first).height;
+      expect(find.text('margo'), findsOneWidget);
+      expect(find.text('Favorites'), findsOneWidget);
+      expect(find.text('Folders'), findsOneWidget);
       expect(
-        height,
-        inInclusiveRange(
-          NotesPalette.cardHeightMin,
-          NotesPalette.cardHeightMax,
-        ),
+        tester.getSize(find.byType(HomeSidebar)).width,
+        NotesPalette.sidebarWidth,
       );
     });
 
-    testWidgets('never squeezes cards below the band on a short screen',
-        (tester) async {
-      await _pump(tester, surface: const Size(430, 560));
+    testWidgets('counts the notes beside Notes', (tester) async {
+      await _pump(tester);
 
-      expect(
-        tester.getSize(find.byType(NoteCard).first).height,
-        greaterThanOrEqualTo(NotesPalette.cardHeightMin),
+      expect(find.text('7'), findsOneWidget);
+    });
+
+    testWidgets('collapses and comes back', (tester) async {
+      await _pump(tester);
+
+      await tester.tap(find.byTooltip('Hide sidebar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(HomeSidebar), findsNothing);
+
+      await tester.tap(find.byTooltip('Show sidebar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(HomeSidebar), findsOneWidget);
+    });
+
+    testWidgets('Shared is shown but disabled', (tester) async {
+      await _pump(tester);
+
+      expect(find.text('Shared'), findsOneWidget);
+      expect(find.text('Soon'), findsOneWidget);
+      final inkWell = tester.widget<InkWell>(
+        find.ancestor(of: find.text('Shared'), matching: find.byType(InkWell)),
       );
+      expect(inkWell.onTap, isNull);
     });
 
-    testWidgets('shows five full cards on a tablet-height viewport',
-        (tester) async {
-      await _pump(tester, surface: const Size(834, 1194));
+    testWidgets('becomes a drawer on a narrow screen', (tester) async {
+      await _pump(tester, surface: const Size(430, 932));
 
-      final viewport = tester.getRect(find.byType(ListView));
-      expect(_fullyVisibleCards(tester, viewport), inInclusiveRange(5, 6));
+      expect(find.byType(HomeSidebar), findsNothing);
+
+      await tester.tap(find.byTooltip('Show sidebar'));
+      await tester.pumpAndSettle();
+      expect(find.text('margo'), findsOneWidget);
+
+      await tester.tap(find.text('Favorites'));
+      await tester.pumpAndSettle();
+      expect(find.text('margo'), findsNothing);
     });
+  });
 
-    testWidgets('reaches into a fifth card even on a phone', (tester) async {
+  group('grid', () {
+    testWidgets('lays cards out in columns with the design gap', (
+      tester,
+    ) async {
       await _pump(tester);
 
-      final viewport = tester.getRect(find.byType(ListView));
-      final reached = find
-          .byType(NoteCard)
-          .evaluate()
-          .map((element) => tester.getRect(find.byWidget(element.widget)))
-          .where((rect) => rect.top < viewport.bottom)
-          .length;
+      final grid = tester.widget<GridView>(find.byType(GridView));
+      expect(grid.padding, NotesPalette.contentPadding);
 
-      // Four whole cards plus a slice of the fifth: the most the 150px floor
-      // allows on a phone, and never a cramped sixth.
-      expect(reached, greaterThanOrEqualTo(5));
-      expect(_fullyVisibleCards(tester, viewport), greaterThanOrEqualTo(4));
+      final a = tester.getRect(find.byType(NoteCard).at(0));
+      final b = tester.getRect(find.byType(NoteCard).at(1));
+      final c = tester.getRect(find.byType(NoteCard).at(2));
+      expect(a.top, b.top);
+      expect(b.top, c.top);
+      expect(b.left - a.right, NotesPalette.gridGap);
+      expect(a.width / a.height, closeTo(NotesPalette.cardAspect, 0.01));
     });
 
-    testWidgets('the cards scroll under the fixed bottom bar', (tester) async {
-      await _pump(tester);
+    testWidgets('scrolls to later notes', (tester) async {
+      await _pump(tester, cards: [
+        for (var i = 0; i < 30; i++) _card(i + 1, 'Note ${i + 1}'),
+      ]);
 
-      expect(find.text('Grocery'), findsNothing);
+      expect(find.text('Note 30'), findsNothing);
 
-      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.drag(find.byType(GridView), const Offset(0, -5000));
       await tester.pumpAndSettle();
 
-      expect(find.text('Grocery'), findsOneWidget);
-      expect(find.text('7 Notes'), findsOneWidget);
+      expect(find.text('Note 30'), findsOneWidget);
+    });
+
+    testWidgets('a phone still gets a usable grid', (tester) async {
+      await _pump(tester, surface: const Size(430, 932));
+
+      expect(find.byType(NoteCard), findsWidgets);
+      expect(tester.takeException(), isNull);
     });
   });
 
-  group('search', () {
-    testWidgets('narrows the list to matching notes', (tester) async {
+  group('favorites', () {
+    final cards = [
+      _card(1, 'IDs', pinned: true),
+      _card(2, 'Pasig Pass'),
+      _card(3, 'Unilab OR', pinned: true),
+    ];
+
+    testWidgets('the sidebar entry narrows to pinned notes', (tester) async {
+      final container = await _pump(tester, cards: cards);
+
+      await tester.tap(find.text('Favorites'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(notesFavoritesOnlyProvider), isTrue);
+      expect(find.byType(NoteCard), findsNWidgets(2));
+      expect(find.text('Pasig Pass'), findsNothing);
+      // The page title follows the scope.
+      expect(find.text('Favorites'), findsNWidgets(2));
+    });
+
+    testWidgets('Notes clears it again', (tester) async {
+      final container = await _pump(tester, cards: cards);
+
+      await tester.tap(find.text('Favorites'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Notes').first);
+      await tester.pumpAndSettle();
+
+      expect(container.read(notesFavoritesOnlyProvider), isFalse);
+      expect(find.byType(NoteCard), findsNWidgets(3));
+    });
+
+    testWidgets('says so when nothing is starred', (tester) async {
+      await _pump(tester, cards: [_card(1, 'IDs')]);
+
+      await tester.tap(find.text('Favorites'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No favorites yet'), findsOneWidget);
+    });
+  });
+
+  group('search popover', () {
+    testWidgets('opens under the search icon with every note listed', (
+      tester,
+    ) async {
       await _pump(tester);
 
+      await tester.tap(find.byTooltip('Search'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SearchBarWidget), findsOneWidget);
+      // Capped at five rows.
+      expect(find.text('3 Pages'), findsWidgets);
+    });
+
+    testWidgets('narrows its rows to the query, leaving the grid alone', (
+      tester,
+    ) async {
+      await _pump(tester);
+
+      await tester.tap(find.byTooltip('Search'));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'better');
       await tester.pumpAndSettle();
 
-      expect(find.text('Better Creator'), findsOneWidget);
-      expect(find.text('Better Person'), findsOneWidget);
-      expect(find.text('Grocery'), findsNothing);
-      expect(find.text('2 Notes'), findsOneWidget);
+      expect(find.text('Better Creator'), findsNWidgets(2)); // row + card
+      expect(find.text('Better Person'), findsNWidgets(2));
+      expect(find.text('IDs'), findsOneWidget); // only its card
     });
 
-    testWidgets('explains an empty result instead of showing a blank page',
-        (tester) async {
+    testWidgets('explains an empty result', (tester) async {
       await _pump(tester);
 
+      await tester.tap(find.byTooltip('Search'));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'zzz');
       await tester.pumpAndSettle();
 
-      expect(find.byType(NoteCard), findsNothing);
-      expect(find.textContaining('No notes match'), findsOneWidget);
+      expect(find.text('No notes match'), findsOneWidget);
+    });
+
+    testWidgets('closes when you tap away', (tester) async {
+      await _pump(tester);
+
+      await tester.tap(find.byTooltip('Search'));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(700, 700));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SearchBarWidget), findsNothing);
     });
   });
 
@@ -207,45 +301,47 @@ void main() {
     testWidgets('invites the first note', (tester) async {
       await _pump(tester, cards: []);
 
-      expect(find.text('No notes yet'), findsOneWidget);
+      expect(find.text('No notes here'), findsOneWidget);
       expect(find.byType(NoteCard), findsNothing);
-      expect(find.text('0 Notes'), findsOneWidget);
+      expect(find.text('0'), findsOneWidget);
     });
   });
 
-  group('bottom controls', () {
-    testWidgets('puts filter bottom-left and compose bottom-right',
-        (tester) async {
+  group('new note', () {
+    testWidgets('"+ new" opens the template dialog, Cancel dismisses it', (
+      tester,
+    ) async {
       await _pump(tester);
 
-      final screen = tester.getRect(find.byType(NotesScreen));
-      final filter = tester.getRect(find.byTooltip('Sort notes'));
-      final compose = tester.getRect(find.byTooltip('New note'));
+      await tester.tap(find.text('new'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NewNoteDialog), findsOneWidget);
+      expect(find.text('Template'), findsOneWidget);
 
-      expect(filter.center.dx, lessThan(screen.center.dx));
-      expect(compose.center.dx, greaterThan(screen.center.dx));
-      for (final button in [filter, compose]) {
-        expect(button.center.dy, greaterThan(screen.center.dy));
-      }
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NewNoteDialog), findsNothing);
     });
+  });
 
-    testWidgets('the filter button offers the sort options', (tester) async {
+  group('sort', () {
+    testWidgets('the sort row offers the sort options', (tester) async {
       await _pump(tester);
 
-      await tester.tap(find.byTooltip('Sort notes'));
+      await tester.tap(find.text(NotesSort.recent.label));
       await tester.pumpAndSettle();
 
       for (final sort in NotesSort.values) {
-        expect(find.text(sort.label), findsOneWidget);
+        expect(find.text(sort.label), findsWidgets);
       }
     });
 
     testWidgets('picking a sort reorders the list', (tester) async {
       final container = await _pump(tester);
 
-      await tester.tap(find.byTooltip('Sort notes'));
+      await tester.tap(find.text(NotesSort.recent.label));
       await tester.pumpAndSettle();
-      await tester.tap(find.text(NotesSort.title.label));
+      await tester.tap(find.text(NotesSort.title.label).last);
       await tester.pumpAndSettle();
 
       expect(container.read(notesSortProvider), NotesSort.title);
@@ -256,21 +352,6 @@ void main() {
           .toList();
       expect(titles.first, 'Better Creator');
       expect(titles.last, 'Workout');
-    });
-  });
-
-  group('cardHeightFor', () {
-    test('fits five cards exactly when the viewport allows', () {
-      // 20 top padding + 5×160 + 4×16 gaps = 884.
-      expect(NotesScreen.cardHeightFor(884), 160);
-    });
-
-    test('never goes below the 150px floor on a short viewport', () {
-      expect(NotesScreen.cardHeightFor(400), NotesPalette.cardHeightMin);
-    });
-
-    test('never exceeds the 170px ceiling on a tall viewport', () {
-      expect(NotesScreen.cardHeightFor(4000), NotesPalette.cardHeightMax);
     });
   });
 
@@ -285,19 +366,19 @@ void main() {
         _card(2, 'new', createdAt: DateTime(2023, 1, 1)),
       ];
 
-      expect(
-        sortCards(cards, NotesSort.created).map((card) => card.title),
-        ['new', 'old'],
-      );
+      expect(sortCards(cards, NotesSort.created).map((card) => card.title), [
+        'new',
+        'old',
+      ]);
     });
 
     test('title sorts case-insensitively', () {
       final cards = [_card(1, 'banana'), _card(2, 'Apple')];
 
-      expect(
-        sortCards(cards, NotesSort.title).map((card) => card.title),
-        ['Apple', 'banana'],
-      );
+      expect(sortCards(cards, NotesSort.title).map((card) => card.title), [
+        'Apple',
+        'banana',
+      ]);
     });
 
     test('pinned notes lead, keeping the chosen order within each group', () {
@@ -322,10 +403,12 @@ void main() {
         ),
       ];
 
-      expect(
-        sortCards(cards, NotesSort.title).map((card) => card.title),
-        ['Pinned A', 'Pinned B', 'Apple', 'Zebra'],
-      );
+      expect(sortCards(cards, NotesSort.title).map((card) => card.title), [
+        'Pinned A',
+        'Pinned B',
+        'Apple',
+        'Zebra',
+      ]);
     });
 
     test('does not mutate the list it was given', () {

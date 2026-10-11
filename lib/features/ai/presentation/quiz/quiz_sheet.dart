@@ -21,7 +21,7 @@ import '../ai_providers.dart';
 import '../quiz_notifier.dart';
 import '../widgets/model_download_progress.dart';
 
-/// A right answer takes the accent: navy in light, gold in dark. The theme has
+/// A right answer takes the accent: sage in light, light sage in dark. The theme has
 /// no green, and the accent already marks every confirmed state, so a correct
 /// answer reads as the highlighted result. A wrong answer keeps the error red.
 Color _correct(BuildContext context) => context.colors.accent;
@@ -594,7 +594,7 @@ class _SheetTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(text,
         style: TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'ModulusPro',
           fontSize: 17,
           fontWeight: FontWeight.w600,
           color: context.colors.textPrimary,

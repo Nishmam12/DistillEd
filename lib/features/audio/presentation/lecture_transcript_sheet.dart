@@ -69,7 +69,7 @@ class _LectureTranscriptSheetState
       children: [
         Text('Lecture transcripts',
             style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'ModulusPro',
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: context.colors.textPrimary,

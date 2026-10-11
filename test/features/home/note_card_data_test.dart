@@ -206,13 +206,28 @@ void main() {
   });
 
   group('NotesPalette', () {
-    test('keeps the card height inside the 150–170 band', () {
-      expect(NotesPalette.cardHeight,
-          inInclusiveRange(NotesPalette.cardHeightMin, NotesPalette.cardHeightMax));
+    test('card proportions match the 252×296 design tile', () {
+      expect(NotesPalette.cardAspect, closeTo(252 / 296, 1e-9));
+    });
+  });
+
+  group('footer labels', () {
+    NoteCardData at(DateTime d, int pages) => NoteCardData(
+          id: 1,
+          title: 't',
+          createdAt: d,
+          pages: pages,
+          type: NoteType.text,
+        );
+
+    test('long date is day, month name, year', () {
+      expect(at(DateTime(2027, 7, 9), 1).longDateLabel, '9 July 2027');
+      expect(at(DateTime(2026, 12, 31), 1).longDateLabel, '31 December 2026');
     });
 
-    test('keeps the overlay inside the 30–35% band', () {
-      expect(NotesPalette.overlayWidthFactor, inInclusiveRange(0.30, 0.35));
+    test('page count is capitalised and singularises', () {
+      expect(at(DateTime(2027, 7, 9), 7).pageCountLabel, '7 Pages');
+      expect(at(DateTime(2027, 7, 9), 1).pageCountLabel, '1 Page');
     });
   });
 }

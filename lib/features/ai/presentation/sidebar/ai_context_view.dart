@@ -294,7 +294,7 @@ class _ContextBody extends StatelessWidget {
           Text(
             c.currentTopic.isEmpty ? 'Not sure yet' : c.currentTopic,
             style: TextStyle(
-              fontFamily: 'Poppins',
+              fontFamily: 'ModulusPro',
               fontSize: 20,
               fontWeight: FontWeight.w600,
               color: buildContext.colors.textPrimary,
@@ -779,7 +779,7 @@ class _CenteredMessage extends StatelessWidget {
           Text(title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'ModulusPro',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: context.colors.textPrimary,

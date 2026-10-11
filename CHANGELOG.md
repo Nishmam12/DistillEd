@@ -15,6 +15,19 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+### Changed
+- **Home screen redesigned ("margo").** The Notes screen is now a sage sidebar
+  (Notes, Favorites, Shared — coming soon — and your folders and tags) beside a
+  grid of note cards, each a thumbnail over a footer with the title, page count,
+  date and a bookmark to favourite it. On narrow screens the sidebar opens from a
+  menu button. Search moved to a popover under the search icon, and **+ new**
+  opens a redesigned template dialog where you also pick the page colour (white,
+  ivory or dark).
+- **New sage palette and Modulus Pro typeface, app-wide**, with a matching dark
+  theme (light sage on forest charcoal). Note: Modulus Pro is licensed for
+  personal use only — a commercial licence from its author is needed before any
+  public release.
+
 ### Added
 - **Study planner.** A new planner icon in the notebook toolbar turns what the AI
   has learned about your notes into a day-by-day study plan. Pick a horizon

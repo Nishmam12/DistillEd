@@ -124,7 +124,7 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         title.toUpperCase(),
         style: TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'ModulusPro',
           color: context.colors.accent,
           fontWeight: FontWeight.w700,
           fontSize: 12,
@@ -161,7 +161,7 @@ class _SettingsCard extends StatelessWidget {
     // with no edge at all.
     //
     // THEME_SPEC.md defines no shadow token, so the tint is derived from
-    // `accent` rather than invented: navy at 6%/4% in light. See the report's
+    // `accent` rather than invented: sage at 6%/4% in light. See the report's
     // spec-gap note.
     return Container(
       decoration: BoxDecoration(
@@ -364,7 +364,7 @@ class _SettingsRow extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      fontFamily: 'Poppins',
+                      fontFamily: 'ModulusPro',
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: c.textPrimary,

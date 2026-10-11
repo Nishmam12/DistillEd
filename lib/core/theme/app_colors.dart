@@ -1,15 +1,16 @@
-// The navy/gold token layer — nine semantic roles, two brightnesses.
+// The sage token layer — eleven semantic roles, two brightnesses.
 //
 // Source of truth: `design/THEME_SPEC.md`. Every hex below is copied from that
-// document's Light and Dark tables verbatim. Do not sample values from the
+// document's Light and Dark tables verbatim (sage palette, from the margo
+// Figma file; dark derived from it). Do not sample values from the
 // mockup PNGs and do not invent new ones — if a screen needs a colour that is
-// not one of these nine, the spec needs a new token, not the screen a literal.
+// not one of these eleven, the spec needs a new token, not the screen a literal.
 //
 // ── Why exactly nine ──────────────────────────────────────────────────────
 // The warm skin this replaced carried thirty-odd roles, and the cost of that was
 // real: a role defined for one brightness and forgotten in the other is
-// invisible until someone opens the app at night. Nine roles fit
-// in your head, and `copyWith`/`lerp` below enumerate all nine explicitly so a
+// invisible until someone opens the app at night. Eleven roles fit
+// in your head, and `copyWith`/`lerp` below enumerate all eleven explicitly so a
 // forgotten field is a compile error rather than a colour that refuses to
 // animate.
 //
@@ -17,16 +18,13 @@
 // Three tiers: accent (brand, headings, active states), primary (row titles,
 // content text), secondary (descriptions, meta).
 //
-//   * In LIGHT, `accent` and `textPrimary` are the SAME hex (#192841). This is
-//     deliberate. Navy is dark enough to read as plain body text, so it carries
-//     both jobs without anything looking emphasized. Do not invent a second
-//     navy to make them differ.
-//   * In DARK they MUST differ. Gold is saturated and warm, so every gold
-//     element reads as emphasized; thirty gold row titles in a note list is a
-//     wall of accent colour that signals nothing. Cream #E6E2DB carries the
-//     repeated content text. Do not set `textPrimary` to the gold.
+//   * In BOTH brightnesses `accent` and `textPrimary` differ. Light: sage
+//     #4F6B5A accents over near-black #171D1B content text. Dark: light sage
+//     #9CC5AB accents over warm cream #E8E4DA content text. Thirty accent-
+//     coloured row titles in a note list would be a wall of colour that
+//     signals nothing, so repeated content text never takes the accent.
 //
-// `test/core/theme/app_colors_test.dart` pins both conditions.
+// `test/core/theme/app_colors_test.dart` pins the condition and the contrast.
 //
 // ── Reading these ─────────────────────────────────────────────────────────
 //   context.colors.accent      — inside build(), follows the live theme
@@ -71,6 +69,12 @@ class AppColors extends ThemeExtension<AppColors> {
   /// Active-tool halo, selected segment fill. [accent] at low alpha.
   final Color accentMuted;
 
+  /// The wordmark. Darker than [accent] in light, lighter in dark.
+  final Color brand;
+
+  /// Text-field pill fill (note title, search field).
+  final Color fieldFill;
+
   const AppColors({
     required this.bgPrimary,
     required this.surface,
@@ -81,40 +85,40 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.textSecondary,
     required this.border,
     required this.accentMuted,
+    required this.brand,
+    required this.fieldFill,
   });
 
   /// THEME_SPEC.md § Design tokens → Light.
   static const AppColors light = AppColors(
-    bgPrimary: Color(0xFFF4F2EE),
+    bgPrimary: Color(0xFFF6F3EC),
     surface: Color(0xFFFFFFFF),
-    surfaceSubtle: Color(0xFFF0EDE7),
-    accent: Color(0xFF192841),
+    surfaceSubtle: Color(0xFFC9D6C3),
+    accent: Color(0xFF4F6B5A),
     onAccent: Color(0xFFFFFFFF),
-    // Intentionally the same hex as `accent`. See the header.
-    textPrimary: Color(0xFF192841),
-    textSecondary: Color(0xFF6E6A64),
-    border: Color(0xFFE6E2DA),
-    // Spec: `accent @ 12%`. Written as a literal rather than
-    // `accent.withValues(alpha: 0.12)` so this stays `const`; the alpha byte is
-    // that expression's exact result — (0.12 * 255).round() == 31 == 0x1F.
-    accentMuted: Color(0x1F192841),
+    textPrimary: Color(0xFF171D1B),
+    textSecondary: Color(0xFF4A574F),
+    border: Color(0xFFD5DCCF),
+    // Spec: `accent @ 12%`; (0.12 * 255).round() == 31 == 0x1F.
+    accentMuted: Color(0x1F4F6B5A),
+    brand: Color(0xFF385343),
+    fieldFill: Color(0xFF8ABD9E),
   );
 
   /// THEME_SPEC.md § Design tokens → Dark.
   static const AppColors dark = AppColors(
-    bgPrimary: Color(0xFF0D0D0F),
-    surface: Color(0xFF1A1A1C),
-    surfaceSubtle: Color(0xFF232326),
-    accent: Color(0xFFDDAC5F),
-    onAccent: Color(0xFF14140F),
-    // NOT the gold. Cream carries repeated content text so gold keeps meaning
-    // "emphasized". See the header.
-    textPrimary: Color(0xFFE6E2DB),
-    textSecondary: Color(0xFF8E8A84),
-    border: Color(0xFF2A2A2D),
-    // Spec: `accent @ 16%` — a wider alpha than light, because a 12% gold wash
-    // on near-black is not visible. (0.16 * 255).round() == 41 == 0x29.
-    accentMuted: Color(0x29DDAC5F),
+    bgPrimary: Color(0xFF121614),
+    surface: Color(0xFF1A201D),
+    surfaceSubtle: Color(0xFF222B26),
+    accent: Color(0xFF9CC5AB),
+    onAccent: Color(0xFF0F1A14),
+    textPrimary: Color(0xFFE8E4DA),
+    textSecondary: Color(0xFF9AA59E),
+    border: Color(0xFF2C3631),
+    // Spec: `accent @ 16%`; (0.16 * 255).round() == 41 == 0x29.
+    accentMuted: Color(0x299CC5AB),
+    brand: Color(0xFFB3D3BE),
+    fieldFill: Color(0xFF2E4638),
   );
 
   @override
@@ -128,6 +132,8 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? textSecondary,
     Color? border,
     Color? accentMuted,
+    Color? brand,
+    Color? fieldFill,
   }) {
     return AppColors(
       bgPrimary: bgPrimary ?? this.bgPrimary,
@@ -139,6 +145,8 @@ class AppColors extends ThemeExtension<AppColors> {
       textSecondary: textSecondary ?? this.textSecondary,
       border: border ?? this.border,
       accentMuted: accentMuted ?? this.accentMuted,
+      brand: brand ?? this.brand,
+      fieldFill: fieldFill ?? this.fieldFill,
     );
   }
 
@@ -161,12 +169,14 @@ class AppColors extends ThemeExtension<AppColors> {
       textSecondary: c(textSecondary, other.textSecondary),
       border: c(border, other.border),
       accentMuted: c(accentMuted, other.accentMuted),
+      brand: c(brand, other.brand),
+      fieldFill: c(fieldFill, other.fieldFill),
     );
   }
 }
 
 extension AppColorsContext on BuildContext {
-  /// The nine navy/gold tokens for the current brightness.
+  /// The eleven sage tokens for the current brightness.
   ///
   /// Falls back to the set matching the theme's own [Brightness] if the
   /// extension is absent, so a call site never crashes on a half-configured
@@ -175,7 +185,9 @@ extension AppColorsContext on BuildContext {
   AppColors get colors {
     final theme = Theme.of(this);
     return theme.extension<AppColors>() ??
-        (theme.brightness == Brightness.dark ? AppColors.dark : AppColors.light);
+        (theme.brightness == Brightness.dark
+            ? AppColors.dark
+            : AppColors.light);
   }
 
   /// The lift under a floating surface such as a popover, tinted with the
@@ -186,13 +198,15 @@ extension AppColorsContext on BuildContext {
     final accent = colors.accent;
     return [
       BoxShadow(
-          color: accent.withValues(alpha: 0.12),
-          blurRadius: 32,
-          offset: const Offset(0, 12)),
+        color: accent.withValues(alpha: 0.12),
+        blurRadius: 32,
+        offset: const Offset(0, 12),
+      ),
       BoxShadow(
-          color: accent.withValues(alpha: 0.06),
-          blurRadius: 8,
-          offset: const Offset(0, 2)),
+        color: accent.withValues(alpha: 0.06),
+        blurRadius: 8,
+        offset: const Offset(0, 2),
+      ),
     ];
   }
 }

@@ -1,4 +1,4 @@
-// The app's ThemeData pair: the navy/gold skin, built entirely from the nine
+// The app's ThemeData pair: the sage skin, built entirely from the eleven
 // [AppColors] tokens. One builder, two brightnesses, so a role can never be
 // defined for one and forgotten in the other.
 //
@@ -13,16 +13,15 @@ import 'app_colors.dart';
 class DistillTheme {
   DistillTheme._();
 
-  // The type pairing is unchanged from the shipped app. Re-picking the typeface
-  // in the same pass as the colours would make a regression impossible to pin on
-  // one or the other.
-  static const String _displayFont = 'Poppins';
-  static const String _bodyFont = 'Nunito';
+  // Modulus Pro everywhere (margo redesign). Personal-use licence: needs a
+  // commercial licence from the author before public release.
+  static const String _displayFont = 'ModulusPro';
+  static const String _bodyFont = 'ModulusPro';
 
-  /// Light: navy accent on warm off-white.
+  /// Light: sage accent on warm cream.
   static ThemeData get light => _build(Brightness.light, AppColors.light);
 
-  /// Dark: gold accent and cream text on near-black.
+  /// Dark: light-sage accent and cream text on forest charcoal.
   static ThemeData get dark => _build(Brightness.dark, AppColors.dark);
 
   static ThemeData _build(Brightness brightness, AppColors c) {
@@ -41,7 +40,7 @@ class DistillTheme {
       splashColor: c.accentMuted,
       dividerColor: c.border,
       // Default glyph colour is `textPrimary`, not `accent`. The single-instance
-      // chrome glyphs the spec keeps gold (back arrow, overflow, search leading
+      // chrome glyphs the spec keeps on the accent (back arrow, overflow, search leading
       // icon, meta-row icons) opt in at the call site; the repeated ones — the
       // twelve editor tools especially — must not.
       iconTheme: IconThemeData(color: c.textPrimary),
@@ -211,7 +210,7 @@ class DistillTheme {
         // Inverted by design: a snack bar reads as an overlay, not a surface.
         backgroundColor: c.textPrimary,
         contentTextStyle: TextStyle(fontFamily: _bodyFont, color: c.surface),
-        // Not the accent: in light the accent is the snack bar's own navy, so an
+        // Not the accent: the snack bar's own ground is textPrimary, so an
         // accent action would vanish into the background it sits on.
         actionTextColor: c.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -315,7 +314,7 @@ class DistillTheme {
       outline: c.border,
       outlineVariant: c.border,
       // M3's elevation tint would pull the surfaces towards the primary hue,
-      // which reads as a gold haze on near-black.
+      // which reads as a green haze on near-black.
       surfaceTint: Colors.transparent,
     );
   }

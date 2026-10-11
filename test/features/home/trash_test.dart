@@ -32,7 +32,11 @@ class FakeNoteRepository implements NoteRepository {
   }
 
   @override
-  Future<Notebook> createNotebook(String title, {int templateIndex = 0}) async =>
+  Future<Notebook> createNotebook(
+    String title, {
+    int templateIndex = 0,
+    int? backgroundColor,
+  }) async =>
       _seed(title);
 
   @override

@@ -105,6 +105,18 @@ class NoteCardData {
     return '${createdAt.month}/${createdAt.day}/$year';
   }
 
+  static const _months = [
+    'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+    'September', 'October', 'November', 'December', //
+  ];
+
+  /// `9 July 2027` — the card footer's date.
+  String get longDateLabel =>
+      '${createdAt.day} ${_months[createdAt.month - 1]} ${createdAt.year}';
+
+  /// `7 Pages` — the card footer's page count.
+  String get pageCountLabel => '$pages ${pages == 1 ? 'Page' : 'Pages'}';
+
   String get pageLabel => '$pages ${pages == 1 ? 'page' : 'pages'}';
 
   /// The preview snippet as display lines, bullet markers stripped.

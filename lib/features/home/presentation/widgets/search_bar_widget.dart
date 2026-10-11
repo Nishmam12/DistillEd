@@ -1,27 +1,26 @@
-// The Notes list's search field.
-//
-// Styled from NotesPalette rather than the app-wide InputDecorationTheme: the
-// browser is a cool, paper-white screen and would otherwise inherit the warm
-// cream field used everywhere else.
+// The search field: a green pill (`fieldFill`) used inside the search popover.
 
 import 'package:flutter/material.dart';
 import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../notes_palette.dart';
 
 class SearchBarWidget extends StatefulWidget {
   const SearchBarWidget({
     super.key,
     this.controller,
     this.onChanged,
-    this.hintText = 'Search',
+    this.hintText = 'Search..',
+    this.autofocus = false,
   });
 
   /// Optional external controller. When omitted the widget owns one.
   final TextEditingController? controller;
   final ValueChanged<String>? onChanged;
   final String hintText;
+  final bool autofocus;
+
+  static const height = 40.0;
 
   @override
   State<SearchBarWidget> createState() => _SearchBarWidgetState();
@@ -60,73 +59,53 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // HOME-04. Fully rounded pill. The radius is half the bar's height rather
-    // than a magic number, so the ends stay perfectly semicircular if the
-    // height ever changes.
-    const radius =
-        BorderRadius.all(Radius.circular(NotesPalette.searchBarHeight / 2));
-
-    // The one asymmetry: NO outline in light, a 1px `border` hairline in dark.
-    // On the light canvas the fill alone is a strong enough edge; on near-black
-    // a `surfaceSubtle` fill against `bgPrimary` is only a few percent apart and
-    // the field would have no discernible boundary at all.
-    final resting = OutlineInputBorder(
+    const radius = BorderRadius.all(
+      Radius.circular(SearchBarWidget.height / 2),
+    );
+    const none = OutlineInputBorder(
       borderRadius: radius,
-      borderSide: isDark ? BorderSide(color: c.border) : BorderSide.none,
+      borderSide: BorderSide.none,
+    );
+    final text = TextStyle(
+      fontFamily: 'ModulusPro',
+      fontSize: 16,
+      color: c.textPrimary,
     );
 
     return SizedBox(
-      height: NotesPalette.searchBarHeight,
+      height: SearchBarWidget.height,
       child: TextField(
         controller: _controller,
+        autofocus: widget.autofocus,
         onChanged: _handleChanged,
         textAlignVertical: TextAlignVertical.center,
         textInputAction: TextInputAction.search,
-        cursorColor: c.accent,
-        style: TextStyle(
-          fontFamily: 'Nunito',
-          fontSize: 16,
-          color: c.textPrimary,
-        ),
+        cursorColor: c.textPrimary,
+        style: text,
         decoration: InputDecoration(
           isDense: true,
           filled: true,
-          fillColor: c.surfaceSubtle,
+          fillColor: c.fieldFill,
           hintText: widget.hintText,
-          hintStyle: TextStyle(
-            fontFamily: 'Nunito',
-            fontSize: 16,
-            color: c.textSecondary,
-          ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-          // Single-instance chrome glyph — accent, unlike the clear button,
-          // which is a transient control and stays secondary.
-          prefixIcon: Icon(
-            PhosphorIconsRegular.magnifyingGlass,
-            size: 22,
-            color: c.accent,
-          ),
+          // Ink at 60%: the design's white hint on this green is only 2.1:1.
+          hintStyle: text.copyWith(color: c.textPrimary.withValues(alpha: 0.6)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           suffixIcon: IgnorePointer(
             ignoring: !_hasText,
             child: AnimatedOpacity(
               opacity: _hasText ? 1 : 0,
               duration: const Duration(milliseconds: 160),
               child: IconButton(
-                icon: const Icon(PhosphorIconsRegular.x, size: 18),
-                color: c.textSecondary,
+                icon: const Icon(PhosphorIconsRegular.x, size: 16),
+                color: c.textPrimary,
                 tooltip: 'Clear search',
                 onPressed: _clear,
               ),
             ),
           ),
-          border: resting,
-          enabledBorder: resting,
-          focusedBorder: OutlineInputBorder(
-            borderRadius: radius,
-            borderSide: BorderSide(color: c.accent, width: 1.4),
-          ),
+          border: none,
+          enabledBorder: none,
+          focusedBorder: none,
         ),
       ),
     );

@@ -57,4 +57,10 @@ class PaperColors {
   static const paperWhite = Color(0xFFFFFFFF);
   static const paperCream = Color(0xFFFAF4EA);
   static const paperBlush = Color(0xFFFBEFEA);
+
+  /// Dark page option offered by the new-note dialog (margo design).
+  static const paperDark = Color(0xFF333333);
+
+  /// Warm off-white page option offered by the new-note dialog.
+  static const paperIvory = Color(0xFFF8F7E8);
 }

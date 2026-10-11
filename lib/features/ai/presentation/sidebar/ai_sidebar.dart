@@ -553,7 +553,7 @@ class _SidebarHeader extends StatelessWidget {
               'AI insights',
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'ModulusPro',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: context.colors.textPrimary,

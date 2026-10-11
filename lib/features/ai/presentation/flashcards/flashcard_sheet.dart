@@ -391,7 +391,7 @@ class _CardFace extends StatelessWidget {
                     child: Text(
                       showBack ? card.back : card.front,
                       style: TextStyle(
-                        fontFamily: 'Poppins',
+                        fontFamily: 'ModulusPro',
                         fontSize: showBack ? 20 : 26,
                         height: 1.32,
                         letterSpacing: -0.2,
@@ -419,7 +419,7 @@ class _SheetTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(text,
         style: TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'ModulusPro',
           fontSize: 17,
           fontWeight: FontWeight.w600,
           color: context.colors.textPrimary,

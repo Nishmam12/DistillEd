@@ -131,7 +131,7 @@ class _Segment<T> extends StatelessWidget {
                   segment.label,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'Poppins',
+                    fontFamily: 'ModulusPro',
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: foreground,

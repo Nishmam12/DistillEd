@@ -58,7 +58,7 @@ class SettingsScreen extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         titleTextStyle: TextStyle(
-          fontFamily: 'Poppins',
+          fontFamily: 'ModulusPro',
           color: c.accent,
           fontSize: 22,
           fontWeight: FontWeight.w700,
@@ -199,7 +199,7 @@ class SettingsScreen extends ConsumerWidget {
                       child: Text(
                         settings.hasHuggingFaceToken ? 'Change' : 'Add',
                         style: TextStyle(
-                          fontFamily: 'Poppins',
+                          fontFamily: 'ModulusPro',
                           fontWeight: FontWeight.w600,
                           color: c.accent,
                         ),

@@ -424,7 +424,7 @@ class _Message extends StatelessWidget {
             Text(title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontFamily: 'Poppins',
+                  fontFamily: 'ModulusPro',
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: context.colors.textPrimary,

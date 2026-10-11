@@ -171,7 +171,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           child: Text('Ask your notes',
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'ModulusPro',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: context.colors.textPrimary,
@@ -660,7 +660,7 @@ class _Centered extends StatelessWidget {
           Text(title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'ModulusPro',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: context.colors.textPrimary,

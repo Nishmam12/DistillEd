@@ -160,6 +160,9 @@ dependencies:
   #    login inside our app. 6.3.x matches the url_launcher_* platform shims
   #    already resolved transitively via share_plus.
   url_launcher: ^6.3.1
+
+  # ── Homepage redesign: vuesax SVG icon set (assets/icons) ─
+  flutter_svg: ^2.3.0
   flutter_secure_storage: ^11.2.0
   # phosphor_flutter removed: 2.1.0 (latest) declares
   # `class PhosphorIconData extends IconData`, which cannot compile against
@@ -179,6 +182,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    - assets/icons/
+
   fonts:
     - family: Poppins
       fonts:
@@ -194,6 +200,16 @@ flutter:
       fonts:
         - asset: assets/fonts/Phosphor.ttf
           weight: 400
+    # Homepage redesign typeface. Personal-use licence: a commercial licence is
+    # required from the author (Arkitype) before any public release.
+    - family: ModulusPro
+      fonts:
+        - asset: assets/fonts/ModulusPro-Regular.otf
+          weight: 400
+        - asset: assets/fonts/ModulusPro-Medium.otf
+          weight: 500
+        - asset: assets/fonts/ModulusPro-SemiBold.otf
+          weight: 600
     - family: Nunito
       fonts:
         - asset: assets/fonts/Nunito-Variable.ttf

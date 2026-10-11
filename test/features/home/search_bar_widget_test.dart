@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
 import 'package:distill_ed/core/theme/app_colors.dart';
-import 'package:distill_ed/features/home/presentation/notes_palette.dart';
 import 'package:distill_ed/features/home/presentation/widgets/search_bar_widget.dart';
 
 Future<void> _pump(
@@ -42,22 +41,22 @@ Finder _clearGate() => find
     .first;
 
 void main() {
-  testWidgets('stands 52px tall', (tester) async {
+  testWidgets('stands 40px tall', (tester) async {
     await _pump(tester);
 
-    expect(NotesPalette.searchBarHeight, 52.0);
-    expect(tester.getSize(find.byType(SearchBarWidget)).height, 52.0);
+    expect(SearchBarWidget.height, 40.0);
+    expect(tester.getSize(find.byType(SearchBarWidget)).height, 40.0);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('leads with a search icon and a hint', (tester) async {
+  testWidgets('shows the hint', (tester) async {
     await _pump(tester);
 
-    expect(find.byIcon(PhosphorIconsRegular.magnifyingGlass), findsOneWidget);
-    expect(find.text('Search'), findsOneWidget);
+    expect(find.text('Search..'), findsOneWidget);
   });
 
-  testWidgets('is a rounded, borderless filled field', (tester) async {
+  testWidgets('is a rounded, borderless pill in the field green',
+      (tester) async {
     await _pump(tester);
 
     final decoration =
@@ -65,7 +64,7 @@ void main() {
     final border = decoration.enabledBorder! as OutlineInputBorder;
 
     expect(decoration.filled, isTrue);
-    expect(decoration.fillColor, AppColors.light.surfaceSubtle);
+    expect(decoration.fillColor, AppColors.light.fieldFill);
     expect(border.borderRadius.topLeft.x, greaterThan(0));
     expect(border.borderSide.style, BorderStyle.none);
   });

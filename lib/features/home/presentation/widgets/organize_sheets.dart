@@ -82,6 +82,16 @@ Future<void> showMoveToFolderSheet(
   ref.invalidate(foldersProvider);
 }
 
+/// Prompts for a name and creates a folder — the sidebar's ⊕. Returns the new
+/// folder's id, or null when the prompt was dismissed or left empty.
+Future<int?> showCreateFolderDialog(BuildContext context, WidgetRef ref) async {
+  final name = await _promptFolderName(context);
+  if (name == null || !context.mounted) return null;
+  final folder = await ref.read(noteRepositoryProvider).createFolder(name);
+  ref.invalidate(foldersProvider);
+  return folder.id;
+}
+
 enum _FolderChoiceKind { none, existing, create }
 
 /// What the folder sheet was closed with. Distinct from `null`, which means the

@@ -1,118 +1,103 @@
-import 'dart:async';
-// The Notes browser — the app's home screen.
+// The Notes browser — the app's home screen (margo design).
 //
-// Not a list and not a grid: a column of full-width document cards on a
-// near-white canvas, sized so five sit on screen at once with room to breathe.
-// Chrome (title, search, bottom controls) is fixed; only the cards scroll.
+// A sage sidebar (Notes / Favorites / Shared, folders) beside a grid of note
+// cards. On a tablet-class width the sidebar is pinned and can be collapsed;
+// below [NotesPalette.sidebarBreakpoint] it opens as a drawer instead.
 
-import 'dart:ui' as ui;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
 
+import '../../../../core/icons/app_icon.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../domain/model/template_type.dart';
 import '../../../../editor/state/scene_image_cache_provider.dart';
 import '../home_notifier.dart';
 import '../models/note_card_data.dart';
 import '../note_cards_provider.dart';
 import '../notes_palette.dart';
-import '../widgets/organize_sheets.dart';
+import '../widgets/home_sidebar.dart';
+import '../widgets/new_note_dialog.dart';
 import '../widgets/note_card.dart';
-import '../widgets/search_bar_widget.dart';
-import '../../../../widgets/template_icons.dart';
+import '../widgets/organize_sheets.dart';
+import '../widgets/search_popover.dart';
 
-class NotesScreen extends ConsumerWidget {
+class NotesScreen extends ConsumerStatefulWidget {
   const NotesScreen({super.key});
 
-  /// Height of the fixed bottom bar the list scrolls under.
-  static const bottomBarHeight = 72.0;
+  @override
+  ConsumerState<NotesScreen> createState() => _NotesScreenState();
+}
 
-  /// Card height that fits [targetCards] in [viewportHeight], clamped to the
-  /// 150–170 band.
-  ///
-  /// The band wins when the two conflict. A tall viewport (tablet, desktop
-  /// window) lands on a clean five; a shorter phone shows four and a generous
-  /// slice of the fifth, which is the closest the band allows — squeezing cards
-  /// under 150 to force a fifth is exactly the cramped list the spec rules out.
-  static double cardHeightFor(double viewportHeight, {int targetCards = 5}) {
-    final gaps = NotesPalette.cardGap * (targetCards - 1);
-    final available = viewportHeight - NotesPalette.listPadding.top - gaps;
-    return (available / targetCards)
-        .clamp(NotesPalette.cardHeightMin, NotesPalette.cardHeightMax);
-  }
+class _NotesScreenState extends ConsumerState<NotesScreen> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  /// Whether the pinned sidebar is showing (wide layouts only).
+  bool _sidebarOpen = true;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final c = context.colors;
     final cards = ref.watch(visibleNoteCardsProvider);
-    final query = ref.watch(notesSearchQueryProvider);
+    final wide =
+        MediaQuery.sizeOf(context).width >= NotesPalette.sidebarBreakpoint;
+
+    final main = _Main(
+      cards: cards,
+      showMenu: !wide || !_sidebarOpen,
+      onMenu: () {
+        if (wide) {
+          setState(() => _sidebarOpen = true);
+        } else {
+          _scaffoldKey.currentState?.openDrawer();
+        }
+      },
+      onSort: () => _pickSort(context, ref),
+      onCompose: () => _createNotebook(context, ref),
+    );
 
     return Scaffold(
-      // HOME-01.
-      backgroundColor: context.colors.bgPrimary,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                const _Header(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 0),
-                  child: SearchBarWidget(
-                    onChanged: (value) =>
-                        ref.read(notesSearchQueryProvider.notifier).state =
-                            value,
-                  ),
-                ),
-                const _OrganizeFilterRow(),
-                Expanded(
-                  child: cards.when(
-                    loading: () => Center(
-                      child: CircularProgressIndicator(
-                        color: context.colors.accent,
-                      ),
-                    ),
-                    error: (error, _) => _Message(
-                      icon: PhosphorIconsRegular.warningCircle,
-                      title: 'Could not load your notes',
-                      subtitle: '$error',
-                    ),
-                    data: (visible) => visible.isEmpty
-                        ? _EmptyState(query: query)
-                        : _NotesList(cards: visible),
-                  ),
-                ),
-              ],
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _BottomBar(
-                count: cards.value?.length ?? 0,
-                onFilter: () => _pickSort(context, ref),
-                onCompose: () => _createNotebook(context, ref),
+      key: _scaffoldKey,
+      backgroundColor: c.bgPrimary,
+      drawer: wide
+          ? null
+          : Drawer(
+              width: NotesPalette.sidebarWidth,
+              backgroundColor: c.surfaceSubtle,
+              shape: const RoundedRectangleBorder(),
+              child: HomeSidebar(
+                onCollapse: () => Navigator.of(context).pop(),
+                onNavigate: () => Navigator.of(context).pop(),
               ),
             ),
-          ],
-        ),
+      body: Row(
+        children: [
+          if (wide && _sidebarOpen)
+            SizedBox(
+              width: NotesPalette.sidebarWidth,
+              child: HomeSidebar(
+                onCollapse: () => setState(() => _sidebarOpen = false),
+              ),
+            ),
+          Expanded(child: SafeArea(bottom: false, child: main)),
+        ],
       ),
     );
   }
 
   Future<void> _createNotebook(BuildContext context, WidgetRef ref) async {
-    final result = await showDialog<({String title, int templateIndex})>(
-      context: context,
-      builder: (context) => const _CreateNotebookDialog(),
-    );
+    final result = await showNewNoteDialog(context);
     if (result == null || result.title.trim().isEmpty) return;
 
     final notebook = await ref
         .read(homeNotifierProvider.notifier)
-        .createNotebook(result.title.trim(), templateIndex: result.templateIndex);
+        .createNotebook(
+          result.title.trim(),
+          templateIndex: result.templateIndex,
+          backgroundColor: result.backgroundColor,
+        );
 
     if (context.mounted) unawaited(context.push('/note2/${notebook.id}'));
   }
@@ -151,8 +136,7 @@ class NotesScreen extends ConsumerWidget {
                   ),
                 ),
                 trailing: sort == current
-                    ? Icon(Icons.check_rounded,
-                        color: context.colors.accent)
+                    ? Icon(Icons.check_rounded, color: context.colors.accent)
                     : null,
                 onTap: () => Navigator.of(context).pop(sort),
               ),
@@ -168,47 +152,203 @@ class NotesScreen extends ConsumerWidget {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header();
+/// Title, chrome icons, sort row and the grid.
+class _Main extends ConsumerWidget {
+  const _Main({
+    required this.cards,
+    required this.showMenu,
+    required this.onMenu,
+    required this.onSort,
+    required this.onCompose,
+  });
+
+  final AsyncValue<List<NoteCardData>> cards;
+  final bool showMenu;
+  final VoidCallback onMenu;
+  final VoidCallback onSort;
+  final VoidCallback onCompose;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
+    final sort = ref.watch(notesSortProvider);
+    final favoritesOnly = ref.watch(notesFavoritesOnlyProvider);
+    final folder = ref.watch(notesFolderFilterProvider);
+    final folders = ref.watch(foldersProvider).value ?? const [];
+
+    final title = favoritesOnly
+        ? 'Favorites'
+        : folder == FolderFilter.unfiled
+        ? 'Unfiled'
+        : [
+                for (final f in folders)
+                  if (folder == FolderFilter.only(f.id)) f.name,
+              ].firstOrNull ??
+              'Notes';
+
+    return Stack(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(32, 20, 24, 0),
+              child: Row(
+                children: [
+                  if (showMenu)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: IconButton(
+                        tooltip: 'Show sidebar',
+                        onPressed: onMenu,
+                        icon: const AppIcon(AppIcons.sidebarLeft, size: 28),
+                      ),
+                    ),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'ModulusPro',
+                        fontSize: 40,
+                        height: 1.2,
+                        fontWeight: FontWeight.w600,
+                        color: c.textPrimary,
+                      ),
+                    ),
+                  ),
+                  SearchPopoverButton(
+                    onOpenNote: (note) => context.push('/note2/${note.id}'),
+                  ),
+                  IconButton(
+                    tooltip: 'About',
+                    onPressed: () => context.push('/about'),
+                    icon: const AppIcon(AppIcons.profile, size: 30),
+                  ),
+                  IconButton(
+                    tooltip: 'Settings',
+                    onPressed: () => context.push('/settings'),
+                    icon: const AppIcon(AppIcons.setting, size: 30),
+                  ),
+                ],
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(32, 4, 32, 8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: onSort,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          sort.label,
+                          style: TextStyle(
+                            fontFamily: 'ModulusPro',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            color: c.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const AppIcon(AppIcons.sort),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: cards.when(
+                loading: () =>
+                    Center(child: CircularProgressIndicator(color: c.accent)),
+                error: (error, _) => _Message(
+                  icon: PhosphorIconsRegular.warningCircle,
+                  title: 'Could not load your notes',
+                  subtitle: '$error',
+                ),
+                data: (visible) => visible.isEmpty
+                    ? _EmptyState(favoritesOnly: favoritesOnly)
+                    : _NotesGrid(cards: visible),
+              ),
+            ),
+          ],
+        ),
+        Positioned(
+          right: 32,
+          bottom: 28,
+          child: _NewButton(onPressed: onCompose),
+        ),
+      ],
+    );
+  }
+}
+
+/// The floating "+ new" pill.
+class _NewButton extends StatelessWidget {
+  const _NewButton({required this.onPressed});
+
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 12, 8, 12),
-      child: Row(
-        children: [
-          Expanded(
-            // HOME-02. The wordmark is BRAND, which is tier-1 accent — the one
-            // piece of repeated-looking text that stays gold in dark. There is
-            // exactly one per screen, so it does not compete with anything.
-            child: Text(
-              'DistillEd',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 38,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1,
-                color: c.accent,
-              ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Semantics(
+      button: true,
+      label: 'New note',
+      child: Material(
+        color: c.accent,
+        elevation: isDark ? 0 : 6,
+        shadowColor: c.brand.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '+',
+                  style: TextStyle(
+                    fontFamily: 'ModulusPro',
+                    fontSize: 26,
+                    height: 1.2,
+                    color: c.onAccent,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'new',
+                  style: TextStyle(
+                    fontFamily: 'ModulusPro',
+                    fontSize: 24,
+                    height: 1.2,
+                    fontWeight: FontWeight.w500,
+                    color: c.onAccent,
+                  ),
+                ),
+              ],
             ),
           ),
-          // HOME-03. Single-instance chrome glyph — accent.
-          IconButton(
-            icon: const Icon(PhosphorIconsRegular.dotsThree),
-            iconSize: 26,
-            color: c.accent,
-            tooltip: 'Settings',
-            onPressed: () => context.push('/settings'),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _NotesList extends ConsumerWidget {
-  const _NotesList({required this.cards});
+class _NotesGrid extends ConsumerWidget {
+  const _NotesGrid({required this.cards});
 
   final List<NoteCardData> cards;
 
@@ -218,25 +358,38 @@ class _NotesList extends ConsumerWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardHeight = NotesScreen.cardHeightFor(constraints.maxHeight);
-        return ListView.separated(
-          padding: NotesPalette.listPadding,
+        final compact = constraints.maxWidth < NotesPalette.compactWidth;
+        final padding = compact
+            ? NotesPalette.compactContentPadding
+            : NotesPalette.contentPadding;
+        final gap = compact ? NotesPalette.compactGap : NotesPalette.gridGap;
+        final available = constraints.maxWidth - padding.horizontal;
+        final columns = ((available + gap) / (NotesPalette.cardMinWidth + gap))
+            .floor()
+            .clamp(1, 12);
+
+        return GridView.builder(
+          padding: padding,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: gap,
+            crossAxisSpacing: gap,
+            childAspectRatio: NotesPalette.cardAspect,
+          ),
           itemCount: cards.length,
-          separatorBuilder: (_, _) =>
-              const SizedBox(height: NotesPalette.cardGap),
           itemBuilder: (context, index) {
             final note = cards[index];
-            return SizedBox(
-              height: cardHeight,
-              child: NoteCard(
-                key: ValueKey(note.id),
-                note: note,
-                sceneImageResolver: images.get,
-                sceneRepaint: images,
-                onTap: () => context.push('/note2/${note.id}'),
-                onGraphTap: () => context.push('/note2/${note.id}/graph'),
-                onLongPress: () => _showActions(context, ref, note),
-              ),
+            return NoteCard(
+              key: ValueKey(note.id),
+              note: note,
+              sceneImageResolver: images.get,
+              sceneRepaint: images,
+              onTap: () => context.push('/note2/${note.id}'),
+              onGraphTap: () => context.push('/note2/${note.id}/graph'),
+              onLongPress: () => _showActions(context, ref, note),
+              onToggleFavorite: () => ref
+                  .read(homeNotifierProvider.notifier)
+                  .setPinned(note.id, !note.pinned),
             );
           },
         );
@@ -260,9 +413,9 @@ class _NotesList extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(note.pinned
-                  ? Icons.push_pin
-                  : Icons.push_pin_outlined),
+              leading: Icon(
+                note.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+              ),
               title: Text(note.pinned ? 'Unpin' : 'Pin to top'),
               onTap: () => Navigator.of(context).pop('pin'),
             ),
@@ -274,8 +427,7 @@ class _NotesList extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.label_outline),
               title: const Text('Tags…'),
-              subtitle:
-                  note.tags.isEmpty ? null : Text(note.tags.join(', ')),
+              subtitle: note.tags.isEmpty ? null : Text(note.tags.join(', ')),
               onTap: () => Navigator.of(context).pop('tags'),
             ),
             const Divider(height: 1),
@@ -290,8 +442,10 @@ class _NotesList extends ConsumerWidget {
               onTap: () => Navigator.of(context).pop('graph'),
             ),
             ListTile(
-              leading: Icon(Icons.delete_outline_rounded,
-                  color: Theme.of(context).colorScheme.error),
+              leading: Icon(
+                Icons.delete_outline_rounded,
+                color: Theme.of(context).colorScheme.error,
+              ),
               title: Text(
                 'Delete note',
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -364,244 +518,8 @@ class _NotesList extends ConsumerWidget {
         content: Text('Moved "${note.title}" to trash'),
         action: SnackBarAction(
           label: 'Undo',
-          onPressed: () => ref
-              .read(homeNotifierProvider.notifier)
-              .restoreNotebook(note.id),
-        ),
-      ),
-    );
-  }
-}
-
-/// Folder and tag filters. Hidden entirely until the user has made at least one
-/// folder or tag, so a fresh install is not asked to reason about organisation
-/// it has not created yet.
-class _OrganizeFilterRow extends ConsumerWidget {
-  const _OrganizeFilterRow();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final folders = ref.watch(foldersProvider).value ?? const [];
-    final tags = ref.watch(tagCountsProvider).value ?? const {};
-    if (folders.isEmpty && tags.isEmpty) return const SizedBox.shrink();
-
-    final folderFilter = ref.watch(notesFolderFilterProvider);
-    final selectedTags = ref.watch(notesTagFilterProvider);
-    final tagNames = tags.keys.toList()..sort();
-
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-        children: [
-          _FilterChip(
-            label: 'All',
-            selected: folderFilter == FolderFilter.all,
-            onTap: () => ref.read(notesFolderFilterProvider.notifier).state =
-                FolderFilter.all,
-          ),
-          for (final folder in folders)
-            _FilterChip(
-              label: folder.name,
-              icon: PhosphorIconsRegular.folder,
-              selected: folderFilter == FolderFilter.only(folder.id),
-              onTap: () => ref.read(notesFolderFilterProvider.notifier).state =
-                  folderFilter == FolderFilter.only(folder.id)
-                      ? FolderFilter.all
-                      : FolderFilter.only(folder.id),
-            ),
-          if (folders.isNotEmpty)
-            _FilterChip(
-              label: 'Unfiled',
-              selected: folderFilter == FolderFilter.unfiled,
-              onTap: () => ref.read(notesFolderFilterProvider.notifier).state =
-                  folderFilter == FolderFilter.unfiled
-                      ? FolderFilter.all
-                      : FolderFilter.unfiled,
-            ),
-          for (final tag in tagNames)
-            _FilterChip(
-              label: '#$tag',
-              selected: selectedTags.contains(tag),
-              onTap: () {
-                final next = {...selectedTags};
-                next.contains(tag) ? next.remove(tag) : next.add(tag);
-                ref.read(notesTagFilterProvider.notifier).state = next;
-              },
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final IconData? icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    // Deliberately NOT the shared AppChipGroup from the settings pass. That
-    // widget models an exclusive choice over a fixed pair (PNG/PDF); this row
-    // is a MULTI-select over a list that grows with the user's folders and
-    // tags, and its selected state is a wash rather than the spec's filled/
-    // outlined asymmetry. Forcing one widget to do both would mean a `mode`
-    // flag and two layouts inside it.
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? c.accentMuted : c.accentMuted.withValues(alpha: 0),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: selected ? c.accent : c.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon,
-                    size: 14, color: selected ? c.accent : c.textSecondary),
-                const SizedBox(width: 4),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: selected ? c.accent : c.textSecondary,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomBar extends StatelessWidget {
-  const _BottomBar({
-    required this.count,
-    required this.onFilter,
-    required this.onCompose,
-  });
-
-  final int count;
-  final VoidCallback onFilter;
-  final VoidCallback onCompose;
-
-  @override
-  Widget build(BuildContext context) {
-    final safeBottom = MediaQuery.paddingOf(context).bottom;
-    final c = context.colors;
-
-    // Frosted, not opaque: cards sliding under it stay faintly present, the way
-    // an iOS toolbar behaves — but blurred enough that its own labels win.
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          height: NotesScreen.bottomBarHeight + safeBottom,
-          padding: EdgeInsets.only(left: 18, right: 18, bottom: safeBottom),
-          // HOME-11.
-          decoration: BoxDecoration(
-            color: c.bgPrimary.withValues(alpha: 0.86),
-            border: Border(top: BorderSide(color: c.border)),
-          ),
-          child: Row(
-            children: [
-              // HOME-12. Single-instance chrome glyph — accent.
-              _BarButton(
-                icon: PhosphorIconsRegular.slidersHorizontal,
-                tooltip: 'Sort notes',
-                onPressed: onFilter,
-              ),
-              // HOME-13. `textPrimary`, NOT accent — the mockup shows a gold
-              // count in dark and the spec overrides it. Cream in dark.
-              Expanded(
-                child: Text(
-                  '$count ${count == 1 ? 'Note' : 'Notes'}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: c.textPrimary,
-                  ),
-                ),
-              ),
-              // HOME-14.
-              _BarButton(
-                icon: PhosphorIconsRegular.notePencil,
-                tooltip: 'New note',
-                onPressed: onCompose,
-                filled: true,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BarButton extends StatelessWidget {
-  const _BarButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.filled = false,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-  final bool filled;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    // HOME-14. Rounded square, ~14px. Filled: `accent` ground with an
-    // `onAccent` glyph — note the contrast DIRECTION flips between modes. In
-    // light that is a white glyph on navy; in dark it is a near-black glyph on
-    // gold, which is the only way a gold fill stays legible.
-    const radius = BorderRadius.all(Radius.circular(14));
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: filled ? c.accent : c.accent.withValues(alpha: 0),
-        shape: const RoundedRectangleBorder(borderRadius: radius),
-        child: InkWell(
-          borderRadius: radius,
-          onTap: onPressed,
-          child: Semantics(
-            button: true,
-            label: tooltip,
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: Icon(
-                icon,
-                size: 22,
-                color: filled ? c.onAccent : c.accent,
-              ),
-            ),
-          ),
+          onPressed: () =>
+              ref.read(homeNotifierProvider.notifier).restoreNotebook(note.id),
         ),
       ),
     );
@@ -609,25 +527,24 @@ class _BarButton extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.query});
+  const _EmptyState({required this.favoritesOnly});
 
-  final String query;
+  final bool favoritesOnly;
 
   @override
   Widget build(BuildContext context) {
-    // HOME-15. Two distinct empty states, because "you have no notes" and "this
-    // search found nothing" want different words and different next actions.
-    if (query.trim().isNotEmpty) {
-      return _Message(
-        icon: PhosphorIconsRegular.magnifyingGlass,
-        title: 'No notes match "${query.trim()}"',
-        subtitle: 'Try a different search.',
+    // Two distinct empty states: nothing starred yet, and nothing in this scope.
+    if (favoritesOnly) {
+      return const _Message(
+        icon: PhosphorIconsRegular.notePencil,
+        title: 'No favorites yet',
+        subtitle: 'Tap the bookmark on a note to keep it here.',
       );
     }
     return const _Message(
       icon: PhosphorIconsRegular.notePencil,
-      title: 'No notes yet',
-      subtitle: 'Tap the compose button to start your first note.',
+      title: 'No notes here',
+      subtitle: 'Tap "+ new" to start a note.',
     );
   }
 }
@@ -663,8 +580,10 @@ class _Message extends StatelessWidget {
               width: 96,
               height: 96,
               alignment: Alignment.center,
-              decoration:
-                  BoxDecoration(color: c.surfaceSubtle, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: c.surfaceSubtle,
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, size: 44, color: c.accent),
             ),
             const SizedBox(height: 20),
@@ -687,133 +606,6 @@ class _Message extends StatelessWidget {
                 fontSize: 14,
                 height: 1.4,
                 color: c.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CreateNotebookDialog extends StatefulWidget {
-  const _CreateNotebookDialog();
-
-  @override
-  State<_CreateNotebookDialog> createState() => _CreateNotebookDialogState();
-}
-
-class _CreateNotebookDialogState extends State<_CreateNotebookDialog> {
-  final _controller = TextEditingController();
-  int _selectedTemplate = 0;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    Navigator.of(context).pop((
-      title: _controller.text,
-      templateIndex: _selectedTemplate,
-    ));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: context.colors.surface,
-      title: const Text('New note'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            decoration: const InputDecoration(hintText: 'Note title'),
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Page style',
-            style: TextStyle(
-              color: context.colors.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final type in TemplateType.values)
-                _TemplateChip(
-                  type: type,
-                  selected: type.index == _selectedTemplate,
-                  onTap: () => setState(() => _selectedTemplate = type.index),
-                ),
-            ],
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(onPressed: _submit, child: const Text('Create')),
-      ],
-    );
-  }
-}
-
-class _TemplateChip extends StatelessWidget {
-  const _TemplateChip({
-    required this.type,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final TemplateType type;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colour =
-        selected ? context.colors.accent : context.colors.textSecondary;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          // Token-derived transparency rather than a Material constant: a
-          // hardcoded colour is a defect anywhere.
-          color: selected
-              ? context.colors.accent.withValues(alpha: 0.08)
-              : context.colors.accent.withValues(alpha: 0),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected
-                ? context.colors.accent
-                : context.colors.textSecondary.withValues(alpha: 0.35),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(type.iconData, size: 16, color: colour),
-            const SizedBox(width: 6),
-            Text(
-              type.displayName,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: colour,
               ),
             ),
           ],

@@ -46,7 +46,7 @@ class _AboutScreenState extends State<AboutScreen> {
             Text.rich(
               TextSpan(
                 style: const TextStyle(
-                  fontFamily: 'Poppins',
+                  fontFamily: 'ModulusPro',
                   fontSize: 32,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -1,

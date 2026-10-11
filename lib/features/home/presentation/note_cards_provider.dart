@@ -77,11 +77,13 @@ final visibleNoteCardsProvider = Provider<AsyncValue<List<NoteCardData>>>((ref) 
   final sort = ref.watch(notesSortProvider);
   final folder = ref.watch(notesFolderFilterProvider);
   final tags = ref.watch(notesTagFilterProvider);
+  final favoritesOnly = ref.watch(notesFavoritesOnlyProvider);
 
   return ref.watch(noteCardsProvider).whenData((cards) {
     final visible = [
       for (final card in cards)
         if (card.matches(query) &&
+            (!favoritesOnly || card.pinned) &&
             folder.accepts(card) &&
             _hasEveryTag(card, tags))
           card,
@@ -170,6 +172,10 @@ final notesSortProvider = StateProvider<NotesSort>((ref) => NotesSort.recent);
 /// The folder the list is scoped to. Defaults to showing everything.
 final notesFolderFilterProvider =
     StateProvider<FolderFilter>((ref) => FolderFilter.all);
+
+/// Whether the list shows only favourites (pinned notes) — the sidebar's
+/// Favorites entry. Cleared by Notes and by picking a folder.
+final notesFavoritesOnlyProvider = StateProvider<bool>((ref) => false);
 
 /// Tags the list is filtered by (AND). Empty means no tag filter.
 final notesTagFilterProvider = StateProvider<Set<String>>((ref) => const {});

@@ -2,20 +2,25 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:distill_ed/core/theme/app_colors.dart';
+import 'package:distill_ed/core/theme/distill_theme.dart';
 import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
 import 'package:distill_ed/features/home/presentation/notes_palette.dart';
 import 'package:distill_ed/features/home/presentation/widgets/knowledge_graph_button.dart';
 import 'package:distill_ed/features/home/presentation/widgets/note_card.dart';
-import 'package:distill_ed/features/home/presentation/widgets/note_overlay.dart';
 import 'package:distill_ed/features/home/presentation/widgets/note_preview.dart';
 
-NoteCardData _note({String title = 'Workout', int pages = 2}) {
+NoteCardData _note({
+  String title = 'Workout',
+  int pages = 2,
+  bool pinned = false,
+}) {
   return NoteCardData(
     id: 3,
     title: title,
     createdAt: DateTime(2020, 8, 14),
     pages: pages,
     type: NoteType.text,
+    pinned: pinned,
   );
 }
 
@@ -24,20 +29,26 @@ Future<void> _pump(
   VoidCallback? onTap,
   VoidCallback? onLongPress,
   VoidCallback? onGraphTap,
-  Size size = const Size(360, 160),
+  VoidCallback? onToggleFavorite,
+  bool graph = true,
+  bool pinned = false,
+  ThemeData? theme,
+  Size size = const Size(252, 296),
 }) {
   return tester.pumpWidget(
     MaterialApp(
+      theme: theme,
       home: Scaffold(
         body: Center(
           child: SizedBox(
             width: size.width,
             height: size.height,
             child: NoteCard(
-              note: _note(),
+              note: _note(pinned: pinned),
               onTap: onTap,
               onLongPress: onLongPress,
-              onGraphTap: onGraphTap ?? () {},
+              onGraphTap: graph ? (onGraphTap ?? () {}) : null,
+              onToggleFavorite: onToggleFavorite,
             ),
           ),
         ),
@@ -48,8 +59,9 @@ Future<void> _pump(
 
 BoxDecoration _cardDecoration(WidgetTester tester) {
   return tester
-      .widget<AnimatedContainer>(find.byType(AnimatedContainer))
-      .decoration! as BoxDecoration;
+          .widget<AnimatedContainer>(find.byType(AnimatedContainer))
+          .decoration!
+      as BoxDecoration;
 }
 
 Future<TestGesture> _hover(WidgetTester tester) async {
@@ -63,109 +75,129 @@ Future<TestGesture> _hover(WidgetTester tester) async {
 
 void main() {
   group('shell', () {
-    testWidgets('is a single card with a 22px outer radius', (tester) async {
+    testWidgets('is a single card with a 20px outer radius', (tester) async {
       await _pump(tester);
 
-      expect(
-        _cardDecoration(tester).borderRadius,
-        BorderRadius.circular(NotesPalette.cardRadius),
-      );
-      expect(NotesPalette.cardRadius, 22.0);
-      expect(_cardDecoration(tester).color, AppColors.light.surface);
+      expect(NoteCard.borderRadius, BorderRadius.circular(20));
+      expect(_cardDecoration(tester).borderRadius, NoteCard.borderRadius);
+      expect(find.byType(ClipRRect), findsWidgets);
     });
 
-    testWidgets('rests on a soft shadow — blur ~20 at ~10% opacity',
-        (tester) async {
+    testWidgets('rests on the design shadow — blur 40, dropped 4', (
+      tester,
+    ) async {
       await _pump(tester);
 
-      final shadow = _cardDecoration(tester).boxShadow!.first;
-      expect(shadow.blurRadius, closeTo(20, 4));
-      expect(shadow.color.a, closeTo(0.10, 0.03));
-    });
-  });
-
-  group('layout', () {
-    testWidgets('splits the card ~1/3 overlay to ~2/3 preview', (tester) async {
-      await _pump(tester);
-
-      final cardWidth = tester.getSize(find.byType(NoteCard)).width;
-      final overlayWidth = tester.getSize(find.byType(NoteOverlay)).width;
-
-      expect(overlayWidth / cardWidth, inInclusiveRange(0.30, 0.35));
+      final shadow = _cardDecoration(tester).boxShadow!.single;
+      expect(shadow.blurRadius, 40);
+      expect(shadow.offset, const Offset(0, 4));
+      expect(_cardDecoration(tester).border, isNull);
     });
 
-    testWidgets('the preview runs the full width, under the overlay',
-        (tester) async {
+    testWidgets('dark swaps the shadow for a hairline', (tester) async {
+      await _pump(tester, theme: DistillTheme.dark);
+
+      final decoration = _cardDecoration(tester);
+      expect(decoration.boxShadow, isNull);
+      expect(decoration.border, isNotNull);
+      expect(decoration.color, AppColors.dark.surface);
+    });
+
+    testWidgets('stacks a thumbnail over a 98px footer', (tester) async {
       await _pump(tester);
 
       final card = tester.getRect(find.byType(NoteCard));
       final preview = tester.getRect(find.byType(NotePreview));
 
-      expect(preview.left, card.left);
-      expect(preview.right, card.right);
-      expect(preview.height, card.height);
+      expect(preview.top, card.top);
+      expect(preview.height, closeTo(198, 0.5));
+      expect(card.bottom - preview.bottom, closeTo(98, 0.5));
     });
 
-    testWidgets('leaves no gap between the overlay and the preview beside it',
-        (tester) async {
-      await _pump(tester);
-
-      final card = tester.getRect(find.byType(NoteCard));
-      final overlay = tester.getRect(find.byType(NoteOverlay));
-
-      expect(overlay.left, card.left);
-      expect(overlay.top, card.top);
-      expect(overlay.bottom, card.bottom);
-      // Its inner edge lands inside the card, with preview on both sides of it.
-      expect(overlay.right, lessThan(card.right));
-    });
-
-    testWidgets('re-proportions itself when the card gets wider',
-        (tester) async {
-      await _pump(tester, size: const Size(720, 170));
-
-      final overlayWidth = tester.getSize(find.byType(NoteOverlay)).width;
-      expect(overlayWidth, closeTo(720 * NotesPalette.overlayWidthFactor, 0.5));
+    testWidgets('the grid tile ratio matches the design', (tester) async {
+      expect(
+        NotesPalette.cardWidth / NotesPalette.cardHeight,
+        closeTo(NotesPalette.cardAspect, 1e-9),
+      );
     });
   });
 
-  group('knowledge graph button', () {
-    testWidgets('floats over the preview, clear of the overlay',
-        (tester) async {
+  group('footer', () {
+    testWidgets('shows the title, page count and long date', (tester) async {
       await _pump(tester);
 
-      final card = tester.getRect(find.byType(NoteCard));
-      final overlay = tester.getRect(find.byType(NoteOverlay));
-      final button = tester.getRect(find.byType(KnowledgeGraphButton));
-
-      expect(button.left, greaterThan(overlay.right));
-      expect(button.right, lessThan(card.right));
-      expect(button.center.dy, closeTo(card.center.dy, 0.5));
+      expect(find.text('Workout'), findsWidgets);
+      expect(find.text('2 Pages'), findsOneWidget);
+      expect(find.text('14 August 2020'), findsOneWidget);
     });
 
-    testWidgets('never covers the preview\'s own text', (tester) async {
-      await _pump(tester);
-
-      final title = tester.getRect(find.text('WORKOUT'));
-      final button = tester.getRect(find.byType(KnowledgeGraphButton));
-
-      expect(title.right, lessThanOrEqualTo(button.left));
-    });
-
-    testWidgets('is omitted when the card has no graph action', (tester) async {
+    testWidgets('truncates a long title rather than overflowing', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: Center(
               child: SizedBox(
-                width: 360,
-                height: 160,
-                child: NoteCard(note: _note()),
+                width: 252,
+                height: 296,
+                child: NoteCard(note: _note(title: 'A' * 200)),
               ),
             ),
           ),
         ),
       );
+
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('favorite toggle', () {
+    testWidgets('offers to add an unpinned note', (tester) async {
+      await _pump(tester);
+
+      expect(find.bySemanticsLabel('Add to favorites'), findsOneWidget);
+    });
+
+    testWidgets('offers to remove a pinned note', (tester) async {
+      await _pump(tester, pinned: true);
+
+      expect(find.bySemanticsLabel('Remove from favorites'), findsOneWidget);
+    });
+
+    testWidgets('tapping it toggles and does not open the note', (
+      tester,
+    ) async {
+      var opened = 0;
+      var toggled = 0;
+      await _pump(
+        tester,
+        onTap: () => opened++,
+        onToggleFavorite: () => toggled++,
+      );
+
+      await tester.tap(find.bySemanticsLabel('Add to favorites'));
+      await tester.pumpAndSettle();
+
+      expect(toggled, 1);
+      expect(opened, 0);
+    });
+  });
+
+  group('knowledge graph button', () {
+    testWidgets('floats in the thumbnail\'s top-right corner', (tester) async {
+      await _pump(tester);
+
+      final preview = tester.getRect(find.byType(NotePreview));
+      final button = tester.getRect(find.byType(KnowledgeGraphButton));
+
+      expect(button.top, greaterThanOrEqualTo(preview.top));
+      expect(button.right, lessThanOrEqualTo(preview.right));
+      expect(button.bottom, lessThan(preview.center.dy));
+    });
+
+    testWidgets('is omitted when the card has no graph action', (tester) async {
+      await _pump(tester, graph: false);
 
       expect(find.byType(KnowledgeGraphButton), findsNothing);
     });
@@ -173,11 +205,7 @@ void main() {
     testWidgets('its tap does not also open the note', (tester) async {
       var opened = 0;
       var graphed = 0;
-      await _pump(
-        tester,
-        onTap: () => opened++,
-        onGraphTap: () => graphed++,
-      );
+      await _pump(tester, onTap: () => opened++, onGraphTap: () => graphed++);
 
       await tester.tap(find.byType(KnowledgeGraphButton));
       await tester.pumpAndSettle();
@@ -192,7 +220,7 @@ void main() {
       var opened = 0;
       await _pump(tester, onTap: () => opened++);
 
-      await tester.tapAt(tester.getCenter(find.byType(NoteOverlay)));
+      await tester.tapAt(tester.getCenter(find.byType(NotePreview)));
       await tester.pumpAndSettle();
 
       expect(opened, 1);
@@ -202,7 +230,7 @@ void main() {
       var held = 0;
       await _pump(tester, onLongPress: () => held++);
 
-      await tester.longPressAt(tester.getCenter(find.byType(NoteOverlay)));
+      await tester.longPressAt(tester.getCenter(find.byType(NotePreview)));
       await tester.pumpAndSettle();
 
       expect(held, 1);
@@ -210,8 +238,9 @@ void main() {
   });
 
   group('hover', () {
-    testWidgets('lifts to 1.01 and deepens its shadow, then settles back',
-        (tester) async {
+    testWidgets('lifts to 1.01 and deepens its shadow, then settles back', (
+      tester,
+    ) async {
       await _pump(tester);
 
       double scale() =>

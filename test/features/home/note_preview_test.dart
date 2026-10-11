@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:distill_ed/core/theme/app_colors.dart';
 import 'package:distill_ed/domain/model/scene_element.dart';
 import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
 import 'package:distill_ed/features/home/presentation/widgets/note_preview.dart';
@@ -53,7 +54,6 @@ const _page = <SceneElement>[
 Future<void> _pump(
   WidgetTester tester,
   NoteCardData note, {
-  double overlayInset = 0,
   ImageProvider? imageProvider,
 }) {
   return tester.pumpWidget(
@@ -65,7 +65,6 @@ Future<void> _pump(
             height: 160,
             child: NotePreview(
               note: note,
-              overlayInset: overlayInset,
               imageProvider: imageProvider,
             ),
           ),
@@ -84,7 +83,7 @@ void main() {
       );
 
       expect(find.byType(NoteScenePreview), findsOneWidget);
-      expect(find.text('IDS'), findsNothing);
+      expect(find.text('IDs'), findsNothing);
     });
 
     testWidgets('outranks a thumbnail for the same note', (tester) async {
@@ -106,7 +105,7 @@ void main() {
       await _pump(tester, _note(title: 'Workout'));
 
       expect(find.byType(NoteScenePreview), findsNothing);
-      expect(find.text('WORKOUT'), findsOneWidget);
+      expect(find.byType(Text), findsNothing);
     });
   });
 
@@ -120,7 +119,7 @@ void main() {
       );
 
       expect(find.byType(Image), findsOneWidget);
-      expect(find.text('IDS'), findsNothing);
+      expect(find.text('IDs'), findsNothing);
     });
 
     testWidgets('fills the preview area by cropping, anchored to the page top',
@@ -145,10 +144,11 @@ void main() {
   });
 
   group('typographic previews', () {
-    testWidgets('sets the title in editorial caps', (tester) async {
+    testWidgets('does not repeat the title the footer already shows',
+        (tester) async {
       await _pump(tester, _note(title: 'Better Creator'));
 
-      expect(find.text('BETTER CREATOR'), findsOneWidget);
+      expect(find.text('Better Creator'), findsNothing);
     });
 
     testWidgets('lists checklist lines with bullet markers', (tester) async {
@@ -178,57 +178,25 @@ void main() {
       );
     });
 
-    testWidgets('shows only the title when there is no recognised text',
+    testWidgets('is a bare placeholder when there is no recognised text',
         (tester) async {
       await _pump(tester, _note(title: 'Workout'));
 
-      expect(find.text('WORKOUT'), findsOneWidget);
-      expect(find.byType(Text), findsOneWidget);
-    });
-
-    testWidgets('keeps its content clear of the overlay', (tester) async {
-      const inset = 120.0;
-      await _pump(tester, _note(title: 'Workout'), overlayInset: inset);
-
-      final titleLeft = tester.getTopLeft(find.text('WORKOUT')).dx;
-      final previewLeft = tester.getTopLeft(find.byType(NotePreview)).dx;
-      expect(titleLeft - previewLeft, greaterThanOrEqualTo(inset));
+      expect(find.byType(Text), findsNothing);
     });
   });
 
-  group('readability wash', () {
-    testWidgets('fades white left-to-right across the preview', (tester) async {
+  group('ground', () {
+    testWidgets('sits on the subtle sage surface', (tester) async {
       await _pump(tester, _note());
 
-      final gradients = tester
+      final grounds = tester
           .widgetList<DecoratedBox>(find.byType(DecoratedBox))
           .map((box) => box.decoration)
           .whereType<BoxDecoration>()
-          .map((decoration) => decoration.gradient)
-          .whereType<LinearGradient>()
-          .toList();
+          .where((d) => d.color == AppColors.light.surfaceSubtle);
 
-      expect(gradients, hasLength(1));
-      final gradient = gradients.single;
-      expect(gradient.begin, Alignment.centerLeft);
-      expect(gradient.end, Alignment.centerRight);
-      expect(gradient.colors.first.a, 1.0);
-      expect(gradient.colors.last.a, 0.0);
-    });
-
-    testWidgets('a tinted ground shows through where the wash has faded',
-        (tester) async {
-      await _pump(tester, _note(id: 2));
-
-      final tint = tester
-          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
-          .map((box) => box.decoration)
-          .whereType<BoxDecoration>()
-          .where((decoration) => decoration.color != null)
-          .toList();
-
-      expect(tint, isNotEmpty);
-      expect(tint.first.color!.a, 1.0);
+      expect(grounds, isNotEmpty);
     });
   });
 }

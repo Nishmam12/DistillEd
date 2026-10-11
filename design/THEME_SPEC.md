@@ -1,165 +1,96 @@
-# DistillEd — Light/Dark Theme Spec & Staged Prompts
+# DistillEd — Light/Dark Theme Spec ("margo" sage palette)
 
-Save this file in your repo as `design/THEME_SPEC.md`. Every prompt below tells
-Claude Code to read it, so it becomes the single source of truth instead of you
-re-describing the design four times.
+Single source of truth for the app's colour tokens. `lib/core/theme/app_colors.dart`
+copies the hex values below verbatim and `test/core/theme/app_colors_test.dart`
+pins them, the hierarchy and the contrast ratios.
 
-Also save the two mockups in the repo:
+> **History.** This file used to describe a navy/gold palette and carried four
+> staged prompts (A–D) for rolling it out. The sections from "Open decision"
+> down are those original prompts, kept for reference; they name the **old**
+> tokens and are superseded by everything above them.
 
-```
-design/THEME_SPEC.md                    <- this file
-```
-
-Do **not** add the current note-editor screenshots. Reasons in "Do I upload the
-images?" below.
-
-> **Where this spec departs from the mockups**
-> The mockups show gold row titles in dark mode. This spec uses cream for
-> repeated content text and reserves gold for brand, headings, and active
-> states. See "Color hierarchy" for why. Everything else follows the mockups.
-
----
-
-## Do I upload the images?
-
-**Yes — mockups 1 and 2, as files in the repo, referenced by relative path.**
-
-Claude Code can open image files from the workspace. Chat-pasted images are less
-reliable across editor integrations, and a path in the prompt survives context
-compaction, session restarts, and being re-run later. Layout details — the
-gradient bleed on the note card thumbnail, the icon-tile corner radius, the
-hairline above the bottom bar — are things a text description will lose.
-
-**No — the two current note-editor screenshots.** Those show the *before* state.
-Claude Code reads the actual source for that, which is more accurate than a
-screenshot. Feeding it "before" images risks it treating them as a reference to
-preserve. Describe the note editor as a target instead (Prompt D does this).
-
-**Images are not sufficient on their own.** Models eyeball hex values badly —
-they will look at your cream background and write `#FFF8F0` or `#FAF6F0`. Ship
-the images *and* the token table below, and state explicitly: token table wins on
-color and hierarchy, images win on layout and component structure.
+**Source of the light palette:** the margo Figma file (`DistillEd_UI _Front.fig`,
+"Home UI (Light)"). **Dark is derived** from it using the rules below — the
+design has no dark frame.
 
 ---
 
 ## Design tokens
 
-Confirmed: `#192841` (navy, light accent), `#DDAC5F` (gold, dark accent).
-Everything else is **eyeballed from the mockups — review before running Prompt
-A.** If you have the original design file, pull the real values from there.
+Eleven roles, two brightnesses.
 
-### Light
+| Token | Light | Dark | Used for |
+|---|---|---|---|
+| `bgPrimary` | `#F6F3EC` cream | `#121614` forest charcoal | Scaffold; selected sidebar pill |
+| `surface` | `#FFFFFF` | `#1A201D` | Card footer, sheets |
+| `surfaceSubtle` | `#C9D6C3` sage | `#222B26` deep sage | Sidebar, search popover, dialog, thumbnail placeholder |
+| `accent` | `#4F6B5A` | `#9CC5AB` light sage | "+ new", active states, headings, chrome glyphs |
+| `onAccent` | `#FFFFFF` | `#0F1A14` | Text/glyph on an accent fill |
+| `textPrimary` | `#171D1B` | `#E8E4DA` warm cream | Titles, content text |
+| `textSecondary` | `#4A574F` | `#9AA59E` | Page count, date, placeholders |
+| `border` | `#D5DCCF` | `#2C3631` | Hairlines, dark-mode card outline |
+| `accentMuted` | `accent @ 12%` (`#1F4F6B5A`) | `accent @ 16%` (`#299CC5AB`) | Halos, selected segments, dialog pills (dark) |
+| `brand` | `#385343` | `#B3D3BE` | The "margo" wordmark |
+| `fieldFill` | `#8ABD9E` | `#2E4638` | Title field and search field fill |
 
-| Token | Hex | Used for |
-|---|---|---|
-| `bgPrimary` | `#F4F2EE` | Scaffold background |
-| `surface` | `#FFFFFF` | Cards, settings rows |
-| `surfaceSubtle` | `#F0EDE7` | Icon tiles, search field fill, toolbar strip |
-| `accent` | `#192841` | Brand, headings, active/selected states, filled buttons |
-| `onAccent` | `#FFFFFF` | Glyph/text on a filled accent surface |
-| `textPrimary` | `#192841` | Row titles, note titles, content text |
-| `textSecondary` | `#6E6A64` | Descriptions, placeholders, meta text |
-| `border` | `#E6E2DA` | Card outlines, chip outlines, hairlines |
-| `accentMuted` | `accent @ 12%` | Active-tool halo, selected segment fill |
+Light values come straight from the Figma file (`#F6F3EC`, `#C9D6C3`, `#4F6B5A`,
+`#385343`, `#8ABD9E`, `#171D1B` is the file's own near-black). `textSecondary`
+and `border` are derived to meet contrast.
 
-### Dark
-
-| Token | Hex | Used for |
-|---|---|---|
-| `bgPrimary` | `#0D0D0F` | Scaffold background |
-| `surface` | `#1A1A1C` | Cards, settings rows |
-| `surfaceSubtle` | `#232326` | Icon tiles, search field fill, toolbar strip |
-| `accent` | `#DDAC5F` | Brand, headings, active/selected states, filled buttons |
-| `onAccent` | `#14140F` | Glyph/text on a filled accent surface |
-| `textPrimary` | `#E6E2DB` | Row titles, note titles, content text |
-| `textSecondary` | `#8E8A84` | Descriptions, placeholders, meta text |
-| `border` | `#2A2A2D` | Card outlines, chip outlines, hairlines |
-| `accentMuted` | `accent @ 16%` | Active-tool halo, selected segment fill |
+Fonts: **Modulus Pro** (Regular 400, Medium 500, SemiBold 600) everywhere.
+Licence: personal use only — a commercial licence from the author (Arkitype) is
+required before any public release.
 
 ---
 
 ## Color hierarchy
 
-This is the part that determines whether the app reads correctly. Read it before
-touching any screen.
-
-### Three tiers, not two
-
 | Tier | Light | Dark | What gets it |
 |---|---|---|---|
-| Accent | `#192841` | `#DDAC5F` | Brand wordmark, screen + section headings, active/selected states |
-| Primary | `#192841` | `#E6E2DB` | Row titles, note titles, counts, content text, inactive tool glyphs |
-| Secondary | `#6E6A64` | `#8E8A84` | Descriptions, placeholders, meta text |
+| Accent | `#4F6B5A` | `#9CC5AB` | "+ new", active/selected state, single-instance chrome |
+| Brand | `#385343` | `#B3D3BE` | The wordmark only |
+| Primary | `#171D1B` | `#E8E4DA` | Note titles, row titles, content text |
+| Secondary | `#4A574F` | `#9AA59E` | Meta text, placeholders |
 
-**In light mode, tier 1 and tier 2 are the same hex — this is intentional.**
-`#192841` is dark enough to read as plain text, so it can carry both jobs without
-anything looking emphasized. Do not "fix" this by inventing a second navy.
+In **both** modes `accent` and `textPrimary` differ: repeated content text never
+takes the accent, so a grid of titles doesn't become a wall of colour. Avoid pure
+`#FFFFFF` for text in dark — it glows on OLED.
 
-**In dark mode they must differ.** Gold is saturated and warm, so every gold
-element reads as *emphasized*. If row titles, section headers, and selected chips
-are all gold, none of them signals anything. Cream `#E6E2DB` for repeated content
-text restores the hierarchy while staying in the same warm family as the
-light-mode cream, so the two themes still feel like one system.
+### Contrast (WCAG)
 
-Avoid pure `#FFFFFF` here — it glows on OLED and fights the palette's warmth.
-
-### Gold stays / cream takes over
-
-**Keep `accent`:** the DistillEd wordmark; screen titles ("Settings"); section
-headers (APPEARANCE / NOTES / EXPORT DEFAULTS / AI); single-instance chrome
-glyphs (back arrow, overflow, search leading icon, filter, settings row icon
-tiles, meta-row icons); every selected or active state.
-
-**Change to `textPrimary`:** settings row titles (Trash, Format, Cloud AI,
-Handwriting Language, HuggingFace Token); home note card titles; the "1 Note"
-count; the note editor's note title; **inactive** tool glyphs in the note editor.
-
-The single-instance glyphs stay gold because one of each appears per screen — 
-they don't compete. Row titles and note titles repeat, and thirty gold titles
-in a note list is a wall of accent color.
-
-### Contrast reference
-
-| Pair | Ratio | Verdict |
+| Pair | Light | Dark |
 |---|---|---|
-| `#192841` on `#F4F2EE` | ~13:1 | AAA |
-| `#DDAC5F` on `#0D0D0F` | ~9:1 | AAA |
-| `#DDAC5F` on `#1A1A1C` | ~8:1 | AAA |
-| `#E6E2DB` on `#0D0D0F` | ~14:1 | AAA |
-| `#8E8A84` on `#1A1A1C` | ~5:1 | AA |
-| `#6E6A64` on `#FFFFFF` | ~5.3:1 | AA |
+| `textPrimary` on `bgPrimary` | 15.4 | 14.4 |
+| `textSecondary` on `surface` | 6.4 | 6.5 |
+| `textSecondary` on `surfaceSubtle` | 5.0 | 5.7 |
+| `accent` on `bgPrimary` | 5.3 | 9.6 |
+| `onAccent` on `accent` | 5.9 | 9.3 |
+| `brand` on `surfaceSubtle` | 5.6 | 9.0 |
+| `textPrimary` on `fieldFill` | 8.0 | 8.1 |
 
-The two worth re-checking after build: `textSecondary` on `surfaceSubtle` in
-either mode, and the 40%-opacity disabled state in NOTE-05.
+**Deliberate deviation from the Figma file:** its white "Note title.." placeholder
+on `#8ABD9E` is 2.1:1 (fails). Placeholders on `fieldFill` use `textPrimary` at 60%.
 
 ---
 
 ## Deliberate light/dark asymmetries
 
-These are **not** symmetric inversions. Do not "normalise" them.
+Not symmetric inversions — do not "normalise" them.
 
 | Component | Light | Dark |
 |---|---|---|
-| Selected chip (PNG, English) | Filled `accent`, `onAccent` text, no border | Transparent fill, 1px `accent` border, `accent` text |
-| Unselected chip (PDF, বাংলা) | Transparent, `border` outline, `textSecondary` | Transparent, `border` outline, `textSecondary` |
-| Segmented control — selected | `accentMuted` fill, `accent` text + icon | `accentMuted` fill, `accent` text + icon |
-| Segmented control — track | `surface` | `surfaceSubtle` |
-| Toggle (Cloud AI), on | `accent` track, white thumb | `accent` track, dark thumb |
-| Compose FAB (home) | Filled `accent`, `onAccent` glyph | Filled `accent`, `onAccent` glyph |
-| Card action button (spark) | `surface` circle, `accent` glyph, soft shadow | `surface` circle, `accent` glyph, 1px `accent` ring, no shadow |
-| Search field | `surfaceSubtle` fill, no outline | `surfaceSubtle` fill, 1px `border` outline |
-| Inactive tool glyph | `textPrimary` (= navy, same as active) | `textPrimary` (cream, differs from active gold) |
+| Note card edge | Soft shadow (0/4, blur 40, brand @22%) | 1px `border` hairline, no shadow |
+| Sidebar edge | Sideways shadow (8/0, blur 16, brand @25%) | 1px `border` on the right, no shadow |
+| Floating surfaces (popover, dialog, "+ new") | Soft elevation | No elevation; popover/dialog get a `border` hairline |
+| Dialog Cancel / Create pills | `accent @ 50%`, `textPrimary` label | `accentMuted`, `accent` label |
+| Thumbnail of a bright page | Shown as-is | Knocked back with a `bgPrimary @ 45%` scrim |
+| Selected sidebar pill | `bgPrimary` cut into the sage panel | same rule: `bgPrimary` on `surfaceSubtle` |
 
-Shadows generally: present and soft in light, replaced by hairline borders in
-dark. Do not carry `BoxShadow` into dark mode.
-
-**On that last row:** in light mode, inactive and active tool glyphs are both
-navy, so the `accentMuted` halo alone carries the active state — which works
-fine against white. In dark, the active glyph also shifts from cream to gold.
-The asymmetry is inherent to the palette, not a mistake. Do not unify it.
+Paper colours (dialog swatches: white `#FFFFFF`, ivory `#F8F7E8`, dark `#333333`)
+and the paper-style previews are **content**, identical in both modes. Note that
+the default pen ink (`#33302E`) is nearly invisible on the dark page.
 
 ---
-
 ## Open decision — note paper in dark mode
 
 Both current note-editor screenshots show cream paper. **Default for Prompt D:
