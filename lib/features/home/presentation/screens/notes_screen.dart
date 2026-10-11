@@ -2,7 +2,7 @@
 //
 // A sage sidebar (Notes / Favorites / Shared, folders) beside a grid of note
 // cards. On a tablet-class width the sidebar is pinned and can be collapsed;
-// below [NotesPalette.sidebarBreakpoint] it opens as a drawer instead.
+// below the expanded window size (840 dp) it opens as a drawer instead.
 
 import 'dart:async';
 
@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/icons/app_icon.dart';
+import '../../../../core/layout/window_size.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../editor/state/scene_image_cache_provider.dart';
 import '../home_notifier.dart';
@@ -41,8 +42,9 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final cards = ref.watch(visibleNoteCardsProvider);
-    final wide =
-        MediaQuery.sizeOf(context).width >= NotesPalette.sidebarBreakpoint;
+    final windowWidth = MediaQuery.sizeOf(context).width;
+    final wide = context.windowSize.isExpanded;
+    final sidebarWidth = NotesPalette.sidebarWidthFor(windowWidth);
 
     final main = _Main(
       cards: cards,
@@ -64,7 +66,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
       drawer: wide
           ? null
           : Drawer(
-              width: NotesPalette.sidebarWidth,
+              width: sidebarWidth,
               backgroundColor: c.surfaceSubtle,
               shape: const RoundedRectangleBorder(),
               child: HomeSidebar(
@@ -76,7 +78,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         children: [
           if (wide && _sidebarOpen)
             SizedBox(
-              width: NotesPalette.sidebarWidth,
+              width: sidebarWidth,
               child: HomeSidebar(
                 onCollapse: () => setState(() => _sidebarOpen = false),
               ),
@@ -249,13 +251,17 @@ class _Main extends ConsumerWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          sort.label,
-                          style: TextStyle(
-                            fontFamily: 'ModulusPro',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: c.textPrimary,
+                        Flexible(
+                          child: Text(
+                            sort.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'ModulusPro',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: c.textPrimary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -358,7 +364,7 @@ class _NotesGrid extends ConsumerWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < NotesPalette.compactWidth;
+        final compact = context.windowSize.isCompact;
         final padding = compact
             ? NotesPalette.compactContentPadding
             : NotesPalette.contentPadding;
@@ -368,13 +374,21 @@ class _NotesGrid extends ConsumerWidget {
             .floor()
             .clamp(1, 12);
 
+        // Fixed-height tiles: the thumbnail keeps the design's 252:198 ratio at
+        // whatever width the column ends up, and the footer grows with the
+        // system font size so large text is never clipped.
+        final tileWidth = (available - gap * (columns - 1)) / columns;
+        final tileHeight =
+            tileWidth * NotesPalette.thumbnailAspect +
+            NoteCard.footerHeightFor(MediaQuery.textScalerOf(context));
+
         return GridView.builder(
           padding: padding,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
             mainAxisSpacing: gap,
             crossAxisSpacing: gap,
-            childAspectRatio: NotesPalette.cardAspect,
+            mainAxisExtent: tileHeight,
           ),
           itemCount: cards.length,
           itemBuilder: (context, index) {

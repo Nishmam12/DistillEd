@@ -23,6 +23,14 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   menu button. Search moved to a popover under the search icon, and **+ new**
   opens a redesigned template dialog where you also pick the page colour (white,
   ivory or dark).
+- **Adapts to every Android screen size.** The home screen, its search popover and
+  new-note dialog, Settings, About and Trash now lay out correctly from a small
+  320 dp phone to a 14" tablet, in portrait and landscape, on a foldable's cover
+  and inner screens, and at large system font sizes. Wide windows (840 dp+) pin
+  the sidebar and show more columns; narrower ones use a drawer. Cards grow with
+  the font size instead of clipping, and the About page scrolls when it must. A
+  device-matrix test suite (12 devices × 2 orientations × 3 font scales) guards
+  this.
 - **New sage palette and Modulus Pro typeface, app-wide**, with a matching dark
   theme (light sage on forest charcoal). Note: Modulus Pro is licensed for
   personal use only — a commercial licence from its author is needed before any

@@ -4,6 +4,8 @@
 // Results are matched locally against every note; the grid behind is left
 // alone, as in the design.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,7 +28,6 @@ class SearchPopoverButton extends ConsumerStatefulWidget {
 
 class _SearchPopoverButtonState extends ConsumerState<SearchPopoverButton> {
   final _portal = OverlayPortalController();
-  final _link = LayerLink();
   String _query = '';
 
   void _toggle() {
@@ -42,11 +43,21 @@ class _SearchPopoverButtonState extends ConsumerState<SearchPopoverButton> {
 
   @override
   Widget build(BuildContext context) {
-    return CompositedTransformTarget(
-      link: _link,
-      child: OverlayPortal(
-        controller: _portal,
-        overlayChildBuilder: (context) => Stack(
+    return OverlayPortal(
+      controller: _portal,
+      overlayChildBuilder: (overlayContext) {
+        // Hang the panel just under the search icon, but pin it to the
+        // window's right edge with a margin and size it to the window: anchored
+        // to the icon alone it would run off the left of a narrow screen, since
+        // the icon is not at the edge.
+        final screen = MediaQuery.sizeOf(overlayContext);
+        final box = context.findRenderObject() as RenderBox?;
+        final iconBottom = box != null && box.hasSize
+            ? box.localToGlobal(Offset(0, box.size.height)).dy
+            : 72.0;
+        final top = iconBottom + 6;
+        const margin = 16.0;
+        return Stack(
           children: [
             // Tap anywhere else to dismiss.
             Positioned.fill(
@@ -56,30 +67,30 @@ class _SearchPopoverButtonState extends ConsumerState<SearchPopoverButton> {
                 child: const SizedBox.expand(),
               ),
             ),
-            CompositedTransformFollower(
-              link: _link,
-              targetAnchor: Alignment.bottomRight,
-              followerAnchor: Alignment.topRight,
-              offset: const Offset(0, 6),
-              child: Align(
-                alignment: Alignment.topRight,
-                child: _Panel(
-                  query: _query,
-                  onChanged: (v) => setState(() => _query = v),
-                  onOpen: (note) {
-                    _close();
-                    widget.onOpenNote(note);
-                  },
+            Positioned(
+              top: top,
+              right: margin,
+              child: _Panel(
+                width: math.min(
+                  NotesPalette.searchPopoverWidth,
+                  screen.width - margin * 2,
                 ),
+                maxHeight: math.max(160, screen.height - top - margin),
+                query: _query,
+                onChanged: (v) => setState(() => _query = v),
+                onOpen: (note) {
+                  _close();
+                  widget.onOpenNote(note);
+                },
               ),
             ),
           ],
-        ),
-        child: IconButton(
-          tooltip: 'Search',
-          onPressed: _toggle,
-          icon: const AppIcon(AppIcons.search, size: 30),
-        ),
+        );
+      },
+      child: IconButton(
+        tooltip: 'Search',
+        onPressed: _toggle,
+        icon: const AppIcon(AppIcons.search, size: 30),
       ),
     );
   }
@@ -87,11 +98,15 @@ class _SearchPopoverButtonState extends ConsumerState<SearchPopoverButton> {
 
 class _Panel extends ConsumerWidget {
   const _Panel({
+    required this.width,
+    required this.maxHeight,
     required this.query,
     required this.onChanged,
     required this.onOpen,
   });
 
+  final double width;
+  final double maxHeight;
   final String query;
   final ValueChanged<String> onChanged;
   final ValueChanged<NoteCardData> onOpen;
@@ -119,34 +134,48 @@ class _Panel extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
         side: isDark ? BorderSide(color: c.border) : BorderSide.none,
       ),
-      child: SizedBox(
-        width: NotesPalette.searchPopoverWidth,
-        child: Padding(
-          padding: const EdgeInsets.all(13),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SearchBarWidget(autofocus: true, onChanged: onChanged),
-              const SizedBox(height: 6),
-              if (shown.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Text(
-                    cards.isEmpty ? 'No notes yet' : 'No notes match',
-                    style: TextStyle(
-                      fontFamily: 'ModulusPro',
-                      fontSize: 15,
-                      color: c.textSecondary,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: width, maxHeight: maxHeight),
+        child: SizedBox(
+          width: width,
+          child: Padding(
+            padding: const EdgeInsets.all(13),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SearchBarWidget(autofocus: true, onChanged: onChanged),
+                const SizedBox(height: 6),
+                // Rows scroll if the window is too short to show them all
+                // (landscape phones, large text).
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (shown.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            child: Text(
+                              cards.isEmpty ? 'No notes yet' : 'No notes match',
+                              style: TextStyle(
+                                fontFamily: 'ModulusPro',
+                                fontSize: 15,
+                                color: c.textSecondary,
+                              ),
+                            ),
+                          ),
+                        for (var i = 0; i < shown.length; i++)
+                          _Row(
+                            note: shown[i],
+                            divider: i < shown.length - 1,
+                            onTap: () => onOpen(shown[i]),
+                          ),
+                      ],
                     ),
                   ),
                 ),
-              for (var i = 0; i < shown.length; i++)
-                _Row(
-                  note: shown[i],
-                  divider: i < shown.length - 1,
-                  onTap: () => onOpen(shown[i]),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -72,8 +72,9 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
       color: c.textPrimary,
     );
 
+    // The pill grows with the system font size so large text is not clipped.
     return SizedBox(
-      height: SearchBarWidget.height,
+      height: MediaQuery.textScalerOf(context).scale(SearchBarWidget.height),
       child: TextField(
         controller: _controller,
         autofocus: widget.autofocus,

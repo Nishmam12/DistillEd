@@ -25,88 +25,97 @@ class _AboutScreenState extends State<AboutScreen> {
         elevation: 0,
       ),
       backgroundColor: context.colors.bgPrimary,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: context.colors.accent.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.draw,
-                size: 64,
-                color: context.colors.accent,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text.rich(
-              TextSpan(
-                style: const TextStyle(
-                  fontFamily: 'ModulusPro',
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1,
-                ),
+      // Centred when it fits, scrollable when it does not (a short landscape
+      // phone, or a large system font).
+      body: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  TextSpan(
-                    text: 'Distill',
-                    style: TextStyle(color: context.colors.accent),
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: context.colors.accent.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.draw,
+                      size: 64,
+                      color: context.colors.accent,
+                    ),
                   ),
-                  TextSpan(
-                    text: 'Ed',
-                    style: TextStyle(color: context.colors.textPrimary),
+                  const SizedBox(height: 24),
+                  Text.rich(
+                    TextSpan(
+                      style: const TextStyle(
+                        fontFamily: 'ModulusPro',
+                        fontSize: 32,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -1,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'Distill',
+                          style: TextStyle(color: context.colors.accent),
+                        ),
+                        TextSpan(
+                          text: 'Ed',
+                          style: TextStyle(color: context.colors.textPrimary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  FutureBuilder<PackageInfo>(
+                    future: _packageInfo,
+                    builder: (context, snapshot) {
+                      final info = snapshot.data;
+                      final label = info == null
+                          ? 'Version …'
+                          : 'Version ${info.version} (build ${info.buildNumber})';
+                      return Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: context.colors.textSecondary,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 48.0),
+                    child: Text(
+                      'A beautifully simple, infinite-canvas note-taking app with no artificial limitations.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: context.colors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                  TextButton(
+                    onPressed: () async {
+                      final info = await _packageInfo;
+                      if (!context.mounted) return;
+                      showLicensePage(
+                        context: context,
+                        applicationName: 'DistillEd',
+                        applicationVersion: info.version,
+                      );
+                    },
+                    child: const Text('View Open Source Licenses'),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
-            FutureBuilder<PackageInfo>(
-              future: _packageInfo,
-              builder: (context, snapshot) {
-                final info = snapshot.data;
-                final label = info == null
-                    ? 'Version …'
-                    : 'Version ${info.version} (build ${info.buildNumber})';
-                return Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: context.colors.textSecondary,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 32),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 48.0),
-              child: Text(
-                'A beautifully simple, infinite-canvas note-taking app with no artificial limitations.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: context.colors.textSecondary,
-                  height: 1.5,
-                ),
-              ),
-            ),
-            const SizedBox(height: 48),
-            TextButton(
-              onPressed: () async {
-                final info = await _packageInfo;
-                if (!context.mounted) return;
-                showLicensePage(
-                  context: context,
-                  applicationName: 'DistillEd',
-                  applicationVersion: info.version,
-                );
-              },
-              child: const Text('View Open Source Licenses'),
-            ),
-          ],
+          ),
         ),
       ),
     );

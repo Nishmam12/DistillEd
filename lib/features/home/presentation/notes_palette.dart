@@ -18,23 +18,28 @@ class NotesPalette {
   static const cardHeight = 296.0;
   static const cardAspect = cardWidth / cardHeight;
 
+  /// Thumbnail height as a fraction of card width (198 / 252).
+  static const thumbnailAspect = 198.0 / 252.0;
+
   /// Narrowest a card may get before the grid drops a column.
   static const cardMinWidth = 176.0;
   static const gridGap = 32.0;
 
-  /// Below this width the grid tightens its gutters (phones).
-  static const compactWidth = 600.0;
+  /// Gutter on compact windows (phones), tighter than [gridGap].
   static const compactGap = 20.0;
 
   /// Radius of the floating knowledge-graph button.
   static const graphButtonRadius = 26.0;
 
-  /// Sidebar width on a tablet-class screen (design: 350 of 1280).
-  static const sidebarWidth = 320.0;
+  /// Sidebar width bounds. The design's 350 of 1280 is ~27% of the window;
+  /// clamped so it never crowds the grid on a 840 dp window or sprawls on a
+  /// 1480 dp one. Below the expanded window size it is a drawer instead.
+  static const sidebarMinWidth = 264.0;
+  static const sidebarMaxWidth = 340.0;
+  static const sidebarFraction = 0.27;
 
-  /// Width at and above which the sidebar is pinned beside the grid; below it
-  /// the sidebar opens as a drawer.
-  static const sidebarBreakpoint = 900.0;
+  static double sidebarWidthFor(double windowWidth) =>
+      (windowWidth * sidebarFraction).clamp(sidebarMinWidth, sidebarMaxWidth);
 
   static const contentPadding = EdgeInsets.fromLTRB(32, 0, 32, 120);
   static const compactContentPadding = EdgeInsets.fromLTRB(20, 0, 20, 120);

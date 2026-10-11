@@ -8,6 +8,7 @@
 // Sized by whatever the grid hands it; the footer is a fixed 98px so the
 // thumbnail takes the rest, matching the design's 198/98 split at 252 wide.
 
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -55,6 +56,18 @@ class NoteCard extends StatefulWidget {
 
   /// Inset of the floating graph button from the thumbnail's edges.
   static const graphButtonMargin = 10.0;
+
+  /// Height of the footer under [scaler].
+  ///
+  /// The design's 98px holds at normal text size. A larger system font makes
+  /// the title and the two meta lines taller, so the footer grows with them
+  /// rather than clipping: vertical padding, one title line (20 × 1.3) and the
+  /// taller of the favourite icon and the two meta lines (12 × 1.5 each).
+  static double footerHeightFor(TextScaler scaler) {
+    final k = scaler.scale(20) / 20;
+    final content = 20 + 26 * k + math.max(32.0, 36 * k);
+    return math.max(_Footer.baseHeight, content.ceilToDouble() + 2);
+  }
 
   @override
   State<NoteCard> createState() => _NoteCardState();
@@ -137,6 +150,9 @@ class _NoteCardState extends State<NoteCard> {
                   ),
                   _Footer(
                     note: note,
+                    height: NoteCard.footerHeightFor(
+                      MediaQuery.textScalerOf(context),
+                    ),
                     onToggleFavorite: widget.onToggleFavorite,
                   ),
                 ],
@@ -150,12 +166,18 @@ class _NoteCardState extends State<NoteCard> {
 }
 
 class _Footer extends StatelessWidget {
-  const _Footer({required this.note, this.onToggleFavorite});
+  const _Footer({
+    required this.note,
+    required this.height,
+    this.onToggleFavorite,
+  });
 
   final NoteCardData note;
+  final double height;
   final VoidCallback? onToggleFavorite;
 
-  static const height = 98.0;
+  /// The design's footer height at normal text size.
+  static const baseHeight = 98.0;
 
   @override
   Widget build(BuildContext context) {

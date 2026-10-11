@@ -4,6 +4,7 @@
 // page-colour swatches and the paper previews are CONTENT, not chrome — they
 // never re-theme (see PaperColors).
 
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -97,7 +98,10 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
               // Title pill. The design's white placeholder on this green is
               // 2.1:1; ink at 60% clears 4.5:1.
               Container(
-                height: 40,
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.textScalerOf(context).scale(40),
+                ),
+                alignment: Alignment.centerLeft,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
                   color: c.fieldFill,
@@ -127,17 +131,31 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
               const SizedBox(height: 18),
               Text('Page Style', style: label),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (final type in TemplateType.values)
-                    _StyleTile(
-                      type: type,
-                      paper: newNotePaperColors[_paper],
-                      selected: type.index == _template,
-                      onTap: () => setState(() => _template = type.index),
-                    ),
-                ],
+              // The five tiles share whatever width the dialog has: 56 dp each on
+              // a tablet, shrinking (same 56:76 shape) on the narrowest phones
+              // rather than overflowing.
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const count = 5;
+                  const minGap = 6.0;
+                  final tileWidth = math.min(
+                    _StyleTile.maxWidth,
+                    (constraints.maxWidth - minGap * (count - 1)) / count,
+                  );
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      for (final type in TemplateType.values)
+                        _StyleTile(
+                          type: type,
+                          width: tileWidth,
+                          paper: newNotePaperColors[_paper],
+                          selected: type.index == _template,
+                          onTap: () => setState(() => _template = type.index),
+                        ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 16),
               Text('Page Color', style: label),
@@ -153,14 +171,17 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
                 ],
               ),
               const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              // A Wrap, not a Row: at the largest font sizes on a narrow phone the
+              // two pills no longer fit side by side and drop onto two lines.
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 12,
+                runSpacing: 8,
                 children: [
                   _Pill(
                     label: 'Cancel',
                     onTap: () => Navigator.of(context).pop(),
                   ),
-                  const SizedBox(width: 12),
                   _Pill(label: 'Create', onTap: _submit),
                 ],
               ),
@@ -244,15 +265,21 @@ class _Swatch extends StatelessWidget {
 class _StyleTile extends StatelessWidget {
   const _StyleTile({
     required this.type,
+    required this.width,
     required this.paper,
     required this.selected,
     required this.onTap,
   });
 
   final TemplateType type;
+  final double width;
   final Color paper;
   final bool selected;
   final VoidCallback onTap;
+
+  /// Design size: 56 × 76.
+  static const maxWidth = 56.0;
+  static const aspect = 76.0 / 56.0;
 
   @override
   Widget build(BuildContext context) {
@@ -264,8 +291,8 @@ class _StyleTile extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 56,
-          height: 76,
+          width: width,
+          height: width * aspect,
           decoration: BoxDecoration(
             color: paper,
             borderRadius: BorderRadius.circular(6),

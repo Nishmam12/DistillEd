@@ -7,6 +7,7 @@ import 'package:distill_ed/features/home/presentation/note_cards_provider.dart';
 import 'package:distill_ed/features/home/presentation/notes_palette.dart';
 import 'package:distill_ed/features/home/presentation/screens/notes_screen.dart';
 import 'package:distill_ed/features/home/presentation/widgets/note_card.dart';
+import 'package:distill_ed/features/home/presentation/widgets/note_preview.dart';
 import 'package:distill_ed/features/home/presentation/widgets/home_sidebar.dart';
 import 'package:distill_ed/features/home/presentation/widgets/new_note_dialog.dart';
 import 'package:distill_ed/features/home/presentation/widgets/search_bar_widget.dart';
@@ -116,7 +117,7 @@ void main() {
       expect(find.text('Folders'), findsOneWidget);
       expect(
         tester.getSize(find.byType(HomeSidebar)).width,
-        NotesPalette.sidebarWidth,
+        NotesPalette.sidebarWidthFor(1280),
       );
     });
 
@@ -179,7 +180,12 @@ void main() {
       expect(a.top, b.top);
       expect(b.top, c.top);
       expect(b.left - a.right, NotesPalette.gridGap);
-      expect(a.width / a.height, closeTo(NotesPalette.cardAspect, 0.01));
+      // The thumbnail keeps the design's 252:198 shape at whatever width the
+      // column lands on; the footer is a fixed height below it.
+      final thumb = tester.getRect(find.byType(NotePreview).first);
+      expect(thumb.height / thumb.width,
+          closeTo(NotesPalette.thumbnailAspect, 0.01));
+      expect(a.height - thumb.height, 98);
     });
 
     testWidgets('scrolls to later notes', (tester) async {

@@ -99,29 +99,44 @@ class _TypographicPreview extends StatelessWidget {
     final lines = note.previewLines();
     if (lines.isEmpty) return const SizedBox.expand();
     final showBullets = note.type == NoteType.checklist;
+    final scaler = MediaQuery.textScalerOf(context);
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final line in lines)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                showBullets ? '•  $line' : line,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: 'ModulusPro',
-                  fontSize: 14,
-                  height: 1.3,
-                  color: c.textPrimary,
-                ),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Show only the lines that fit: with a large system font the thumbnail
+        // holds fewer, and an unbounded column would overflow.
+        const padding = 16.0;
+        final lineHeight = scaler.scale(14) * 1.3 + 4;
+        final fit = ((constraints.maxHeight - padding * 2) / lineHeight)
+            .floor()
+            .clamp(1, lines.length);
+
+        return Padding(
+          padding: const EdgeInsets.all(padding),
+          child: ClipRect(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final line in lines.take(fit))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      showBullets ? '•  $line' : line,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'ModulusPro',
+                        fontSize: 14,
+                        height: 1.3,
+                        color: c.textPrimary,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ),
+          ),
+        );
+      },
     );
   }
 }
