@@ -1,4 +1,5 @@
-// The vuesax-linear SVG icon set used by the margo homepage (assets/icons).
+// The vuesax-linear SVG icon sets: the margo homepage (assets/icons) and the
+// note editor's top bar (assets/Margo_Note_Toolbar/Icons).
 //
 // The SVGs hard-code a #292D32 stroke, so every icon is recoloured at paint
 // time with a srcIn filter; the colour defaults to the theme's `textPrimary`
@@ -9,20 +10,35 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../theme/app_colors.dart';
 
-/// File stems under `assets/icons/`.
+/// Asset paths under `assets/`, without the `.svg` extension.
 abstract final class AppIcons {
-  static const sidebarLeft = 'sidebar-left';
-  static const noteText = 'note-text';
-  static const bookmark = 'bookmark-2';
-  static const people = 'people';
-  static const folder = 'folder';
-  static const addCircle = 'add-circle';
-  static const search = 'search-normal';
-  static const profile = 'profile-circle';
-  static const setting = 'setting';
-  static const sort = 'sort';
-  static const save = 'save-add';
-  static const saved = 'save-added';
+  static const sidebarLeft = 'icons/sidebar-left';
+  static const noteText = 'icons/note-text';
+  static const bookmark = 'icons/bookmark-2';
+  static const people = 'icons/people';
+  static const folder = 'icons/folder';
+  static const addCircle = 'icons/add-circle';
+  static const search = 'icons/search-normal';
+  static const profile = 'icons/profile-circle';
+  static const setting = 'icons/setting';
+  static const sort = 'icons/sort';
+  static const save = 'icons/save-add';
+  static const saved = 'icons/save-added';
+
+  // Note editor top bar.
+  static const home = '$_toolbar/home';
+  static const undo = '$_toolbar/undo';
+  static const redo = '$_toolbar/redo';
+  static const mic = '$_toolbar/microphone';
+  // The toolbar's own 24px search; the homepage one is drawn on a 36px box,
+  // so at 24 its stroke thins to 1px.
+  static const toolbarSearch = '$_toolbar/search-normal';
+  static const ai = '$_toolbar/ai';
+  static const note = '$_toolbar/note';
+  static const graph = '$_toolbar/knowledge_graph';
+  static const book = '$_toolbar/book';
+  static const more = '$_toolbar/more-circle';
+  static const _toolbar = 'Margo_Note_Toolbar/Icons';
 }
 
 class AppIcon extends StatelessWidget {
@@ -37,7 +53,7 @@ class AppIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SvgPicture.asset(
-      'assets/icons/$name.svg',
+      'assets/$name.svg',
       width: size,
       height: size,
       colorFilter: ColorFilter.mode(

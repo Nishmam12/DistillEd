@@ -192,12 +192,10 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
           ),
         IconButton(
           tooltip: state.isRecording ? 'Stop recording' : 'Record lecture',
-          icon: Icon(
-            state.isRecording
-                ? Icons.stop_circle
-                : PhosphorIconsRegular.microphone,
-            color: state.isRecording ? Theme.of(context).colorScheme.error : null,
-          ),
+          icon: state.isRecording
+              ? Icon(Icons.stop_circle,
+                  color: Theme.of(context).colorScheme.error)
+              : const AppIcon(AppIcons.mic),
           onPressed: () async {
             if (state.isRecording) {
               unawaited(notifier.stop(widget.pageId));

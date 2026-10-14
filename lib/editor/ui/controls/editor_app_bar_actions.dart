@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/icons/app_icon.dart';
 import '../../../domain/commands/scene_command.dart';
 import '../../../domain/model/library_item.dart';
 import '../../../domain/services/library_service.dart';
@@ -23,7 +24,7 @@ import 'editor_library_sheet.dart';
 
 /// The secondary actions live here rather than as their own app-bar buttons so
 /// the top bar stays down to the handful of primary destinations (AI, study
-/// plan, graph, book) plus this "⋮". Both entry points are optional because the
+/// plan, graph, book) plus this "⋯". The entry points are optional because the
 /// dev playground has no notebook to restyle or summarize — only the real
 /// notebook editor wires them up.
 class EditorAppBarActions extends ConsumerWidget {
@@ -39,21 +40,28 @@ class EditorAppBarActions extends ConsumerWidget {
   /// until something reads them. Optional for the same reason as the two above
   /// — the dev playground has no notebook to index.
   final VoidCallback? onIndexNotebook;
+
+  /// Opens flashcard review. In this menu rather than the bar because the
+  /// Margo top bar has room for study plan or flashcards, not both.
+  final VoidCallback? onReviewFlashcards;
   const EditorAppBarActions({
     super.key,
     required this.pageKey,
     this.onChangeBackground,
     this.onSummarize,
     this.onIndexNotebook,
+    this.onReviewFlashcards,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return PopupMenuButton<String>(
       tooltip: 'More',
-      icon: const Icon(Icons.more_vert),
+      icon: const AppIcon(AppIcons.more),
       onSelected: (v) {
         switch (v) {
+          case 'flashcards':
+            onReviewFlashcards?.call();
           case 'background':
             onChangeBackground?.call();
           case 'summarize':
@@ -73,6 +81,15 @@ class EditorAppBarActions extends ConsumerWidget {
         }
       },
       itemBuilder: (_) => [
+        if (onReviewFlashcards != null)
+          const PopupMenuItem(
+            value: 'flashcards',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.style_outlined),
+              title: Text('Review flashcards'),
+            ),
+          ),
         if (onChangeBackground != null)
           const PopupMenuItem(
             value: 'background',

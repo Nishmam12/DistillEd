@@ -10,8 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:margo/core/icons/phosphor_icons_regular.dart';
 
+import '../../core/icons/app_icon.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/paper_colors.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../domain/commands/scene_command.dart';
@@ -49,6 +50,7 @@ import 'controls/editor_app_bar_actions.dart';
 import 'controls/editor_bottom_bar.dart';
 import 'controls/editor_tool_options_overlay.dart';
 import 'controls/page_actions_sheet.dart';
+import 'controls/undo_redo_buttons.dart';
 import 'scene_canvas.dart';
 import 'universal_color_palette.dart';
 import 'zoom_pill.dart';
@@ -181,53 +183,59 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          tooltip: 'Back',
-          icon: const Icon(Icons.arrow_back),
+        leading: AppIconButton(
+          AppIcons.home,
+          tooltip: 'Home',
           onPressed: () =>
               context.canPop() ? context.pop() : context.go('/'),
         ),
-        title: EditableNoteTitle(
-          title: _notebook?.title ?? 'Notebook',
-          onRename: _notebook == null ? null : _rename,
+        // Title, then undo/redo beside it as in the Margo mockup. The title
+        // gives way first so the history buttons never slide off-screen.
+        title: Row(
+          children: [
+            Flexible(
+              child: EditableNoteTitle(
+                title: _notebook?.title ?? 'Notebook',
+                onRename: _notebook == null ? null : _rename,
+              ),
+            ),
+            const SizedBox(width: 16),
+            UndoRedoButtons(pageKey: key),
+          ],
         ),
         actions: [
           _RecordButton(notebookId: widget.notebookId, pageId: key.pageId),
-          IconButton(
+          AppIconButton(
+            AppIcons.toolbarSearch,
             tooltip: 'Find in notebook',
-            icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
             onPressed: _findInNotebook,
           ),
-          IconButton(
+          AppIconButton(
+            AppIcons.ai,
             tooltip: 'AI insights',
-            isSelected: _aiPanelOpen,
-            icon: const Icon(Icons.psychology_outlined),
-            selectedIcon: const Icon(Icons.psychology),
+            color: _aiPanelOpen ? context.colors.accent : null,
             onPressed: () => _toggleAiPanel(key),
           ),
-          IconButton(
-            tooltip: 'Review flashcards',
-            icon: const Icon(Icons.style_outlined),
-            onPressed: () => context.push('/note2/${widget.notebookId}/review'),
-          ),
-          IconButton(
+          AppIconButton(
+            AppIcons.note,
             tooltip: 'Study plan',
-            icon: const Icon(Icons.event_note_outlined),
             onPressed: () => context.push('/note2/${widget.notebookId}/plan'),
           ),
-          IconButton(
+          AppIconButton(
+            AppIcons.graph,
             tooltip: 'Knowledge graph',
-            icon: const Icon(Icons.hub_outlined),
             onPressed: () => context.push(
                 '/note2/${widget.notebookId}/graph?pageId=${key.pageId}'),
           ),
-          IconButton(
+          AppIconButton(
+            AppIcons.book,
             tooltip: 'Book view',
-            icon: const Icon(Icons.menu_book_outlined),
             onPressed: () => context.push('/note2/${widget.notebookId}/book'),
           ),
           EditorAppBarActions(
             pageKey: key,
+            onReviewFlashcards: () =>
+                context.push('/note2/${widget.notebookId}/review'),
             onChangeBackground: _notebook == null ? null : _showBackgroundSheet,
             onSummarize: () =>
                 _summarizeScope(key, SummarizeScopeChoice.notebook),

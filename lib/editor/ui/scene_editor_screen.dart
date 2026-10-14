@@ -12,6 +12,7 @@ import '../state/viewport_controller.dart';
 import 'controls/editor_app_bar_actions.dart';
 import 'controls/editor_bottom_bar.dart';
 import 'controls/editor_tool_options_overlay.dart';
+import 'controls/undo_redo_buttons.dart';
 import 'scene_canvas.dart';
 import 'universal_color_palette.dart';
 
@@ -43,6 +44,8 @@ class _SceneEditorBody extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Canvas 2.0 (dev)'),
         actions: [
+          const UndoRedoButtons(pageKey: _demoKey),
+          const SizedBox(width: 8),
           Center(child: Text('${(zoom * 100).round()}%')),
           IconButton(
             tooltip: 'Reset view',

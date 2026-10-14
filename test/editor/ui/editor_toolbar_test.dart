@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margo/core/icons/phosphor_icons_regular.dart';
 import 'package:margo/data/persistence/scene_element_store.dart';
+import 'package:margo/domain/commands/scene_command.dart';
 import 'package:margo/domain/model/scene_element.dart';
 import 'package:margo/editor/state/editor_tool_controller.dart';
+import 'package:margo/editor/state/history_controller.dart';
 import 'package:margo/editor/state/scene_controller.dart';
 import 'package:margo/editor/ui/controls/editor_bottom_bar.dart';
+import 'package:margo/editor/ui/controls/undo_redo_buttons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -176,25 +179,46 @@ void main() {
   });
 
   group('undo/redo', () {
-    testWidgets('undo and redo live in the bar and start disabled',
-        (tester) async {
-      await pumpBar(tester, onImport: () {});
+    Future<ProviderContainer> pumpHistory(WidgetTester tester) async {
+      final container = ProviderContainer(retry: (_, _) => null, overrides: [
+        sceneElementStoreProvider.overrideWithValue(InMemorySceneElementStore()),
+      ]);
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(body: UndoRedoButtons(pageKey: key)),
+          ),
+        ),
+      );
+      return container;
+    }
 
-      final undo = tester.widget<IconButton>(
-        find.ancestor(
-          of: find.byIcon(PhosphorIconsRegular.arrowArcLeft),
+    IconButton button(WidgetTester tester, String tooltip) =>
+        tester.widget<IconButton>(find.ancestor(
+          of: find.byTooltip(tooltip),
           matching: find.byType(IconButton),
-        ),
-      );
-      final redo = tester.widget<IconButton>(
-        find.ancestor(
-          of: find.byIcon(PhosphorIconsRegular.arrowArcRight),
-          matching: find.byType(IconButton),
-        ),
-      );
-      // Nothing drawn yet, so both are disabled (null onPressed).
-      expect(undo.onPressed, isNull);
-      expect(redo.onPressed, isNull);
+        ));
+
+    testWidgets('undo/redo left the tool row for the top bar', (tester) async {
+      await pumpBar(tester, onImport: () {});
+      expect(find.byTooltip('Undo'), findsNothing);
+      expect(find.byTooltip('Redo'), findsNothing);
+    });
+
+    testWidgets('start disabled, and undo enables once something is drawn',
+        (tester) async {
+      final container = await pumpHistory(tester);
+      expect(button(tester, 'Undo').onPressed, isNull);
+      expect(button(tester, 'Redo').onPressed, isNull);
+
+      container.read(historyProvider(key).notifier).push(AddElementsCommand([
+        FreehandElement(id: 'a', zOrder: 0, color: 0, size: 1, points: const []),
+      ]));
+      await tester.pump();
+      expect(button(tester, 'Undo').onPressed, isNotNull);
+      expect(button(tester, 'Redo').onPressed, isNull);
     });
   });
 

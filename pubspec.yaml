@@ -184,6 +184,7 @@ flutter:
 
   assets:
     - assets/icons/
+    - assets/Margo_Note_Toolbar/Icons/
 
   fonts:
     - family: Poppins

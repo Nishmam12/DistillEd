@@ -14,7 +14,6 @@ import '../../state/editor_tool_controller.dart';
 import '../../state/scene_controller.dart';
 import '../../state/selection_controller.dart';
 import 'selection_bar.dart';
-import 'undo_redo_buttons.dart';
 
 class EditorBottomBar extends ConsumerWidget {
   final ScenePageKey pageKey;
@@ -73,8 +72,6 @@ class EditorBottomBar extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              UndoRedoButtons(pageKey: pageKey),
             ],
           ),
         ],
