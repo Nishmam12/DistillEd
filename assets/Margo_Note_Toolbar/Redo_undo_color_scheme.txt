@@ -1,0 +1,3 @@
+When redo/undo is not available use #838484 for greyed out disabled button
+
+When redo/undo is available use #292D32 for blacked out button
