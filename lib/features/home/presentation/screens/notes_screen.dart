@@ -5,11 +5,12 @@
 // below the expanded window size (840 dp) it opens as a drawer instead.
 
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
+import 'package:margo/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/icons/app_icon.dart';
 import '../../../../core/layout/window_size.dart';
@@ -74,16 +75,28 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                 onNavigate: () => Navigator.of(context).pop(),
               ),
             ),
+      // The pinned sidebar panel stops at the system bars (the design's sage
+      // rectangle runs from under the status bar to above the nav bar); the
+      // grid scrolls on under the nav bar.
       body: Row(
         children: [
           if (wide && _sidebarOpen)
-            SizedBox(
-              width: sidebarWidth,
-              child: HomeSidebar(
-                onCollapse: () => setState(() => _sidebarOpen = false),
+            SafeArea(
+              right: false,
+              child: SizedBox(
+                width: sidebarWidth,
+                child: HomeSidebar(
+                  onCollapse: () => setState(() => _sidebarOpen = false),
+                ),
               ),
             ),
-          Expanded(child: SafeArea(bottom: false, child: main)),
+          Expanded(
+            child: SafeArea(
+              left: !(wide && _sidebarOpen),
+              bottom: false,
+              child: main,
+            ),
+          ),
         ],
       ),
     );
@@ -131,7 +144,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                 title: Text(
                   sort.label,
                   style: TextStyle(
-                    fontFamily: 'Poppins',
+                    fontFamily: 'ModulusPro',
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
                     color: context.colors.textPrimary,
@@ -188,90 +201,144 @@ class _Main extends ConsumerWidget {
               ].firstOrNull ??
               'Notes';
 
+    // Design geometry (1280×800 frame, below the status bar): the three 36px
+    // chrome icons hang 28 from the top, 17 apart, flush with the grid's right
+    // edge; the 42px title starts 27 lower, beside them; the sort row (icon
+    // first, then the label) sits 26 under the icons, and the grid 24 under it.
+    // Each icon's 48dp tap target overhangs the glyph by `inset`.
+    final compact = context.windowSize.isCompact;
+    final pad = compact
+        ? NotesPalette.compactContentPadding
+        : NotesPalette.contentPadding;
+    final inset = AppIconButton.insetFor(36);
+    const iconGap = 17.0;
+    final titleSize = compact ? 34.0 : 42.0;
+
+    final menu = AppIconButton(
+      AppIcons.sidebarLeft,
+      size: 28,
+      tooltip: 'Show sidebar',
+      onPressed: onMenu,
+    );
+    final titleText = Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontFamily: 'ModulusPro',
+        fontSize: titleSize,
+        height: 1.17,
+        fontWeight: FontWeight.w600,
+        color: c.textPrimary,
+      ),
+    );
+    final icons = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SearchPopoverButton(
+          onOpenNote: (note) => context.push('/note2/${note.id}'),
+        ),
+        SizedBox(width: iconGap - inset * 2),
+        AppIconButton(
+          AppIcons.profile,
+          size: 36,
+          tooltip: 'About',
+          onPressed: () => context.push('/about'),
+        ),
+        SizedBox(width: iconGap - inset * 2),
+        AppIconButton(
+          AppIcons.setting,
+          size: 36,
+          tooltip: 'Settings',
+          onPressed: () => context.push('/settings'),
+        ),
+      ],
+    );
+    final sortButton = _SortButton(label: sort.label, onTap: onSort);
+
     return Stack(
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32, 20, 24, 0),
-              child: Row(
-                children: [
-                  if (showMenu)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: IconButton(
-                        tooltip: 'Show sidebar',
-                        onPressed: onMenu,
-                        icon: const AppIcon(AppIcons.sidebarLeft, size: 28),
-                      ),
-                    ),
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: 'ModulusPro',
-                        fontSize: 40,
-                        height: 1.2,
-                        fontWeight: FontWeight.w600,
-                        color: c.textPrimary,
-                      ),
-                    ),
-                  ),
-                  SearchPopoverButton(
-                    onOpenNote: (note) => context.push('/note2/${note.id}'),
-                  ),
-                  IconButton(
-                    tooltip: 'About',
-                    onPressed: () => context.push('/about'),
-                    icon: const AppIcon(AppIcons.profile, size: 30),
-                  ),
-                  IconButton(
-                    tooltip: 'Settings',
-                    onPressed: () => context.push('/settings'),
-                    icon: const AppIcon(AppIcons.setting, size: 30),
-                  ),
-                ],
-              ),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(32, 4, 32, 8),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: onSort,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+            if (compact)
+              // Phones: menu and icons on one row, the title and sort below —
+              // side by side they would not fit a 320dp screen.
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  pad.left - (showMenu ? AppIconButton.insetFor(28) : 0),
+                  16 - inset,
+                  pad.right - inset,
+                  0,
+                ),
+                child: Column(
+                  children: [
+                    Row(
                       children: [
-                        Flexible(
-                          child: Text(
-                            sort.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontFamily: 'ModulusPro',
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                              color: c.textPrimary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const AppIcon(AppIcons.sort),
+                        if (showMenu) menu,
+                        const Spacer(),
+                        icons,
                       ],
                     ),
-                  ),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: showMenu ? AppIconButton.insetFor(28) : 0,
+                        right: inset - _SortButton.padding,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(child: titleText),
+                          const SizedBox(width: 8),
+                          Flexible(child: sortButton),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  pad.left,
+                  28 - inset,
+                  pad.right - inset,
+                  0,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (showMenu)
+                      Padding(
+                        // Centred on the title line, not the icon row.
+                        padding: EdgeInsets.only(
+                          right: 8,
+                          top: inset + 27 + titleSize * 1.17 / 2 - 26,
+                        ),
+                        child: menu,
+                      ),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(top: inset + 27),
+                        child: titleText,
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        icons,
+                        Padding(
+                          padding: EdgeInsets.only(
+                            top: 26 - inset - _SortButton.padding,
+                            right: inset - _SortButton.padding,
+                          ),
+                          child: sortButton,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
+            const SizedBox(height: 24 - _SortButton.padding),
             Expanded(
               child: cards.when(
                 loading: () =>
@@ -288,9 +355,10 @@ class _Main extends ConsumerWidget {
             ),
           ],
         ),
+        // 36 from the right edge, 18 above the nav bar.
         Positioned(
-          right: 32,
-          bottom: 28,
+          right: compact ? 20 : 36,
+          bottom: 18 + MediaQuery.paddingOf(context).bottom,
           child: _NewButton(onPressed: onCompose),
         ),
       ],
@@ -298,53 +366,99 @@ class _Main extends ConsumerWidget {
   }
 }
 
-/// The floating "+ new" pill.
+/// Sort glyph then the current order's label, right-aligned under the icons.
+class _SortButton extends StatelessWidget {
+  const _SortButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  /// Tap padding around the row; callers offset by it to keep design spacing.
+  static const padding = 6.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(padding),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AppIcon(AppIcons.sort),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'ModulusPro',
+                  fontSize: 20,
+                  height: 1.17,
+                  fontWeight: FontWeight.w500,
+                  color: context.colors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The floating "+ new" pill: frosted glass, accent at half strength.
 class _NewButton extends StatelessWidget {
   const _NewButton({required this.onPressed});
 
   final VoidCallback onPressed;
 
+  static const _radius = BorderRadius.all(Radius.circular(16));
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Light is the design (#4F6B5A @ 50%, white label). Light sage at half
+    // strength under a white label would wash out in dark, so dark uses the
+    // deep field green with the cream ink instead.
+    final fill = isDark
+        ? c.fieldFill.withValues(alpha: 0.8)
+        : c.accent.withValues(alpha: 0.5);
+    final ink = isDark ? c.textPrimary : c.onAccent;
+    final style = TextStyle(
+      fontFamily: 'ModulusPro',
+      fontSize: 24,
+      height: 1.17,
+      fontWeight: FontWeight.w500,
+      color: ink,
+    );
+
     return Semantics(
       button: true,
       label: 'New note',
-      child: Material(
-        color: c.accent,
-        elevation: isDark ? 0 : 6,
-        shadowColor: c.brand.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onPressed,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '+',
-                  style: TextStyle(
-                    fontFamily: 'ModulusPro',
-                    fontSize: 26,
-                    height: 1.2,
-                    color: c.onAccent,
-                  ),
+      excludeSemantics: true,
+      child: ClipRRect(
+        borderRadius: _radius,
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Material(
+            color: fill,
+            child: InkWell(
+              onTap: onPressed,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(21, 7, 16, 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('+', style: style),
+                    const SizedBox(width: 4),
+                    Text('new', style: style),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  'new',
-                  style: TextStyle(
-                    fontFamily: 'ModulusPro',
-                    fontSize: 24,
-                    height: 1.2,
-                    fontWeight: FontWeight.w500,
-                    color: c.onAccent,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -368,16 +482,29 @@ class _NotesGrid extends ConsumerWidget {
         final padding = compact
             ? NotesPalette.compactContentPadding
             : NotesPalette.contentPadding;
-        final gap = compact ? NotesPalette.compactGap : NotesPalette.gridGap;
+        final gap = compact
+            ? NotesPalette.compactGap
+            : NotesPalette.gridColumnGap;
+        final rowGap = compact
+            ? NotesPalette.compactGap
+            : NotesPalette.gridRowGap;
         final available = constraints.maxWidth - padding.horizontal;
-        final columns = ((available + gap) / (NotesPalette.cardMinWidth + gap))
-            .floor()
+
+        // Aim for the design's 252-wide cards (three across at 1280), rounding
+        // to the nearest column count but never squeezing a card under the
+        // minimum width.
+        int columns = ((available + gap) / (NotesPalette.cardWidth + gap))
+            .round()
             .clamp(1, 12);
+        double widthAt(int n) => (available - gap * (n - 1)) / n;
+        while (columns > 1 && widthAt(columns) < NotesPalette.cardMinWidth) {
+          columns--;
+        }
 
         // Fixed-height tiles: the thumbnail keeps the design's 252:198 ratio at
         // whatever width the column ends up, and the footer grows with the
         // system font size so large text is never clipped.
-        final tileWidth = (available - gap * (columns - 1)) / columns;
+        final tileWidth = widthAt(columns);
         final tileHeight =
             tileWidth * NotesPalette.thumbnailAspect +
             NoteCard.footerHeightFor(MediaQuery.textScalerOf(context));
@@ -386,7 +513,7 @@ class _NotesGrid extends ConsumerWidget {
           padding: padding,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
-            mainAxisSpacing: gap,
+            mainAxisSpacing: rowGap,
             crossAxisSpacing: gap,
             mainAxisExtent: tileHeight,
           ),
@@ -399,7 +526,8 @@ class _NotesGrid extends ConsumerWidget {
               sceneImageResolver: images.get,
               sceneRepaint: images,
               onTap: () => context.push('/note2/${note.id}'),
-              onGraphTap: () => context.push('/note2/${note.id}/graph'),
+              // The design's cards carry no graph button; the knowledge graph
+              // is in the long-press sheet.
               onLongPress: () => _showActions(context, ref, note),
               onToggleFavorite: () => ref
                   .read(homeNotifierProvider.notifier)
@@ -605,7 +733,7 @@ class _Message extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Poppins',
+                fontFamily: 'ModulusPro',
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: c.textPrimary,
@@ -616,7 +744,7 @@ class _Message extends StatelessWidget {
               subtitle,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Nunito',
+                fontFamily: 'ModulusPro',
                 fontSize: 14,
                 height: 1.4,
                 color: c.textSecondary,

@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/data/persistence/library_repository.dart';
-import 'package:distill_ed/domain/model/library_item.dart';
-import 'package:distill_ed/editor/state/library_controller.dart';
+import 'package:margo/data/persistence/library_repository.dart';
+import 'package:margo/domain/model/library_item.dart';
+import 'package:margo/editor/state/library_controller.dart';
 
 /// A repository whose writes finish only when the test says so, so the order
 /// in which writes start and finish can be controlled.

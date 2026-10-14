@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/data/persistence/library_repository.dart';
-import 'package:distill_ed/domain/model/library_item.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:margo/data/persistence/library_repository.dart';
+import 'package:margo/domain/model/library_item.dart';
+import 'package:margo/domain/model/scene_element.dart';
 
 LibraryItem _item(String id) => LibraryItem(
       id: id,

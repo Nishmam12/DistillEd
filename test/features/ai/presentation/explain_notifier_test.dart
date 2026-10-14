@@ -1,15 +1,15 @@
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/features/ai/data/llm/device_storage.dart';
-import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
-import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
-import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
-import 'package:distill_ed/features/ai/domain/ai_provider.dart';
-import 'package:distill_ed/features/ai/domain/features/explainer.dart';
-import 'package:distill_ed/features/ai/domain/routing/intelligent_router.dart'
+import 'package:margo/features/ai/data/llm/device_storage.dart';
+import 'package:margo/features/ai/data/llm/gemma_adapter.dart';
+import 'package:margo/features/ai/data/llm/llm_model_spec.dart';
+import 'package:margo/features/ai/data/llm/model_download_manager.dart';
+import 'package:margo/features/ai/domain/ai_provider.dart';
+import 'package:margo/features/ai/domain/features/explainer.dart';
+import 'package:margo/features/ai/domain/routing/intelligent_router.dart'
     show CloudRouteDecision, CloudTier;
-import 'package:distill_ed/features/ai/presentation/explain_notifier.dart';
+import 'package:margo/features/ai/presentation/explain_notifier.dart';
 
 // ---- Fakes ------------------------------------------------------------------
 

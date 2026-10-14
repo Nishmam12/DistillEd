@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/core/utils/external_links.dart';
+import 'package:margo/core/utils/external_links.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() {

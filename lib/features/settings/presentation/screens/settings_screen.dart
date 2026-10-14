@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
+import 'package:margo/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/providers/settings_provider.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -244,7 +244,7 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               _SettingsRow(
                 icon: PhosphorIconsRegular.info,
-                title: 'About DistillEd',
+                title: 'About Margo',
                 trailing: Icon(
                   PhosphorIconsRegular.caretRight,
                   color: c.textSecondary,

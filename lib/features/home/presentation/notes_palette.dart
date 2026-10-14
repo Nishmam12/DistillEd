@@ -23,9 +23,12 @@ class NotesPalette {
 
   /// Narrowest a card may get before the grid drops a column.
   static const cardMinWidth = 176.0;
-  static const gridGap = 32.0;
 
-  /// Gutter on compact windows (phones), tighter than [gridGap].
+  /// Design gutters: 47 between columns, 32 between rows.
+  static const gridColumnGap = 47.0;
+  static const gridRowGap = 32.0;
+
+  /// Gutter on compact windows (phones), tighter than the design's.
   static const compactGap = 20.0;
 
   /// Radius of the floating knowledge-graph button.
@@ -35,13 +38,20 @@ class NotesPalette {
   /// clamped so it never crowds the grid on a 840 dp window or sprawls on a
   /// 1480 dp one. Below the expanded window size it is a drawer instead.
   static const sidebarMinWidth = 264.0;
-  static const sidebarMaxWidth = 340.0;
-  static const sidebarFraction = 0.27;
+  static const sidebarMaxWidth = 350.0;
+  static const sidebarFraction = 350.0 / 1280.0;
 
   static double sidebarWidthFor(double windowWidth) =>
       (windowWidth * sidebarFraction).clamp(sidebarMinWidth, sidebarMaxWidth);
 
-  static const contentPadding = EdgeInsets.fromLTRB(32, 0, 32, 120);
+  /// Width of a selected sidebar pill (232 in the design).
+  static const sidebarPillWidth = 232.0;
+
+  /// Content sits 35 in from the sidebar and 45 in from the right edge.
+  static const contentPadding = EdgeInsets.fromLTRB(35, 0, 45, 120);
   static const compactContentPadding = EdgeInsets.fromLTRB(20, 0, 20, 120);
-  static const searchPopoverWidth = 300.0;
+  static const searchPopoverWidth = 250.0;
+
+  /// The design's soft black lift (cards, sidebar, glass surfaces).
+  static const shadowColor = Color(0x40000000);
 }

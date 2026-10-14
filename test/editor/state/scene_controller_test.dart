@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/data/persistence/scene_element_store.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/editor/state/scene_controller.dart';
+import 'package:margo/data/persistence/scene_element_store.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/editor/state/scene_controller.dart';
 
 FreehandElement _el(String id, int z) =>
     FreehandElement(id: id, zOrder: z, color: 0, size: 1, points: const []);

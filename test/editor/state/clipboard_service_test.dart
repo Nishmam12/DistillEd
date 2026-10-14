@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/editor/state/clipboard_service.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/editor/state/clipboard_service.dart';
 
 const _els = <SceneElement>[
   SceneShapeElement(

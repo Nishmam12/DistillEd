@@ -2,8 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/domain/model/template_type.dart';
-import 'package:distill_ed/editor/render/template_painter.dart';
+import 'package:margo/domain/model/template_type.dart';
+import 'package:margo/editor/render/template_painter.dart';
 
 Picture _paint(TemplateType type, Color background, {double zoom = 1}) {
   final recorder = PictureRecorder();

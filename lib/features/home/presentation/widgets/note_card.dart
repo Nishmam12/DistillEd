@@ -64,9 +64,9 @@ class NoteCard extends StatefulWidget {
   /// rather than clipping: vertical padding, one title line (20 × 1.3) and the
   /// taller of the favourite icon and the two meta lines (12 × 1.5 each).
   static double footerHeightFor(TextScaler scaler) {
-    final k = scaler.scale(20) / 20;
-    final content = 20 + 26 * k + math.max(32.0, 36 * k);
-    return math.max(_Footer.baseHeight, content.ceilToDouble() + 2);
+    final k = scaler.scale(22) / 22;
+    final content = 35 + 26.4 * k + math.max(32.0, 36 * k);
+    return math.max(_Footer.baseHeight, content.ceilToDouble());
   }
 
   @override
@@ -87,10 +87,11 @@ class _NoteCardState extends State<NoteCard> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final note = widget.note;
 
-    // Light lifts on the design's soft shadow (0/4, blur 40) and carries no
-    // outline; dark drops the shadow and draws a 1px hairline instead — a
-    // shadow on near-black is invisible, so the card would have no edge.
-    final shadowAlpha = _raised ? 0.30 : 0.22;
+    // Light lifts on the design's soft black shadow (25%, 0/4, blur 40) and
+    // carries no outline; dark drops the shadow and draws a 1px hairline
+    // instead — a shadow on near-black is invisible, so the card would have no
+    // edge.
+    final shadowAlpha = _raised ? 0.32 : 0.25;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -114,7 +115,7 @@ class _NoteCardState extends State<NoteCard> {
                   ? null
                   : [
                       BoxShadow(
-                        color: c.brand.withValues(alpha: shadowAlpha),
+                        color: Colors.black.withValues(alpha: shadowAlpha),
                         blurRadius: 40,
                         offset: const Offset(0, 4),
                       ),
@@ -182,30 +183,37 @@ class _Footer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // Design: everything in ink — title 22 Medium at 15/13, the favourite
+    // glyph 15 in and 25 up from the bottom, "N Pages" over the date (12)
+    // right-aligned 18 in. The glyph's 4px tap padding is netted out of the
+    // left/bottom insets.
     final meta = TextStyle(
       fontFamily: 'ModulusPro',
       fontSize: 12,
       height: 1.5,
-      color: c.textSecondary,
+      color: c.textPrimary,
     );
 
     return Container(
       height: height,
       color: c.surface,
-      padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
+      padding: const EdgeInsets.fromLTRB(11, 13, 18, 21),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            note.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: 'ModulusPro',
-              fontSize: 20,
-              height: 1.3,
-              fontWeight: FontWeight.w500,
-              color: c.textPrimary,
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              note.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'ModulusPro',
+                fontSize: 22,
+                height: 1.17,
+                fontWeight: FontWeight.w500,
+                color: c.textPrimary,
+              ),
             ),
           ),
           const Spacer(),

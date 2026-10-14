@@ -6,14 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:distill_ed/core/theme/distill_theme.dart';
-import 'package:distill_ed/features/home/data/repositories/note_repository.dart';
-import 'package:distill_ed/features/home/domain/models/notebook.dart';
-import 'package:distill_ed/features/home/presentation/home_notifier.dart'
+import 'package:margo/core/theme/margo_theme.dart';
+import 'package:margo/features/home/data/repositories/note_repository.dart';
+import 'package:margo/features/home/domain/models/notebook.dart';
+import 'package:margo/features/home/presentation/home_notifier.dart'
     show noteRepositoryProvider;
-import 'package:distill_ed/features/home/presentation/screens/trash_screen.dart';
-import 'package:distill_ed/features/settings/presentation/screens/about_screen.dart';
-import 'package:distill_ed/features/settings/presentation/screens/settings_screen.dart';
+import 'package:margo/features/home/presentation/screens/trash_screen.dart';
+import 'package:margo/features/settings/presentation/screens/about_screen.dart';
+import 'package:margo/features/settings/presentation/screens/settings_screen.dart';
 
 import '../support/device_matrix.dart';
 import '../support/load_fonts.dart';
@@ -68,7 +68,7 @@ void main() {
               ProviderScope(
                 overrides: [noteRepositoryProvider.overrideWithValue(_Repo())],
                 child: MaterialApp(
-                  theme: DistillTheme.light,
+                  theme: MargoTheme.light,
                   home: entry.value,
                 ),
               ),

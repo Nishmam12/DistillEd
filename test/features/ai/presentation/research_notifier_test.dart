@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/core/providers/settings_provider.dart' show CloudPrivacy;
-import 'package:distill_ed/features/ai/domain/ai_message.dart';
-import 'package:distill_ed/features/ai/domain/features/researcher.dart';
-import 'package:distill_ed/features/ai/domain/tools/tool.dart';
-import 'package:distill_ed/features/ai/domain/tools/tool_generation_event.dart';
-import 'package:distill_ed/features/ai/presentation/research_notifier.dart';
+import 'package:margo/core/providers/settings_provider.dart' show CloudPrivacy;
+import 'package:margo/features/ai/domain/ai_message.dart';
+import 'package:margo/features/ai/domain/features/researcher.dart';
+import 'package:margo/features/ai/domain/tools/tool.dart';
+import 'package:margo/features/ai/domain/tools/tool_generation_event.dart';
+import 'package:margo/features/ai/presentation/research_notifier.dart';
 
 /// Scripted client — same pattern as `researcher_test.dart`.
 class _ScriptedClient implements ToolCallingClient {

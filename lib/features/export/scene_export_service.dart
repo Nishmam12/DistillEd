@@ -31,7 +31,7 @@ class SceneExportService {
 
   static Future<bool> sharePng(
     List<SceneElement> elements, {
-    String title = 'DistillEd',
+    String title = 'Margo',
     Color background = Colors.white,
     SceneImageCache? imageCache,
   }) async {
@@ -45,7 +45,7 @@ class SceneExportService {
 
   static Future<bool> sharePdf(
     List<SceneElement> elements, {
-    String title = 'DistillEd',
+    String title = 'Margo',
     Color background = Colors.white,
     SceneImageCache? imageCache,
   }) async {
@@ -61,7 +61,7 @@ class SceneExportService {
   /// notebook is empty.
   static Future<bool> shareNotebookPdf(
     List<List<SceneElement>> pages, {
-    String title = 'DistillEd',
+    String title = 'Margo',
     Color background = Colors.white,
     SceneImageCache? imageCache,
     void Function(int done, int total)? onProgress,
@@ -85,7 +85,7 @@ class SceneExportService {
   /// the canvas placeholder.
   static Future<bool> shareSvg(
     List<SceneElement> elements, {
-    String title = 'DistillEd',
+    String title = 'Margo',
     SceneImageCache? imageCache,
   }) async {
     if (elements.isEmpty) return false;

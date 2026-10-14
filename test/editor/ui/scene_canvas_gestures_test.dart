@@ -14,16 +14,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:distill_ed/core/providers/settings_provider.dart';
-import 'package:distill_ed/data/persistence/scene_element_store.dart';
-import 'package:distill_ed/domain/commands/scene_command.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/editor/state/history_controller.dart';
-import 'package:distill_ed/editor/state/ink_gesture_providers.dart';
-import 'package:distill_ed/editor/state/scene_controller.dart';
-import 'package:distill_ed/editor/state/viewport_controller.dart';
-import 'package:distill_ed/editor/tools/ink_gestures.dart';
-import 'package:distill_ed/editor/ui/scene_canvas.dart';
+import 'package:margo/core/providers/settings_provider.dart';
+import 'package:margo/data/persistence/scene_element_store.dart';
+import 'package:margo/domain/commands/scene_command.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/editor/state/history_controller.dart';
+import 'package:margo/editor/state/ink_gesture_providers.dart';
+import 'package:margo/editor/state/scene_controller.dart';
+import 'package:margo/editor/state/viewport_controller.dart';
+import 'package:margo/editor/tools/ink_gestures.dart';
+import 'package:margo/editor/ui/scene_canvas.dart';
 
 const ScenePageKey _key = (notebookId: 0, pageId: 0);
 

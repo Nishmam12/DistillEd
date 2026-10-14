@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/data/migration/legacy_page_data.dart';
-import 'package:distill_ed/data/migration/legacy_page_source.dart';
-import 'package:distill_ed/data/migration/migration_gate.dart';
-import 'package:distill_ed/data/migration/scene_migrator.dart';
-import 'package:distill_ed/data/persistence/scene_element_store.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/data/migration/legacy_models/shape_element.dart';
-import 'package:distill_ed/data/migration/legacy_models/stroke.dart';
+import 'package:margo/data/migration/legacy_page_data.dart';
+import 'package:margo/data/migration/legacy_page_source.dart';
+import 'package:margo/data/migration/migration_gate.dart';
+import 'package:margo/data/migration/scene_migrator.dart';
+import 'package:margo/data/persistence/scene_element_store.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/data/migration/legacy_models/shape_element.dart';
+import 'package:margo/data/migration/legacy_models/stroke.dart';
 
 class _FakeSource implements LegacyPageSource {
   final List<LegacyPageData> pages;

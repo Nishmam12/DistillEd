@@ -1,4 +1,4 @@
-# DistillEd — Getting off discontinued packages
+# Margo — Getting off discontinued packages
 
 A phased plan to move every dependency that is discontinued or abandoned onto its maintained successor, refresh the rest of the stack, make the RAG pipeline swap-ready, and switch to EmbeddingGemma 2 once the runtime supports it. Grounded in the current codebase (pubspec `5.0.0+30`, `pubspec.lock` resolved on 3 Oct 2026) and in pub.dev / Hugging Face as of 8 Oct 2026.
 
@@ -93,7 +93,7 @@ Files that import the plugin today: `gemma_adapter.dart`, `llm_model_spec.dart`,
 
 ### 1.3 Absorb the 2.0 / 2.1 breaking changes
 
-| Break | Affects DistillEd? |
+| Break | Affects Margo? |
 |---|---|
 | RAG moved to `flutter_edge_ai_rag`; `initialize()` drops `vectorStore:` / `filterSchema:` | **No.** The app keeps its own Isar chunk store and never used plugin RAG. Do not add `flutter_edge_ai_rag`. |
 | `ModelFileManager.setActiveModel` removed | **No** call sites. |
@@ -338,7 +338,7 @@ The generic file is the right one for the Pixel 7 Pro: its Tensor G2 (GS201) mat
 
 ### 4.9 Evaluation harness
 
-Benchmarks don't cover Bangla or OCR'd handwriting, which is most of what DistillEd embeds. Build a harness the user runs on a computer:
+Benchmarks don't cover Bangla or OCR'd handwriting, which is most of what Margo embeds. Build a harness the user runs on a computer:
 
 - (Removed from the repo after the eval ran.) `tool/embedding_eval/eval.py` + `requirements.txt` (`sentence-transformers>=6.1`, `torch`, `numpy`) + `README.md`.
 - Input: `eval_set.jsonl`, one line per question: `{"query": "...", "lang": "en|bn", "relevant_ids": ["page-12-c0", ...]}`, plus `corpus.jsonl`: `{"id": "...", "title": "...", "text": "..."}`.

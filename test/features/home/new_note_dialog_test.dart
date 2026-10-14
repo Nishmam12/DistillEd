@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/core/theme/paper_colors.dart';
-import 'package:distill_ed/domain/model/template_type.dart';
-import 'package:distill_ed/features/home/presentation/widgets/new_note_dialog.dart';
+import 'package:margo/core/theme/paper_colors.dart';
+import 'package:margo/domain/model/template_type.dart';
+import 'package:margo/features/home/presentation/widgets/new_note_dialog.dart';
 
 Future<void> _open(WidgetTester tester, void Function(NewNoteChoice?) onDone) {
   tester.view.physicalSize = const Size(1280, 800);

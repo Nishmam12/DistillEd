@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/features/ai/domain/language/language_detector.dart';
-import 'package:distill_ed/features/audio/domain/lecture_language.dart';
+import 'package:margo/features/ai/domain/language/language_detector.dart';
+import 'package:margo/features/audio/domain/lecture_language.dart';
 
 class _Detector implements LanguageDetector {
   _Detector(this.tag, {this.throws = false});

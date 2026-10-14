@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/features/home/domain/models/notebook.dart';
-import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
-import 'package:distill_ed/features/home/presentation/notes_palette.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/features/home/domain/models/notebook.dart';
+import 'package:margo/features/home/presentation/models/note_card_data.dart';
+import 'package:margo/features/home/presentation/notes_palette.dart';
 
 Notebook _notebook({
   int id = 1,

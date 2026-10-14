@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/features/ai/domain/ai_provider.dart';
-import 'package:distill_ed/features/ai/domain/features/notes_qa.dart';
-import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
-import 'package:distill_ed/features/ai/domain/rag/rag_retriever.dart';
-import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart'
+import 'package:margo/features/ai/domain/ai_provider.dart';
+import 'package:margo/features/ai/domain/features/notes_qa.dart';
+import 'package:margo/features/ai/domain/rag/note_chunk.dart';
+import 'package:margo/features/ai/domain/rag/rag_retriever.dart';
+import 'package:margo/features/ai/domain/rag/page_chunker.dart'
     show kChunkOverlapWords, kChunkWords;
-import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
-import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
+import 'package:margo/features/ai/domain/rag/prompt_contract.dart';
+import 'package:margo/features/ai/domain/rag/text_embedder.dart';
 
 /// Records what it was asked and replays scripted chunks.
 class _ScriptedProvider implements AiProvider {

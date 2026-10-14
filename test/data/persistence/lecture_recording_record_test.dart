@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/data/persistence/lecture_recording_record.dart';
-import 'package:distill_ed/features/audio/domain/lecture_recording.dart';
+import 'package:margo/data/persistence/lecture_recording_record.dart';
+import 'package:margo/features/audio/domain/lecture_recording.dart';
 
 void main() {
   test('a recording survives the trip to its stored row and back', () {

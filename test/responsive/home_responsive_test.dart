@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/core/theme/distill_theme.dart';
-import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
-import 'package:distill_ed/features/home/presentation/note_cards_provider.dart';
-import 'package:distill_ed/features/home/presentation/screens/notes_screen.dart';
-import 'package:distill_ed/core/layout/window_size.dart';
-import 'package:distill_ed/features/home/presentation/widgets/home_sidebar.dart';
-import 'package:distill_ed/features/home/presentation/widgets/new_note_dialog.dart';
-import 'package:distill_ed/features/home/presentation/widgets/note_card.dart';
-import 'package:distill_ed/features/home/presentation/widgets/search_bar_widget.dart';
+import 'package:margo/core/theme/margo_theme.dart';
+import 'package:margo/features/home/presentation/models/note_card_data.dart';
+import 'package:margo/features/home/presentation/note_cards_provider.dart';
+import 'package:margo/features/home/presentation/screens/notes_screen.dart';
+import 'package:margo/core/layout/window_size.dart';
+import 'package:margo/features/home/presentation/widgets/home_sidebar.dart';
+import 'package:margo/features/home/presentation/widgets/new_note_dialog.dart';
+import 'package:margo/features/home/presentation/widgets/note_card.dart';
+import 'package:margo/features/home/presentation/widgets/search_bar_widget.dart';
 
 import '../support/device_matrix.dart';
 import '../support/load_fonts.dart';
@@ -50,7 +50,7 @@ Future<void> _pump(
     ProviderScope(
       overrides: [noteCardsProvider.overrideWith((ref) async => _cards)],
       child: MaterialApp(
-        theme: theme ?? DistillTheme.light,
+        theme: theme ?? MargoTheme.light,
         home: const NotesScreen(),
       ),
     ),

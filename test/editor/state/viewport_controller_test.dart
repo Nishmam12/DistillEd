@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/editor/state/viewport_controller.dart';
+import 'package:margo/editor/state/viewport_controller.dart';
 
 void main() {
   group('ViewportState transforms', () {

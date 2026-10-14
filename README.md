@@ -1,4 +1,4 @@
-# DistillEd
+# Margo
 
 A beefed up notepad app
 

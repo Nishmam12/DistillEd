@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/features/ai/domain/tools/calculator_tool.dart';
-import 'package:distill_ed/features/ai/domain/tools/tool.dart';
+import 'package:margo/features/ai/domain/tools/calculator_tool.dart';
+import 'package:margo/features/ai/domain/tools/tool.dart';
 
 void main() {
   const tool = CalculatorTool();

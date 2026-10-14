@@ -6,9 +6,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
-import 'package:distill_ed/features/ai/data/study_planner/study_plan_record.dart';
-import 'package:distill_ed/features/ai/data/study_planner/study_plan_store.dart';
-import 'package:distill_ed/features/ai/domain/study_planner/study_plan.dart';
+import 'package:margo/features/ai/data/study_planner/study_plan_record.dart';
+import 'package:margo/features/ai/data/study_planner/study_plan_store.dart';
+import 'package:margo/features/ai/domain/study_planner/study_plan.dart';
 
 import '../../../../support/isar_native_library.dart';
 

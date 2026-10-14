@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/editor/render/dash_path.dart';
+import 'package:margo/editor/render/dash_path.dart';
 
 void main() {
   test('dashed breaks a line into multiple shorter segments', () {

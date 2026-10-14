@@ -6,16 +6,16 @@
 // between the provider and the MaterialApp.
 //
 // The widget below mirrors `lib/app/app.dart`'s theme wiring exactly. The real
-// DistillEdApp cannot be pumped here because its router opens Isar.
+// MargoApp cannot be pumped here because its router opens Isar.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:distill_ed/core/providers/settings_provider.dart';
-import 'package:distill_ed/core/theme/app_colors.dart';
-import 'package:distill_ed/core/theme/distill_theme.dart';
+import 'package:margo/core/providers/settings_provider.dart';
+import 'package:margo/core/theme/app_colors.dart';
+import 'package:margo/core/theme/margo_theme.dart';
 
 class _ThemedApp extends ConsumerWidget {
   final void Function(AppColors) onBuild;
@@ -26,8 +26,8 @@ class _ThemedApp extends ConsumerWidget {
     final themeMode = ref.watch(settingsProvider.select((s) => s.themeMode));
 
     return MaterialApp(
-      theme: DistillTheme.light,
-      darkTheme: DistillTheme.dark,
+      theme: MargoTheme.light,
+      darkTheme: MargoTheme.dark,
       themeMode: themeMode.toThemeMode,
       home: Builder(builder: (context) {
         onBuild(context.colors);

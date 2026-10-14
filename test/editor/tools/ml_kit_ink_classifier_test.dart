@@ -1,9 +1,9 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/editor/tools/ink_gestures.dart';
-import 'package:distill_ed/editor/tools/ml_kit_ink_classifier.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/editor/tools/ink_gestures.dart';
+import 'package:margo/editor/tools/ml_kit_ink_classifier.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

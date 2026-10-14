@@ -19,7 +19,7 @@ class _AboutScreenState extends State<AboutScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('About DistillEd'),
+        title: const Text('About Margo'),
         backgroundColor: context.colors.surface,
         foregroundColor: context.colors.textPrimary,
         elevation: 0,
@@ -49,24 +49,13 @@ class _AboutScreenState extends State<AboutScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text.rich(
-                    TextSpan(
-                      style: const TextStyle(
-                        fontFamily: 'ModulusPro',
-                        fontSize: 32,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -1,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: 'Distill',
-                          style: TextStyle(color: context.colors.accent),
-                        ),
-                        TextSpan(
-                          text: 'Ed',
-                          style: TextStyle(color: context.colors.textPrimary),
-                        ),
-                      ],
+                  Text(
+                    'margo',
+                    style: TextStyle(
+                      fontFamily: 'ModulusPro',
+                      fontSize: 40,
+                      fontWeight: FontWeight.w600,
+                      color: context.colors.brand,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -106,7 +95,7 @@ class _AboutScreenState extends State<AboutScreen> {
                       if (!context.mounted) return;
                       showLicensePage(
                         context: context,
-                        applicationName: 'DistillEd',
+                        applicationName: 'Margo',
                         applicationVersion: info.version,
                       );
                     },

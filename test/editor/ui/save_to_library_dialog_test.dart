@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/editor/ui/controls/save_to_library_dialog.dart';
+import 'package:margo/editor/ui/controls/save_to_library_dialog.dart';
 
 /// Opens the dialog from a button, types [entry] if given, and taps [action].
 /// Returns what the dialog gave back.

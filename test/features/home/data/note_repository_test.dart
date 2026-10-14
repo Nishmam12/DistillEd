@@ -7,20 +7,20 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
-import 'package:distill_ed/data/persistence/lecture_recording_record.dart';
-import 'package:distill_ed/data/persistence/page_text_record.dart';
-import 'package:distill_ed/data/persistence/scene_element_record.dart';
-import 'package:distill_ed/features/ai/data/flashcards/flashcard_record.dart';
-import 'package:distill_ed/features/ai/data/memory/concept_mastery_record.dart';
-import 'package:distill_ed/features/ai/data/memory/concept_relation_record.dart';
-import 'package:distill_ed/features/ai/data/memory/quiz_attempt_record.dart';
-import 'package:distill_ed/features/ai/data/rag/note_chunk_record.dart';
-import 'package:distill_ed/features/ai/data/study_planner/study_plan_record.dart';
-import 'package:distill_ed/features/home/data/repositories/note_repository.dart';
-import 'package:distill_ed/features/home/domain/models/folder.dart';
-import 'package:distill_ed/features/home/domain/models/note_page.dart';
-import 'package:distill_ed/features/home/domain/models/notebook.dart';
-import 'package:distill_ed/features/summarize/data/cache/summary_cache.dart';
+import 'package:margo/data/persistence/lecture_recording_record.dart';
+import 'package:margo/data/persistence/page_text_record.dart';
+import 'package:margo/data/persistence/scene_element_record.dart';
+import 'package:margo/features/ai/data/flashcards/flashcard_record.dart';
+import 'package:margo/features/ai/data/memory/concept_mastery_record.dart';
+import 'package:margo/features/ai/data/memory/concept_relation_record.dart';
+import 'package:margo/features/ai/data/memory/quiz_attempt_record.dart';
+import 'package:margo/features/ai/data/rag/note_chunk_record.dart';
+import 'package:margo/features/ai/data/study_planner/study_plan_record.dart';
+import 'package:margo/features/home/data/repositories/note_repository.dart';
+import 'package:margo/features/home/domain/models/folder.dart';
+import 'package:margo/features/home/domain/models/note_page.dart';
+import 'package:margo/features/home/domain/models/notebook.dart';
+import 'package:margo/features/summarize/data/cache/summary_cache.dart';
 
 import '../../../support/isar_native_library.dart';
 

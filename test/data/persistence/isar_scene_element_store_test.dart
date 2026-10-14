@@ -6,9 +6,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
-import 'package:distill_ed/data/persistence/isar_scene_element_store.dart';
-import 'package:distill_ed/data/persistence/scene_element_record.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:margo/data/persistence/isar_scene_element_store.dart';
+import 'package:margo/data/persistence/scene_element_record.dart';
+import 'package:margo/domain/model/scene_element.dart';
 
 import '../../support/isar_native_library.dart';
 

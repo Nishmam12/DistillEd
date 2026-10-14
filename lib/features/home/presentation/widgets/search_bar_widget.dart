@@ -1,7 +1,7 @@
-// The search field: a green pill (`fieldFill`) used inside the search popover.
+// The search field: bare text inside the frosted search popover.
 
 import 'package:flutter/material.dart';
-import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
+import 'package:margo/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
@@ -20,7 +20,7 @@ class SearchBarWidget extends StatefulWidget {
   final String hintText;
   final bool autofocus;
 
-  static const height = 40.0;
+  static const height = 32.0;
 
   @override
   State<SearchBarWidget> createState() => _SearchBarWidgetState();
@@ -59,20 +59,15 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    const radius = BorderRadius.all(
-      Radius.circular(SearchBarWidget.height / 2),
-    );
-    const none = OutlineInputBorder(
-      borderRadius: radius,
-      borderSide: BorderSide.none,
-    );
+    const none = InputBorder.none;
     final text = TextStyle(
       fontFamily: 'ModulusPro',
-      fontSize: 16,
+      fontSize: 18,
       color: c.textPrimary,
     );
 
-    // The pill grows with the system font size so large text is not clipped.
+    // Bare text on the popover's glass (design: no fill, 18px, hint @ 50%).
+    // The field grows with the system font size so large text is not clipped.
     return SizedBox(
       height: MediaQuery.textScalerOf(context).scale(SearchBarWidget.height),
       child: TextField(
@@ -85,12 +80,11 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
         style: text,
         decoration: InputDecoration(
           isDense: true,
-          filled: true,
-          fillColor: c.fieldFill,
+          filled: false,
           hintText: widget.hintText,
-          // Ink at 60%: the design's white hint on this green is only 2.1:1.
-          hintStyle: text.copyWith(color: c.textPrimary.withValues(alpha: 0.6)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          hintStyle: text.copyWith(color: c.textPrimary.withValues(alpha: 0.5)),
+          contentPadding: EdgeInsets.zero,
+          suffixIconConstraints: const BoxConstraints(minWidth: 32),
           suffixIcon: IgnorePointer(
             ignoring: !_hasText,
             child: AnimatedOpacity(

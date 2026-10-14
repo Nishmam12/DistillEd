@@ -1,4 +1,4 @@
-name: distill_ed
+name: margo
 description: A note-taking app with no artificial limitations.
 publish_to: 'none'
 # Single source of truth for the app version.

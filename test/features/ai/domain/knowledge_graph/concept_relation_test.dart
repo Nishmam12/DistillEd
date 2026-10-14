@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/features/ai/domain/knowledge_graph/concept_relation.dart';
+import 'package:margo/features/ai/domain/knowledge_graph/concept_relation.dart';
 
 void main() {
   group('tryFromJson', () {

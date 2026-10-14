@@ -3,8 +3,8 @@ import 'dart:ui' show Tristate;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/widgets/app_chip_group.dart';
-import 'package:distill_ed/widgets/app_segmented_control.dart';
+import 'package:margo/widgets/app_chip_group.dart';
+import 'package:margo/widgets/app_segmented_control.dart';
 
 Widget _host(Widget child) => MaterialApp(
       home: Scaffold(body: Center(child: child)),

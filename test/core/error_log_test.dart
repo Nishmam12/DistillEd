@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/core/error_log.dart';
+import 'package:margo/core/error_log.dart';
 
 const _pathChannel = MethodChannel('plugins.flutter.io/path_provider');
 

@@ -11,10 +11,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
-import 'package:distill_ed/features/ai/data/ocr/isar_read_cache.dart';
-import 'package:distill_ed/features/ai/data/ocr/read_cache_record.dart';
-import 'package:distill_ed/features/ai/domain/figure.dart';
-import 'package:distill_ed/features/ai/domain/read_cache.dart';
+import 'package:margo/features/ai/data/ocr/isar_read_cache.dart';
+import 'package:margo/features/ai/data/ocr/read_cache_record.dart';
+import 'package:margo/features/ai/domain/figure.dart';
+import 'package:margo/features/ai/domain/read_cache.dart';
 
 import '../../../../support/isar_native_library.dart';
 

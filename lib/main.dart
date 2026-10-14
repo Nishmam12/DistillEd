@@ -37,7 +37,7 @@ import 'features/home/domain/models/folder.dart';
 import 'features/home/domain/models/notebook.dart';
 import 'features/home/domain/models/note_page.dart';
 import 'core/theme/app_colors.dart';
-import 'core/theme/distill_theme.dart';
+import 'core/theme/margo_theme.dart';
 
 /// Debug only: prints how many rows each collection holds, so an Isar upgrade
 /// can be checked against the old build on the same device (plan, phase 2.2).
@@ -101,8 +101,8 @@ void main() async {
   ErrorWidget.builder = (FlutterErrorDetails details) {
     final theme =
         PlatformDispatcher.instance.platformBrightness == Brightness.dark
-            ? DistillTheme.dark
-            : DistillTheme.light;
+            ? MargoTheme.dark
+            : MargoTheme.light;
     final c = theme.extension<AppColors>()!;
     return Material(
       color: c.bgPrimary,
@@ -216,7 +216,7 @@ Future<void> _openAndRun() async {
           FileLibraryRepository(File('$appDocsPath/inkflow_library.json')),
         ),
       ],
-      child: const DistillEdApp(),
+      child: const MargoApp(),
     ),
   );
 }

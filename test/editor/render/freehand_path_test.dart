@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/editor/render/freehand_path.dart';
-import 'package:distill_ed/domain/model/stroke_point.dart';
+import 'package:margo/editor/render/freehand_path.dart';
+import 'package:margo/domain/model/stroke_point.dart';
 
 void main() {
   test('build returns null for an empty stroke', () {

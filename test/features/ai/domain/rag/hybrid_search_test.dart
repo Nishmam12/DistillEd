@@ -7,7 +7,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/features/ai/domain/rag/hybrid_search.dart';
+import 'package:margo/features/ai/domain/rag/hybrid_search.dart';
 
 void main() {
   group('keywordTokens', () {

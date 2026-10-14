@@ -3,8 +3,8 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/data/persistence/page_text_store.dart';
-import 'package:distill_ed/features/search/domain/note_search.dart';
+import 'package:margo/data/persistence/page_text_store.dart';
+import 'package:margo/features/search/domain/note_search.dart';
 
 PageText _page(int pageId, String text) =>
     PageText(pageId: pageId, notebookId: 1, text: text);

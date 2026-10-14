@@ -5,11 +5,11 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/features/home/data/repositories/note_repository.dart';
-import 'package:distill_ed/features/home/domain/models/notebook.dart';
-import 'package:distill_ed/features/home/presentation/home_notifier.dart';
-import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
-import 'package:distill_ed/features/home/presentation/note_cards_provider.dart';
+import 'package:margo/features/home/data/repositories/note_repository.dart';
+import 'package:margo/features/home/domain/models/notebook.dart';
+import 'package:margo/features/home/presentation/home_notifier.dart';
+import 'package:margo/features/home/presentation/models/note_card_data.dart';
+import 'package:margo/features/home/presentation/note_cards_provider.dart';
 
 import 'trash_test.dart' show FakeNoteRepository;
 

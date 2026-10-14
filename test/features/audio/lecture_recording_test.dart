@@ -4,10 +4,10 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/data/persistence/lecture_recording_store.dart';
-import 'package:distill_ed/features/audio/domain/audio_ports.dart';
-import 'package:distill_ed/features/audio/domain/lecture_recording.dart';
-import 'package:distill_ed/features/audio/domain/recording_session.dart';
+import 'package:margo/data/persistence/lecture_recording_store.dart';
+import 'package:margo/features/audio/domain/audio_ports.dart';
+import 'package:margo/features/audio/domain/lecture_recording.dart';
+import 'package:margo/features/audio/domain/recording_session.dart';
 
 LectureRecording _recording({int id = 1, int durationMs = 60000}) =>
     LectureRecording(

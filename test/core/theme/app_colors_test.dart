@@ -14,8 +14,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/core/theme/app_colors.dart';
-import 'package:distill_ed/core/theme/distill_theme.dart';
+import 'package:margo/core/theme/app_colors.dart';
+import 'package:margo/core/theme/margo_theme.dart';
 
 /// WCAG relative luminance.
 double _luminance(Color c) {
@@ -217,16 +217,16 @@ void main() {
     });
   });
 
-  group('DistillTheme', () {
+  group('MargoTheme', () {
     test('each brightness carries its own token set', () {
-      expect(DistillTheme.light.extension<AppColors>(), same(AppColors.light));
-      expect(DistillTheme.dark.extension<AppColors>(), same(AppColors.dark));
-      expect(DistillTheme.light.brightness, Brightness.light);
-      expect(DistillTheme.dark.brightness, Brightness.dark);
+      expect(MargoTheme.light.extension<AppColors>(), same(AppColors.light));
+      expect(MargoTheme.dark.extension<AppColors>(), same(AppColors.dark));
+      expect(MargoTheme.light.brightness, Brightness.light);
+      expect(MargoTheme.dark.brightness, Brightness.dark);
     });
 
     test('base theme follows the tokens, not a Material default', () {
-      final d = DistillTheme.dark;
+      final d = MargoTheme.dark;
       expect(d.scaffoldBackgroundColor, AppColors.dark.bgPrimary);
       expect(d.colorScheme.surface, AppColors.dark.surface);
       expect(d.colorScheme.onSurface, AppColors.dark.textPrimary);
@@ -241,8 +241,8 @@ void main() {
 
     test('body text is textPrimary, never accent', () {
       for (final (theme, c) in [
-        (DistillTheme.light, AppColors.light),
-        (DistillTheme.dark, AppColors.dark),
+        (MargoTheme.light, AppColors.light),
+        (MargoTheme.dark, AppColors.dark),
       ]) {
         final t = theme.textTheme;
         expect(t.bodyLarge?.color, c.textPrimary);
@@ -252,30 +252,30 @@ void main() {
         expect(t.titleMedium?.color, c.textPrimary);
         expect(t.titleSmall?.color, c.textPrimary);
       }
-      expect(DistillTheme.dark.textTheme.bodyMedium?.color,
+      expect(MargoTheme.dark.textTheme.bodyMedium?.color,
           isNot(AppColors.dark.accent));
-      expect(DistillTheme.light.textTheme.bodyMedium?.color,
+      expect(MargoTheme.light.textTheme.bodyMedium?.color,
           isNot(AppColors.light.accent));
     });
 
     test('shadows do not carry into dark', () {
       // THEME_SPEC.md § asymmetries: soft shadow in light, hairline border in
       // dark. A `Card` must obey without the screen branching.
-      expect(DistillTheme.light.cardTheme.elevation, greaterThan(0));
-      expect(DistillTheme.dark.cardTheme.elevation, 0);
+      expect(MargoTheme.light.cardTheme.elevation, greaterThan(0));
+      expect(MargoTheme.dark.cardTheme.elevation, 0);
     });
 
     test('snack bar actions are not the accent', () {
       // The snack bar background is textPrimary; keep the action off the accent
       // so it stays legible on it.
-      final snack = DistillTheme.light.snackBarTheme;
+      final snack = MargoTheme.light.snackBarTheme;
       expect(snack.actionTextColor, isNot(AppColors.light.accent));
       expect(snack.backgroundColor, AppColors.light.textPrimary);
     });
 
     test('useMaterial3 stays on, matching the rest of the app', () {
-      expect(DistillTheme.light.useMaterial3, isTrue);
-      expect(DistillTheme.dark.useMaterial3, isTrue);
+      expect(MargoTheme.light.useMaterial3, isTrue);
+      expect(MargoTheme.dark.useMaterial3, isTrue);
     });
   });
 
@@ -283,7 +283,7 @@ void main() {
     testWidgets('resolves the registered extension', (tester) async {
       late AppColors seen;
       await tester.pumpWidget(MaterialApp(
-        theme: DistillTheme.dark,
+        theme: MargoTheme.dark,
         home: Builder(builder: (context) {
           seen = context.colors;
           return const SizedBox();
@@ -312,7 +312,7 @@ void main() {
     testWidgets('lifts a floating surface in light', (tester) async {
       late List<BoxShadow> seen;
       await tester.pumpWidget(MaterialApp(
-        theme: DistillTheme.light,
+        theme: MargoTheme.light,
         home: Builder(builder: (context) {
           seen = context.floatShadow;
           return const SizedBox();
@@ -325,7 +325,7 @@ void main() {
         (tester) async {
       late List<BoxShadow> seen;
       await tester.pumpWidget(MaterialApp(
-        theme: DistillTheme.dark,
+        theme: MargoTheme.dark,
         home: Builder(builder: (context) {
           seen = context.floatShadow;
           return const SizedBox();

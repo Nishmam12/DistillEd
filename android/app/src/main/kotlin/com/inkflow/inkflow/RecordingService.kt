@@ -26,7 +26,7 @@ class RecordingService : Service() {
         }
         val notification = Notification.Builder(this, CHANNEL)
             .setContentTitle("Recording lecture")
-            .setContentText("DistillEd is recording audio")
+            .setContentText("Margo is recording audio")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .build()

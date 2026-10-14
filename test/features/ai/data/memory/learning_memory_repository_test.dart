@@ -7,11 +7,11 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
-import 'package:distill_ed/features/ai/data/memory/concept_mastery_record.dart';
-import 'package:distill_ed/features/ai/data/memory/concept_relation_record.dart';
-import 'package:distill_ed/features/ai/data/memory/learning_memory_repository.dart';
-import 'package:distill_ed/features/ai/data/memory/learning_preferences_record.dart';
-import 'package:distill_ed/features/ai/data/memory/quiz_attempt_record.dart';
+import 'package:margo/features/ai/data/memory/concept_mastery_record.dart';
+import 'package:margo/features/ai/data/memory/concept_relation_record.dart';
+import 'package:margo/features/ai/data/memory/learning_memory_repository.dart';
+import 'package:margo/features/ai/data/memory/learning_preferences_record.dart';
+import 'package:margo/features/ai/data/memory/quiz_attempt_record.dart';
 
 import '../../../../support/isar_native_library.dart';
 

@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/features/ai/data/handwriting/handwriting_recognition_service.dart';
 
 /// Tests the service against a mocked ML Kit platform channel — no device.
 void main() {

@@ -4,7 +4,7 @@
 // time with a srcIn filter; the colour defaults to the theme's `textPrimary`
 // so an icon follows light/dark without the caller doing anything.
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../theme/app_colors.dart';
@@ -44,6 +44,42 @@ class AppIcon extends StatelessWidget {
         color ?? context.colors.textPrimary,
         BlendMode.srcIn,
       ),
+    );
+  }
+}
+
+/// An [AppIcon] drawn at its design size inside a tap target of at least
+/// 48 dp, so icons sit exactly where the mockup puts them while staying easy
+/// to hit. The target overhangs the glyph by [inset] on every side.
+class AppIconButton extends StatelessWidget {
+  const AppIconButton(
+    this.name, {
+    super.key,
+    required this.tooltip,
+    required this.onPressed,
+    this.size = 24,
+    this.color,
+  });
+
+  final String name;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final double size;
+  final Color? color;
+
+  /// Space between the glyph and the edge of its tap target.
+  static double insetFor(double size) => size >= 48 ? 0 : (48 - size) / 2;
+
+  @override
+  Widget build(BuildContext context) {
+    final box = size + insetFor(size) * 2;
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      padding: EdgeInsets.zero,
+      constraints: BoxConstraints.tightFor(width: box, height: box),
+      style: IconButton.styleFrom(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+      icon: AppIcon(name, size: size, color: color),
     );
   }
 }

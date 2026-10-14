@@ -1,13 +1,13 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/core/theme/app_colors.dart';
-import 'package:distill_ed/core/theme/distill_theme.dart';
-import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
-import 'package:distill_ed/features/home/presentation/notes_palette.dart';
-import 'package:distill_ed/features/home/presentation/widgets/knowledge_graph_button.dart';
-import 'package:distill_ed/features/home/presentation/widgets/note_card.dart';
-import 'package:distill_ed/features/home/presentation/widgets/note_preview.dart';
+import 'package:margo/core/theme/app_colors.dart';
+import 'package:margo/core/theme/margo_theme.dart';
+import 'package:margo/features/home/presentation/models/note_card_data.dart';
+import 'package:margo/features/home/presentation/notes_palette.dart';
+import 'package:margo/features/home/presentation/widgets/knowledge_graph_button.dart';
+import 'package:margo/features/home/presentation/widgets/note_card.dart';
+import 'package:margo/features/home/presentation/widgets/note_preview.dart';
 
 NoteCardData _note({
   String title = 'Workout',
@@ -95,7 +95,7 @@ void main() {
     });
 
     testWidgets('dark swaps the shadow for a hairline', (tester) async {
-      await _pump(tester, theme: DistillTheme.dark);
+      await _pump(tester, theme: MargoTheme.dark);
 
       final decoration = _cardDecoration(tester);
       expect(decoration.boxShadow, isNull);

@@ -1,4 +1,4 @@
-# DistillEd 2.0 — Architecture & Rebuild Decisions
+# Margo 2.0 — Architecture & Rebuild Decisions
 
 > Living document. Authored at **Phase 0** of the ground-up rebuild. Captures
 > the audit of the 1.0.2 codebase, the
@@ -14,7 +14,7 @@
 
 ## 1. Goal
 
-Rebuild DistillEd on a clean, layered foundation reaching near-parity with
+Rebuild Margo on a clean, layered foundation reaching near-parity with
 Excalidraw's drawing engine, **in Dart/Flutter only**, while keeping every
 existing note-taking feature and **all user data**. Excalidraw
 (`./excalidraw-master/`, React/TS) is a **spec only** — port algorithms, never

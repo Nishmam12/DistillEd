@@ -3,9 +3,9 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/editor/render/scene_element_painter.dart';
-import 'package:distill_ed/editor/render/scene_image_cache.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/editor/render/scene_element_painter.dart';
+import 'package:margo/editor/render/scene_image_cache.dart';
 
 // A real ui.Image made via the test engine's supported path (picture.toImage);
 // the headless test engine does not decode PNG bytes via instantiateImageCodec,

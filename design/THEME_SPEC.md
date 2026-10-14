@@ -1,4 +1,4 @@
-# DistillEd — Light/Dark Theme Spec ("margo" sage palette)
+# Margo — Light/Dark Theme Spec ("margo" sage palette)
 
 Single source of truth for the app's colour tokens. `lib/core/theme/app_colors.dart`
 copies the hex values below verbatim and `test/core/theme/app_colors_test.dart`
@@ -168,7 +168,7 @@ Each item below is a numbered spec item. Rules:
 ## PROMPT A — Theme foundation
 
 ```
-# Task: DistillEd theme foundation (light + dark)
+# Task: Margo theme foundation (light + dark)
 
 ## Context
 Flutter note app. Stage 2 of a UI overhaul (stage 1 was the Phosphor icon
@@ -467,7 +467,7 @@ Each item below is a numbered spec item (HOME-01 .. HOME-17). Rules:
 
 ### Header
 - HOME-01  Scaffold background `bgPrimary`.
-- HOME-02  "DistillEd" wordmark, heavy weight, `accent`. This is brand,
+- HOME-02  "Margo" wordmark, heavy weight, `accent`. This is brand,
            so it stays gold in dark.
 - HOME-03  Overflow "..." button, `accent`.
 

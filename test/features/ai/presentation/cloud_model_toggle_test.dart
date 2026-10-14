@@ -8,19 +8,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:distill_ed/core/providers/settings_provider.dart';
-import 'package:distill_ed/features/ai/data/embeddings/embedder_download_manager.dart';
-import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
-import 'package:distill_ed/features/ai/domain/ai_provider.dart';
-import 'package:distill_ed/features/ai/domain/chat_commands.dart';
-import 'package:distill_ed/features/ai/domain/features/notes_qa.dart';
-import 'package:distill_ed/features/ai/domain/rag/rag_retriever.dart';
-import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart'
+import 'package:margo/core/providers/settings_provider.dart';
+import 'package:margo/features/ai/data/embeddings/embedder_download_manager.dart';
+import 'package:margo/features/ai/data/llm/model_download_manager.dart';
+import 'package:margo/features/ai/domain/ai_provider.dart';
+import 'package:margo/features/ai/domain/chat_commands.dart';
+import 'package:margo/features/ai/domain/features/notes_qa.dart';
+import 'package:margo/features/ai/domain/rag/rag_retriever.dart';
+import 'package:margo/features/ai/domain/rag/page_chunker.dart'
     show kChunkOverlapWords, kChunkWords;
-import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
-import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
-import 'package:distill_ed/features/ai/presentation/ask_notes_notifier.dart';
-import 'package:distill_ed/features/ai/presentation/sidebar/ai_sidebar.dart';
+import 'package:margo/features/ai/domain/rag/prompt_contract.dart';
+import 'package:margo/features/ai/domain/rag/text_embedder.dart';
+import 'package:margo/features/ai/presentation/ask_notes_notifier.dart';
+import 'package:margo/features/ai/presentation/sidebar/ai_sidebar.dart';
 
 class _NoopProvider implements AiProvider {
   @override

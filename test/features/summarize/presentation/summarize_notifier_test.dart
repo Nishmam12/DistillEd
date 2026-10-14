@@ -3,20 +3,20 @@ import 'dart:async';
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/features/summarize/data/cache/summary_cache.dart';
-import 'package:distill_ed/features/summarize/data/cache/summary_store.dart';
-import 'package:distill_ed/features/ai/data/llm/cloud_llm_client.dart';
-import 'package:distill_ed/features/ai/data/llm/device_storage.dart';
-import 'package:distill_ed/features/ai/data/llm/gemma_adapter.dart';
-import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
-import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
-import 'package:distill_ed/features/ai/domain/ai_provider.dart';
-import 'package:distill_ed/features/ai/domain/ai_router.dart';
-import 'package:distill_ed/features/ai/domain/meaningfulness_gate.dart';
-import 'package:distill_ed/features/ai/domain/page_content_extractor.dart';
-import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
-import 'package:distill_ed/features/summarize/domain/services/summarization_service.dart';
-import 'package:distill_ed/features/summarize/presentation/summarize_notifier.dart';
+import 'package:margo/features/summarize/data/cache/summary_cache.dart';
+import 'package:margo/features/summarize/data/cache/summary_store.dart';
+import 'package:margo/features/ai/data/llm/cloud_llm_client.dart';
+import 'package:margo/features/ai/data/llm/device_storage.dart';
+import 'package:margo/features/ai/data/llm/gemma_adapter.dart';
+import 'package:margo/features/ai/data/llm/llm_model_spec.dart';
+import 'package:margo/features/ai/data/llm/model_download_manager.dart';
+import 'package:margo/features/ai/domain/ai_provider.dart';
+import 'package:margo/features/ai/domain/ai_router.dart';
+import 'package:margo/features/ai/domain/meaningfulness_gate.dart';
+import 'package:margo/features/ai/domain/page_content_extractor.dart';
+import 'package:margo/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:margo/features/summarize/domain/services/summarization_service.dart';
+import 'package:margo/features/summarize/presentation/summarize_notifier.dart';
 
 // ---- Fakes ------------------------------------------------------------------
 

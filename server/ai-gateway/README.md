@@ -1,4 +1,4 @@
-# DistillEd AI Gateway
+# Margo AI Gateway
 
 A minimal, stateless FastAPI service whose only job is routing requests to
 cloud-tier models. It never stores notes, memory, or user profiles — see

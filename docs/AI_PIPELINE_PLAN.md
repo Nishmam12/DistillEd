@@ -1,4 +1,4 @@
-# DistillEd — Getting more out of ML Kit and LiteRT on an 8 GB phone
+# Margo — Getting more out of ML Kit and LiteRT on an 8 GB phone
 
 A prioritized list of changes to the on-device AI stack, grounded in the current codebase (pubspec `5.0.0+30`, 28 Sep 2026). Each item says what to change, where, why, and roughly what it costs.
 
@@ -310,7 +310,7 @@ Every change above should move a number. Add a debug-only performance panel and 
 
 ## What we took from the earlier research summary
 
-The team's Executive Summary on lightweight Android models targets about 3 GB of RAM and covers vision CNNs and 2023–24-era LLMs. Its deployment advice holds up. Most of its model picks don't fit DistillEd.
+The team's Executive Summary on lightweight Android models targets about 3 GB of RAM and covers vision CNNs and 2023–24-era LLMs. Its deployment advice holds up. Most of its model picks don't fit Margo.
 
 | From the summary | How it's used here |
 |---|---|

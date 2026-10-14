@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/data/persistence/scene_element_store.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/editor/state/scene_controller.dart';
-import 'package:distill_ed/editor/state/selection_controller.dart';
-import 'package:distill_ed/editor/ui/controls/selection_bar.dart';
+import 'package:margo/data/persistence/scene_element_store.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/editor/state/scene_controller.dart';
+import 'package:margo/editor/state/selection_controller.dart';
+import 'package:margo/editor/ui/controls/selection_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

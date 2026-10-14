@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/editor/state/editor_tool_controller.dart';
-import 'package:distill_ed/editor/tools/shape_factory.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/editor/state/editor_tool_controller.dart';
+import 'package:margo/editor/tools/shape_factory.dart';
 
 void main() {
   SceneShapeElement build(ShapeType type, Offset s, Offset c) =>

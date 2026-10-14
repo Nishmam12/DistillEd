@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/core/theme/app_colors.dart';
-import 'package:distill_ed/features/home/presentation/models/note_card_data.dart';
-import 'package:distill_ed/features/home/presentation/note_cards_provider.dart';
-import 'package:distill_ed/features/home/presentation/notes_palette.dart';
-import 'package:distill_ed/features/home/presentation/screens/notes_screen.dart';
-import 'package:distill_ed/features/home/presentation/widgets/note_card.dart';
-import 'package:distill_ed/features/home/presentation/widgets/note_preview.dart';
-import 'package:distill_ed/features/home/presentation/widgets/home_sidebar.dart';
-import 'package:distill_ed/features/home/presentation/widgets/new_note_dialog.dart';
-import 'package:distill_ed/features/home/presentation/widgets/search_bar_widget.dart';
+import 'package:margo/core/theme/app_colors.dart';
+import 'package:margo/features/home/presentation/models/note_card_data.dart';
+import 'package:margo/features/home/presentation/note_cards_provider.dart';
+import 'package:margo/features/home/presentation/notes_palette.dart';
+import 'package:margo/features/home/presentation/screens/notes_screen.dart';
+import 'package:margo/features/home/presentation/widgets/note_card.dart';
+import 'package:margo/features/home/presentation/widgets/note_preview.dart';
+import 'package:margo/features/home/presentation/widgets/home_sidebar.dart';
+import 'package:margo/features/home/presentation/widgets/new_note_dialog.dart';
+import 'package:margo/features/home/presentation/widgets/search_bar_widget.dart';
 
 NoteCardData _card(
   int id,
@@ -79,7 +79,7 @@ void main() {
       expect(find.text('Notes'), findsNWidgets(2));
       final title = tester
           .widgetList<Text>(find.text('Notes'))
-          .firstWhere((t) => t.style!.fontSize == 40);
+          .firstWhere((t) => t.style!.fontSize == 42);
       expect(title.style!.fontWeight, FontWeight.w600);
     });
 
@@ -121,12 +121,6 @@ void main() {
       );
     });
 
-    testWidgets('counts the notes beside Notes', (tester) async {
-      await _pump(tester);
-
-      expect(find.text('7'), findsOneWidget);
-    });
-
     testWidgets('collapses and comes back', (tester) async {
       await _pump(tester);
 
@@ -139,15 +133,14 @@ void main() {
       expect(find.byType(HomeSidebar), findsOneWidget);
     });
 
-    testWidgets('Shared is shown but disabled', (tester) async {
+    testWidgets('Shared looks like its siblings and says it is coming', (
+      tester,
+    ) async {
       await _pump(tester);
 
-      expect(find.text('Shared'), findsOneWidget);
-      expect(find.text('Soon'), findsOneWidget);
-      final inkWell = tester.widget<InkWell>(
-        find.ancestor(of: find.text('Shared'), matching: find.byType(InkWell)),
-      );
-      expect(inkWell.onTap, isNull);
+      await tester.tap(find.text('Shared'));
+      await tester.pump();
+      expect(find.text('Shared notes are coming soon'), findsOneWidget);
     });
 
     testWidgets('becomes a drawer on a narrow screen', (tester) async {
@@ -179,7 +172,7 @@ void main() {
       final c = tester.getRect(find.byType(NoteCard).at(2));
       expect(a.top, b.top);
       expect(b.top, c.top);
-      expect(b.left - a.right, NotesPalette.gridGap);
+      expect(b.left - a.right, NotesPalette.gridColumnGap);
       // The thumbnail keeps the design's 252:198 shape at whatever width the
       // column lands on; the footer is a fixed height below it.
       final thumb = tester.getRect(find.byType(NotePreview).first);
@@ -309,7 +302,6 @@ void main() {
 
       expect(find.text('No notes here'), findsOneWidget);
       expect(find.byType(NoteCard), findsNothing);
-      expect(find.text('0'), findsOneWidget);
     });
   });
 

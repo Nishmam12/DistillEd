@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/features/import/pdf_text_layer.dart';
+import 'package:margo/features/import/pdf_text_layer.dart';
 
 /// A PDF "reader" that returns a fixed text per page, or fails.
 class _FakeSource implements PdfTextSource {

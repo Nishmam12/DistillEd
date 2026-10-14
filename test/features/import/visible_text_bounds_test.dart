@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/features/import/pdf_text_layer.dart';
+import 'package:margo/features/import/pdf_text_layer.dart';
 
 bool visible(double l, double b, double r, double t) => isVisibleTextBounds(
     left: l, bottom: b, right: r, top: t, pageWidth: 600, pageHeight: 800);

@@ -10,9 +10,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
-import 'package:distill_ed/features/ai/data/rag/note_chunk_record.dart';
-import 'package:distill_ed/features/ai/data/rag/note_chunk_store.dart';
-import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
+import 'package:margo/features/ai/data/rag/note_chunk_record.dart';
+import 'package:margo/features/ai/data/rag/note_chunk_store.dart';
+import 'package:margo/features/ai/domain/rag/note_chunk.dart';
 
 import '../../../../support/isar_native_library.dart';
 

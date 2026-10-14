@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/editor/state/ink_gesture_providers.dart';
+import 'package:margo/editor/state/ink_gesture_providers.dart';
 
 void main() {
   group('enableInkGesture — turning a gesture on', () {

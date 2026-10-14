@@ -1,4 +1,4 @@
-// Enumerates all supported shape types in DistillEd.
+// Enumerates all supported shape types in Margo.
 enum ShapeType {
   line,
   arrow,

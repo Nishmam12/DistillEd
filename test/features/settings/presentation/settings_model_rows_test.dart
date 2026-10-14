@@ -11,20 +11,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_edge_ai/flutter_edge_ai.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/core/theme/distill_theme.dart';
-import 'package:distill_ed/features/ai/data/embeddings/embedder_download_manager.dart';
-import 'package:distill_ed/features/ai/data/embeddings/embedder_spec.dart';
-import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
-import 'package:distill_ed/features/ai/data/llm/llm_model_spec.dart';
-import 'package:distill_ed/features/ai/data/llm/model_download_manager.dart';
-import 'package:distill_ed/features/ai/data/llm/model_storage_cleaner.dart';
-import 'package:distill_ed/core/providers/secret_store.dart';
-import 'package:distill_ed/core/providers/settings_provider.dart';
-import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
-import 'package:distill_ed/features/ai/domain/rag/embedder_rollout.dart';
-import 'package:distill_ed/features/audio/data/edge_ai_speech.dart';
-import 'package:distill_ed/features/audio/presentation/transcription_providers.dart';
-import 'package:distill_ed/features/settings/presentation/screens/settings_screen.dart';
+import 'package:margo/core/theme/margo_theme.dart';
+import 'package:margo/features/ai/data/embeddings/embedder_download_manager.dart';
+import 'package:margo/features/ai/data/embeddings/embedder_spec.dart';
+import 'package:margo/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:margo/features/ai/data/llm/llm_model_spec.dart';
+import 'package:margo/features/ai/data/llm/model_download_manager.dart';
+import 'package:margo/features/ai/data/llm/model_storage_cleaner.dart';
+import 'package:margo/core/providers/secret_store.dart';
+import 'package:margo/core/providers/settings_provider.dart';
+import 'package:margo/features/ai/presentation/ai_providers.dart';
+import 'package:margo/features/ai/domain/rag/embedder_rollout.dart';
+import 'package:margo/features/audio/data/edge_ai_speech.dart';
+import 'package:margo/features/audio/presentation/transcription_providers.dart';
+import 'package:margo/features/settings/presentation/screens/settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeEmbedder implements EmbedderDownloadManager {
@@ -205,7 +205,7 @@ Future<void> _pumpSettings(
           .overrideWith((ref) async => dryRunCopyInstalled),
     ],
     child: MaterialApp(
-      theme: DistillTheme.light,
+      theme: MargoTheme.light,
       home: const SettingsScreen(),
     ),
   ));

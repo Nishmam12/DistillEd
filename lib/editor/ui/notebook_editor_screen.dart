@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
+import 'package:margo/core/icons/phosphor_icons_regular.dart';
 
 import '../../core/theme/paper_colors.dart';
 import '../../core/providers/settings_provider.dart';

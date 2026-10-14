@@ -1,14 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
-import 'package:distill_ed/features/ai/domain/ai_provider.dart';
-import 'package:distill_ed/features/ai/domain/context_engine/context_engine.dart';
-import 'package:distill_ed/features/ai/domain/context_engine/page_context.dart';
-import 'package:distill_ed/features/ai/domain/page_content.dart';
-import 'package:distill_ed/features/ai/domain/page_content_extractor.dart';
-import 'package:distill_ed/features/ai/presentation/context_engine_notifier.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:margo/features/ai/domain/ai_provider.dart';
+import 'package:margo/features/ai/domain/context_engine/context_engine.dart';
+import 'package:margo/features/ai/domain/context_engine/page_context.dart';
+import 'package:margo/features/ai/domain/page_content.dart';
+import 'package:margo/features/ai/domain/page_content_extractor.dart';
+import 'package:margo/features/ai/presentation/context_engine_notifier.dart';
 
 // ---- Fakes ------------------------------------------------------------------
 

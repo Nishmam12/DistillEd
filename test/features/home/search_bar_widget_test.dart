@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
-import 'package:distill_ed/core/theme/app_colors.dart';
-import 'package:distill_ed/features/home/presentation/widgets/search_bar_widget.dart';
+import 'package:margo/core/icons/phosphor_icons_regular.dart';
+import 'package:margo/core/theme/app_colors.dart';
+import 'package:margo/features/home/presentation/widgets/search_bar_widget.dart';
 
 Future<void> _pump(
   WidgetTester tester, {
@@ -41,11 +41,11 @@ Finder _clearGate() => find
     .first;
 
 void main() {
-  testWidgets('stands 40px tall', (tester) async {
+  testWidgets('stands 32px tall', (tester) async {
     await _pump(tester);
 
-    expect(SearchBarWidget.height, 40.0);
-    expect(tester.getSize(find.byType(SearchBarWidget)).height, 40.0);
+    expect(SearchBarWidget.height, 32.0);
+    expect(tester.getSize(find.byType(SearchBarWidget)).height, 32.0);
     expect(tester.takeException(), isNull);
   });
 
@@ -55,18 +55,19 @@ void main() {
     expect(find.text('Search..'), findsOneWidget);
   });
 
-  testWidgets('is a rounded, borderless pill in the field green',
+  testWidgets('is bare text with a half-strength hint (design)',
       (tester) async {
     await _pump(tester);
 
     final decoration =
         tester.widget<TextField>(find.byType(TextField)).decoration!;
-    final border = decoration.enabledBorder! as OutlineInputBorder;
 
-    expect(decoration.filled, isTrue);
-    expect(decoration.fillColor, AppColors.light.fieldFill);
-    expect(border.borderRadius.topLeft.x, greaterThan(0));
-    expect(border.borderSide.style, BorderStyle.none);
+    expect(decoration.filled, isFalse);
+    expect(decoration.enabledBorder, InputBorder.none);
+    expect(
+      decoration.hintStyle!.color,
+      AppColors.light.textPrimary.withValues(alpha: 0.5),
+    );
   });
 
   testWidgets('reports every keystroke', (tester) async {

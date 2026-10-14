@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/features/ai/domain/rag/note_chunk.dart';
-import 'package:distill_ed/features/ai/domain/rag/rag_indexer.dart';
-import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart'
+import 'package:margo/features/ai/domain/rag/note_chunk.dart';
+import 'package:margo/features/ai/domain/rag/rag_indexer.dart';
+import 'package:margo/features/ai/domain/rag/page_chunker.dart'
     show kChunkOverlapWords, kChunkWords;
-import 'package:distill_ed/features/ai/domain/rag/prompt_contract.dart';
-import 'package:distill_ed/features/ai/domain/rag/text_embedder.dart';
-import 'package:distill_ed/features/ai/presentation/rag_index_scheduler.dart';
+import 'package:margo/features/ai/domain/rag/prompt_contract.dart';
+import 'package:margo/features/ai/domain/rag/text_embedder.dart';
+import 'package:margo/features/ai/presentation/rag_index_scheduler.dart';
 
 /// An embedder whose calls finish only when the test releases them, so runs
 /// that overlap can be seen.

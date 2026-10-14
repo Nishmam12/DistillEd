@@ -5,7 +5,7 @@
 // would do so on an app update they never opted into.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/core/providers/settings_provider.dart';
+import 'package:margo/core/providers/settings_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

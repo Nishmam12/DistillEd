@@ -1,7 +1,7 @@
 // Shared lookup tables for the editor toolbar and its tool option panels.
 
 import 'package:flutter/material.dart';
-import 'package:distill_ed/core/icons/phosphor_icons_regular.dart';
+import 'package:margo/core/icons/phosphor_icons_regular.dart';
 
 import '../../domain/model/scene_element.dart';
 import '../../editor/state/editor_tool_controller.dart';

@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/editor/render/rough_renderer.dart';
+import 'package:margo/editor/render/rough_renderer.dart';
 
 void main() {
   const pts = [Offset(0, 0), Offset(10, 0), Offset(5, 10)];

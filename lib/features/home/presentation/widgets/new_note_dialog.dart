@@ -71,15 +71,19 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
     final label = TextStyle(
       fontFamily: 'ModulusPro',
       fontSize: 14,
+      height: 1.17,
       fontWeight: FontWeight.w500,
       color: c.textPrimary,
     );
 
+    // Design (515×330): sage glass at 50% over the blurred page, radius 30,
+    // a small 0/4 blur-4 shadow. Content 19 in from the left, 20 from the
+    // right; the buttons sit 27 in from the bottom-right corner.
     return Dialog(
-      backgroundColor: c.surfaceSubtle,
-      surfaceTintColor: c.surfaceSubtle,
-      elevation: isDark ? 0 : 6,
-      shadowColor: c.brand.withValues(alpha: 0.3),
+      backgroundColor: c.surfaceSubtle.withValues(alpha: isDark ? 0.9 : 0.5),
+      surfaceTintColor: Colors.transparent,
+      elevation: isDark ? 0 : 2,
+      shadowColor: Colors.black,
       insetPadding: const EdgeInsets.all(24),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(30),
@@ -88,24 +92,24 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 515),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+          padding: const EdgeInsets.fromLTRB(19, 20, 20, 27),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Template', style: label.copyWith(fontSize: 18)),
-              const SizedBox(height: 14),
-              // Title pill. The design's white placeholder on this green is
-              // 2.1:1; ink at 60% clears 4.5:1.
+              const SizedBox(height: 15),
+              // Title pill: 32 tall, the design's lift under it.
               Container(
                 constraints: BoxConstraints(
-                  minHeight: MediaQuery.textScalerOf(context).scale(40),
+                  minHeight: MediaQuery.textScalerOf(context).scale(32),
                 ),
                 alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   color: c.fieldFill,
                   borderRadius: BorderRadius.circular(40),
+                  boxShadow: isDark ? null : _lift,
                 ),
                 child: TextField(
                   controller: _controller,
@@ -116,74 +120,93 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
                   onSubmitted: (_) => _submit(),
                   decoration: InputDecoration(
                     isCollapsed: true,
+                    // Explicit: the theme's field padding would otherwise
+                    // apply and blow the 32 pill up.
+                    contentPadding: EdgeInsets.zero,
                     filled: false,
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     hintText: 'Note title..',
+                    // The design's white placeholder on the light field; the
+                    // dark field takes cream ink at the same strength.
                     hintStyle: label.copyWith(
                       fontWeight: FontWeight.w400,
-                      color: c.textPrimary.withValues(alpha: 0.6),
+                      color: (isDark ? c.textPrimary : Colors.white)
+                          .withValues(alpha: 0.5),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               Text('Page Style', style: label),
-              const SizedBox(height: 8),
-              // The five tiles share whatever width the dialog has: 56 dp each on
-              // a tablet, shrinking (same 56:76 shape) on the narrowest phones
-              // rather than overflowing.
+              const SizedBox(height: 12),
+              // Five 51×69 pages inset 25 from each side of the field and
+              // spread across it; on the narrowest phones they shrink (same
+              // shape) rather than overflow.
               LayoutBuilder(
                 builder: (context, constraints) {
                   const count = 5;
                   const minGap = 6.0;
+                  final side = math.min(25.0, constraints.maxWidth * 0.05);
                   final tileWidth = math.min(
                     _StyleTile.maxWidth,
-                    (constraints.maxWidth - minGap * (count - 1)) / count,
+                    (constraints.maxWidth - side * 2 - minGap * (count - 1)) /
+                        count,
                   );
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      for (final type in TemplateType.values)
-                        _StyleTile(
-                          type: type,
-                          width: tileWidth,
-                          paper: newNotePaperColors[_paper],
-                          selected: type.index == _template,
-                          onTap: () => setState(() => _template = type.index),
-                        ),
-                    ],
+                  return Padding(
+                    padding: EdgeInsets.symmetric(horizontal: side),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        for (final type in TemplateType.values)
+                          _StyleTile(
+                            type: type,
+                            width: tileWidth,
+                            paper: newNotePaperColors[_paper],
+                            selected: type.index == _template,
+                            onTap: () => setState(() => _template = type.index),
+                          ),
+                      ],
+                    ),
                   );
                 },
               ),
               const SizedBox(height: 16),
               Text('Page Color', style: label),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  for (var i = 0; i < newNotePaperColors.length; i++)
-                    _Swatch(
-                      color: newNotePaperColors[i],
-                      selected: i == _paper,
-                      onTap: () => setState(() => _paper = i),
-                    ),
-                ],
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.only(left: 19),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < newNotePaperColors.length; i++)
+                      _Swatch(
+                        color: newNotePaperColors[i],
+                        selected: i == _paper,
+                        onTap: () => setState(() => _paper = i),
+                      ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 14),
               // A Wrap, not a Row: at the largest font sizes on a narrow phone the
               // two pills no longer fit side by side and drop onto two lines.
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  _Pill(
-                    label: 'Cancel',
-                    onTap: () => Navigator.of(context).pop(),
+              Padding(
+                padding: const EdgeInsets.only(right: 7),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 13,
+                    runSpacing: 8,
+                    children: [
+                      _Pill(
+                        label: 'Cancel',
+                        onTap: () => Navigator.of(context).pop(),
+                      ),
+                      _Pill(label: 'Create', onTap: _submit),
+                    ],
                   ),
-                  _Pill(label: 'Create', onTap: _submit),
-                ],
+                ),
               ),
             ],
           ),
@@ -192,6 +215,11 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
     );
   }
 }
+
+/// The design's small lift (black 25%, 0/4, blur 4) under the field and pages.
+const _lift = [
+  BoxShadow(color: Color(0x40000000), blurRadius: 4, offset: Offset(0, 4)),
+];
 
 class _Pill extends StatelessWidget {
   const _Pill({required this.label, required this.onTap});
@@ -212,7 +240,7 @@ class _Pill extends StatelessWidget {
         borderRadius: BorderRadius.circular(100),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           child: Text(
             label,
             style: TextStyle(
@@ -242,7 +270,7 @@ class _Swatch extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(right: 16, left: 2),
+      padding: const EdgeInsets.only(right: 16),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -252,7 +280,10 @@ class _Swatch extends StatelessWidget {
             color: color,
             shape: BoxShape.circle,
             border: Border.all(
-              color: selected ? c.accent : c.border,
+              // Unselected: the design's mid-grey ring (#919191).
+              color: selected
+                  ? c.accent
+                  : c.textPrimary.withValues(alpha: 0.45),
               width: selected ? 2.5 : 1,
             ),
           ),
@@ -277,9 +308,9 @@ class _StyleTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  /// Design size: 56 × 76.
-  static const maxWidth = 56.0;
-  static const aspect = 76.0 / 56.0;
+  /// Design size: 51 × 69.
+  static const maxWidth = 51.0;
+  static const aspect = 69.0 / 51.0;
 
   @override
   Widget build(BuildContext context) {
@@ -293,16 +324,14 @@ class _StyleTile extends StatelessWidget {
         child: Container(
           width: width,
           height: width * aspect,
+          // Square sheets on the design's lift; the chosen one gets an
+          // accent ring (the mockup has no selected state to copy).
           decoration: BoxDecoration(
             color: paper,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: selected ? c.accent : c.border,
-              width: selected ? 2.5 : 1,
-            ),
+            boxShadow: _lift,
+            border: selected ? Border.all(color: c.accent, width: 2) : null,
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+          child: ClipRect(
             child: CustomPaint(painter: _PaperPainter(type, paper)),
           ),
         ),

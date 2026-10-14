@@ -31,7 +31,7 @@ class StartupFailureApp extends StatelessWidget {
     ];
     if (existing.isEmpty) return;
     await SharePlus.instance.share(
-        ShareParams(files: existing, text: 'DistillEd data for recovery'));
+        ShareParams(files: existing, text: 'Margo data for recovery'));
   }
 
   @override

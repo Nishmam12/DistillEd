@@ -1,9 +1,9 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/domain/geometry/element_bounds.dart';
-import 'package:distill_ed/domain/geometry/geometry_utils.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
+import 'package:margo/domain/geometry/element_bounds.dart';
+import 'package:margo/domain/geometry/geometry_utils.dart';
+import 'package:margo/domain/model/scene_element.dart';
 
 void main() {
   group('ElementBounds', () {

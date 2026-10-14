@@ -6,14 +6,14 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:distill_ed/data/persistence/page_text_store.dart';
-import 'package:distill_ed/editor/state/page_notifier.dart';
-import 'package:distill_ed/features/ai/domain/rag/page_chunker.dart';
-import 'package:distill_ed/features/ai/domain/rag/rag_corpus.dart';
-import 'package:distill_ed/features/export/export_share_service.dart';
-import 'package:distill_ed/features/home/data/repositories/note_repository.dart';
-import 'package:distill_ed/features/home/data/repositories/page_repository.dart';
-import 'package:distill_ed/features/home/presentation/home_notifier.dart';
+import 'package:margo/data/persistence/page_text_store.dart';
+import 'package:margo/editor/state/page_notifier.dart';
+import 'package:margo/features/ai/domain/rag/page_chunker.dart';
+import 'package:margo/features/ai/domain/rag/rag_corpus.dart';
+import 'package:margo/features/export/export_share_service.dart';
+import 'package:margo/features/home/data/repositories/note_repository.dart';
+import 'package:margo/features/home/data/repositories/page_repository.dart';
+import 'package:margo/features/home/presentation/home_notifier.dart';
 
 Future<String> _buildRagCorpus({
   required NoteRepository notes,

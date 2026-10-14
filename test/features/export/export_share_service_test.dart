@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/features/export/export_share_service.dart';
+import 'package:margo/features/export/export_share_service.dart';
 
 void main() {
   test('a notebook title cannot reach outside the export folder', () {

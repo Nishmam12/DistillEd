@@ -2,8 +2,8 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/editor/render/scene_exporter.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/editor/render/scene_exporter.dart';
 
 const _scene = <SceneElement>[
   SceneShapeElement(

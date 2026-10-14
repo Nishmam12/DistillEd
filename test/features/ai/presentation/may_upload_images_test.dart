@@ -2,8 +2,8 @@
 // not consent: the privacy setting must also allow it.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/core/providers/settings_provider.dart';
-import 'package:distill_ed/features/ai/presentation/ai_providers.dart';
+import 'package:margo/core/providers/settings_provider.dart';
+import 'package:margo/features/ai/presentation/ai_providers.dart';
 
 SettingsState _s(AiProcessingMode mode, CloudPrivacy privacy) =>
     SettingsState(aiMode: mode, cloudPrivacy: privacy);

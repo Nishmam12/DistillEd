@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/domain/services/eraser_service.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/domain/services/eraser_service.dart';
 
 SceneShapeElement _rect(String id, List<double> g, {bool locked = false}) =>
     SceneShapeElement(

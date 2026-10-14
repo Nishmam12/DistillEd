@@ -3,15 +3,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/theme/distill_theme.dart';
+import '../core/theme/margo_theme.dart';
 import '../core/providers/settings_provider.dart';
 import '../features/ai/presentation/ai_providers.dart';
 import '../features/ai/data/embeddings/embedder_spec.dart';
 import '../features/ai/data/rag/embedder_mobile_data_choice.dart';
 import 'router.dart';
 
-class DistillEdApp extends ConsumerWidget {
-  const DistillEdApp({super.key});
+class MargoApp extends ConsumerWidget {
+  const MargoApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,11 +54,11 @@ class DistillEdApp extends ConsumerWidget {
     });
 
     return MaterialApp.router(
-      title: 'DistillEd',
+      title: 'Margo',
       debugShowCheckedModeBanner: false,
       showPerformanceOverlay: devMode,
-      theme: DistillTheme.light,
-      darkTheme: DistillTheme.dark,
+      theme: MargoTheme.light,
+      darkTheme: MargoTheme.dark,
       themeMode: themeMode.toThemeMode,
       routerConfig: appRouter,
     );

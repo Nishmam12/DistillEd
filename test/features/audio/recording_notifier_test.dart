@@ -5,13 +5,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/data/persistence/lecture_recording_store.dart';
-import 'package:distill_ed/features/audio/data/transcript_store.dart';
-import 'package:distill_ed/features/audio/domain/audio_ports.dart';
-import 'package:distill_ed/features/audio/domain/transcript.dart';
-import 'package:distill_ed/features/audio/domain/lecture_recording.dart';
-import 'package:distill_ed/features/audio/domain/recording_session.dart';
-import 'package:distill_ed/features/audio/presentation/recording_notifier.dart';
+import 'package:margo/data/persistence/lecture_recording_store.dart';
+import 'package:margo/features/audio/data/transcript_store.dart';
+import 'package:margo/features/audio/domain/audio_ports.dart';
+import 'package:margo/features/audio/domain/transcript.dart';
+import 'package:margo/features/audio/domain/lecture_recording.dart';
+import 'package:margo/features/audio/domain/recording_session.dart';
+import 'package:margo/features/audio/presentation/recording_notifier.dart';
 
 import 'lecture_recording_test.dart' show FakeCapture;
 

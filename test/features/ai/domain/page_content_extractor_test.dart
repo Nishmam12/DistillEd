@@ -1,18 +1,18 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
-import 'package:distill_ed/features/ai/data/ocr/gemma_vision_ocr_service.dart';
-import 'package:distill_ed/features/ai/domain/ai_exception.dart';
-import 'package:distill_ed/features/ai/domain/figure.dart';
-import 'package:distill_ed/features/ai/domain/figure_analyzer.dart';
-import 'package:distill_ed/features/ai/domain/image_transcriber.dart';
-import 'package:distill_ed/features/ai/domain/language/language_detector.dart';
-import 'package:distill_ed/features/ai/domain/page_content.dart';
-import 'package:distill_ed/features/ai/domain/page_content_extractor.dart';
-import 'package:distill_ed/features/ai/domain/pdf_text_layer.dart';
-import 'package:distill_ed/features/ai/domain/read_cache.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:margo/features/ai/data/ocr/gemma_vision_ocr_service.dart';
+import 'package:margo/features/ai/domain/ai_exception.dart';
+import 'package:margo/features/ai/domain/figure.dart';
+import 'package:margo/features/ai/domain/figure_analyzer.dart';
+import 'package:margo/features/ai/domain/image_transcriber.dart';
+import 'package:margo/features/ai/domain/language/language_detector.dart';
+import 'package:margo/features/ai/domain/page_content.dart';
+import 'package:margo/features/ai/domain/page_content_extractor.dart';
+import 'package:margo/features/ai/domain/pdf_text_layer.dart';
+import 'package:margo/features/ai/domain/read_cache.dart';
 
 /// A Gemma transcriber that replies with a scripted string per attempt (the
 /// last is reused if more attempts happen), or throws [throwError] every call.

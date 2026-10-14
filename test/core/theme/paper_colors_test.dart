@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/core/theme/paper_colors.dart';
+import 'package:margo/core/theme/paper_colors.dart';
 
 void main() {
   group('paper and pen ink are content, not chrome', () {

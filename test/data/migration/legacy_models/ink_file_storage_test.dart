@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/data/migration/legacy_models/ink_file_storage.dart';
-import 'package:distill_ed/data/migration/legacy_models/stroke.dart';
-import 'package:distill_ed/domain/model/stroke_point.dart';
+import 'package:margo/data/migration/legacy_models/ink_file_storage.dart';
+import 'package:margo/data/migration/legacy_models/stroke.dart';
+import 'package:margo/domain/model/stroke_point.dart';
 
 void main() {
   group('InkFileStorage.saveStrokesSync', () {

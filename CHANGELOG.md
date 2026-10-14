@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to DistillEd are recorded here. The running app shows its
+All notable changes to Margo are recorded here. The running app shows its
 version on **Settings → About**, so you can confirm which build is installed on
 any device.
 
@@ -16,6 +16,16 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 ### Changed
+- **The app is now called Margo.** The launcher label, window title, About
+  screen, recording notification, exports and Anki decks all say Margo; the
+  Dart package is `margo`. Existing notes and settings are untouched.
+- **Home screen matches the margo design.** Cards sit three across at tablet
+  size with the design's spacing, larger titles and ink-coloured meta; the
+  sidebar uses the design's type sizes and compact selection pill; the header
+  icons are full size with the sort control under them; search opens a frosted
+  panel in place of the search icon; **+ new** and the template dialog are
+  frosted glass. The knowledge graph moved off the card face into the
+  long-press menu.
 - **Home screen redesigned ("margo").** The Notes screen is now a sage sidebar
   (Notes, Favorites, Shared — coming soon — and your folders and tags) beside a
   grid of note cards, each a thumbnail over a footer with the title, page count,

@@ -1,4 +1,4 @@
-"""DistillEd AI Gateway — a minimal, stateless router to cloud-tier models.
+"""Margo AI Gateway — a minimal, stateless router to cloud-tier models.
 
 Scope (Phase 3, locked decision): this gateway never stores notes, memory, or
 user profiles. It receives a request, forwards it to a model provider,
@@ -28,7 +28,7 @@ def _throttle_by_ip(request: Request) -> None:
 
 
 app = FastAPI(
-    title="DistillEd AI Gateway",
+    title="Margo AI Gateway",
     version="0.1.0",
     docs_url=None,
     redoc_url=None,

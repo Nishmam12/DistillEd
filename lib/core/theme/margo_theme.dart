@@ -10,8 +10,8 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 
-class DistillTheme {
-  DistillTheme._();
+class MargoTheme {
+  MargoTheme._();
 
   // Modulus Pro everywhere (margo redesign). Personal-use licence: needs a
   // commercial licence from the author before public release.

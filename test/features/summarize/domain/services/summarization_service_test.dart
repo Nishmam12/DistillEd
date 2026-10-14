@@ -1,15 +1,15 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/features/ai/data/handwriting/handwriting_recognition_service.dart';
-import 'package:distill_ed/features/ai/data/llm/cloud_llm_client.dart';
-import 'package:distill_ed/features/ai/domain/ai_provider.dart';
-import 'package:distill_ed/features/ai/domain/ai_router.dart';
-import 'package:distill_ed/features/ai/domain/page_content_extractor.dart';
-import 'package:distill_ed/features/summarize/data/cache/summary_cache.dart';
-import 'package:distill_ed/features/summarize/data/cache/summary_store.dart';
-import 'package:distill_ed/features/summarize/domain/services/summarization_service.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/features/ai/data/handwriting/handwriting_recognition_service.dart';
+import 'package:margo/features/ai/data/llm/cloud_llm_client.dart';
+import 'package:margo/features/ai/domain/ai_provider.dart';
+import 'package:margo/features/ai/domain/ai_router.dart';
+import 'package:margo/features/ai/domain/page_content_extractor.dart';
+import 'package:margo/features/summarize/data/cache/summary_cache.dart';
+import 'package:margo/features/summarize/data/cache/summary_store.dart';
+import 'package:margo/features/summarize/domain/services/summarization_service.dart';
 
 // ---- Fakes ------------------------------------------------------------------
 

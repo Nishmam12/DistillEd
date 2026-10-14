@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:distill_ed/features/ai/data/device/device_health.dart';
-import 'package:distill_ed/features/ai/domain/device_state.dart';
+import 'package:margo/features/ai/data/device/device_health.dart';
+import 'package:margo/features/ai/domain/device_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

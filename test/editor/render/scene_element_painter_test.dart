@@ -5,8 +5,8 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:distill_ed/domain/model/scene_element.dart';
-import 'package:distill_ed/editor/render/scene_element_painter.dart';
+import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/editor/render/scene_element_painter.dart';
 
 void main() {
   test('paints all element kinds without error', () {
