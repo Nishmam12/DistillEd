@@ -61,8 +61,8 @@ void main() {
   }
 
   setUp(() {
-    docs = Directory.systemTemp.createTempSync('inkflow_docs_');
-    scratch = Directory.systemTemp.createTempSync('inkflow_scan_');
+    docs = Directory.systemTemp.createTempSync('margo_docs_');
+    scratch = Directory.systemTemp.createTempSync('margo_scan_');
   });
 
   tearDown(() {

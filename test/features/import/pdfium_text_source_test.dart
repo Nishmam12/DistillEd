@@ -19,7 +19,7 @@ void main() {
       : null;
 
   late Directory dir;
-  setUp(() => dir = Directory.systemTemp.createTempSync('inkflow_pdfium_'));
+  setUp(() => dir = Directory.systemTemp.createTempSync('margo_pdfium_'));
   tearDown(() => dir.deleteSync(recursive: true));
 
   Future<String> pdfWith(List<String?> pageTexts) async {

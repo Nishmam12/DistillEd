@@ -17,7 +17,7 @@ import '../../domain/services/selection_editing.dart';
 class ClipboardService {
   ClipboardService._();
 
-  static const String _type = 'inkflow/scene-elements';
+  static const String _type = 'margo/scene-elements';
 
   static String encode(Iterable<SceneElement> elements) => jsonEncode({
         'type': _type,

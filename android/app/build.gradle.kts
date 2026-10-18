@@ -14,7 +14,7 @@ plugins {
 }
 
 android {
-    namespace = "com.inkflow.inkflow"
+    namespace = "com.margo.margo"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -24,7 +24,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.inkflow.inkflow"
+        applicationId = "com.margo.margo"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // 26, not Flutter's default of 24: ML Kit entity extraction (study-planner

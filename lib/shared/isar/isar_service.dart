@@ -18,7 +18,7 @@ class IsarService {
     _isar = await Isar.open(
       schemas,
       directory: dir.path,
-      name: 'inkflow',
+      name: 'margo',
     );
 
     return _isar!;

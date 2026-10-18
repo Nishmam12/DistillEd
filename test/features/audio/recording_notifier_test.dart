@@ -78,7 +78,7 @@ typedef _B = ({
   final transcripts = InMemoryTranscriptStore();
   // A real, writable directory: recording creates the audio folder, and a
   // hard-coded '/docs' only exists on the machine that wrote the tests.
-  final docs = Directory.systemTemp.createTempSync('inkflow_rec_');
+  final docs = Directory.systemTemp.createTempSync('margo_rec_');
   addTearDown(() => docs.deleteSync(recursive: true));
   final notifier = RecordingNotifier(
     session: RecordingSession(capture: capture, engineNowMs: () => engineMs),
@@ -166,7 +166,7 @@ void main() {
       final capture = FakeCapture();
       final store = InMemoryLectureRecordingStore();
       final playback = FakePlayback();
-      final docs = Directory.systemTemp.createTempSync('inkflow_rec3_');
+      final docs = Directory.systemTemp.createTempSync('margo_rec3_');
       addTearDown(() => docs.deleteSync(recursive: true));
       final notifier = RecordingNotifier(
         session: RecordingSession(capture: capture, engineNowMs: () => 0),
@@ -263,7 +263,7 @@ void main() {
       // A fresh notifier whose hand-off throws.
       final capture = FakeCapture();
       final store = InMemoryLectureRecordingStore();
-      final docs = Directory.systemTemp.createTempSync('inkflow_rec2_');
+      final docs = Directory.systemTemp.createTempSync('margo_rec2_');
       addTearDown(() => docs.deleteSync(recursive: true));
       final notifier = RecordingNotifier(
         session: RecordingSession(capture: capture, engineNowMs: () => 0),

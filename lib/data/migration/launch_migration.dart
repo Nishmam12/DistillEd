@@ -24,7 +24,7 @@ import 'scene_migrator.dart';
 Future<void> _backupBeforeMigrating() async {
   try {
     final dir = (await getApplicationDocumentsDirectory()).path;
-    final backup = File('$dir/inkflow_before_v2.isar');
+    final backup = File('$dir/margo_before_v2.isar');
     if (await backup.exists()) return;
     // Written aside and renamed so an interrupted copy isn't mistaken for done.
     final tmp = File('${backup.path}.tmp');

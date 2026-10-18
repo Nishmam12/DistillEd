@@ -28,7 +28,7 @@ Status: open. Items below are for follow-up. None met the 8/10 confidence bar fo
 
 **Description:** `deleteContentFiles` runs `File('$docs/$rel').delete()` with no normalization or containment check. The `rel` values are the `relativeImagePath` fields of image elements on the page being deleted, plus their `.txt` sidecars. Those values can come from clipboard JSON:
 
-- `ClipboardService.tryDecode` (`lib/editor/state/clipboard_service.dart:29-38`) checks only the type marker `inkflow/scene-elements`.
+- `ClipboardService.tryDecode` (`lib/editor/state/clipboard_service.dart:29-38`) checks only the type marker `margo/scene-elements`.
 - `SceneElementCodec.decode` (`lib/data/persistence/scene_element_codec.dart:170`) reads `relativeImagePath` verbatim.
 - `SelectionEditing.duplicate` and `SceneTransformer.translate` keep the value through `copyWith`.
 - The record mapper saves it to Isar unchanged.
@@ -36,9 +36,9 @@ Status: open. Items below are for follow-up. None met the 8/10 confidence bar fo
 **Exploit scenario:**
 
 1. The victim copies attacker-supplied JSON, for example from a web page with a copy handler, a shared snippet, or a background clipboard write (Android clipboard rules were not verified from the repo).
-2. The victim pastes it into a notebook through ⋮ → Paste. This saves an invisible, locked image element whose `relativeImagePath` is `inkflow.isar`.
-3. The victim later deletes that page and confirms. `<docs>/inkflow.isar` is unlinked. On the next launch the app opens an empty database, and all notebooks are lost.
-4. `..` segments reach other app-private files, such as `inkflow_before_v2.isar` and `inkflow_library.json`.
+2. The victim pastes it into a notebook through ⋮ → Paste. This saves an invisible, locked image element whose `relativeImagePath` is `margo.isar`.
+3. The victim later deletes that page and confirms. `<docs>/margo.isar` is unlinked. On the next launch the app opens an empty database, and all notebooks are lost.
+4. `..` segments reach other app-private files, such as `margo_before_v2.isar` and `margo_library.json`.
 
 The app declares no storage permission, so the damage stays inside the app's own data. There is no confidentiality impact.
 

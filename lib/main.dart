@@ -213,7 +213,7 @@ Future<void> _openAndRun() async {
         deviceProfileProvider.overrideWithValue(profile),
         appDocsPathProvider.overrideWithValue(appDocsPath),
         libraryRepositoryProvider.overrideWithValue(
-          FileLibraryRepository(File('$appDocsPath/inkflow_library.json')),
+          FileLibraryRepository(File('$appDocsPath/margo_library.json')),
         ),
       ],
       child: const MargoApp(),

@@ -153,7 +153,7 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-    docs = Directory.systemTemp.createTempSync('inkflow_wire_');
+    docs = Directory.systemTemp.createTempSync('margo_wire_');
     transcriber = _Transcriber();
     speech = _Speech();
     transcripts = InMemoryTranscriptStore();

@@ -1,4 +1,4 @@
-package com.inkflow.inkflow
+package com.margo.margo
 
 import android.app.Notification
 import android.app.NotificationChannel

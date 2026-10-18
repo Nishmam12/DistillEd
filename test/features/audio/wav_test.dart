@@ -117,7 +117,7 @@ void main() {
 
   group('WavSource — reading a window of samples from a file', () {
     late Directory dir;
-    setUp(() => dir = Directory.systemTemp.createTempSync('inkflow_wav_'));
+    setUp(() => dir = Directory.systemTemp.createTempSync('margo_wav_'));
     tearDown(() => dir.deleteSync(recursive: true));
 
     Future<WavSource> open(List<int> samples) async {

@@ -9,7 +9,7 @@ pins them, the hierarchy and the contrast ratios.
 > down are those original prompts, kept for reference; they name the **old**
 > tokens and are superseded by everything above them.
 
-**Source of the light palette:** the margo Figma file (`DistillEd_UI _Front.fig`,
+**Source of the light palette:** the margo Figma file (`Margo_UI _Front.fig`,
 "Home UI (Light)"). **Dark is derived** from it using the rules below — the
 design has no dark frame.
 

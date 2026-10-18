@@ -91,7 +91,7 @@ void main() {
 
   group('speechWindows — walking a whole recording', () {
     late Directory dir;
-    setUp(() => dir = Directory.systemTemp.createTempSync('inkflow_win_'));
+    setUp(() => dir = Directory.systemTemp.createTempSync('margo_win_'));
     tearDown(() => dir.deleteSync(recursive: true));
 
     test('covers the recording with no gaps and no overlaps', () async {

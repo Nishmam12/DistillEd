@@ -32,7 +32,7 @@ Delivered **one phase per turn**; each phase ends at a checkpoint
   `ai`, `audio`, `export`, `home`, `import`, `search`, `settings`, `summarize`.
 * **Routes** (`lib/app/router.dart`): `/`, `/note2/:id` (+ `book`, `graph`,
   `review`, `plan`), `/trash`, `/settings`, `/about`, `/canvas-demo`.
-* **Persistence:** one Isar database (`inkflow`), 16 schemas registered in
+* **Persistence:** one Isar database (`margo`), 16 schemas registered in
   `main.dart` — notebooks, pages, folders, `SceneElementRecord` (one row per
   element), `PageTextRecord`, the AI stores (chunks, summaries, flashcards,
   memory, read cache, study plans) and `LectureRecordingRecord`. Isar enums are
@@ -54,7 +54,7 @@ Feature-first with `domain/` `data/` `presentation/` layers. ~85 Dart files.
 | --- | --- | --- |
 | App / routing | `lib/app/` | `app.dart`, `router.dart` (GoRouter: `/`, `/import/pdf`, `/note/:id`, `/note/:id/book`, `/settings`, `/about`) |
 | Core | `lib/core/` | `constants/` (app_colors, storage_paths), `providers/settings_provider`, `theme/` |
-| Isar singleton | `lib/shared/isar/isar_service.dart` | Opens DB `inkflow` at appDocs; registers `NotebookSchema`, `NotePageSchema` |
+| Isar singleton | `lib/shared/isar/isar_service.dart` | Opens DB `margo` at appDocs; registers `NotebookSchema`, `NotePageSchema` |
 | Editor models | `lib/features/editor/domain/models/` | `stroke`, `stroke_point`, `shape_element`(+`.g`), `shape_type`, `imported_content`(+`.g`), `template_type` |
 | Editor services | `lib/features/editor/domain/services/` | `shape_recognizer`, `eraser_service`, `lasso_hit_tester`, `binding_service` |
 | Undo/redo | `lib/features/editor/domain/undo_redo/` | `command` + 7 command classes + `undo_redo_stack` |
@@ -97,7 +97,7 @@ preview + bounds/handles) → EraserTrail (ticker fade).
 - Atomicity: write `.tmp` → rename onto final + `.bak` backup; load falls back
   final → `.bak` → `.tmp`; corrupted files skipped.
 
-### Isar `inkflow` (at appDocs)
+### Isar `margo` (at appDocs)
 - `Notebook { Id id; title; createdAt; modifiedAt; pageCount(@Index); backgroundColor; templateIndex }`
 - `NotePage { Id id; notebookId(@Index); pageIndex; createdAt; modifiedAt; importedContents:[ImportedContent]; shapes:[ShapeElement] }`
 - `ShapeElement` (`@embedded`, 20 fields): `id`, `@enumerated type` (ShapeType),

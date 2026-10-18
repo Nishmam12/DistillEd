@@ -107,11 +107,11 @@ back to 8000 for local `docker run`.
 1. In the [Render dashboard](https://dashboard.render.com), **New → Blueprint**
    and connect this GitHub repo (authorize Render's GitHub app for the private
    repo; pick the branch you deploy from).
-2. Render reads `render.yaml` and creates the `inkflow-ai-gateway` web service.
+2. Render reads `render.yaml` and creates the `margo-ai-gateway` web service.
    It prompts for the two `sync: false` secrets — paste `OPENROUTER_API_KEY`
    (required) and `EXA_API_KEY` (optional, for Web Search).
 3. First deploy builds the image and goes live at
-   `https://inkflow-ai-gateway.onrender.com` (exact host shown in the
+   `https://margo-ai-gateway.onrender.com` (exact host shown in the
    dashboard). `GET /health` there should return `{"status":"ok"}`.
 
 After that, every push to the deploy branch auto-redeploys. On the free plan

@@ -12,7 +12,7 @@ import '../domain/audio_ports.dart';
 /// 14+ keeps the microphone live with the app backgrounded. Anywhere the channel
 /// is not registered (tests, other platforms) it does nothing.
 class RecordingServiceChannel {
-  static const _channel = MethodChannel('com.inkflow.inkflow/recording');
+  static const _channel = MethodChannel('com.margo.margo/recording');
 
   Future<void> start() => _call('start');
   Future<void> stop() => _call('stop');

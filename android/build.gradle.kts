@@ -24,7 +24,7 @@ subprojects {
                 val setNamespace = androidExtension.javaClass.getMethod("setNamespace", String::class.java)
                 val currentNamespace = getNamespace.invoke(androidExtension)
                 if (currentNamespace == null) {
-                    val ns = "com.inkflow.${project.name.replace("_", ".").replace("-", ".")}"
+                    val ns = "com.margo.${project.name.replace("_", ".").replace("-", ".")}"
                     setNamespace.invoke(androidExtension, ns)
                     println("Dynamically set namespace for subproject ${project.name} to $ns")
                 }

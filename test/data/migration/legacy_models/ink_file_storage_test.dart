@@ -12,7 +12,7 @@ void main() {
     late Directory tempDir;
 
     setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('inkflow_ink_test');
+      tempDir = await Directory.systemTemp.createTemp('margo_ink_test');
     });
 
     tearDown(() async {

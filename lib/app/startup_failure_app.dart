@@ -20,9 +20,9 @@ class StartupFailureApp extends StatelessWidget {
   Future<void> _shareData() async {
     final dir = (await getApplicationDocumentsDirectory()).path;
     final files = [
-      File('$dir/inkflow.isar'),
-      File('$dir/inkflow_before_v2.isar'),
-      File('$dir/inkflow_library.json'),
+      File('$dir/margo.isar'),
+      File('$dir/margo_before_v2.isar'),
+      File('$dir/margo_library.json'),
       (await ErrorLog.existing()),
     ];
     final existing = [

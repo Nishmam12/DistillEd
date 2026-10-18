@@ -12,7 +12,7 @@
 //     --dart-define=UPDATE_GOLDEN=true
 // The test prints where it wrote the file (the app's documents folder). Copy it
 // into integration_test/golden/ and commit it. A debug build can read it with
-//   adb shell run-as com.inkflow.inkflow cat app_flutter/golden/<modelId>.json
+//   adb shell run-as com.margo.margo cat app_flutter/golden/<modelId>.json
 //
 // Later runs compare against the copy in the documents folder. Put it there
 // with adb shell run-as ... cp, then run the test without UPDATE_GOLDEN.

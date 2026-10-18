@@ -31,7 +31,7 @@ void main() {
 
   String sidecar(int page) => '${dir.path}/imports/pdf_abc_$page.txt';
 
-  setUp(() => dir = Directory.systemTemp.createTempSync('inkflow_pdftext_'));
+  setUp(() => dir = Directory.systemTemp.createTempSync('margo_pdftext_'));
   tearDown(() => dir.deleteSync(recursive: true));
 
   test('each page\'s text is written beside its image', () async {

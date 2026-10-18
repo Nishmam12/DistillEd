@@ -7,7 +7,7 @@ import 'package:margo/features/ai/domain/device_state.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const channel = MethodChannel('com.inkflow.inkflow/device');
+  const channel = MethodChannel('com.margo.margo/device');
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 

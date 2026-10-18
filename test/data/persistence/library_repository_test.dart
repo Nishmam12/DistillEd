@@ -32,7 +32,7 @@ void main() {
   });
 
   test('file repository persists to disk and reloads identically', () async {
-    final dir = await Directory.systemTemp.createTemp('inkflow_lib_test');
+    final dir = await Directory.systemTemp.createTemp('margo_lib_test');
     addTearDown(() => dir.delete(recursive: true));
     final repo = FileLibraryRepository(File('${dir.path}/library.json'));
 

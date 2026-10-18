@@ -9,7 +9,8 @@
 # dev/low-traffic gateway; move to a paid instance if always-warm matters.
 services:
   - type: web
-    name: inkflow-ai-gateway
+    # The app's default GATEWAY_URL (ai_providers.dart) must match this service's host.
+    name: margo-ai-gateway
     runtime: docker
     dockerfilePath: server/ai-gateway/Dockerfile
     dockerContext: server/ai-gateway

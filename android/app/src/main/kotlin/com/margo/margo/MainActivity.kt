@@ -1,4 +1,4 @@
-package com.inkflow.inkflow
+package com.margo.margo
 
 import android.app.ActivityManager
 import android.content.Context
@@ -16,17 +16,17 @@ class MainActivity : FlutterActivity() {
     // Free-space check used before downloading the on-device LLM (~2.4 GB).
     // Reports the available bytes on the volume backing the app's files dir —
     // the same volume flutter_edge_ai installs models to.
-    private val storageChannel = "com.inkflow.inkflow/storage"
+    private val storageChannel = "com.margo.margo/storage"
 
     // RAM, thermal state and battery — what the AI pipeline needs to pick a
     // profile for this device and to pause background indexing when it is hot
     // or low on power. One call returns all of it, so polling while a bulk job
     // runs costs a single platform round trip.
-    private val deviceChannel = "com.inkflow.inkflow/device"
+    private val deviceChannel = "com.margo.margo/device"
 
     // Starts/stops the microphone foreground service that keeps a lecture
     // recording alive in the background (see RecordingService).
-    private val recordingChannel = "com.inkflow.inkflow/recording"
+    private val recordingChannel = "com.margo.margo/recording"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

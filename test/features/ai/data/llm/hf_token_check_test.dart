@@ -52,7 +52,7 @@ void main() {
     final (identity, _) = _identity(200, body: {
       'name': 'afnan',
       'auth': {
-        'accessToken': {'role': 'read', 'displayName': 'distilled'}
+        'accessToken': {'role': 'read', 'displayName': 'tester'}
       }
     });
 

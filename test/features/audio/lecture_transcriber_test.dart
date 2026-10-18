@@ -30,7 +30,7 @@ class _FakeSpeech implements SpeechToText {
 
 void main() {
   late Directory dir;
-  setUp(() => dir = Directory.systemTemp.createTempSync('inkflow_tr_'));
+  setUp(() => dir = Directory.systemTemp.createTempSync('margo_tr_'));
   tearDown(() => dir.deleteSync(recursive: true));
 
   LectureTranscriber transcriber(SpeechToText speech,

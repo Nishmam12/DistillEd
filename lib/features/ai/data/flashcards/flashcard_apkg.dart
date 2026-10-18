@@ -49,7 +49,7 @@ Uint8List flashcardsToApkg(
 /// bytes. On-disk (not in-memory) so the returned file is a complete, flushed
 /// `.anki2`; the temp directory is always cleaned up.
 Uint8List _buildCollectionDb(AnkiCollection collection) {
-  final dir = Directory.systemTemp.createTempSync('inkflow_apkg');
+  final dir = Directory.systemTemp.createTempSync('margo_apkg');
   final path = '${dir.path}/$_dbEntryName';
   try {
     final db = sqlite3.open(path);

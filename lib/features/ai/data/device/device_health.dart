@@ -11,7 +11,7 @@ import '../../domain/device_state.dart';
 
 class DeviceHealth {
   static const MethodChannel _channel =
-      MethodChannel('com.inkflow.inkflow/device');
+      MethodChannel('com.margo.margo/device');
 
   /// One round trip for everything, so a poll while a bulk job runs costs a
   /// single platform call.

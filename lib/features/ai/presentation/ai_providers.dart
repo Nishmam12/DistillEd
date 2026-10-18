@@ -441,7 +441,7 @@ final contextEngineProvider = Provider<ContextEngine>((ref) {
 /// `http://localhost:8000` (`cd server/ai-gateway && uvicorn app.main:app`), or
 /// build with `--dart-define=GATEWAY_URL=http://localhost:8000`.
 const String cloudGatewayBaseUrl = String.fromEnvironment('GATEWAY_URL',
-    defaultValue: 'https://inkflow-ai-gateway.onrender.com');
+    defaultValue: 'https://margo-ai-gateway.onrender.com');
 
 /// The two cloud tiers the Phase 3 gateway serves, each a thin [AiProvider]
 /// over the same gateway with a different `model_tier`. [cloudGatewayMidProvider]

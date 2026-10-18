@@ -343,7 +343,7 @@ void main() {
 
   group('FileTranscriptStore', () {
     late Directory docs;
-    setUp(() => docs = Directory.systemTemp.createTempSync('inkflow_tr_'));
+    setUp(() => docs = Directory.systemTemp.createTempSync('margo_tr_'));
     tearDown(() => docs.deleteSync(recursive: true));
 
     LectureRecording recording({String path = 'audio/n1_p2_17.wav'}) =>

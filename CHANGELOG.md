@@ -18,7 +18,9 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 ### Changed
 - **The app is now called Margo.** The launcher label, window title, About
   screen, recording notification, exports and Anki decks all say Margo; the
-  Dart package is `margo`. Existing notes and settings are untouched.
+  Dart package is `margo`, and the Android package is `com.margo.margo`. On
+  Android this is a new app, so notes and settings from earlier installs don't
+  carry over.
 - **Home screen matches the margo design.** Cards sit three across at tablet
   size with the design's spacing, larger titles and ink-coloured meta; the
   sidebar uses the design's type sizes and compact selection pill; the header

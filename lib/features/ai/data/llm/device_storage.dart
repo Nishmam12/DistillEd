@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 class DeviceStorage {
   static const MethodChannel _channel =
-      MethodChannel('com.inkflow.inkflow/storage');
+      MethodChannel('com.margo.margo/storage');
 
   /// Available bytes on the volume backing the app's files directory — the
   /// same volume model files are installed to. Returns 0 when the platform
