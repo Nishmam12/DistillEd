@@ -7,6 +7,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar_community/isar.dart';
 
+import '../../features/home/domain/models/note_page.dart';
 import '../../shared/isar/isar_service.dart';
 import 'page_text_record.dart';
 
@@ -64,6 +65,9 @@ class IsarPageTextStore implements PageTextStore {
       return;
     }
     await _isar.writeTxn(() async {
+      // A slow background read can finish after its page was deleted; saving
+      // then would resurrect searchable text for a page that no longer exists.
+      if (await _isar.notePages.get(pageId) == null) return;
       // Delete-then-insert in one transaction keeps it to one row per page
       // without a unique index (see [PageTextRecord.pageId]).
       await _isar.pageTextRecords.filter().pageIdEqualTo(pageId).deleteAll();

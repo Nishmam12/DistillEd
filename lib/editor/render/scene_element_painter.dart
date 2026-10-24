@@ -9,6 +9,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../../domain/geometry/element_bounds.dart';
+import '../../domain/geometry/element_transformer.dart';
 import '../../domain/geometry/scene_geometry.dart';
 import '../../domain/model/scene_element.dart';
 import '../../domain/geometry/shape_geometry.dart';
@@ -77,7 +78,17 @@ class SceneElementPainter {
     if (e.points.isEmpty || e.isEraser) return;
     var path = _freehandCache[e];
     if (path == null) {
-      path = FreehandPath.build(e.points, e.size, isComplete: true);
+      // Mid rotate/resize: map the source outline, uncached (see settle).
+      final t = SceneTransformer.transformedFrom[e];
+      path = t == null ? null : _freehandCache[t.$1]?.transform(t.$2);
+    }
+    if (path == null) {
+      // A dragged stroke: reuse the source outline, moved, not rebuilt.
+      final from = SceneTransformer.shiftedFrom[e];
+      final src = from == null ? null : _freehandCache[from.$1];
+      path = src != null
+          ? src.shift(from!.$2)
+          : FreehandPath.build(e.points, e.size, isComplete: true);
       if (path == null) return;
       _freehandCache[e] = path;
     }

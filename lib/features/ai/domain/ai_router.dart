@@ -27,6 +27,7 @@ import 'dart:io';
 
 import 'ai_capabilities.dart';
 import 'text_budget.dart' show kLatinTokensPerWord;
+import 'tutor_voice.dart' show compactForWindow;
 
 /// Small reachability probe: can we resolve a well-known host right now?
 /// (Airplane mode / no network fails in milliseconds; the timeout guards
@@ -38,8 +39,8 @@ class Reachability {
 
   Future<bool> isOnline() async {
     try {
-      final result =
-          await InternetAddress.lookup('dns.google').timeout(timeout);
+      final result = await InternetAddress.lookup('dns.google')
+          .timeout(timeout);
       return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
     } on SocketException {
       return false;
@@ -77,8 +78,18 @@ class AiRouter {
   /// Tokens kept free for the model's response within the context window.
   static const int responseReserveTokens = 512;
 
-  /// Tokens assumed consumed by prompt scaffolding (instruction, framing).
+  /// Tokens assumed consumed by prompt framing (fences, labels) on top of the
+  /// system prompt, which callers pass to [inputWordBudgetFor] so it is counted.
   static const int scaffoldingReserveTokens = 200;
+
+  /// Characters per token for the English system prompts, used to cost them.
+  static const double charsPerToken = 3.5;
+
+  /// The most of the window a reply may take: 3/8, so a large output request on
+  /// a small window still leaves the larger share for the prompt and passage.
+  /// The local provider caps `maxOutputTokens` with the same function, so the
+  /// budget below never assumes a shorter reply than the model is allowed.
+  static int replyCapFor(int windowTokens) => windowTokens * 3 ~/ 8;
 
   /// Rough English tokens-per-word ratio used to express the budget in words
   /// (callers count words, not tokens).
@@ -107,12 +118,25 @@ class AiRouter {
   /// window minus the response and scaffolding reserves. Static so features
   /// that prompt a provider directly (e.g. the Context Engine) budget with
   /// the same math as the routing decision.
-  static int inputWordBudgetFor(AiCapabilities capabilities) =>
-      ((capabilities.contextWindowTokens -
-                  responseReserveTokens -
-                  scaffoldingReserveTokens) /
-              tokensPerWord)
-          .floor();
+  ///
+  /// Pass the caller's [systemPrompt]: the tutor prompts run to ~1,000+ tokens,
+  /// which a flat reserve cannot cover (the window overflowed on long notes).
+  static int inputWordBudgetFor(
+    AiCapabilities capabilities, {
+    String systemPrompt = '',
+    int responseTokens = responseReserveTokens,
+  }) {
+    final window = capabilities.contextWindowTokens;
+    // Cost the prompt as sent: small windows get the compact voice.
+    final sent = compactForWindow(systemPrompt, window);
+    final reserve =
+        scaffoldingReserveTokens + (sent.length / charsPerToken).ceil();
+    final cap = replyCapFor(window);
+    final response = responseTokens < cap ? responseTokens : cap;
+    final words = ((window - response - reserve) / tokensPerWord).floor();
+    // No floor: a passage cut to fit beats a prompt that overflows the window.
+    return words < 0 ? 0 : words;
+  }
 
   /// Local input budget in WORDS, derived from the local context window minus
   /// the response and scaffolding reserves.

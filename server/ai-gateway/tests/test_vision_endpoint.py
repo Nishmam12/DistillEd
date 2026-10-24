@@ -173,3 +173,32 @@ def test_vision_calls_count_against_the_daily_cap(limiter, monkeypatch):
 
     assert _post(client).status_code == 200
     assert _post(client).status_code == 429
+
+
+def test_vision_charge_includes_prompt_and_reply_allowance(limiter, monkeypatch):
+    import sqlite3
+
+    lim = limiter()
+    _use(monkeypatch, StubVisionProvider())
+    r = _post(TestClient(app), prompt="p" * 400, max_tokens=4000)
+    assert r.status_code == 200
+    conn = sqlite3.connect(lim._config.db_path)
+    (tokens,) = conn.execute(
+        "SELECT tokens FROM usage WHERE device_key = 'dev-1'"
+    ).fetchone()
+    conn.close()
+    assert tokens == vision_router.VISION_TOKEN_COST + 100 + 4000
+
+
+def test_vision_is_refused_when_the_device_is_at_its_concurrency_cap(limiter, monkeypatch):
+    from app import guards
+
+    limiter()
+    _use(monkeypatch, StubVisionProvider())
+    held = [guards.stream_limiter.acquire("dev-1") for _ in range(3)]
+    try:
+        assert _post(TestClient(app)).status_code == 429
+    finally:
+        for lease in held:
+            lease.release()
+    assert _post(TestClient(app)).status_code == 200  # lease was released

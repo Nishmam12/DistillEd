@@ -120,8 +120,10 @@ class SummarizeException implements Exception {
 class NotMeaningfulException extends SummarizeException {
   final GateFailure failure;
   NotMeaningfulException(this.failure)
-      : super("Couldn't read this note clearly enough to summarize.",
-            retryable: false);
+    : super(
+        "Couldn't read this note clearly enough to summarize.",
+        retryable: false,
+      );
 }
 
 /// The local model is required but not downloaded. When [offline] the user
@@ -130,10 +132,12 @@ class NotMeaningfulException extends SummarizeException {
 class LocalModelRequiredException extends SummarizeException {
   final bool offline;
   LocalModelRequiredException({required this.offline})
-      : super(offline
+    : super(
+        offline
             ? 'The on-device model is not downloaded and you are offline. '
-                'Connect to the internet to download it.'
-            : 'The on-device model needs to be downloaded first.');
+                  'Connect to the internet to download it.'
+            : 'The on-device model needs to be downloaded first.',
+      );
 }
 
 class SummarizationService {
@@ -162,7 +166,8 @@ class SummarizationService {
   /// and [Explainer.systemPromptFor] are: a prompt is behaviour, and the tests
   /// that pin the tutor voice and the faithfulness rules have to be able to
   /// read it.
-  static const String noteInstruction = '$_voice\n\n'
+  static const String noteInstruction =
+      '$_voice\n\n'
       'Recap the note below in 3 to 6 sentences, keeping what a student would '
       'need for revision: the key ideas, and the names, dates and numbers that '
       'carry them. Use only information present in the note — never invent '
@@ -186,7 +191,8 @@ class SummarizationService {
 
   /// Per-chunk pass of chunk-and-reduce: condense one section of a long note
   /// without losing the specifics later passes rely on.
-  static const String sectionInstruction = '$_voice\n\n'
+  static const String sectionInstruction =
+      '$_voice\n\n'
       'The text below is one section of a longer note. Recap just this section, '
       'compactly, keeping its key facts, names, and numbers — later passes '
       'depend on those specifics surviving. Use only what this section says — '
@@ -195,7 +201,8 @@ class SummarizationService {
   /// Final reduce pass: fold the section summaries into one summary. The input
   /// is already summarized text, so it must not be summarized any further than
   /// the note itself would be.
-  static const String reduceInstruction = '$_voice\n\n'
+  static const String reduceInstruction =
+      '$_voice\n\n'
       'The text below is section-by-section recaps of a single note, in order. '
       'Draw them together into one recap of the whole note in 3 to 6 '
       'sentences, and do not mention that it came in sections. Use only '
@@ -328,10 +335,12 @@ class SummarizationService {
       case AiRoute.cloud:
         onStage?.call(SummarizeStage.summarizing);
         try {
-          summary = await _cloud.chatCompletion(messages: [
-            const ChatMessage.system(noteInstruction),
-            ChatMessage.user('NOTE:\n${fenceUntrusted(text)}'),
-          ]);
+          summary = await _cloud.chatCompletion(
+            messages: [
+              const ChatMessage.system(noteInstruction),
+              ChatMessage.user('NOTE:\n${fenceUntrusted(text)}'),
+            ],
+          );
           modelUsed = 'cloud';
         } on CloudUnavailableException {
           // Cloud tier is a stub / unreachable — degrade to local.
@@ -343,7 +352,9 @@ class SummarizationService {
       case AiRoute.local:
         onStage?.call(SummarizeStage.summarizing);
         (summary, chunked, tier) = await _generateLocally(text);
-        modelUsed = tier == AnswerTier.cloudVerified ? 'cloud' : _localModelLabel;
+        modelUsed = tier == AnswerTier.cloudVerified
+            ? 'cloud'
+            : _localModelLabel;
     }
 
     // A low-confidence summary is deliberately NOT cached: caching it would
@@ -351,12 +362,14 @@ class SummarizationService {
     // would see it again on every open with no way to ask for another try.
     if (cacheable && tier != AnswerTier.localLowConfidence) {
       try {
-        await _store.save(SummaryCache()
-          ..notebookId = notebookId
-          ..textHash = hash
-          ..summary = summary
-          ..modelUsed = modelUsed
-          ..createdAt = DateTime.now());
+        await _store.save(
+          SummaryCache()
+            ..notebookId = notebookId
+            ..textHash = hash
+            ..summary = summary
+            ..modelUsed = modelUsed
+            ..createdAt = DateTime.now(),
+        );
       } catch (_) {
         // The summary exists and is returned; only the next open pays for it.
       }
@@ -393,13 +406,20 @@ class SummarizationService {
         return _gatherPages(pageIds, languageCode, vision);
 
       case PageScope(:final pageId):
-        final page = await _extractor.extractPage(pageId,
-            languageCode: languageCode, useVision: vision);
+        final page = await _extractor.extractPage(
+          pageId,
+          languageCode: languageCode,
+          useVision: vision,
+        );
         return _single(page);
 
       case SelectionScope(:final pageId, :final elementIds):
-        final page = await _extractor.extractSelection(pageId, elementIds,
-            languageCode: languageCode, useVision: vision);
+        final page = await _extractor.extractSelection(
+          pageId,
+          elementIds,
+          languageCode: languageCode,
+          useVision: vision,
+        );
         return _single(page);
     }
   }
@@ -414,8 +434,13 @@ class SummarizationService {
   ) async {
     final pages = <PageContent>[];
     for (final pageId in pageIds) {
-      pages.add(await _extractor.extractPage(pageId,
-          languageCode: languageCode, useVision: vision));
+      pages.add(
+        await _extractor.extractPage(
+          pageId,
+          languageCode: languageCode,
+          useVision: vision,
+        ),
+      );
     }
     final text = pages
         .map((p) => p.combinedTextWithFigures)
@@ -433,20 +458,27 @@ class SummarizationService {
   /// [PageContent.combinedText] alone is exactly why such a page used to be
   /// rejected as "not meaningful" instead of summarized.
   static (String, List<double>) _single(PageContent page) => (
-        page.combinedTextWithFigures,
-        [if (page.inkTopScore != null) page.inkTopScore!],
-      );
+    page.combinedTextWithFigures,
+    [if (page.inkTopScore != null) page.inkTopScore!],
+  );
 
   /// Summarizes [text] locally. When it fits the local budget this is one
   /// faithful pass; when it exceeds the local context window it is
   /// chunk-and-reduced. Returns the summary and whether reduction ran.
   Future<(String, bool, AnswerTier)> _generateLocally(String text) async {
-    if (text_budget.budgetWords(text) <= _router.localInputWordBudget) {
+    // Budget against the longer of the two prompts so every pass fits.
+    final budget = AiRouter.inputWordBudgetFor(
+      _router.localCapabilities,
+      systemPrompt: noteInstruction.length > reduceInstruction.length
+          ? noteInstruction
+          : reduceInstruction,
+    );
+    if (text_budget.budgetWords(text) <= budget) {
       final result = await _guarded(text, noteInstruction);
       return (result.text.trim(), false, result.tier);
     }
     // The reduce pass IS the final pass, so the guard runs there (see [_guard]).
-    final result = await _chunkAndReduce(text, _router.localInputWordBudget);
+    final result = await _chunkAndReduce(text, budget);
     return (result.text.trim(), true, result.tier);
   }
 
@@ -482,13 +514,18 @@ class SummarizationService {
   /// Summarizes over-budget [text] in passes: summarize each section that fits
   /// [budget], then summarize the joined section summaries — recursing while
   /// even the summaries overflow, with a hard pass cap so it always terminates.
-  Future<GuardedResult> _chunkAndReduce(String text, int budget,
-      {int pass = 0}) async {
+  Future<GuardedResult> _chunkAndReduce(
+    String text,
+    int budget, {
+    int pass = 0,
+  }) async {
     final sections = text_budget.chunkByWords(text, budget);
     if (sections.length <= 1) {
       // Pass 0 is the note itself; later passes are recaps of it.
-      return _guarded(sections.isEmpty ? text : sections.first,
-          pass == 0 ? noteInstruction : reduceInstruction);
+      return _guarded(
+        sections.isEmpty ? text : sections.first,
+        pass == 0 ? noteInstruction : reduceInstruction,
+      );
     }
 
     final partials = <String>[];
@@ -505,7 +542,9 @@ class SummarizationService {
       // Safety net for a tiny context window: stop recursing and reduce the
       // (necessarily truncated) combined summaries in one final pass.
       return _guarded(
-          text_budget.truncateToWords(combined, budget), reduceInstruction);
+        text_budget.truncateToWords(combined, budget),
+        reduceInstruction,
+      );
     }
     return _chunkAndReduce(combined, budget, pass: pass + 1);
   }

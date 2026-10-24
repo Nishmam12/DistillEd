@@ -19,6 +19,12 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/',
+  // A non-numeric :id (bad deep link, stray push) would throw in a builder and
+  // show a grey screen; send it home instead.
+  redirect: (context, state) {
+    final id = state.pathParameters['id'];
+    return id != null && int.tryParse(id) == null ? '/' : null;
+  },
   routes: [
     GoRoute(
       path: '/',

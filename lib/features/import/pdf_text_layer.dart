@@ -28,7 +28,8 @@ class PdfiumTextSource implements PdfTextSource {
   /// [cacheDir] is where PDFium may keep scratch files; the app's temp directory
   /// by default. Injectable so tests need no platform channel.
   PdfiumTextSource({Future<String> Function()? cacheDir})
-      : _cacheDir = cacheDir ?? (() async => (await getTemporaryDirectory()).path);
+    : _cacheDir =
+          cacheDir ?? (() async => (await getTemporaryDirectory()).path);
 
   final Future<String> Function() _cacheDir;
 
@@ -130,7 +131,8 @@ class PdfTextLayerWriter {
   }) async {
     if (pageImagePaths.isEmpty) return;
     final targets = [
-      for (final image in pageImagePaths) File(StoragePaths.pdfTextSidecar(image)),
+      for (final image in pageImagePaths)
+        File(StoragePaths.pdfTextSidecar(image)),
     ];
     if (await _allExist(targets)) return;
 
@@ -147,7 +149,14 @@ class PdfTextLayerWriter {
       try {
         if (await file.exists()) continue;
         await file.parent.create(recursive: true);
-        await file.writeAsString(texts[i].trim().isEmpty ? '' : texts[i]);
+        // tmp + rename, so a kill mid-write cannot leave partial text that the
+        // exists() checks would trust.
+        final tmp = File('${file.path}.tmp');
+        await tmp.writeAsString(
+          texts[i].trim().isEmpty ? '' : texts[i],
+          flush: true,
+        );
+        await tmp.rename(file.path);
       } catch (e) {
         debugPrint('[PdfText] could not keep the text of page ${i + 1}: $e');
       }

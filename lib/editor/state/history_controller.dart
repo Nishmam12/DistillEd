@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../../domain/commands/scene_command.dart';
 import 'scene_controller.dart';
+import 'selection_controller.dart';
 
 class HistoryState {
   final int undoDepth;
@@ -26,13 +27,22 @@ class HistoryController extends StateNotifier<HistoryState> {
 
   final int _maxDepth;
 
-  HistoryController(this._mutator, {this._maxDepth = defaultMaxDepth})
-      : super(const HistoryState(0, 0));
+  /// Called after every apply/undo/redo, once the scene has changed.
+  final void Function()? _onApplied;
+
+  HistoryController(
+    this._mutator, {
+    this._maxDepth = defaultMaxDepth,
+    this._onApplied,
+  }) : super(const HistoryState(0, 0));
 
   /// Applies [command] and records it for undo. A command that throws part way
   /// is rolled back as far as it can be and NOT recorded, so undo never offers
   /// to reverse something that did not fully happen.
   void push(SceneCommand command) {
+    // A no-op must not become an undo step: it would wipe the redo stack.
+    if (command case RemoveElementsCommand(removed: [])) return;
+    if (command case AddElementsCommand(added: [])) return;
     try {
       command.apply(_mutator);
     } catch (_) {
@@ -42,6 +52,7 @@ class HistoryController extends StateNotifier<HistoryState> {
       rethrow;
     }
     _record(command);
+    _onApplied?.call();
   }
 
   /// Records a command whose effect has already been applied (e.g. a live drag
@@ -61,6 +72,7 @@ class HistoryController extends StateNotifier<HistoryState> {
     command.revert(_mutator);
     _redo.add(command);
     _sync();
+    _onApplied?.call();
   }
 
   void redo() {
@@ -69,6 +81,7 @@ class HistoryController extends StateNotifier<HistoryState> {
     command.apply(_mutator);
     _undo.add(command);
     _sync();
+    _onApplied?.call();
   }
 
   void clear() {
@@ -82,6 +95,10 @@ class HistoryController extends StateNotifier<HistoryState> {
 
 final historyProvider = StateNotifierProvider.family<HistoryController,
     HistoryState, ScenePageKey>(
-  (ref, key) =>
-      HistoryController(ref.read(sceneControllerProvider(key).notifier)),
+  (ref, key) => HistoryController(
+    ref.read(sceneControllerProvider(key).notifier),
+    onApplied: () => ref.read(selectionProvider.notifier).retainOnly({
+      for (final e in ref.read(sceneControllerProvider(key))) e.id,
+    }),
+  ),
 );

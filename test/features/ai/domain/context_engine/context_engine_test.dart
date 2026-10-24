@@ -81,7 +81,7 @@ void main() {
       expect(provider.systemPrompts.single, contains('JSON'));
       // Structured extraction runs greedy with a bounded response.
       expect(provider.options.single?.temperature, 0.0);
-      expect(provider.options.single?.maxTokens, 512);
+      expect(provider.options.single?.maxTokens, 1024);
     });
 
     test('JSON wrapped in fences and prose still parses on the first try',
@@ -134,9 +134,16 @@ void main() {
     test('over-budget note is truncated to the shared word budget', () async {
       final provider = ScriptedAiProvider([goodJson]);
       final engine = ContextEngine(provider: provider);
-      final budget = AiRouter.inputWordBudgetFor(provider.capabilities);
+      // Larger than the real budget (which pays for the schema prompt), so the
+      // note is over it either way.
+      final over = AiRouter.inputWordBudgetFor(provider.capabilities);
 
-      await engine.analyze(content(List.filled(budget + 50, 'word').join(' ')));
+      await engine.analyze(content(List.filled(over + 50, 'word').join(' ')));
+      final budget = AiRouter.inputWordBudgetFor(
+        provider.capabilities,
+        systemPrompt: ContextEngine.schemaInstruction,
+        responseTokens: ContextEngine.extractOptions.maxTokens!,
+      );
 
       final wordsInPrompt =
           RegExp(r'\bword\b').allMatches(provider.prompts.single);
@@ -199,10 +206,14 @@ void main() {
       expect(json, {'a': 'say "hi" {'});
     });
 
-    test('no object or unbalanced braces → null', () {
+    test('no object or unrecoverable braces → null', () {
       expect(ContextEngine.tryExtractJsonObject('no json here'), isNull);
-      expect(ContextEngine.tryExtractJsonObject('{"a": 1'), isNull);
       expect(ContextEngine.tryExtractJsonObject('{"a" 1e}'), isNull);
+      expect(ContextEngine.tryExtractJsonObject('{"a": '), isNull);
+    });
+
+    test('a reply cut off by the token limit is salvaged, not dropped', () {
+      expect(ContextEngine.tryExtractJsonObject('{"a": 1'), {'a': 1, kTruncatedJsonKey: true});
     });
   });
 }

@@ -68,10 +68,10 @@ typedef _B = ({
   List<LectureRecording> finished,
   void Function(bool) setTranscribe,
   InMemoryTranscriptStore transcripts,
-}) _build({bool transcribe = false}) {
+}) _build({bool transcribe = false, InMemoryLectureRecordingStore? store}) {
   final capture = FakeCapture();
   final playback = FakePlayback();
-  final store = InMemoryLectureRecordingStore();
+  store ??= InMemoryLectureRecordingStore();
   var engineMs = 1000;
   var transcribeOn = transcribe;
   final finished = <LectureRecording>[];
@@ -100,6 +100,14 @@ typedef _B = ({
     setTranscribe: (v) => transcribeOn = v,
     transcripts: transcripts,
   );
+}
+
+class _FlakyStore extends InMemoryLectureRecordingStore {
+  bool failLookup = false;
+
+  @override
+  Future<List<LectureRecording>> forPage(int pageId) =>
+      failLookup ? Future.error(StateError('db')) : super.forPage(pageId);
 }
 
 void main() {
@@ -304,6 +312,18 @@ void main() {
     expect(f.notifier.state.isRecording, isFalse);
     expect(f.store.recordings.single.durationMs, 45000);
     expect(f.notifier.state.onPage.single.durationMs, 45000);
+  });
+
+  test('a failing page lookup after stop still leaves "recording"', () async {
+    final store = _FlakyStore();
+    final f = _build(store: store);
+    await f.notifier.start(10);
+    store.failLookup = true;
+
+    await f.notifier.stop(10);
+
+    expect(f.notifier.state.isRecording, isFalse);
+    expect(f.notifier.state.active, isNull);
   });
 
   test('stopping when not recording is a no-op', () async {

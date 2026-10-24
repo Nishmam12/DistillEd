@@ -68,7 +68,7 @@ void main() {
       TextElement(
         id: 't',
         zOrder: 0,
-        geometryData: [0, 0, 100, 20],
+        geometryData: [0, 0, 400, 20],
         text: 'a < b & "c"',
         color: 0xFF000000,
         fontSize: 12,
@@ -267,5 +267,24 @@ void main() {
       );
       expect(SceneExporter.imageMimeType(Uint8List(0)), isNull);
     });
+  });
+
+  testWidgets('toSvg writes one tspan per line, anchored by alignment',
+      (tester) async {
+    final svg = SceneExporter.toSvg(const [
+      TextElement(
+        id: 'm',
+        zOrder: 0,
+        geometryData: [0, 0, 200, 60],
+        text: 'one\ntwo',
+        color: 0xFF000000,
+        fontSize: 16,
+        align: TextAlignKind.right,
+      ),
+    ]);
+    expect(svg, contains('text-anchor="end"'));
+    expect('<tspan'.allMatches(svg).length, 2);
+    expect(svg, contains('>one</tspan>'));
+    expect(svg, contains('>two</tspan>'));
   });
 }

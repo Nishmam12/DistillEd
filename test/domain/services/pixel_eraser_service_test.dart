@@ -38,6 +38,25 @@ void main() {
   });
 
   group('ScenePixelEraserService.erase — freehand elements', () {
+    test('points away from the eraser keep their original density', () {
+      // Points every 10 px from x=0..200; the swipe covers x≈39..61.
+      final stroke = FreehandElement(
+        id: 'sparse',
+        zOrder: 0,
+        color: 0xFF000000,
+        size: 4,
+        points: [
+          for (int x = 0; x <= 200; x += 10)
+            StrokePoint(x: x.toDouble(), y: 0, pressure: 0.5),
+        ],
+      );
+      final result = ScenePixelEraserService.erase(
+          eraserPath: midSwipe(), elements: [stroke]);
+      final right = result.added.last.points.where((p) => p.x >= 80);
+      // x = 80, 90, …, 200: the 13 originals, no resampled points between.
+      expect(right.map((p) => p.x), [for (int x = 80; x <= 200; x += 10) x]);
+    });
+
     test('cutting the middle of a stroke splits it into two sub-strokes', () {
       final stroke = FreehandElement(
         id: 'ink1',

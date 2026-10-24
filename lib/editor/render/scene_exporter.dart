@@ -20,6 +20,7 @@ import '../../domain/geometry/scene_geometry.dart';
 import '../../domain/geometry/selection_bounds.dart';
 import '../../domain/model/scene_element.dart';
 import '../../domain/geometry/shape_geometry.dart';
+import 'scene_element_painter.dart';
 import 'scene_static_layer.dart';
 
 /// Longest side, in pixels, an export is rendered at. A bitmap this size is
@@ -144,6 +145,7 @@ class SceneExporter {
     double scale = 2.0,
     double padding = defaultPadding,
     ui.Image? Function(String relativePath)? imageResolver,
+    Future<void> Function(List<SceneElement> page)? prepare,
     void Function(int done, int total)? onProgress,
   }) async {
     if (pages.isEmpty) return null;
@@ -275,11 +277,28 @@ class SceneExporter {
       case TextElement():
         if (e.text.isNotEmpty) {
           final r = _rect(e.geometryData);
-          b.writeln('<text x="${_n(r.left)}" y="${_n(r.top + e.fontSize)}" '
+          // One <tspan> per line the canvas wraps to, anchored by alignment, so
+          // the SVG breaks lines where the PNG and PDF do.
+          final para = SceneElementPainter.layOutText(e, r.width);
+          final (x, anchor) = switch (e.align) {
+            TextAlignKind.left => (r.left, 'start'),
+            TextAlignKind.center => (r.center.dx, 'middle'),
+            TextAlignKind.right => (r.right, 'end'),
+          };
+          b.write('<text text-anchor="$anchor" '
               'font-size="${_n(e.fontSize)}" font-family="${_esc(e.fontFamily)}" '
               '${e.isBold ? 'font-weight="bold" ' : ''}${e.isItalic ? 'font-style="italic" ' : ''}'
-              'fill="${_hex(e.color)}" fill-opacity="${_n(_alpha(e.color, e.opacity))}">'
-              '${_esc(e.text)}</text>');
+              'fill="${_hex(e.color)}" fill-opacity="${_n(_alpha(e.color, e.opacity))}">');
+          for (final m in para.computeLineMetrics()) {
+            final pos =
+                para.getPositionForOffset(Offset(m.left + 1, m.baseline - 1));
+            final range = para.getLineBoundary(pos);
+            final line = e.text.substring(range.start, range.end).trimRight();
+            if (line.isEmpty) continue;
+            b.write('<tspan x="${_n(x)}" y="${_n(r.top + m.baseline)}">'
+                '${_esc(line)}</tspan>');
+          }
+          b.writeln('</text>');
         }
       case ImageElement():
         final r = _rect(e.geometryData);

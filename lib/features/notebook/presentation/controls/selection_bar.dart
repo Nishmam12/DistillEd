@@ -62,8 +62,19 @@ class SelectionBar extends ConsumerWidget {
             tooltip: 'Duplicate',
             icon: const Icon(Icons.copy_all_outlined),
             onPressed: () {
-              final copies = SelectionEditing.duplicate(_sel(ref),
-                  offset: const Offset(16, 16), nextId: editorNewId);
+              // Stacked on top, in the originals' order, like paste.
+              final base = ref
+                  .read(sceneControllerProvider(pageKey).notifier)
+                  .nextZOrder();
+              final dupes = SelectionEditing.duplicate(
+                _sel(ref),
+                offset: const Offset(16, 16),
+                nextId: editorNewId,
+              )..sort((a, b) => a.zOrder.compareTo(b.zOrder));
+              final copies = [
+                for (int i = 0; i < dupes.length; i++)
+                  ZOrderService.withZOrder(dupes[i], base + i),
+              ];
               history.push(AddElementsCommand(copies));
               sel.selectMany(copies.map((e) => e.id));
             },
@@ -116,12 +127,14 @@ class SelectionBar extends ConsumerWidget {
               final before = _sel(ref);
               if (before.length < 2) return;
               final gid = editorNewId();
-              history.push(UpdateElementsCommand(
-                before: before,
-                after: [
-                  for (final e in before) SelectionEditing.withGroup(e, gid)
-                ],
-              ));
+              history.push(
+                UpdateElementsCommand(
+                  before: before,
+                  after: [
+                    for (final e in before) SelectionEditing.withGroup(e, gid),
+                  ],
+                ),
+              );
             },
           ),
           IconButton(
@@ -130,49 +143,66 @@ class SelectionBar extends ConsumerWidget {
             onPressed: () {
               final before = _sel(ref);
               if (before.every((e) => e.groupId.isEmpty)) return;
-              history.push(UpdateElementsCommand(
-                before: before,
-                after: [
-                  for (final e in before) SelectionEditing.withGroup(e, '')
-                ],
-              ));
-            },
-          ),
-          Builder(builder: (context) {
-            final before = _sel(ref);
-            // If everything selected is already locked, this un-locks; any
-            // unlocked element in the mix locks the whole selection. Selection
-            // is kept (not cleared) either way — clearing it after locking is
-            // what made a locked import unreachable in the first place, since
-            // nothing else can re-select a locked element except tapping it.
-            final allLocked = before.isNotEmpty && before.every((e) => e.isLocked);
-            return IconButton(
-              tooltip: allLocked ? 'Unlock' : 'Lock',
-              icon: Icon(allLocked ? Icons.lock_open_outlined : Icons.lock_outline),
-              onPressed: () {
-                if (before.isEmpty) return;
-                history.push(UpdateElementsCommand(
+              history.push(
+                UpdateElementsCommand(
                   before: before,
                   after: [
-                    for (final e in before)
-                      SelectionEditing.withLocked(e, !allLocked)
+                    for (final e in before) SelectionEditing.withGroup(e, ''),
                   ],
-                ));
-              },
-            );
-          }),
+                ),
+              );
+            },
+          ),
+          Builder(
+            builder: (context) {
+              final before = _sel(ref);
+              // If everything selected is already locked, this un-locks; any
+              // unlocked element in the mix locks the whole selection. Selection
+              // is kept (not cleared) either way — clearing it after locking is
+              // what made a locked import unreachable in the first place, since
+              // nothing else can re-select a locked element except tapping it.
+              final allLocked =
+                  before.isNotEmpty && before.every((e) => e.isLocked);
+              return IconButton(
+                tooltip: allLocked ? 'Unlock' : 'Lock',
+                icon: Icon(
+                  allLocked ? Icons.lock_open_outlined : Icons.lock_outline,
+                ),
+                onPressed: () {
+                  if (before.isEmpty) return;
+                  history.push(
+                    UpdateElementsCommand(
+                      before: before,
+                      after: [
+                        for (final e in before)
+                          SelectionEditing.withLocked(e, !allLocked),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
           const VerticalDivider(width: 12),
           IconButton(
             tooltip: 'Bring to front',
             icon: const Icon(Icons.flip_to_front),
-            onPressed: () => history.push(ReplaceAllCommand(
-                before: all, after: ZOrderService.bringToFront(all, ids))),
+            onPressed: () => history.push(
+              ReplaceAllCommand(
+                before: all,
+                after: ZOrderService.bringToFront(all, ids),
+              ),
+            ),
           ),
           IconButton(
             tooltip: 'Send to back',
             icon: const Icon(Icons.flip_to_back),
-            onPressed: () => history.push(ReplaceAllCommand(
-                before: all, after: ZOrderService.sendToBack(all, ids))),
+            onPressed: () => history.push(
+              ReplaceAllCommand(
+                before: all,
+                after: ZOrderService.sendToBack(all, ids),
+              ),
+            ),
           ),
           const VerticalDivider(width: 12),
           IconButton(
@@ -195,8 +225,11 @@ class SelectionBar extends ConsumerWidget {
             icon: const Icon(Icons.horizontal_distribute),
             onPressed: () {
               final before = _sel(ref);
-              _pushMoved(history, before,
-                  AlignmentService.distribute(before, SceneAxis.horizontal));
+              _pushMoved(
+                history,
+                before,
+                AlignmentService.distribute(before, SceneAxis.horizontal),
+              );
             },
           ),
         ],
@@ -211,20 +244,27 @@ class SelectionBar extends ConsumerWidget {
 
   /// Pushes one undo step for [moved] (the elements an align/distribute
   /// actually changed); nothing when it changed nothing.
-  void _pushMoved(HistoryController history, List<SceneElement> selected,
-      List<SceneElement> moved) {
+  void _pushMoved(
+    HistoryController history,
+    List<SceneElement> selected,
+    List<SceneElement> moved,
+  ) {
     if (moved.isEmpty) return;
     final ids = {for (final e in moved) e.id};
-    history.push(UpdateElementsCommand(
-      before: [for (final e in selected) if (ids.contains(e.id)) e],
-      after: moved,
-    ));
+    history.push(
+      UpdateElementsCommand(
+        before: [
+          for (final e in selected)
+            if (ids.contains(e.id)) e,
+        ],
+        after: moved,
+      ),
+    );
   }
 
   /// The single unlocked [TextElement] in the selection, or null when the
   /// selection is anything else.
-  static TextElement? _editableText(
-      Set<String> ids, List<SceneElement> all) {
+  static TextElement? _editableText(Set<String> ids, List<SceneElement> all) {
     if (ids.length != 1) return null;
     final e = all.where((e) => e.id == ids.first).firstOrNull;
     return e is TextElement && !e.isLocked ? e : null;
@@ -234,7 +274,9 @@ class SelectionBar extends ConsumerWidget {
   /// is excluded for the same reason it can't be edited — a locked element is
   /// not up for changing.
   static List<TextElement> _editableTexts(
-      Set<String> ids, List<SceneElement> all) {
+    Set<String> ids,
+    List<SceneElement> all,
+  ) {
     return [
       for (final e in all)
         if (ids.contains(e.id) && e is TextElement && !e.isLocked) e,
@@ -250,22 +292,28 @@ class SelectionBar extends ConsumerWidget {
   static TextElement _refit(TextElement t) {
     final rect = ElementBounds.of(t);
     final height = SceneElementPainter.layOutText(t, rect.width).height;
-    return t.copyWith(geometryData: [
-      rect.left,
-      rect.top,
-      rect.right,
-      rect.top + math.max(height, t.fontSize),
-    ]);
+    return t.copyWith(
+      geometryData: [
+        rect.left,
+        rect.top,
+        rect.right,
+        rect.top + math.max(height, t.fontSize),
+      ],
+    );
   }
 
   /// Bold / italic / alignment. One [UpdateElementsCommand] per press, so a
   /// single undo reverts the whole selection rather than one element at a time.
   List<Widget> _textFormatControls(WidgetRef ref, List<TextElement> texts) {
     void apply(TextElement Function(TextElement) change) {
-      ref.read(historyProvider(pageKey).notifier).push(UpdateElementsCommand(
-            before: texts,
-            after: [for (final t in texts) _refit(change(t))],
-          ));
+      ref
+          .read(historyProvider(pageKey).notifier)
+          .push(
+            UpdateElementsCommand(
+              before: texts,
+              after: [for (final t in texts) _refit(change(t))],
+            ),
+          );
     }
 
     // A mixed selection turns the attribute ON for everything first; pressing
@@ -296,13 +344,14 @@ class SelectionBar extends ConsumerWidget {
         isSelected: texts.every((t) => ChecklistText.isChecklist(t.text)),
         icon: const Icon(Icons.checklist),
         onPressed: () {
-          final makeList =
-              texts.any((t) => !ChecklistText.isChecklist(t.text));
-          apply((t) => t.copyWith(
-                text: makeList
-                    ? ChecklistText.toChecklist(t.text)
-                    : ChecklistText.fromChecklist(t.text),
-              ));
+          final makeList = texts.any((t) => !ChecklistText.isChecklist(t.text));
+          apply(
+            (t) => t.copyWith(
+              text: makeList
+                  ? ChecklistText.toChecklist(t.text)
+                  : ChecklistText.fromChecklist(t.text),
+            ),
+          );
         },
       ),
       PopupMenuButton<TextAlignKind>(
@@ -333,16 +382,16 @@ class SelectionBar extends ConsumerWidget {
   /// Null [a] means the selection mixes alignments — show the neutral default
   /// rather than implying one of them applies to everything.
   static IconData _alignIcon(TextAlignKind? a) => switch (a) {
-        TextAlignKind.center => Icons.format_align_center,
-        TextAlignKind.right => Icons.format_align_right,
-        TextAlignKind.left || null => Icons.format_align_left,
-      };
+    TextAlignKind.center => Icons.format_align_center,
+    TextAlignKind.right => Icons.format_align_right,
+    TextAlignKind.left || null => Icons.format_align_left,
+  };
 
   static String _alignLabel(TextAlignKind a) => switch (a) {
-        TextAlignKind.left => 'Left',
-        TextAlignKind.center => 'Center',
-        TextAlignKind.right => 'Right',
-      };
+    TextAlignKind.left => 'Left',
+    TextAlignKind.center => 'Center',
+    TextAlignKind.right => 'Right',
+  };
 
   /// Width of one extracted line drawn at [fontSize], in the same font a
   /// [TextElement] defaults to — so the size chosen for a line is the size it
@@ -363,7 +412,9 @@ class SelectionBar extends ConsumerWidget {
 
   /// A single selected stroke that was drawn during a recording, or null.
   static FreehandElement? _recordedStroke(
-      Set<String> ids, List<SceneElement> all) {
+    Set<String> ids,
+    List<SceneElement> all,
+  ) {
     if (ids.length != 1) return null;
     final e = all.where((e) => e.id == ids.first).firstOrNull;
     return e is FreehandElement && e.hasAudio ? e : null;
@@ -387,17 +438,23 @@ class SelectionBar extends ConsumerWidget {
   /// aren't text — with removing it offered as a follow-up for anyone who wants
   /// text alone.
   Future<void> _extractText(
-      BuildContext context, WidgetRef ref, ImageElement im) async {
+    BuildContext context,
+    WidgetRef ref,
+    ImageElement im,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final absolute = SceneImageCache.resolvePath(
-        ref.read(sceneImageCacheProvider).baseDir, im.relativeImagePath);
+      ref.read(sceneImageCacheProvider).baseDir,
+      im.relativeImagePath,
+    );
 
     // The same app-wide recogniser the AI pipeline reads pages with, so an
     // image OCR'd for one is already cached for the other.
     final List<RecognizedLine> boxes;
     try {
-      boxes =
-          await ref.read(imageTextRecognitionServiceProvider).lines(absolute);
+      boxes = await ref
+          .read(imageTextRecognitionServiceProvider)
+          .lines(absolute);
     } on TextExtractionException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
       return;
@@ -413,7 +470,8 @@ class SelectionBar extends ConsumerWidget {
     if (!context.mounted) return;
     if (source == null) {
       messenger.showSnackBar(
-          const SnackBar(content: Text("That picture couldn't be read.")));
+        const SnackBar(content: Text("That picture couldn't be read.")),
+      );
       return;
     }
 
@@ -425,7 +483,8 @@ class SelectionBar extends ConsumerWidget {
     );
     if (placed.isEmpty) {
       messenger.showSnackBar(
-          const SnackBar(content: Text('No text found in that picture.')));
+        const SnackBar(content: Text('No text found in that picture.')),
+      );
       return;
     }
 
@@ -440,7 +499,7 @@ class SelectionBar extends ConsumerWidget {
             p.bounds.left,
             p.bounds.top,
             p.bounds.right,
-            p.bounds.bottom
+            p.bounds.bottom,
           ],
           text: p.text,
           color: 0xFF1A1A1A,
@@ -450,17 +509,21 @@ class SelectionBar extends ConsumerWidget {
     final history = ref.read(historyProvider(pageKey).notifier);
     history.push(AddElementsCommand(added));
 
-    messenger.showSnackBar(SnackBar(
-      content: Text('Extracted ${added.length} line'
-          '${added.length == 1 ? '' : 's'} of text'),
-      duration: const Duration(seconds: 6),
-      action: SnackBarAction(
-        label: 'Remove picture',
-        // `history` is captured above: `ref` may be dead by the time this
-        // fires (the bar unmounts when the selection changes).
-        onPressed: () => history.push(RemoveElementsCommand([im])),
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Extracted ${added.length} line'
+          '${added.length == 1 ? '' : 's'} of text',
+        ),
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Remove picture',
+          // `history` is captured above: `ref` may be dead by the time this
+          // fires (the bar unmounts when the selection changes).
+          onPressed: () => history.push(RemoveElementsCommand([im])),
+        ),
       ),
-    ));
+    );
   }
 
   /// Rewrites [t]'s words in place, keeping everything else about it — position,
@@ -472,7 +535,10 @@ class SelectionBar extends ConsumerWidget {
   /// reporting a box far smaller than the visible text — which is what
   /// selection, hit-testing and AI note placement all read.
   Future<void> _editText(
-      BuildContext context, WidgetRef ref, TextElement t) async {
+    BuildContext context,
+    WidgetRef ref,
+    TextElement t,
+  ) async {
     final result = await showSceneTextDialog(
       context,
       initial: t.text,
@@ -502,10 +568,9 @@ class SelectionBar extends ConsumerWidget {
     }
     if (!context.mounted) return;
 
-    ref.read(historyProvider(pageKey).notifier).push(UpdateElementsCommand(
-          before: [t],
-          after: [_refit(updated)],
-        ));
+    ref
+        .read(historyProvider(pageKey).notifier)
+        .push(UpdateElementsCommand(before: [t], after: [_refit(updated)]));
   }
 
   Future<void> _saveToLibrary(BuildContext context, WidgetRef ref) async {

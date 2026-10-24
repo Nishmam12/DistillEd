@@ -7,6 +7,7 @@ import 'package:margo/features/ai/data/embeddings/embedder_spec.dart';
 import 'package:margo/features/ai/data/llm/file_checksum.dart';
 import 'package:margo/features/ai/data/llm/llm_exceptions.dart';
 import 'package:margo/features/ai/data/llm/llm_model_spec.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   late File file;
@@ -39,5 +40,38 @@ void main() {
       expect(e.tokenizerUrl, isNot(contains('/resolve/main/')));
       expect(e.tokenizerSha256, hasLength(64));
     }
+  });
+
+  group('ensureVerifiedOnce (models installed before the markers)', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('hashes an unmarked model once, then trusts the marker', () async {
+      var removed = false;
+      Future<void> check() => ensureVerifiedOnce(
+            name: 'legacy-ok',
+            files: () async => [(file.path, digest)],
+            onMismatch: () async => removed = true,
+          );
+      await check();
+      // Changed after passing: the marker means it is not hashed again.
+      file.writeAsStringSync('different');
+      await check();
+      expect(removed, isFalse);
+      expect((await SharedPreferences.getInstance())
+          .getBool('model_verified:legacy-ok'), isTrue);
+    });
+
+    test('a mismatch removes the model and reads as not downloaded', () async {
+      var removed = false;
+      await expectLater(
+        ensureVerifiedOnce(
+          name: 'legacy-bad',
+          files: () async => [(file.path, 'ab' * 32)],
+          onMismatch: () async => removed = true,
+        ),
+        throwsA(isA<LlmNotReadyException>()),
+      );
+      expect(removed, isTrue);
+    });
   });
 }

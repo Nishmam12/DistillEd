@@ -21,11 +21,11 @@ enum QuestionType { mcq, trueFalse, fillBlank, coding }
 
 extension QuestionTypeLabel on QuestionType {
   String get label => switch (this) {
-        QuestionType.mcq => 'Multiple choice',
-        QuestionType.trueFalse => 'True / False',
-        QuestionType.fillBlank => 'Fill in the blank',
-        QuestionType.coding => 'Coding',
-      };
+    QuestionType.mcq => 'Multiple choice',
+    QuestionType.trueFalse => 'True / False',
+    QuestionType.fillBlank => 'Fill in the blank',
+    QuestionType.coding => 'Coding',
+  };
 }
 
 /// One quiz question. [options]/[correctIndex] apply to the choice types
@@ -78,8 +78,9 @@ class QuizQuestion {
       case QuestionType.mcq:
         final options = _stringList(json['options']);
         if (options.length < 2) return null;
-        final index = options
-            .indexWhere((o) => _normalize(o) == _normalize(answer));
+        final index = options.indexWhere(
+          (o) => _normalize(o) == _normalize(answer),
+        );
         if (index < 0) return null;
         return QuizQuestion(
           type: type,
@@ -126,7 +127,7 @@ class QuizQuestion {
   static List<String> _stringList(Object? v) => v is List
       ? [
           for (final e in v)
-            if (e is String && e.trim().isNotEmpty) e.trim()
+            if (e is String && e.trim().isNotEmpty) e.trim(),
         ]
       : const [];
 
@@ -135,8 +136,10 @@ class QuizQuestion {
     return switch (key) {
       'mcq' || 'multiplechoice' || 'choice' => QuestionType.mcq,
       'truefalse' || 'boolean' || 'tf' => QuestionType.trueFalse,
-      'fillblank' || 'fillintheblank' || 'fillinblank' || 'cloze' =>
-        QuestionType.fillBlank,
+      'fillblank' ||
+      'fillintheblank' ||
+      'fillinblank' ||
+      'cloze' => QuestionType.fillBlank,
       'coding' || 'code' || 'programming' => QuestionType.coding,
       _ => null,
     };
@@ -151,6 +154,9 @@ class QuizQuestion {
 }
 
 class QuizGenerator {
+  /// Reply cap; the input budget reserves the same amount.
+  static const int _maxTokens = 1024;
+
   static const String _retryNudge =
       'Reply with ONLY one valid JSON object in the required shape '
       '({"questions": [...]}). No markdown fences, no commentary.';
@@ -222,23 +228,34 @@ class QuizGenerator {
     bool allowCoding = false,
     int count = 5,
   }) async {
-    final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
-    final prompt = 'NOTE:\n${fenceUntrusted(truncateToWords(text.trim(), budget))}';
-    final system = _schema(count: count, level: level, allowCoding: allowCoding);
+    final system = _schema(
+      count: count,
+      level: level,
+      allowCoding: allowCoding,
+    );
+    final budget = AiRouter.inputWordBudgetFor(
+      _provider.capabilities,
+      systemPrompt: system,
+      responseTokens: _maxTokens,
+    );
+    final prompt =
+        'NOTE:\n${fenceUntrusted(truncateToWords(text.trim(), budget))}';
 
-    var json =
-        ContextEngine.tryExtractJsonObject(await _complete(prompt, system));
+    var json = ContextEngine.tryExtractJsonObject(
+      await _complete(prompt, system),
+    );
     json ??= ContextEngine.tryExtractJsonObject(
-        await _complete('$prompt\n\n$_retryNudge', system));
+      await _complete('$prompt\n\n$_retryNudge', system),
+    );
     if (json == null) return const [];
     return _parse(json);
   }
 
   static String difficultyFor(KnowledgeLevel level) => switch (level) {
-        KnowledgeLevel.beginner => 'easy',
-        KnowledgeLevel.intermediate => 'medium',
-        KnowledgeLevel.advanced => 'hard',
-      };
+    KnowledgeLevel.beginner => 'easy',
+    KnowledgeLevel.intermediate => 'medium',
+    KnowledgeLevel.advanced => 'hard',
+  };
 
   static String _schema({
     required int count,
@@ -274,7 +291,7 @@ Rules:
         .generate(
           prompt: prompt,
           systemPrompt: system,
-          options: const AiGenerationOptions(temperature: 0.0, maxTokens: 1024),
+          options: const AiGenerationOptions(temperature: 0.0, maxTokens: _maxTokens),
         )
         .toList();
     return chunks.join();

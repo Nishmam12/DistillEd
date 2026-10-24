@@ -29,14 +29,14 @@ enum ExplainMode {
 extension ExplainModeLabel on ExplainMode {
   /// Short label for the mode picker / header.
   String get label => switch (this) {
-        ExplainMode.beginner => 'Beginner',
-        ExplainMode.intermediate => 'Intermediate',
-        ExplainMode.advanced => 'Advanced',
-        ExplainMode.child => 'Like I\'m 10',
-        ExplainMode.visual => 'Visual',
-        ExplainMode.mathematical => 'Mathematical',
-        ExplainMode.realWorld => 'Real-world',
-      };
+    ExplainMode.beginner => 'Beginner',
+    ExplainMode.intermediate => 'Intermediate',
+    ExplainMode.advanced => 'Advanced',
+    ExplainMode.child => 'Like I\'m 10',
+    ExplainMode.visual => 'Visual',
+    ExplainMode.mathematical => 'Mathematical',
+    ExplainMode.realWorld => 'Real-world',
+  };
 }
 
 /// One explanation request: the text to explain and the register to use.
@@ -60,7 +60,8 @@ class Explainer {
   /// student hears one voice across the app rather than three. What stays here
   /// is only what is specific to explaining: teach the SUBJECT, not the text,
   /// and never contradict the passage.
-  static const String _base = '$kUntrustedDataRule\n\n'
+  static const String _base =
+      '$kUntrustedDataRule\n\n'
       'You are a patient tutor helping one student '
       'understand a topic from their own notes.\n\n'
       '$kTutorVoiceWithMath\n\n'
@@ -75,28 +76,28 @@ class Explainer {
   static const Map<ExplainMode, String> _modeInstruction = {
     ExplainMode.beginner:
         'Explain for a beginner: plain language, no jargon; define any term '
-            'you must use.',
+        'you must use.',
     ExplainMode.intermediate:
         'Explain for someone with some background: normal terminology, focus '
-            'on the why and how.',
+        'on the why and how.',
     ExplainMode.advanced:
         'Explain for an advanced learner: precise terminology, underlying '
-            'mechanisms, edge cases and caveats.',
+        'mechanisms, edge cases and caveats.',
     ExplainMode.child:
         'Explain as if to a curious 10-year-old: short sentences, everyday '
-            'words, one friendly example.',
+        'words, one friendly example.',
     ExplainMode.visual:
         'Describe it visually: lay out the structure as a described diagram — '
-            'components and how they connect, as text (do NOT attempt to draw '
-            'an image).',
+        'components and how they connect, as text (do NOT attempt to draw '
+        'an image).',
     ExplainMode.mathematical:
         'Explain the mathematics: define the symbols, state the relationships '
-            'or formulas, and walk through the reasoning a step at a time. '
-            'Every symbol and formula goes in LaTeX dollar delimiters, and a '
-            'formula the student needs to look at gets its own \$\$…\$\$ line.',
+        'or formulas, and walk through the reasoning a step at a time. '
+        'Every symbol and formula goes in LaTeX dollar delimiters, and a '
+        'formula the student needs to look at gets its own \$\$…\$\$ line.',
     ExplainMode.realWorld:
         'Explain with a real-world analogy: map the idea onto a concrete, '
-            'familiar situation, then connect the analogy back to the passage.',
+        'familiar situation, then connect the analogy back to the passage.',
   };
 
   final AiProvider _provider;
@@ -117,16 +118,21 @@ class Explainer {
 
   /// The user-side prompt for [content]. Exposed alongside [systemPromptFor] so
   /// the quality guard can re-issue an identical request to the cloud tier.
-  static String promptFor(String content) => 'PASSAGE:\n${fenceUntrusted(content.trim())}';
+  static String promptFor(String content) =>
+      'PASSAGE:\n${fenceUntrusted(content.trim())}';
 
   /// Streams the explanation for [input]. Emits incremental chunks (concatenate
   /// in order). Throws/streams-errors from the provider are not caught here.
   Stream<String> explain(ExplainInput input) {
-    final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
+    final system = systemPromptFor(input.mode);
+    final budget = AiRouter.inputWordBudgetFor(
+      _provider.capabilities,
+      systemPrompt: system,
+    );
     final content = truncateToWords(input.content.trim(), budget);
     return _provider.generate(
       prompt: promptFor(content),
-      systemPrompt: systemPromptFor(input.mode),
+      systemPrompt: system,
       options: explainOptions,
     );
   }

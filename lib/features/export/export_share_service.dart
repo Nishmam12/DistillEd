@@ -3,7 +3,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -17,7 +16,9 @@ class ExportShareService {
     // share() can return before the target app has read the file (it resolves
     // when the sheet closes), so the file is NOT deleted afterwards. Instead the
     // previous exports are swept at the start of the next one.
-    final tempDir = Directory('${(await getTemporaryDirectory()).path}/exports');
+    final tempDir = Directory(
+      '${(await getTemporaryDirectory()).path}/exports',
+    );
     try {
       if (await tempDir.exists()) await tempDir.delete(recursive: true);
     } catch (_) {}
@@ -49,7 +50,6 @@ class ExportShareService {
 
   /// `<title>_<timestamp>.<extension>` for an export, with the title shortened
   /// (never the extension, which the share target needs) and made safe.
-  @visibleForTesting
   static String fileName(String title, int timestamp, String extension) {
     final safe = safeFilename(title);
     final short = safe.length > _maxTitleChars
@@ -83,5 +83,4 @@ class ExportShareService {
       mimeType: 'application/pdf',
     );
   }
-
 }

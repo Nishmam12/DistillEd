@@ -6,8 +6,10 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, visibleForTesting;
-import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
+import 'package:flutter/foundation.dart'
+    show debugPrint, kDebugMode, visibleForTesting;
+import 'package:flutter/widgets.dart'
+    show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -99,13 +101,12 @@ import 'writing_assistant_notifier.dart';
 
 part 'ai_rag_providers.dart';
 
-
 final handwritingRecognitionServiceProvider =
     Provider<HandwritingRecognitionService>((ref) {
-  final service = HandwritingRecognitionService();
-  ref.onDispose(service.dispose);
-  return service;
-});
+      final service = HandwritingRecognitionService();
+      ref.onDispose(service.dispose);
+      return service;
+    });
 
 /// Manages the on-device LLM download. The token is optional here (this model's
 /// repo is ungated) but is passed when present — see [ModelDownloadManager]'s
@@ -126,14 +127,16 @@ final modelDownloadManagerProvider = Provider<ModelDownloadManager>((ref) {
 /// lose sight of it. Reopening the sidebar reads this same instance and lands
 /// straight back on live progress.
 final llmDownloadProvider =
-    StateNotifierProvider<LlmDownloadNotifier, LlmDownloadState>((ref) =>
-        LlmDownloadNotifier(ref.watch(modelDownloadManagerProvider)));
+    StateNotifierProvider<LlmDownloadNotifier, LlmDownloadState>(
+      (ref) => LlmDownloadNotifier(ref.watch(modelDownloadManagerProvider)),
+    );
 
 /// Finds and reclaims model files left on disk that no installed model claims
 /// — see [ModelStorageCleaner] for how these arise and why the delete is
 /// guarded.
-final modelStorageCleanerProvider =
-    Provider<ModelStorageCleaner>((ref) => EdgeAiStorageCleaner());
+final modelStorageCleanerProvider = Provider<ModelStorageCleaner>(
+  (ref) => EdgeAiStorageCleaner(),
+);
 
 /// The inference runtime behind [localAiProvider]. A provider only so the
 /// wiring around it can be tested with a fake — nothing else needs to swap it.
@@ -163,19 +166,24 @@ final deviceProfileProvider = Provider<AiProfile>((ref) => AiProfile.full);
 /// the CPU, or the device is too short of RAM to lean on it — which is what
 /// makes routing prefer the cloud for a user who has opted in. Read per
 /// decision: the backend is only learned when the model first loads.
-final localDegradedProvider = Provider<bool Function()>((ref) => () =>
-    (ref.read(localBackendProvider)?.isSlow ?? false) ||
-    ref.read(deviceProfileProvider) == AiProfile.cloudAssisted);
+final localDegradedProvider = Provider<bool Function()>(
+  (ref) =>
+      () =>
+          (ref.read(localBackendProvider)?.isSlow ?? false) ||
+          ref.read(deviceProfileProvider) == AiProfile.cloudAssisted,
+);
 
 /// The on-device model behind the platform-wide [AiProvider] contract —
 /// streaming, typed failures, load→generate→unload memory invariant.
-final localAiProvider = Provider<AiProvider>((ref) => LocalGemmaProvider(
-      // A device short on RAM loads a smaller context window.
-      spec: LlmModelSpec.active.forProfile(ref.read(deviceProfileProvider)),
-      runtime: ref.watch(llmRuntimeProvider),
-      onBackendChanged: (backend) =>
-          ref.read(localBackendProvider.notifier).state = backend,
-    ));
+final localAiProvider = Provider<AiProvider>(
+  (ref) => LocalGemmaProvider(
+    // A device short on RAM loads a smaller context window.
+    spec: LlmModelSpec.active.forProfile(ref.read(deviceProfileProvider)),
+    runtime: ref.watch(llmRuntimeProvider),
+    onBackendChanged: (backend) =>
+        ref.read(localBackendProvider.notifier).state = backend,
+  ),
+);
 
 /// Gives the on-device model's memory back when the app leaves the screen. A
 /// resident 2.6 GB model is the first thing Android kills a backgrounded app
@@ -196,7 +204,8 @@ class _ReleaseWhenBackgrounded with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
       _release();
     }
   }
@@ -210,20 +219,23 @@ class _ReleaseWhenBackgrounded with WidgetsBindingObserver {
 /// focus. Does nothing in cloud-first mode, where the local model is never used;
 /// nothing on a device too short of RAM to hold the model warm on a guess; and
 /// nothing when the local provider is not the real one (tests).
-final localModelWarmerProvider = Provider<void Function()>((ref) => () {
-      if (ref.read(settingsProvider).aiMode.prefersCloud) return;
-      if (ref.read(deviceProfileProvider) == AiProfile.cloudAssisted) return;
-      final local = ref.read(localAiProvider);
-      if (local is LocalGemmaProvider) unawaited(local.warmUp());
-    });
+final localModelWarmerProvider = Provider<void Function()>(
+  (ref) => () {
+    if (ref.read(settingsProvider).aiMode.prefersCloud) return;
+    if (ref.read(deviceProfileProvider) == AiProfile.cloudAssisted) return;
+    final local = ref.read(localAiProvider);
+    if (local is LocalGemmaProvider) unawaited(local.warmUp());
+  },
+);
 
 /// Summarize's cloud route, still the no-op stub: it throws, and Summarize
 /// degrades to the on-device model. Deliberately NOT wired to the live gateway
 /// ([cloudGatewayMidProvider]) — Summarize's router checks only the cloud switch,
 /// not the per-call `cloudPrivacy` confirmation, so wiring it would send whole
 /// notebooks off the device without asking.
-final cloudLlmClientProvider =
-    Provider<CloudLlmClient>((ref) => StubCloudLlmClient());
+final cloudLlmClientProvider = Provider<CloudLlmClient>(
+  (ref) => StubCloudLlmClient(),
+);
 
 /// On-device OCR for imported pictures — PDF pages, whiteboard photos.
 ///
@@ -232,10 +244,10 @@ final cloudLlmClientProvider =
 /// waste. Distinct from the handwriting recogniser above, which reads strokes.
 final imageTextRecognitionServiceProvider =
     Provider<ImageTextRecognitionService>((ref) {
-  final service = ImageTextRecognitionService();
-  ref.onDispose(service.dispose);
-  return service;
-});
+      final service = ImageTextRecognitionService();
+      ref.onDispose(service.dispose);
+      return service;
+    });
 
 /// The on-device Gemma model as an [ImageTranscriber] — the SAME instance as
 /// [localAiProvider]. It must be the same instance, not a fresh one: vision
@@ -243,7 +255,8 @@ final imageTextRecognitionServiceProvider =
 /// is never loaded twice at once. The cast is safe — the local provider is the
 /// only implementation and it implements both contracts.
 final imageTranscriberProvider = Provider<ImageTranscriber>(
-    (ref) => ref.watch(localAiProvider) as ImageTranscriber);
+  (ref) => ref.watch(localAiProvider) as ImageTranscriber,
+);
 
 /// The transcriber page reads actually use — on-device, or the cloud gateway
 /// when the user picked [AiProcessingMode.cloudFirst].
@@ -256,23 +269,27 @@ final routedImageTranscriberProvider = Provider<ImageTranscriber>((ref) {
   return CloudFirstTranscriber(
     local: ref.watch(imageTranscriberProvider),
     cloud: cloud,
-    preferCloud: () => mayUploadImages(ref.read(settingsProvider)) &&
+    preferCloud: () =>
+        mayUploadImages(ref.read(settingsProvider)) &&
         ref.read(settingsProvider).aiMode.prefersCloud,
   );
 });
 
 /// Vision OCR — the PRIMARY recogniser for deep page reads (handwriting and
 /// imported images). ML Kit (above) is its last-resort fallback.
-final gemmaVisionOcrServiceProvider = Provider<GemmaVisionOcrService>((ref) =>
-    GemmaVisionOcrService(
-        transcriber: ref.watch(routedImageTranscriberProvider)));
+final gemmaVisionOcrServiceProvider = Provider<GemmaVisionOcrService>(
+  (ref) => GemmaVisionOcrService(
+    transcriber: ref.watch(routedImageTranscriberProvider),
+  ),
+);
 
 /// Page images are uploaded silently (no per-call prompt), so the cloud being
 /// switched on is not enough: the user must also have allowed cloud use
 /// without asking. `localOnly` and `askEachTime` keep images on the device.
 @visibleForTesting
 bool mayUploadImages(SettingsState s) =>
-    s.cloudAiEnabled && s.cloudPrivacy == CloudPrivacy.allowCloudForNonSensitive;
+    s.cloudAiEnabled &&
+    s.cloudPrivacy == CloudPrivacy.allowCloudForNonSensitive;
 
 /// Reads charts and diagrams as structured figures — on-device first, cloud
 /// only when the on-device read misses the quality bar.
@@ -289,7 +306,8 @@ final figureAnalyzerProvider = Provider<FigureAnalyzer>((ref) {
     local: local,
     cloud: cloud,
     canEscalate: () async => mayUploadImages(ref.read(settingsProvider)),
-    preferCloud: () => mayUploadImages(ref.read(settingsProvider)) &&
+    preferCloud: () =>
+        mayUploadImages(ref.read(settingsProvider)) &&
         ref.read(settingsProvider).aiMode.prefersCloud,
     localModelId: ref.watch(localAiProvider).capabilities.modelId,
     cloudModelId: cloud.capabilities.modelId,
@@ -367,13 +385,18 @@ final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
     // What was SAID in the lectures recorded on a page, transcribed on the
     // device: read as part of the page, so every feature sees it.
     lectureTranscript: (pageId) async => lectureTextOf(
-        await ref.read(lectureRecordingStoreProvider).forPage(pageId),
-        ref.read(transcriptStoreProvider)),
+      await ref.read(lectureRecordingStoreProvider).forPage(pageId),
+      ref.read(transcriptStoreProvider),
+    ),
     // The text PDFium read off each imported PDF page at import, kept beside the
     // page's image. A page that has some is read without OCR or a model.
     pdfTextLayer: (relative) async {
-      final file = File(SceneImageCache.resolvePath(
-          docsDir, StoragePaths.pdfTextSidecar(relative)));
+      final file = File(
+        SceneImageCache.resolvePath(
+          docsDir,
+          StoragePaths.pdfTextSidecar(relative),
+        ),
+      );
       try {
         return await file.exists() ? await file.readAsString() : null;
       } catch (_) {
@@ -397,8 +420,9 @@ Future<Uint8List?> _readFileBytes(String absolutePath) async {
 /// Session-lifetime cache of the last PageContext per page; survives the
 /// sidebar closing and page switches (durable persistence is the
 /// Learning Memory).
-final pageContextCacheProvider =
-    Provider<PageContextCache>((ref) => PageContextCache());
+final pageContextCacheProvider = Provider<PageContextCache>(
+  (ref) => PageContextCache(),
+);
 
 /// Page analysis runs on a background debounce with no per-call prompt, so the
 /// cloud is used only in cloud-first mode AND when the user has allowed cloud
@@ -440,8 +464,10 @@ final contextEngineProvider = Provider<ContextEngine>((ref) {
 /// user-configurable yet; for local gateway work, point this at
 /// `http://localhost:8000` (`cd server/ai-gateway && uvicorn app.main:app`), or
 /// build with `--dart-define=GATEWAY_URL=http://localhost:8000`.
-const String cloudGatewayBaseUrl = String.fromEnvironment('GATEWAY_URL',
-    defaultValue: 'https://margo-ai-gateway.onrender.com');
+const String cloudGatewayBaseUrl = String.fromEnvironment(
+  'GATEWAY_URL',
+  defaultValue: 'https://margo-ai-gateway.onrender.com',
+);
 
 /// The two cloud tiers the Phase 3 gateway serves, each a thin [AiProvider]
 /// over the same gateway with a different `model_tier`. [cloudGatewayMidProvider]
@@ -449,16 +475,20 @@ const String cloudGatewayBaseUrl = String.fromEnvironment('GATEWAY_URL',
 /// (Loop 3.4) also needs its [ToolCallingClient]-only `generateWithTools` —
 /// every existing [AiProvider]-typed consumer still works unchanged since
 /// [CloudGatewayProvider] implements that interface too.
-final cloudGatewayMidProvider = Provider<CloudGatewayProvider>((ref) =>
-    CloudGatewayProvider(
-        baseUrl: cloudGatewayBaseUrl,
-        modelTier: 'cloud-mid',
-        isCloudAllowed: () => _mayUseCloud(ref)));
-final cloudGatewayFrontierProvider = Provider<AiProvider>((ref) =>
-    CloudGatewayProvider(
-        baseUrl: cloudGatewayBaseUrl,
-        modelTier: 'cloud-frontier',
-        isCloudAllowed: () => _mayUseCloud(ref)));
+final cloudGatewayMidProvider = Provider<CloudGatewayProvider>(
+  (ref) => CloudGatewayProvider(
+    baseUrl: cloudGatewayBaseUrl,
+    modelTier: 'cloud-mid',
+    isCloudAllowed: () => _mayUseCloud(ref),
+  ),
+);
+final cloudGatewayFrontierProvider = Provider<AiProvider>(
+  (ref) => CloudGatewayProvider(
+    baseUrl: cloudGatewayBaseUrl,
+    modelTier: 'cloud-frontier',
+    isCloudAllowed: () => _mayUseCloud(ref),
+  ),
+);
 
 /// The transport-level opt-in: no request to the gateway leaves the device unless
 /// the mode allows cloud and privacy is not `localOnly`. Callers still ask for
@@ -470,11 +500,12 @@ bool _mayUseCloud(Ref ref) {
 
 /// Decides local vs. cloud-mid vs. cloud-frontier per request. Additive
 /// alongside the existing, simpler [AiRouter] (still serves Summarize).
-final intelligentRouterProvider = Provider<IntelligentRouter>((ref) =>
-    IntelligentRouter(
-      localCapabilities: ref.watch(localAiProvider).capabilities,
-      localDegraded: ref.read(localDegradedProvider),
-    ));
+final intelligentRouterProvider = Provider<IntelligentRouter>(
+  (ref) => IntelligentRouter(
+    localCapabilities: ref.watch(localAiProvider).capabilities,
+    localDegraded: ref.read(localDegradedProvider),
+  ),
+);
 
 /// Explain, routed through the Phase 3 Intelligent Router — the one feature
 /// wired to it in this pass (see `intelligent_router.dart`'s header for why
@@ -488,76 +519,92 @@ final explainAiProviderProvider = Provider<RoutedAiProvider>((ref) {
     local: ref.watch(localAiProvider),
     cloudMid: ref.watch(cloudGatewayMidProvider),
     cloudFrontier: ref.watch(cloudGatewayFrontierProvider),
-    privacy: () => ref.read(settingsProvider).cloudPrivacy,
+    // Cloud switched off (on-device mode) reads as localOnly, as in Research:
+    // no cloud route, so a degraded local model still runs locally.
+    privacy: () {
+      final s = ref.read(settingsProvider);
+      return s.cloudAiEnabled ? s.cloudPrivacy : CloudPrivacy.localOnly;
+    },
   );
 });
 
 /// Explain feature — streams an explanation of a passage, routed per
 /// [explainAiProviderProvider].
 final explainerProvider = Provider<Explainer>(
-    (ref) => Explainer(provider: ref.watch(explainAiProviderProvider)));
+  (ref) => Explainer(provider: ref.watch(explainAiProviderProvider)),
+);
 
 /// The Loop 3.4 tool set — Calculator (no network) plus Wikipedia and Web
 /// Search (both network, both cloud-only — see `researcher.dart`'s header).
 /// [WebSearchTool] talks to the gateway's own `/v1/tools/search`, never to
 /// Exa directly, using the same [sessionDeviceKey] identity as the LLM calls.
-final toolsProvider = Provider<List<Tool>>((ref) => [
-      const CalculatorTool(),
-      WikipediaTool(
-        dio: Dio(BaseOptions(
+final toolsProvider = Provider<List<Tool>>(
+  (ref) => [
+    const CalculatorTool(),
+    WikipediaTool(
+      dio: Dio(
+        BaseOptions(
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
-        )),
-        isCloudAllowed: () => _mayUseCloud(ref),
+        ),
       ),
-      WebSearchTool(
-        baseUrl: cloudGatewayBaseUrl,
-        deviceKey: sessionDeviceKey,
-        dio: gatewayDio(cloudGatewayBaseUrl),
-        isCloudAllowed: () => _mayUseCloud(ref),
-      ),
-    ]);
+      isCloudAllowed: () => _mayUseCloud(ref),
+    ),
+    WebSearchTool(
+      baseUrl: cloudGatewayBaseUrl,
+      deviceKey: sessionDeviceKey,
+      dio: gatewayDio(cloudGatewayBaseUrl),
+      isCloudAllowed: () => _mayUseCloud(ref),
+    ),
+  ],
+);
 
 /// Research feature — free-form questions that may reach outside the notes
 /// via [toolsProvider]'s tools. Cloud-mid only, never local, never frontier
 /// (see `researcher.dart`'s header for why on-device is skipped this loop).
-final researcherProvider = Provider<Researcher>((ref) => Researcher(
-      client: ref.watch(cloudGatewayMidProvider),
-      tools: ref.watch(toolsProvider),
-    ));
+final researcherProvider = Provider<Researcher>(
+  (ref) => Researcher(
+    client: ref.watch(cloudGatewayMidProvider),
+    tools: ref.watch(toolsProvider),
+  ),
+);
 
 /// Drives the sidebar's Research surface. Session-scoped (not autoDispose),
 /// same reasoning as Ask/Explain/Quiz: closing the sidebar must not abort an
 /// in-flight request, and the answer stays put until dismissed.
 final researchNotifierProvider =
     StateNotifierProvider<ResearchNotifier, ResearchState>((ref) {
-  return ResearchNotifier(
-    researcher: ref.watch(researcherProvider),
-    // Cloud switched off (header toggle / on-device mode) reads as localOnly:
-    // no cloud offer is made at all.
-    privacy: () {
-      final s = ref.read(settingsProvider);
-      return s.cloudAiEnabled ? s.cloudPrivacy : CloudPrivacy.localOnly;
-    },
-    hasSeenFirstCloudCall: () => ref.read(settingsProvider).hasSeenFirstCloudCall,
-    markFirstCloudCallSeen: () =>
-        ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
-  );
-});
+      return ResearchNotifier(
+        researcher: ref.watch(researcherProvider),
+        // Cloud switched off (header toggle / on-device mode) reads as localOnly:
+        // no cloud offer is made at all.
+        privacy: () {
+          final s = ref.read(settingsProvider);
+          return s.cloudAiEnabled ? s.cloudPrivacy : CloudPrivacy.localOnly;
+        },
+        hasSeenFirstCloudCall: () =>
+            ref.read(settingsProvider).hasSeenFirstCloudCall,
+        markFirstCloudCallSeen: () =>
+            ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
+      );
+    });
 
 /// Writing Assistant feature — reviews typed text for grammar/clarity/etc.
 final writingAssistantProvider = Provider<WritingAssistant>(
-    (ref) => WritingAssistant(provider: ref.watch(localAiProvider)));
+  (ref) => WritingAssistant(provider: ref.watch(localAiProvider)),
+);
 
 /// Quiz Generator feature — builds gradeable questions from page content.
 final quizGeneratorProvider = Provider<QuizGenerator>(
-    (ref) => QuizGenerator(provider: ref.watch(localAiProvider)));
+  (ref) => QuizGenerator(provider: ref.watch(localAiProvider)),
+);
 
 /// Drives the quiz sheet. Session-scoped (not autoDispose): closing the sidebar
 /// must not abort an in-flight model download, and the generated quiz stays put
 /// while the taker works through it.
-final quizNotifierProvider =
-    StateNotifierProvider<QuizNotifier, QuizState>((ref) {
+final quizNotifierProvider = StateNotifierProvider<QuizNotifier, QuizState>((
+  ref,
+) {
   return QuizNotifier(
     generator: ref.watch(quizGeneratorProvider),
     downloads: ref.watch(modelDownloadManagerProvider),
@@ -566,26 +613,29 @@ final quizNotifierProvider =
 
 /// Flashcard Generator feature — builds a deck from a page's concepts/definitions.
 final flashcardGeneratorProvider = Provider<FlashcardGenerator>(
-    (ref) => FlashcardGenerator(provider: ref.watch(localAiProvider)));
+  (ref) => FlashcardGenerator(provider: ref.watch(localAiProvider)),
+);
 
 /// Durable flashcard store (Isar). Flashcards persist across sessions.
-final flashcardStoreProvider =
-    Provider<FlashcardStore>((ref) => IsarFlashcardStore());
+final flashcardStoreProvider = Provider<FlashcardStore>(
+  (ref) => IsarFlashcardStore(),
+);
 
 /// Drives the flashcard sheet. Session-scoped for the same reasons as the quiz.
 final flashcardNotifierProvider =
     StateNotifierProvider<FlashcardNotifier, FlashcardState>((ref) {
-  return FlashcardNotifier(
-    generator: ref.watch(flashcardGeneratorProvider),
-    store: ref.watch(flashcardStoreProvider),
-    downloads: ref.watch(modelDownloadManagerProvider),
-  );
-});
+      return FlashcardNotifier(
+        generator: ref.watch(flashcardGeneratorProvider),
+        store: ref.watch(flashcardStoreProvider),
+        downloads: ref.watch(modelDownloadManagerProvider),
+      );
+    });
 
 /// Durable Learning Memory (Isar) — concept mastery, quiz history, preferences.
 /// The durable counterpart to the session-only [pageContextCacheProvider].
-final learningMemoryProvider =
-    Provider<LearningMemoryRepository>((ref) => IsarLearningMemoryRepository());
+final learningMemoryProvider = Provider<LearningMemoryRepository>(
+  (ref) => IsarLearningMemoryRepository(),
+);
 
 /// Which slice of a notebook a graph should be built from — the family key for
 /// [knowledgeGraphProvider].
@@ -612,46 +662,52 @@ typedef KnowledgeGraphRequest = ({
 /// Context Engine's per-page analysis is what produces every concept and edge,
 /// so narrowing is a filter over what it already recorded rather than a second,
 /// differently-behaved pipeline.
-final knowledgeGraphProvider =
-    FutureProvider.autoDispose.family<KnowledgeGraph, KnowledgeGraphRequest>(
-        (ref, request) async {
-  final memory = ref.watch(learningMemoryProvider);
-  final notebookId = request.notebookId;
+final knowledgeGraphProvider = FutureProvider.autoDispose
+    .family<KnowledgeGraph, KnowledgeGraphRequest>((ref, request) async {
+      final memory = ref.watch(learningMemoryProvider);
+      final notebookId = request.notebookId;
 
-  if (request.kind == AiScopeKind.notebook || request.pageId == null) {
-    return KnowledgeGraph.build(
-      concepts: await memory.allConcepts(notebookId),
-      relations: await memory.relationsForNotebook(notebookId),
-    );
-  }
+      if (request.kind == AiScopeKind.notebook || request.pageId == null) {
+        return KnowledgeGraph.build(
+          concepts: await memory.allConcepts(notebookId),
+          relations: await memory.relationsForNotebook(notebookId),
+        );
+      }
 
-  final scope = await ref.watch(aiScopeResolverProvider).resolve(
-        kind: request.kind,
-        notebookId: notebookId,
-        pageId: request.pageId!,
+      final scope = await ref
+          .watch(aiScopeResolverProvider)
+          .resolve(
+            kind: request.kind,
+            notebookId: notebookId,
+            pageId: request.pageId!,
+          );
+      final pageIds = scope.pageIdSet;
+      return KnowledgeGraph.build(
+        concepts: await memory.conceptsForPages(notebookId, pageIds),
+        relations: await memory.relationsForPages(notebookId, pageIds),
       );
-  final pageIds = scope.pageIdSet;
-  return KnowledgeGraph.build(
-    concepts: await memory.conceptsForPages(notebookId, pageIds),
-    relations: await memory.relationsForPages(notebookId, pageIds),
-  );
-});
+    });
 
 /// Durable store of generated study plans (Isar), one per notebook.
-final studyPlanStoreProvider =
-    Provider<StudyPlanStore>((ref) => IsarStudyPlanStore());
+final studyPlanStoreProvider = Provider<StudyPlanStore>(
+  (ref) => IsarStudyPlanStore(),
+);
 
 /// Drives the Study Planner for one notebook: loads any saved plan, generates a
 /// new one from Learning-Memory signals (deterministic — no model), toggles
 /// day completion. Family-scoped so each notebook keeps its own plan state.
-final studyPlannerProvider = StateNotifierProvider.family<StudyPlannerNotifier,
-    AsyncValue<StudyPlan?>, int>((ref, notebookId) {
-  return StudyPlannerNotifier(
-    memory: ref.watch(learningMemoryProvider),
-    store: ref.watch(studyPlanStoreProvider),
-    notebookId: notebookId,
-  );
-});
+final studyPlannerProvider =
+    StateNotifierProvider.family<
+      StudyPlannerNotifier,
+      AsyncValue<StudyPlan?>,
+      int
+    >((ref, notebookId) {
+      return StudyPlannerNotifier(
+        memory: ref.watch(learningMemoryProvider),
+        store: ref.watch(studyPlanStoreProvider),
+        notebookId: notebookId,
+      );
+    });
 
 /// Reads dates out of note text — ML Kit Entity Extraction, on-device. One
 /// extractor for the app, freed with the container.
@@ -667,119 +723,134 @@ final dateFinderProvider = Provider<DateFinder>((ref) {
 /// watches it), so there is no index to keep in step with edits.
 final noteDeadlinesProvider = FutureProvider.autoDispose
     .family<List<NoteDeadline>, int>((ref, notebookId) async {
-  final pages = await ref.read(pageTextStoreProvider).forNotebook(notebookId);
-  return findNoteDeadlines(
-    pageTexts: {for (final p in pages) p.pageId: p.text},
-    finder: ref.read(dateFinderProvider),
-    now: DateTime.now(),
-  );
-});
+      final pages = await ref
+          .read(pageTextStoreProvider)
+          .forNotebook(notebookId);
+      return findNoteDeadlines(
+        pageTexts: {for (final p in pages) p.pageId: p.text},
+        finder: ref.read(dateFinderProvider),
+        now: DateTime.now(),
+      );
+    });
 
 /// Session cache of the last suggestions per page (see [pageContextCacheProvider]).
-final pageWritingCacheProvider =
-    Provider<PageWritingCache>((ref) => PageWritingCache());
+final pageWritingCacheProvider = Provider<PageWritingCache>(
+  (ref) => PageWritingCache(),
+);
 
 /// Writing suggestions for one page. autoDispose + fed by the Context Engine's
 /// debounce, so it does no work unless the sidebar is open and content changes.
 final writingSuggestionsProvider = StateNotifierProvider.autoDispose
-    .family<WritingAssistantNotifier, List<WritingSuggestion>, ScenePageKey>(
-        (ref, key) {
-  return WritingAssistantNotifier(
-    assistant: ref.watch(writingAssistantProvider),
-    cache: ref.watch(pageWritingCacheProvider),
-    pageId: key.pageId,
-  );
-});
+    .family<WritingAssistantNotifier, List<WritingSuggestion>, ScenePageKey>((
+      ref,
+      key,
+    ) {
+      return WritingAssistantNotifier(
+        assistant: ref.watch(writingAssistantProvider),
+        cache: ref.watch(pageWritingCacheProvider),
+        pageId: key.pageId,
+      );
+    });
 
 /// Drives the sidebar's Explain surface. Session-scoped (not autoDispose):
 /// closing/reopening the sidebar must not abort an in-flight model download,
 /// and the last explanation stays available until dismissed.
 final explainNotifierProvider =
     StateNotifierProvider<ExplainNotifier, ExplainState>((ref) {
-  return ExplainNotifier(
-    explainer: ref.watch(explainerProvider),
-    downloads: ref.watch(modelDownloadManagerProvider),
-    evaluateCloudRoute: (content) =>
-        ref.read(explainAiProviderProvider).peekRoute(content),
-    hasSeenFirstCloudCall: () => ref.read(settingsProvider).hasSeenFirstCloudCall,
-    markFirstCloudCallSeen: () =>
-        ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
-    guard: ref.watch(aiQualityGuardProvider),
-  );
-});
+      return ExplainNotifier(
+        explainer: ref.watch(explainerProvider),
+        downloads: ref.watch(modelDownloadManagerProvider),
+        evaluateCloudRoute: (content) =>
+            ref.read(explainAiProviderProvider).peekRoute(content),
+        hasSeenFirstCloudCall: () =>
+            ref.read(settingsProvider).hasSeenFirstCloudCall,
+        markFirstCloudCallSeen: () =>
+            ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
+        guard: ref.watch(aiQualityGuardProvider),
+      );
+    });
 
 /// Live context for one page. autoDispose: analysis runs only while something
 /// (the AI sidebar) watches. The editor's scene state is observed through a
 /// read-only listener here — the editor never knows the engine exists.
 final pageContextProvider = StateNotifierProvider.autoDispose
-    .family<ContextEngineNotifier, AsyncValue<PageContext>, ScenePageKey>(
-        (ref, key) {
-  // An analysis in flight when the sidebar closes still finishes; its callbacks
-  // must not touch the disposed [ref]. Stores are captured up front so the
-  // searchable-text save still lands.
-  var alive = true;
-  ref.onDispose(() => alive = false);
-  final pageTextStore = ref.read(pageTextStoreProvider);
-  final learningMemory = ref.read(learningMemoryProvider);
-  final notifier = ContextEngineNotifier(
-    engine: ref.watch(contextEngineProvider),
-    extractor: ref.watch(pageContentExtractorProvider),
-    recognition: ref.watch(handwritingRecognitionServiceProvider),
-    cache: ref.watch(pageContextCacheProvider),
-    pageId: key.pageId,
-    languageCode: () => ref.read(settingsProvider).recognitionLanguage,
-    // Writing Assistant and RAG indexing both ride this same debounce +
-    // extraction (no second recognition pass, no second loop).
-    onContent: (content) {
-      // Searchable text is persisted immediately and unconditionally — before
-      // anything that could throw, and deliberately NOT behind the indexer's
-      // 20s debounce or its embedding step. Search must work for someone who
-      // has never downloaded the embedding model, so this write is the one
-      // thing here that cannot be allowed to depend on the AI stack.
-      unawaited(pageTextStore
-          .save(
-            notebookId: key.notebookId,
-            pageId: key.pageId,
-            text: content.combinedText,
-            indexText: content.combinedTextWithFigures,
-          )
-          .catchError((Object _) {}));
-      if (!alive) return;
-      // Indexing goes FIRST deliberately. ContextEngineNotifier._notifyContent
-      // guards the engine from this callback, but nothing guards these two
-      // listeners from each other: a throw in the first would silently starve
-      // the second. Scheduling only sets a timer and cannot realistically
-      // throw, whereas review() reaches into an autoDispose notifier.
-      // Figures ARE indexed (unlike the search text above, which stays the
-      // student's own words): "what did my revenue chart show" has to be able
-      // to retrieve the page holding that chart.
-      ref.read(ragIndexSchedulerProvider).schedule(
-            notebookId: key.notebookId,
-            pageId: key.pageId,
-            text: content.combinedTextWithFigures,
+    .family<ContextEngineNotifier, AsyncValue<PageContext>, ScenePageKey>((
+      ref,
+      key,
+    ) {
+      // An analysis in flight when the sidebar closes still finishes; its callbacks
+      // must not touch the disposed [ref]. Stores are captured up front so the
+      // searchable-text save still lands.
+      var alive = true;
+      ref.onDispose(() => alive = false);
+      final pageTextStore = ref.read(pageTextStoreProvider);
+      final learningMemory = ref.read(learningMemoryProvider);
+      final notifier = ContextEngineNotifier(
+        engine: ref.watch(contextEngineProvider),
+        extractor: ref.watch(pageContentExtractorProvider),
+        recognition: ref.watch(handwritingRecognitionServiceProvider),
+        cache: ref.watch(pageContextCacheProvider),
+        pageId: key.pageId,
+        languageCode: () => ref.read(settingsProvider).recognitionLanguage,
+        // Writing Assistant and RAG indexing both ride this same debounce +
+        // extraction (no second recognition pass, no second loop).
+        onContent: (content) {
+          // Searchable text is persisted immediately and unconditionally — before
+          // anything that could throw, and deliberately NOT behind the indexer's
+          // 20s debounce or its embedding step. Search must work for someone who
+          // has never downloaded the embedding model, so this write is the one
+          // thing here that cannot be allowed to depend on the AI stack.
+          unawaited(
+            pageTextStore
+                .save(
+                  notebookId: key.notebookId,
+                  pageId: key.pageId,
+                  text: content.combinedText,
+                  indexText: content.combinedTextWithFigures,
+                )
+                .catchError((Object _) {}),
           );
-      ref.read(writingSuggestionsProvider(key).notifier).review(content);
-    },
-    // Learning Memory rides it too: every analyzed page records which concepts
-    // the learner was exposed to. Fire-and-forget — a storage hiccup must never
-    // surface as an analysis failure.
-    onContext: (context) => unawaited(
-      learningMemory
-          .observePageContext(
-            notebookId: key.notebookId,
-            pageId: key.pageId,
-            keyConcepts: context.keyConcepts,
-            knowledgeGaps: context.knowledgeGaps,
-            // Knowledge Graph edges, captured from the same analysis pass.
-            relations: context.relatedConcepts,
-          )
-          .catchError((Object _) {}),
-    ),
-  );
-  ref.listen(
-    sceneControllerProvider(key),
-    (_, elements) => notifier.onSceneChanged(elements),
-    fireImmediately: true,
-  );
-  return notifier;
-});
+          if (!alive) return;
+          // Indexing goes FIRST deliberately. ContextEngineNotifier._notifyContent
+          // guards the engine from this callback, but nothing guards these two
+          // listeners from each other: a throw in the first would silently starve
+          // the second. Scheduling only sets a timer and cannot realistically
+          // throw, whereas review() reaches into an autoDispose notifier.
+          // Figures ARE indexed (unlike the search text above, which stays the
+          // student's own words): "what did my revenue chart show" has to be able
+          // to retrieve the page holding that chart.
+          ref
+              .read(ragIndexSchedulerProvider)
+              .schedule(
+                notebookId: key.notebookId,
+                pageId: key.pageId,
+                text: content.combinedTextWithFigures,
+              );
+          ref.read(writingSuggestionsProvider(key).notifier).review(content);
+        },
+        // Learning Memory rides it too: every analyzed page records which concepts
+        // the learner was exposed to. Fire-and-forget — a storage hiccup must never
+        // surface as an analysis failure.
+        onContext: (context) => unawaited(
+          (() async {
+            // The analysis outlives the page it read; skip a page deleted meanwhile.
+            if (!await _pageExists(ref, key.notebookId, key.pageId)) return;
+            await learningMemory.observePageContext(
+              notebookId: key.notebookId,
+              pageId: key.pageId,
+              keyConcepts: context.keyConcepts,
+              knowledgeGaps: context.knowledgeGaps,
+              // Knowledge Graph edges, captured from the same analysis pass.
+              relations: context.relatedConcepts,
+            );
+          })()
+              .catchError((Object _) {}),
+        ),
+      );
+      ref.listen(
+        sceneControllerProvider(key),
+        (_, elements) => notifier.onSceneChanged(elements),
+        fireImmediately: true,
+      );
+      return notifier;
+    });

@@ -3,6 +3,7 @@ import 'dart:ui' show Offset;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../data/persistence/library_repository.dart';
 import '../../data/persistence/scene_element_store.dart';
 import '../../domain/model/element_id.dart';
 import '../../domain/services/selection_editing.dart';
@@ -10,6 +11,7 @@ import '../../features/home/data/repositories/page_repository.dart';
 import '../../features/home/domain/models/note_page.dart';
 import '../../shared/isar/isar_service.dart';
 import 'history_controller.dart';
+import 'library_controller.dart';
 import 'scene_controller.dart';
 
 class PageState {
@@ -45,7 +47,20 @@ class PageNotifier extends StateNotifier<PageState> {
       final newPage = await _repository.createPage(_notebookId);
       pages = [newPage];
     }
-    state = PageState(currentPageIndex: 0, pages: pages);
+    // Re-initializing (Book view opens over a live editor) must keep the page
+    // the user is on.
+    state = PageState(
+      currentPageIndex: state.currentPageIndex.clamp(0, pages.length - 1),
+      pages: pages,
+    );
+  }
+
+  /// Drops the scene and undo state of every page of this notebook. Call when
+  /// the editor closes: those providers live for the whole session otherwise.
+  void release() {
+    for (final p in state.pages) {
+      _onPageDeleted?.call(p.id);
+    }
   }
 
   void switchPage(int index) {
@@ -156,5 +171,9 @@ final pageProvider = StateNotifierProvider.family<PageNotifier, PageState, int>(
 });
 
 final pageRepositoryProvider = Provider<PageRepository>((ref) {
-  return PageRepository(IsarService.instance);
+  return PageRepository(
+    IsarService.instance,
+    libraryImages: () =>
+        libraryImagePaths(ref.read(libraryRepositoryProvider)),
+  );
 });

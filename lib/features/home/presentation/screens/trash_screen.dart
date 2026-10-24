@@ -151,10 +151,14 @@ class _TrashRow extends ConsumerWidget {
 
   Future<void> _restore(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    await ref.read(trashNotifierProvider.notifier).restore(notebook.id);
+    // Both read before the first await: the row is disposed once the restored
+    // note leaves the list, and `ref` is unusable after that.
+    final trash = ref.read(trashNotifierProvider.notifier);
+    final home = ref.read(homeNotifierProvider.notifier);
+    await trash.restore(notebook.id);
     // The home list is already built and would otherwise not show the note
     // again until it happened to reload.
-    await ref.read(homeNotifierProvider.notifier).loadNotebooks();
+    await home.loadNotebooks();
     messenger.showSnackBar(
       SnackBar(content: Text('Restored "${notebook.title}"')),
     );

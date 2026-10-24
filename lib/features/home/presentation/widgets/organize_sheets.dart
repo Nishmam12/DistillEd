@@ -111,34 +111,53 @@ class _FolderChoice {
         folderId = id;
 }
 
-Future<String?> _promptFolderName(BuildContext context) {
-  final controller = TextEditingController();
-  return showDialog<String>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
+Future<String?> _promptFolderName(BuildContext context) => showDialog<String>(
+  context: context,
+  builder: (_) => const _FolderNameDialog(),
+);
+
+class _FolderNameDialog extends StatefulWidget {
+  const _FolderNameDialog();
+
+  @override
+  State<_FolderNameDialog> createState() => _FolderNameDialogState();
+}
+
+class _FolderNameDialogState extends State<_FolderNameDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
       backgroundColor: context.colors.surface,
       title: const Text('New folder'),
       content: TextField(
-        controller: controller,
+        controller: _controller,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
         decoration: const InputDecoration(hintText: 'Folder name'),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(dialogContext),
+          onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: () {
-            final name = controller.text.trim();
-            Navigator.pop(dialogContext, name.isEmpty ? null : name);
+            final name = _controller.text.trim();
+            Navigator.pop(context, name.isEmpty ? null : name);
           },
           child: const Text('Create'),
         ),
       ],
-    ),
-  );
+    );
+  }
 }
 
 /// Edits [note]'s tags as a comma-separated list.

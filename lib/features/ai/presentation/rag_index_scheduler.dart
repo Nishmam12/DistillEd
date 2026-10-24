@@ -32,10 +32,15 @@ class RagIndexScheduler {
   /// One pending timer per page, so editing page A never cancels page B.
   final _pending = <int, Timer>{};
 
+  /// Checked when a timer fires: a page deleted during the idle wait is
+  /// skipped before the embedder is ever loaded. Null skips the check (the
+  /// indexer still refuses to save chunks for a deleted page).
+  final Future<bool> Function(int notebookId, int pageId)? _pageExists;
 
   RagIndexScheduler({
     required this._indexer,
     this.idleDelay = kIndexIdleDelay,
+    this._pageExists,
   });
 
   /// Queues [pageId] to be indexed once its text stops changing.
@@ -67,6 +72,8 @@ class RagIndexScheduler {
     required String text,
   }) async {
     try {
+      final exists = _pageExists;
+      if (exists != null && !await exists(notebookId, pageId)) return;
       final outcome = await _indexer.indexPage(
         notebookId: notebookId,
         pageId: pageId,

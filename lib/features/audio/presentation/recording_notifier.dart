@@ -168,12 +168,19 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
       stopError = 'Could not save the recording cleanly.';
     }
     if (!mounted) return;
+    // Flip the flag before the lookup: if the read throws, the button must
+    // still leave "recording" (the session is already stopped).
     state = state.copyWith(
       error: stopError,
       isRecording: false,
       clearActive: true,
-      onPage: await _store.forPage(pageId),
     );
+    try {
+      final onPage = await _store.forPage(pageId);
+      if (mounted) state = state.copyWith(onPage: onPage);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[audio] reload after stop failed: $e');
+    }
   }
 
   /// Plays the recording a stroke was drawn during, from that exact moment.

@@ -47,6 +47,12 @@ def select_provider(
     return _gemma(settings, model_tier)
 
 
+def cost_weight(provider: ModelProvider, settings: Settings) -> int:
+    """How many caps-worth of tokens one real token costs on [provider]."""
+    pricey = isinstance(provider, (ClaudeProvider, GptProvider))
+    return max(1, settings.frontier_cost_multiplier) if pricey else 1
+
+
 class NoVisionProviderError(Exception):
     """No configured provider can read an image."""
 

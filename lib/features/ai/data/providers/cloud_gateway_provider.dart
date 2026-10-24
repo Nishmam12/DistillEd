@@ -9,6 +9,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show HttpClient, SecurityContext, X509Certificate;
 import 'dart:math' show Random;
 import 'dart:typed_data';
 
@@ -40,13 +41,20 @@ String get sessionDeviceKey => _deviceKey;
 /// ship the current AND the next digest, or an old app stops connecting.
 const String kGatewayCertSha256 = String.fromEnvironment('GATEWAY_CERT_SHA256');
 
-/// The Dio every gateway call goes through: base URL, timeouts, and the pin.
-Dio gatewayDio(String baseUrl, {String pins = kGatewayCertSha256}) {
+/// True for a certificate whose SHA-256 is one of the comma-separated [pins].
+bool Function(X509Certificate, String, int) gatewayPinCheck(String pins) {
   final allowed = pins
       .split(',')
       .map((p) => p.trim().toLowerCase())
       .where((p) => p.isNotEmpty)
       .toSet();
+  return (cert, host, port) =>
+      allowed.contains(sha256.convert(cert.der).toString());
+}
+
+/// The Dio every gateway call goes through: base URL, timeouts, and the pin.
+Dio gatewayDio(String baseUrl, {String pins = kGatewayCertSha256}) {
+  final pinned = pins.split(',').any((p) => p.trim().isNotEmpty);
   return Dio(BaseOptions(
     baseUrl: baseUrl,
     // Render's free tier cold-starts in 30-60 s; beyond that, give
@@ -55,12 +63,18 @@ Dio gatewayDio(String baseUrl, {String pins = kGatewayCertSha256}) {
     connectTimeout: const Duration(seconds: 60),
     receiveTimeout: const Duration(seconds: 60),
   ))
-    ..httpClientAdapter = IOHttpClientAdapter(
-      validateCertificate: allowed.isEmpty
-          ? null
-          : (cert, host, port) =>
-              cert != null && allowed.contains(sha256.convert(cert.der).toString()),
-    );
+    ..httpClientAdapter = !pinned
+        ? IOHttpClientAdapter()
+        // Pinned in the TLS handshake, before any byte of the request is sent:
+        // dio's validateCertificate only runs once response headers arrive, by
+        // which time a rogue-CA man in the middle already has the prompt. With
+        // no trusted roots every certificate is "bad", so the callback is the
+        // only gate, and it accepts just the pinned digests.
+        : IOHttpClientAdapter(
+            createHttpClient: () => HttpClient(
+              context: SecurityContext(withTrustedRoots: false),
+            )..badCertificateCallback = gatewayPinCheck(pins),
+          );
 }
 
 const _kDeviceKeyPref = 'ai.deviceKey';

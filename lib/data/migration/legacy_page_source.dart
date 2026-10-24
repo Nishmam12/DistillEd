@@ -14,16 +14,16 @@ import '../../shared/isar/isar_service.dart';
 import 'legacy_page_data.dart';
 
 abstract class LegacyPageSource {
-  Future<List<LegacyPageData>> loadAllPages();
+  /// One page at a time: a big library is never held in memory whole.
+  Stream<LegacyPageData> readPages();
 }
 
 class IsarLegacyPageSource implements LegacyPageSource {
   Isar get _isar => IsarService.instance;
 
   @override
-  Future<List<LegacyPageData>> loadAllPages() async {
+  Stream<LegacyPageData> readPages() async* {
     final notebooks = await _isar.notebooks.where().findAll();
-    final pages = <LegacyPageData>[];
     for (final nb in notebooks) {
       final notePages =
           await _isar.notePages.filter().notebookIdEqualTo(nb.id).findAll();
@@ -40,16 +40,15 @@ class IsarLegacyPageSource implements LegacyPageSource {
           // Corrupt or unreadable (I/O): retried next launch, not fatal to the rest.
           unreadable = true;
         }
-        pages.add(LegacyPageData(
+        yield LegacyPageData(
           notebookId: nb.id,
           pageId: p.id,
           unreadable: unreadable,
           strokes: strokes,
           shapes: p.shapes,
           imported: p.importedContents,
-        ));
+        );
       }
     }
-    return pages;
   }
 }

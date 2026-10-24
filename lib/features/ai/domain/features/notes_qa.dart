@@ -26,10 +26,7 @@ class NotesQa {
   final AiProvider _provider;
   final RagRetriever _retriever;
 
-  const NotesQa({
-    required this._provider,
-    required this._retriever,
-  });
+  const NotesQa({required this._provider, required this._retriever});
 
   /// The grounding contract — identical every call, exposed for prompt review
   /// and tests.
@@ -182,7 +179,10 @@ class NotesQa {
   /// many whole passages as fit. The UI shows exactly these, so a source chip is
   /// never numbered for a passage the model did not see.
   List<RetrievedChunk> fitToBudget(List<RetrievedChunk> sources) {
-    final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
+    final budget = AiRouter.inputWordBudgetFor(
+      _provider.capabilities,
+      systemPrompt: systemPrompt,
+    );
     var used = 0;
     var count = 0;
     for (final source in sources) {

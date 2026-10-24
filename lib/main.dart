@@ -6,6 +6,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'features/ai/data/providers/cloud_gateway_provider.dart' show loadDeviceKey;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
@@ -77,8 +78,25 @@ Future<void> _logCollectionCounts(Isar isar) async {
   debugPrint('[IsarCounts] $counts');
 }
 
+/// Bundled fonts/icons whose licences require their notice to ship with the app
+/// (OFL §2, MIT). They appear on the About > Licenses page.
+void _registerAssetLicenses() {
+  LicenseRegistry.addLicense(() async* {
+    for (final (package, asset) in const [
+      ('Poppins', 'assets/licenses/Poppins-OFL.txt'),
+      ('Nunito', 'assets/licenses/Nunito-OFL.txt'),
+      ('Phosphor Icons', 'assets/licenses/Phosphor-MIT.txt'),
+    ]) {
+      yield LicenseEntryWithLineBreaks([
+        package,
+      ], await rootBundle.loadString(asset));
+    }
+  });
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _registerAssetLicenses();
 
   // 1. Synchronous Flutter framework errors
   FlutterError.onError = (FlutterErrorDetails details) {

@@ -146,6 +146,7 @@ class IsarNoteChunkStore implements NoteChunkStore {
     return PageIndexState(
       contentSignature: row.contentSignature,
       embeddingModelId: row.embeddingModelId,
+      embeddedAt: row.embeddedAt,
     );
   }
 }

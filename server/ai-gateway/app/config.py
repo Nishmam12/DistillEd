@@ -66,6 +66,11 @@ class Settings:
     global_token_cap: int = field(default_factory=lambda: _env_int("GLOBAL_TOKEN_CAP", "2000000"))
     global_request_cap: int = field(default_factory=lambda: _env_int("GLOBAL_REQUEST_CAP", "5000"))
     global_search_cap: int = field(default_factory=lambda: _env_int("GLOBAL_SEARCH_CAP", "500"))
+    # Claude/GPT calls cost far more per token than Gemma/Gemini, so they draw
+    # this many times their token count from the same caps.
+    frontier_cost_multiplier: int = field(
+        default_factory=lambda: _env_int("FRONTIER_COST_MULTIPLIER", "10")
+    )
     # Abuse bounds (see guards.py). The device key is client-chosen, so these are
     # about the connection, not the person. 0 turns the per-address throttle off.
     ip_rate_limit_per_minute: int = field(

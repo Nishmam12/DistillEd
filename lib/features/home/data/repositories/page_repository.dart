@@ -12,7 +12,13 @@ import '../../domain/models/notebook.dart';
 class PageRepository {
   final Isar _isar;
 
-  PageRepository(this._isar);
+  /// Image files the element library still shows (see [libraryImagePaths]).
+  final Future<Set<String>> Function() _libraryImages;
+
+  PageRepository(this._isar, {Future<Set<String>> Function()? libraryImages})
+      : _libraryImages = libraryImages ?? _none;
+
+  static Future<Set<String>> _none() async => const {};
 
   /// Ensures page indexes are strictly contiguous (0..n-1). Idempotent and
   /// awaited: it loads the pages, gathers any whose index is wrong, and writes
@@ -63,6 +69,7 @@ class PageRepository {
   Future<void> deletePage(int notebookId, int pageIndex) async {
     var audio = <String>[];
     final files = <String>[];
+    final library = await _libraryImages();
     await _isar.writeTxn(() async {
       final notebook = await _isar.notebooks.get(notebookId);
       if (notebook == null) throw StateError('Notebook not found');
@@ -77,43 +84,43 @@ class PageRepository {
           .pageIndexEqualTo(pageIndex)
           .findFirst();
 
-      if (pageToDelete != null) {
-        await _isar.notePages.delete(pageToDelete.id);
-        // Drop the page's searchable text with it, or erased content stays
-        // findable and the note keeps matching words it no longer contains.
-        await _isar.pageTextRecords
+      // Nothing at that index: leave the count alone rather than drift it.
+      if (pageToDelete == null) return;
+      await _isar.notePages.delete(pageToDelete.id);
+      // Drop the page's searchable text with it, or erased content stays
+      // findable and the note keeps matching words it no longer contains.
+      await _isar.pageTextRecords
+          .filter()
+          .pageIdEqualTo(pageToDelete.id)
+          .deleteAll();
+      // In the same transaction, so a crash cannot strand the page's strokes.
+      final scene = _isar.sceneElementRecords.filter().pageIdEqualTo(
+        pageToDelete.id,
+      );
+      final images = (await scene.findAll())
+          .map((e) => e.relativeImagePath)
+          .where((p) => p.isNotEmpty)
+          .toSet();
+      await scene.deleteAll();
+      // An image another page or a library item still shows (the same PDF
+      // imported twice shares its cache) must stay.
+      for (final img in images.difference(library)) {
+        final shared = await _isar.sceneElementRecords
             .filter()
-            .pageIdEqualTo(pageToDelete.id)
-            .deleteAll();
-        // In the same transaction, so a crash cannot strand the page's strokes.
-        final scene = _isar.sceneElementRecords.filter().pageIdEqualTo(
-          pageToDelete.id,
-        );
-        final images = (await scene.findAll())
-            .map((e) => e.relativeImagePath)
-            .where((p) => p.isNotEmpty)
-            .toSet();
-        await scene.deleteAll();
-        // An image another page still shows (the same PDF imported twice shares
-        // its cache) must stay.
-        for (final img in images) {
-          final shared = await _isar.sceneElementRecords
-              .filter()
-              .relativeImagePathEqualTo(img)
-              .count();
-          if (shared == 0) {
-            files
-              ..add(img)
-              ..add(StoragePaths.pdfTextSidecar(img));
-          }
+            .relativeImagePathEqualTo(img)
+            .count();
+        if (shared == 0) {
+          files
+            ..add(img)
+            ..add(StoragePaths.pdfTextSidecar(img));
         }
-        files.add('notes/$notebookId/page_${pageToDelete.id}.ink');
-        audio = await purgePageRows(
-          _isar,
-          notebookId: notebookId,
-          pageId: pageToDelete.id,
-        );
       }
+      files.add('notes/$notebookId/page_${pageToDelete.id}.ink');
+      audio = await purgePageRows(
+        _isar,
+        notebookId: notebookId,
+        pageId: pageToDelete.id,
+      );
 
       // Decrement all pages with index > pageIndex
       final subsequentPages = await _isar.notePages

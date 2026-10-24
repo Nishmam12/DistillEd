@@ -60,6 +60,11 @@ class ScenePointerListener extends StatefulWidget {
   State<ScenePointerListener> createState() => _ScenePointerListenerState();
 }
 
+/// A pen used eraser-end-first reports as [PointerDeviceKind.invertedStylus];
+/// it is still a pen, so palm rejection must treat it like one.
+bool _isStylus(PointerDeviceKind k) =>
+    k == PointerDeviceKind.stylus || k == PointerDeviceKind.invertedStylus;
+
 class _ScenePointerListenerState extends State<ScenePointerListener> {
   static const Duration _palmRejectionGrace = Duration(milliseconds: 500);
 
@@ -133,7 +138,7 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
     return Listener(
       behavior: HitTestBehavior.opaque,
       onPointerDown: (event) {
-        if (event.kind == PointerDeviceKind.stylus) {
+        if (_isStylus(event.kind)) {
           _activeStylusPointers.add(event.pointer);
           _lastStylusActivity = event.timeStamp;
           _rejectActiveTouchPointers();
@@ -161,7 +166,7 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
         }
       },
       onPointerMove: (event) {
-        if (event.kind == PointerDeviceKind.stylus) {
+        if (_isStylus(event.kind)) {
           _lastStylusActivity = event.timeStamp;
         }
         if (_rejectedPointers.contains(event.pointer)) return;
@@ -181,7 +186,7 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
         widget.onPointerMove(event, _extractPoint(event));
       },
       onPointerUp: (event) {
-        if (event.kind == PointerDeviceKind.stylus) {
+        if (_isStylus(event.kind)) {
           _lastStylusActivity = event.timeStamp;
         }
         _activeStylusPointers.remove(event.pointer);
@@ -200,7 +205,7 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
         widget.onPointerUp(event, _extractPoint(event));
       },
       onPointerCancel: (event) {
-        if (event.kind == PointerDeviceKind.stylus) {
+        if (_isStylus(event.kind)) {
           _lastStylusActivity = event.timeStamp;
         }
         _activeStylusPointers.remove(event.pointer);
@@ -215,7 +220,7 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
         widget.onStrokeCancel?.call();
       },
       onPointerHover: (event) {
-        if (event.kind == PointerDeviceKind.stylus) {
+        if (_isStylus(event.kind)) {
           _lastStylusActivity = event.timeStamp;
         }
       },

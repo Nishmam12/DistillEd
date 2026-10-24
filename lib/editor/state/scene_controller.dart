@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../core/error_log.dart';
 import '../../data/persistence/isar_scene_element_store.dart';
 import '../../data/persistence/scene_element_store.dart';
 import '../../domain/commands/scene_command.dart';
@@ -25,21 +26,38 @@ class SceneController extends StateNotifier<List<SceneElement>>
     required this._pageId,
   })  : super(const []);
 
-  // Tail of the write queue. Edits change `state` synchronously but their
-  // writes are async; without ordering, a slow earlier write could land after
-  // a later one and resurrect a deleted element.
-  Future<void> _tail = Future.value();
+  // Tail of each page's write queue. Edits change `state` synchronously but
+  // their writes are async; without ordering, a slow earlier write could land
+  // after a later one and resurrect a deleted element. Keyed by page rather
+  // than held per instance: a controller released while its writes are in
+  // flight (the editor closing) must still order before the next controller
+  // for that page loads.
+  static final Map<int, Future<void>> _tails = {};
+
+  Future<void> get _tail => _tails[_pageId] ?? Future.value();
 
   Future<void> _enqueue(Future<void> Function() write) {
     final next = _tail.then((_) => write());
-    _tail = next.catchError((_) {});
+    final tail = next.catchError((_) {});
+    _tails[_pageId] = tail;
+    // Drop the entry once drained, unless a later write has replaced it.
+    tail.then((_) {
+      if (identical(_tails[_pageId], tail)) _tails.remove(_pageId);
+    });
     return next;
   }
 
   /// For the sync [SceneMutator] entry points, which cannot be awaited.
+  ///
+  /// A failed write leaves the canvas showing something the database does not
+  /// have, so it is logged and the scene is reloaded from the store.
   void _fireAndLog(Future<void> write) =>
-      write.catchError((Object e, StackTrace s) {
+      write.catchError((Object e, StackTrace s) async {
         debugPrint('Scene write failed: $e\n$s');
+        await ErrorLog.record(e, s);
+        try {
+          if (mounted) await load();
+        } catch (_) {}
       });
 
   /// Loads this page's elements from the store (ordered by zOrder).

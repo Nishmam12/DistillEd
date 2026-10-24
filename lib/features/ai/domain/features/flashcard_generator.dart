@@ -20,7 +20,8 @@ import '../models/flashcard.dart';
 import '../text_budget.dart';
 
 class FlashcardGenerator {
-  static const String _schemaInstruction = '''
+  static const String _schemaInstruction =
+      '''
 $kUntrustedDataRule
 
 You create study flashcards from a student's OWN notes. Use ONLY facts present in the note — never invent content it doesn't support. Reply with ONLY a single JSON object — no markdown, no code fences, no text before or after it — in exactly this shape:
@@ -66,13 +67,15 @@ Rules:
       if (f.isEmpty || b.isEmpty) return;
       if (!seen.add(f.toLowerCase())) return;
       if (cards.length >= maxCards) return;
-      cards.add(Flashcard(
-        front: f,
-        back: b,
-        notebookId: notebookId,
-        pageId: pageId,
-        createdAt: now,
-      ));
+      cards.add(
+        Flashcard(
+          front: f,
+          back: b,
+          notebookId: notebookId,
+          pageId: pageId,
+          createdAt: now,
+        ),
+      );
     }
 
     // Definitions first — they're verbatim from the note, so they win on
@@ -85,27 +88,38 @@ Rules:
   }
 
   Future<List<(String, String)>> _generateLlm(
-      PageContext context, String pageText) async {
-    final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
+    PageContext context,
+    String pageText,
+  ) async {
+    final budget = AiRouter.inputWordBudgetFor(
+      _provider.capabilities,
+      systemPrompt: _schemaInstruction,
+      responseTokens: _maxTokens,
+    );
     final hint = context.keyConcepts.isEmpty
         ? ''
         : '\n\nPrioritise cards for these concepts: '
-            '${context.keyConcepts.join(', ')}.';
-    final prompt = 'NOTE:\n${fenceUntrusted(truncateToWords(pageText.trim(), budget))}$hint';
+              '${context.keyConcepts.join(', ')}.';
+    final prompt =
+        'NOTE:\n${fenceUntrusted(truncateToWords(pageText.trim(), budget))}$hint';
 
     var json = ContextEngine.tryExtractJsonObject(await _complete(prompt));
     json ??= ContextEngine.tryExtractJsonObject(
-        await _complete('$prompt\n\n$_retryNudge'));
+      await _complete('$prompt\n\n$_retryNudge'),
+    );
     if (json == null) return const [];
     return _parse(json);
   }
+
+  /// Up to 20 cards plus the JSON around them; 1,024 cut long decks mid-card.
+  static const int _maxTokens = 2048;
 
   Future<String> _complete(String prompt) async {
     final chunks = await _provider
         .generate(
           prompt: prompt,
           systemPrompt: _schemaInstruction,
-          options: const AiGenerationOptions(temperature: 0.0, maxTokens: 1024),
+          options: const AiGenerationOptions(temperature: 0.0, maxTokens: _maxTokens),
         )
         .toList();
     return chunks.join();

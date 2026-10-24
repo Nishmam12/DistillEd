@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -28,13 +29,16 @@ class PdfService {
   /// [textLayers] keeps each page's own text beside its image so reading the page
   /// later needs no OCR (see `pdf_text_layer.dart`); tests pass a fake.
   PdfService({PdfTextLayerWriter? textLayers})
-      : _textLayers = textLayers ?? PdfTextLayerWriter(PdfiumTextSource());
+    : _textLayers = textLayers ?? PdfTextLayerWriter(PdfiumTextSource());
 
   final PdfTextLayerWriter _textLayers;
 
   /// Renders all pages of a PDF and creates an ImportedContent for each page.
   /// Runs inside a background isolate to prevent UI thread blocking.
-  Future<List<ImportedContent>> renderAll(String filePath, String notebookId) async {
+  Future<List<ImportedContent>> renderAll(
+    String filePath,
+    String notebookId,
+  ) async {
     final file = File(filePath);
     if (!await file.exists()) {
       throw ImportException('PDF not found at path: $filePath');
@@ -42,9 +46,9 @@ class PdfService {
 
     final docsDir = (await getApplicationDocumentsDirectory()).path;
     final token = RootIsolateToken.instance!;
-    
+
     final payload = _PdfRenderPayload(token, filePath, notebookId, docsDir);
-    
+
     // Spawn background isolate
     final pages = await compute(_renderPdfIsolate, payload);
 
@@ -52,7 +56,9 @@ class PdfService {
     // fails the import: a PDF it cannot read is simply read as pictures.
     await _textLayers.write(
       pdfPath: filePath,
-      pageImagePaths: [for (final p in pages) '$docsDir/${p.relativeImagePath}'],
+      pageImagePaths: [
+        for (final p in pages) '$docsDir/${p.relativeImagePath}',
+      ],
     );
     return pages;
   }
@@ -96,7 +102,9 @@ const double kPdfMaxRenderSide = 4096;
 @visibleForTesting
 String pdfContentHashHex(List<int> bytes) => _fnv1aHashHex(bytes);
 
-Future<List<ImportedContent>> _renderPdfIsolate(_PdfRenderPayload payload) async {
+Future<List<ImportedContent>> _renderPdfIsolate(
+  _PdfRenderPayload payload,
+) async {
   BackgroundIsolateBinaryMessenger.ensureInitialized(payload.token);
 
   // Hash the PDF *contents* (off the main thread) for a stable, collision-safe
@@ -127,16 +135,23 @@ Future<List<ImportedContent>> _renderPdfIsolate(_PdfRenderPayload payload) async
     final pageCount = document.pagesCount;
 
     for (int i = 1; i <= pageCount; i++) {
-      final relativeCachePath = StoragePaths.getPdfPageCacheRelativePath(payload.notebookId, pdfHash, i);
+      final relativeCachePath = StoragePaths.getPdfPageCacheRelativePath(
+        payload.notebookId,
+        pdfHash,
+        i,
+      );
       final absoluteCachePath = '${payload.docsDir}/$relativeCachePath';
 
       final diskFile = File(absoluteCachePath);
-      if (!await diskFile.exists()) {
+      // A zero-length file is a write that died early, not a cached page.
+      if (!await diskFile.exists() || await diskFile.length() == 0) {
         try {
           final page = await document.getPage(i);
           // 2x for clarity, capped so a huge page cannot exhaust memory.
-          final (renderWidth, renderHeight) =
-              pdfRenderSize(page.width, page.height);
+          final (renderWidth, renderHeight) = pdfRenderSize(
+            page.width,
+            page.height,
+          );
           final PdfPageImage? pageImage;
           try {
             pageImage = await page.render(
@@ -151,7 +166,11 @@ Future<List<ImportedContent>> _renderPdfIsolate(_PdfRenderPayload payload) async
           if (pageImage != null) {
             final bytes = pageImage.bytes;
             await diskFile.parent.create(recursive: true);
-            await diskFile.writeAsBytes(bytes);
+            // tmp + rename: a kill mid-write must not leave a truncated page
+            // that the exists() check above would then trust forever.
+            final tmp = File('${diskFile.path}.tmp');
+            await tmp.writeAsBytes(bytes, flush: true);
+            await tmp.rename(diskFile.path);
           }
         } catch (e) {
           debugPrint('Rendering failed for page $i: $e');
@@ -177,8 +196,9 @@ Future<List<ImportedContent>> _renderPdfIsolate(_PdfRenderPayload payload) async
 
   if (failedPages.isNotEmpty) {
     throw ImportException(
-        'Could not render page ${failedPages.first} of the PDF'
-        '${failedPages.length > 1 ? ' and ${failedPages.length - 1} more' : ''}.');
+      'Could not render page ${failedPages.first} of the PDF'
+      '${failedPages.length > 1 ? ' and ${failedPages.length - 1} more' : ''}.',
+    );
   }
   return importedPages;
 }

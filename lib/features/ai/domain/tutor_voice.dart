@@ -89,3 +89,30 @@ Ordinary prose stays ordinary prose: do not wrap words in dollar signs.''';
 
 /// Voice + maths, in the order every prose prompt uses them.
 const String kTutorVoiceWithMath = '$kTutorVoice\n\n$kMathMarkup';
+
+/// [kTutorVoice] cut to its load-bearing lines, for small context windows.
+///
+/// The full paragraph is ~600 tokens. On the lite profile's 2,048-token window
+/// that left a summary pass ~200 words of note; this keeps the prohibitions a
+/// small model most needs and gives the rest back to the student's material.
+const String kTutorVoiceCompact = '''
+Sound like a real tutor talking to one student, not an AI assistant. No "As an AI", "Great question", "I hope this helps", or offers of more help. No filler like "Furthermore", "It is important to note", "delve into". No headings, bullet lists or emoji: talk in paragraphs, use "you", and use the specifics from their own material.''';
+
+/// [kMathMarkup] for small context windows: the convention, without examples.
+const String kMathMarkupCompact =
+    r'Write all maths as LaTeX: inline between $…$, displayed between $$…$$. '
+    'Never write formulas as plain text or without the dollar delimiters.';
+
+/// Windows at or below this many tokens get the compact voice and maths rules.
+const int kCompactPromptWindowTokens = 2048;
+
+/// [systemPrompt] as it is actually sent to a model with a [windowTokens]
+/// context: on a small window the shared voice and maths paragraphs are
+/// swapped for their compact forms. [AiRouter.inputWordBudgetFor] and the
+/// local provider both apply it, so the budget is costed on the prompt sent.
+String compactForWindow(String systemPrompt, int windowTokens) =>
+    windowTokens > kCompactPromptWindowTokens
+        ? systemPrompt
+        : systemPrompt
+            .replaceAll(kTutorVoice, kTutorVoiceCompact)
+            .replaceAll(kMathMarkup, kMathMarkupCompact);

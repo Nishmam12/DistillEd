@@ -650,7 +650,8 @@ class _NotesGrid extends ConsumerWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    await ref.read(homeNotifierProvider.notifier).deleteNotebook(note.id);
+    final home = ref.read(homeNotifierProvider.notifier);
+    await home.deleteNotebook(note.id);
     if (!context.mounted) return;
 
     // Undo right where the action happened — the trash is the safety net, but
@@ -660,8 +661,7 @@ class _NotesGrid extends ConsumerWidget {
         content: Text('Moved "${note.title}" to trash'),
         action: SnackBarAction(
           label: 'Undo',
-          onPressed: () =>
-              ref.read(homeNotifierProvider.notifier).restoreNotebook(note.id),
+          onPressed: () => home.restoreNotebook(note.id),
         ),
       ),
     );

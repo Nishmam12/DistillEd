@@ -20,17 +20,24 @@ import '../context_engine/context_engine.dart';
 import '../text_budget.dart';
 
 /// The kind of writing issue a suggestion flags.
-enum WritingSuggestionKind { grammar, clarity, repetition, weakClaim, structure, other }
+enum WritingSuggestionKind {
+  grammar,
+  clarity,
+  repetition,
+  weakClaim,
+  structure,
+  other,
+}
 
 extension WritingSuggestionKindLabel on WritingSuggestionKind {
   String get label => switch (this) {
-        WritingSuggestionKind.grammar => 'Grammar',
-        WritingSuggestionKind.clarity => 'Clarity',
-        WritingSuggestionKind.repetition => 'Repetition',
-        WritingSuggestionKind.weakClaim => 'Needs support',
-        WritingSuggestionKind.structure => 'Structure',
-        WritingSuggestionKind.other => 'Suggestion',
-      };
+    WritingSuggestionKind.grammar => 'Grammar',
+    WritingSuggestionKind.clarity => 'Clarity',
+    WritingSuggestionKind.repetition => 'Repetition',
+    WritingSuggestionKind.weakClaim => 'Needs support',
+    WritingSuggestionKind.structure => 'Structure',
+    WritingSuggestionKind.other => 'Suggestion',
+  };
 }
 
 /// One non-blocking writing suggestion.
@@ -83,20 +90,29 @@ class WritingSuggestion {
     final key = raw.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
     return switch (key) {
       'grammar' || 'spelling' || 'typo' => WritingSuggestionKind.grammar,
-      'clarity' || 'clear' || 'wordy' || 'conciseness' =>
-        WritingSuggestionKind.clarity,
-      'repetition' || 'repeat' || 'repeated' || 'redundant' =>
-        WritingSuggestionKind.repetition,
-      'weakclaim' || 'claim' || 'unsupported' || 'support' =>
-        WritingSuggestionKind.weakClaim,
-      'structure' || 'organization' || 'flow' => WritingSuggestionKind.structure,
+      'clarity' ||
+      'clear' ||
+      'wordy' ||
+      'conciseness' => WritingSuggestionKind.clarity,
+      'repetition' ||
+      'repeat' ||
+      'repeated' ||
+      'redundant' => WritingSuggestionKind.repetition,
+      'weakclaim' ||
+      'claim' ||
+      'unsupported' ||
+      'support' => WritingSuggestionKind.weakClaim,
+      'structure' ||
+      'organization' ||
+      'flow' => WritingSuggestionKind.structure,
       _ => WritingSuggestionKind.other,
     };
   }
 }
 
 class WritingAssistant {
-  static const String _schemaInstruction = '''
+  static const String _schemaInstruction =
+      '''
 $kUntrustedDataRule
 
 You are a supportive writing coach reviewing a student's TYPED notes. Point out only real, useful issues — do not invent problems, and never rewrite the whole thing. Reply with ONLY a single JSON object — no markdown, no code fences, no text before or after it — in exactly this shape:
@@ -131,12 +147,16 @@ Rules:
     final text = typedText.trim();
     if (countWords(text) < minWords) return const [];
 
-    final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
+    final budget = AiRouter.inputWordBudgetFor(
+      _provider.capabilities,
+      systemPrompt: _schemaInstruction,
+    );
     final prompt = 'NOTE:\n${fenceUntrusted(truncateToWords(text, budget))}';
 
     var json = ContextEngine.tryExtractJsonObject(await _complete(prompt));
     json ??= ContextEngine.tryExtractJsonObject(
-        await _complete('$prompt\n\n$_retryNudge'));
+      await _complete('$prompt\n\n$_retryNudge'),
+    );
     if (json == null) return const [];
 
     return _parse(json);
@@ -161,8 +181,9 @@ Rules:
     final out = <WritingSuggestion>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
-      final suggestion =
-          WritingSuggestion.fromJson(entry.cast<String, dynamic>());
+      final suggestion = WritingSuggestion.fromJson(
+        entry.cast<String, dynamic>(),
+      );
       if (suggestion != null) out.add(suggestion);
       if (out.length >= maxSuggestions) break;
     }

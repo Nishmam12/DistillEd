@@ -91,7 +91,14 @@ void main() {
           .drain<void>();
 
       final words = RegExp(r'\bword\b').allMatches(provider.lastPrompt!).length;
-      expect(words, budget);
+      // The system prompt is paid for out of the window, so less than [budget].
+      expect(
+        words,
+        AiRouter.inputWordBudgetFor(
+          provider.capabilities,
+          systemPrompt: provider.lastSystemPrompt!,
+        ),
+      );
     });
 
     test('every mode has a distinct, non-empty system prompt', () {

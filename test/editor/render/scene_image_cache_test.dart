@@ -90,6 +90,24 @@ void main() {
     });
   });
 
+  testWidgets('maxBytes evicts the oldest large bitmaps, never the newest',
+      (tester) async {
+    await tester.runAsync(() async {
+      final cache = SceneImageCache(
+        baseDir: '/docs',
+        readBytes: (_) async => _dummyBytes,
+        decode: (_) => _solidImage(4096), // ~64 MB decoded each
+      );
+      addTearDown(cache.dispose);
+
+      await cache.ensure(['a.png', 'b.png', 'c.png']);
+
+      expect(cache.get('a.png'), isNull);
+      expect(cache.get('b.png'), isNotNull);
+      expect(cache.get('c.png'), isNotNull);
+    });
+  });
+
   testWidgets('a failed load is not retried on every ensure', (tester) async {
     await tester.runAsync(() async {
       var reads = 0;

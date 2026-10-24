@@ -272,3 +272,105 @@ def test_ip_throttle_ignores_forwarded_for_by_default_and_caps_tracked_ips():
         r.headers = {"x-forwarded-for": f"ip{i}"}
         t.check(r)
     assert len(t._calls) == guards._MAX_TRACKED_IPS
+
+
+def test_ipv6_addresses_share_one_throttle_bucket_per_64():
+    class _Req:
+        headers = {}
+
+        def __init__(self, host):
+            self.client = type("C", (), {"host": host})()
+
+    t = IpThrottle(per_minute=2)
+    t.check(_Req("2001:db8:1:2::1"))
+    t.check(_Req("2001:db8:1:2:ffff::9"))  # same /64, different address
+    with pytest.raises(Exception):
+        t.check(_Req("2001:db8:1:2::abcd"))
+    t.check(_Req("2001:db8:1:3::1"))  # a different /64 is a different caller
+
+
+@pytest.mark.asyncio
+async def test_throttle_refuses_before_the_body_is_read_and_spares_health(monkeypatch):
+    from app import main
+
+    monkeypatch.setattr(main._throttle, "_per_minute", 1)
+    main._throttle._calls.clear()
+    body = b'{"x":' + b"1" * 5000 + b"}"  # invalid for the route: never reached
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        first = await c.post("/v1/generate", content=body)
+        second = await c.post("/v1/generate", content=body)
+        health = [await c.get("/health") for _ in range(3)]
+    assert first.status_code in (400, 422)
+    assert second.status_code == 429  # not 422: refused before parsing
+    assert all(h.status_code != 429 for h in health)
+    main._throttle._calls.clear()
+
+
+@pytest.mark.asyncio
+async def test_non_stream_generate_holds_and_releases_a_stream_lease(client, limiter, monkeypatch):
+    seen = []
+
+    class _Probe(_FakeProvider):
+        async def generate(self, **kwargs):
+            seen.append(guards.stream_limiter._total)
+            yield "ok"
+
+    monkeypatch.setattr(generate_module, "select_provider", lambda **_: _Probe([]))
+    before = guards.stream_limiter._total
+    async with client as c:
+        r = await c.post(
+            "/v1/generate",
+            headers={"X-Device-Key": "lease-dev"},
+            json={"model_tier": "cloud-mid", "prompt": "hi", "stream": False},
+        )
+    assert r.status_code == 200
+    assert seen == [before + 1]
+    assert guards.stream_limiter._total == before
+
+
+@pytest.mark.asyncio
+async def test_non_stream_generate_is_refused_and_refunded_when_the_device_is_at_its_cap(
+    client, limiter, monkeypatch
+):
+    monkeypatch.setattr(generate_module, "select_provider", lambda **_: _FakeProvider(["a"]))
+    held = [guards.stream_limiter.acquire("busy-dev") for _ in range(3)]
+    try:
+        async with client as c:
+            r = await c.post(
+                "/v1/generate",
+                headers={"X-Device-Key": "busy-dev"},
+                json={"model_tier": "cloud-mid", "prompt": "hi", "stream": False},
+            )
+        assert r.status_code == 429
+        assert _used(limiter, "busy-dev")[0] == 0  # charge refunded
+    finally:
+        for lease in held:
+            lease.release()
+
+
+def test_token_estimate_counts_tool_calls_and_tool_schemas():
+    from app.routers.generate import GenerateRequest, _estimate_tokens
+
+    base = {"model_tier": "cloud-mid", "prompt": "hi", "max_tokens": 1}
+    plain = _estimate_tokens(GenerateRequest(**base))
+    with_calls = _estimate_tokens(
+        GenerateRequest(
+            **base,
+            history=[{"role": "assistant", "tool_calls": [{"id": "x" * 4000}]}],
+            tools=[_tool("calculator")],
+        )
+    )
+    assert with_calls >= plain + 1000
+
+
+def test_frontier_providers_cost_more_of_the_cap():
+    from app.config import Settings
+    from app.provider_selection import cost_weight
+    from app.providers.claude_provider import ClaudeProvider
+    from app.providers.gemini_provider import GeminiProvider
+    from app.providers.gpt_provider import GptProvider
+
+    s = Settings()
+    assert cost_weight(GeminiProvider(s), s) == 1
+    assert cost_weight(ClaudeProvider(s), s) == s.frontier_cost_multiplier == 10
+    assert cost_weight(GptProvider(s), s) == 10

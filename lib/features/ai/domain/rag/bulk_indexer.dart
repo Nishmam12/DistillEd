@@ -218,6 +218,7 @@ class BulkRagIndexer {
     }
 
     final texts = <int, String>{}; // in page order
+    final readAt = <int, DateTime>{};
     final failed = <int>[];
     var stopped = false;
     var visionStopped = false;
@@ -244,8 +245,10 @@ class BulkRagIndexer {
         break;
       }
       try {
+        final startedAt = DateTime.now();
         final text = await _readPage(pageId);
         texts[pageId] = text;
+        readAt[pageId] = startedAt;
         await _saveText(notebookId, pageId, text);
       } on AiModelNotReadyException {
         visionStopped = true;
@@ -279,6 +282,7 @@ class BulkRagIndexer {
           notebookId: notebookId,
           pageId: entry.key,
           text: entry.value,
+          textReadAt: readAt[entry.key],
         )) {
           case RagIndexOutcome.indexed:
             indexed++;

@@ -13,15 +13,15 @@ class _FakeSource implements LegacyPageSource {
   int loadCount = 0;
   _FakeSource(this.pages);
   @override
-  Future<List<LegacyPageData>> loadAllPages() async {
+  Stream<LegacyPageData> readPages() {
     loadCount++;
-    return pages;
+    return Stream.fromIterable(pages);
   }
 }
 
 class _ThrowingSource implements LegacyPageSource {
   @override
-  Future<List<LegacyPageData>> loadAllPages() async =>
+  Stream<LegacyPageData> readPages() =>
       throw StateError('source must not be read when already migrated');
 }
 
@@ -103,6 +103,21 @@ void main() {
       expect(await gate.currentVersion(), 0); // not marked migrated
       expect((await store.loadForPage(42)).length, 3); // good page still done
       expect(await store.loadForPage(7), isEmpty);
+    });
+
+    test('gives up on a page that stays unreadable and opens the gate', () async {
+      final gate = InMemoryMigrationGate(0);
+      final migrator = SceneMigratorV2(
+        source: _FakeSource([
+          LegacyPageData(notebookId: 1, pageId: 7, unreadable: true),
+        ]),
+        store: InMemorySceneElementStore(),
+        gate: gate,
+      );
+      for (var i = 0; i < SceneMigratorV2.maxIncompleteRuns; i++) {
+        await migrator.run();
+      }
+      expect(await gate.currentVersion(), SceneMigratorV2.targetVersion);
     });
 
     test('a rerun never overwrites edits made on an already-migrated page',

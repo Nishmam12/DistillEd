@@ -36,7 +36,7 @@ from ..logging_config import (
     hash_device,
     log_request,
 )
-from ..provider_selection import UnknownModelTierError, select_provider
+from ..provider_selection import UnknownModelTierError, cost_weight, select_provider
 from ..providers.base import ChatTurn, ProviderError
 from ..rate_limit import (
     InvalidDeviceKeyError,
@@ -110,6 +110,9 @@ def _estimate_tokens(request: GenerateRequest) -> int:
     # Characters, not words: a blob with no whitespace is one "word".
     chars = len(request.prompt) + len(request.system_prompt or "")
     chars += sum(len(turn.content) for turn in request.history)
+    # Sent to the model too, so they are input tokens like everything else.
+    chars += sum(len(json.dumps(turn.tool_calls or [])) for turn in request.history)
+    chars += len(json.dumps(request.tools))
     return max(int(chars / 4), int(len(request.prompt.split()) * _TOKENS_PER_WORD)) + request.max_tokens
 
 
@@ -159,6 +162,8 @@ async def generate(
             detail="No cloud provider is configured for this request.",
         )
 
+    estimated_tokens *= cost_weight(provider, settings)
+
     if request.tools:
         # Tool calling (Loop 3.4) is a multi-turn, client-orchestrated flow —
         # only the streaming shape carries a `tool_call` event distinctly
@@ -193,12 +198,13 @@ async def generate(
     ]
     request_id = str(uuid.uuid4())
 
+    try:
+        lease = stream_limiter.acquire(x_device_key)
+    except HTTPException:
+        await asyncio.to_thread(limiter.refund, x_device_key, estimated_tokens)
+        raise
+
     if request.stream:
-        try:
-            lease = stream_limiter.acquire(x_device_key)
-        except HTTPException:
-            await asyncio.to_thread(limiter.refund, x_device_key, estimated_tokens)
-            raise
         events = (
             _sse_stream_with_tools(
                 request_id, request, provider, history, estimated_tokens,
@@ -240,6 +246,8 @@ async def generate(
         _log_done(request_id, request, provider, estimated_tokens, watch,
                   x_device_key, "error", exc)
         raise HTTPException(status_code=502, detail=_UPSTREAM_ERROR) from exc
+    finally:
+        lease.release()
 
     _log_done(request_id, request, provider, estimated_tokens, watch,
               x_device_key, "ok", None)

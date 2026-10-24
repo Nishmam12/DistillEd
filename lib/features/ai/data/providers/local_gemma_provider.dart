@@ -28,8 +28,10 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../../domain/ai_provider.dart';
+import '../../domain/ai_router.dart';
 import '../../domain/compute_backend.dart';
 import '../../domain/image_transcriber.dart';
+import '../../domain/tutor_voice.dart';
 import '../llm/gemma_adapter.dart';
 import '../llm/llm_exceptions.dart';
 import '../llm/llm_model_spec.dart';
@@ -320,8 +322,15 @@ class LocalGemmaProvider implements AiProvider, ImageTranscriber {
         // otherwise Gemma's conventional top-k unless the caller overrides.
         topK: opts.topK ?? (opts.temperature == 0.0 ? 1 : 40),
         topP: opts.topP ?? 0.95,
-        maxOutputTokens: opts.maxTokens,
-        systemInstruction: systemPrompt,
+        // Same cap and compaction the callers budgeted with
+        // (AiRouter.inputWordBudgetFor), so prompt + passage + reply fit.
+        maxOutputTokens: math.min(
+          opts.maxTokens ?? AiRouter.replyCapFor(spec.maxTokens),
+          AiRouter.replyCapFor(spec.maxTokens),
+        ),
+        systemInstruction: systemPrompt == null
+            ? null
+            : compactForWindow(systemPrompt, spec.maxTokens),
         randomSeed: opts.seed,
         // The same configuration vision asks for, so alternating between the
         // two never rebuilds the engine — see [LlmModelSpec.shareVisionEngine].

@@ -85,16 +85,19 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
           hintStyle: text.copyWith(color: c.textPrimary.withValues(alpha: 0.5)),
           contentPadding: EdgeInsets.zero,
           suffixIconConstraints: const BoxConstraints(minWidth: 32),
-          suffixIcon: IgnorePointer(
-            ignoring: !_hasText,
-            child: AnimatedOpacity(
-              opacity: _hasText ? 1 : 0,
-              duration: const Duration(milliseconds: 160),
-              child: IconButton(
-                icon: const Icon(PhosphorIconsRegular.x, size: 16),
-                color: c.textPrimary,
-                tooltip: 'Clear search',
-                onPressed: _clear,
+          suffixIcon: ExcludeSemantics(
+            excluding: !_hasText,
+            child: IgnorePointer(
+              ignoring: !_hasText,
+              child: AnimatedOpacity(
+                opacity: _hasText ? 1 : 0,
+                duration: const Duration(milliseconds: 160),
+                child: IconButton(
+                  icon: const Icon(PhosphorIconsRegular.x, size: 16),
+                  color: c.textPrimary,
+                  tooltip: 'Clear search',
+                  onPressed: _clear,
+                ),
               ),
             ),
           ),

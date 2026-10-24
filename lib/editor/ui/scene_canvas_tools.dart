@@ -273,6 +273,8 @@ extension _SceneCanvasTools on _SceneCanvasState {
           .read(sceneControllerProvider(_key))
           .where((e) => ids.contains(e.id))
           .toList();
+      // The preview outlines were mapped, not rebuilt; draw the result exactly.
+      after.forEach(SceneTransformer.settle);
       // Per-move updates were in-memory only; persist the final state once.
       _scene.updateMany(after);
       _history.pushApplied(
@@ -421,25 +423,24 @@ extension _SceneCanvasTools on _SceneCanvasState {
     if (!mounted) return;
     final body = result.text.trim();
     final w = math.max(120.0, body.length * tool.fontSize * 0.6);
+    final text = TextElement(
+      id: _newId(),
+      zOrder: _scene.nextZOrder(),
+      geometryData: [scene.dx, scene.dy, scene.dx + w, scene.dy],
+      text: body,
+      color: tool.color,
+      fontSize: tool.fontSize,
+      fontFamily: tool.fontFamily,
+      opacity: tool.opacity,
+      isBold: result.isBold,
+      isItalic: result.isItalic,
+      align: result.align,
+    );
+    // Height from the same layout the painter uses, so a multi-line note's box
+    // encloses every line (selection, hit-testing, export crop).
+    final h = SceneElementPainter.layOutText(text, w).height;
     _history.push(AddElementsCommand([
-      TextElement(
-        id: _newId(),
-        zOrder: _scene.nextZOrder(),
-        geometryData: [
-          scene.dx,
-          scene.dy,
-          scene.dx + w,
-          scene.dy + tool.fontSize * 1.6
-        ],
-        text: body,
-        color: tool.color,
-        fontSize: tool.fontSize,
-        fontFamily: tool.fontFamily,
-        opacity: tool.opacity,
-        isBold: result.isBold,
-        isItalic: result.isItalic,
-        align: result.align,
-      )
+      text.copyWith(geometryData: [scene.dx, scene.dy, scene.dx + w, scene.dy + h])
     ]));
   }
 }

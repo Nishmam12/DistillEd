@@ -37,6 +37,10 @@ class SceneImageCache extends ChangeNotifier {
   // ponytail: count-bounded, not byte-bounded; switch to a byte budget if
   // mixed huge/small images make the count a poor proxy.
   static const int maxEntries = 32;
+
+  /// Decoded bytes (width x height x 4) kept at once. The count alone lets 32
+  /// large photos hold ~500 MB of native memory beside the on-device model.
+  static const int maxBytes = 150 * 1024 * 1024;
   int _version = 0;
 
   SceneImageCache({
@@ -49,6 +53,9 @@ class SceneImageCache extends ChangeNotifier {
   /// Increments each time an image finishes loading; used by CustomPainters'
   /// shouldRepaint to refresh once a bitmap becomes available.
   int get version => _version;
+
+  int get _readyBytes =>
+      _ready.values.fold(0, (n, i) => n + i.width * i.height * 4);
 
   /// The decoded image for [relativePath], or null if not loaded yet.
   ui.Image? get(String relativePath) {
@@ -80,7 +87,8 @@ class SceneImageCache extends ChangeNotifier {
           continue;
         }
         _ready[p] = _cache.acquire(p, () => image);
-        while (_ready.length > maxEntries) {
+        while (_ready.length > maxEntries ||
+            (_ready.length > 1 && _readyBytes > maxBytes)) {
           final oldest = _ready.keys.first;
           _ready.remove(oldest);
           _cache.release(oldest); // disposes the bitmap

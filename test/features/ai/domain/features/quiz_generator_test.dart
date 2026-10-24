@@ -139,7 +139,15 @@ void main() {
           .generate(text: long, level: KnowledgeLevel.intermediate);
 
       final words = RegExp(r'\bword\b').allMatches(provider.lastPrompt!).length;
-      expect(words, budget);
+      expect(
+        words,
+        AiRouter.inputWordBudgetFor(
+          provider.capabilities,
+          systemPrompt: provider.lastSystemPrompt!,
+          // The reply it asks for is reserved too, not the 512 default.
+          responseTokens: provider.lastOptions!.maxTokens!,
+        ),
+      );
     });
   });
 

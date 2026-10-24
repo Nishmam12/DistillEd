@@ -28,6 +28,7 @@ import '../render/background_layer.dart';
 import '../input/scene_pointer_listener.dart';
 import '../render/freehand_path.dart';
 import '../render/scene_active_stroke_layer.dart';
+import '../render/scene_element_painter.dart';
 import '../render/scene_image_cache.dart';
 import '../render/scene_laser_layer.dart';
 import '../render/scene_preview_layer.dart';

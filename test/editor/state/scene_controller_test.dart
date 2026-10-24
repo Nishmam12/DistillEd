@@ -32,6 +32,22 @@ void main() {
     expect(ctl.state, isEmpty);
   });
 
+  test('a new controller for the page waits for the old one\'s writes',
+      () async {
+    // The editor closing releases the controller while a write is in flight;
+    // reopening at once must not load the page without it.
+    final store = _SlowUpsertStore();
+    final old = SceneController(store, notebookId: 1, pageId: 7);
+    final add = old.addMany([_el('last', 0)]);
+    old.dispose();
+
+    final reopened = SceneController(store, notebookId: 1, pageId: 7);
+    await reopened.load();
+    await add;
+
+    expect(reopened.state.map((e) => e.id), ['last']);
+  });
+
   test('removeMany deletes only the given ids and keeps the rest', () async {
     final store = InMemorySceneElementStore();
     final ctl = SceneController(store, notebookId: 1, pageId: 1);

@@ -13,7 +13,13 @@ import '../../domain/models/note_page.dart';
 class NoteRepository {
   final Isar _isar;
 
-  NoteRepository(this._isar);
+  /// Image files the element library still shows (see [libraryImagePaths]).
+  final Future<Set<String>> Function() _libraryImages;
+
+  NoteRepository(this._isar, {Future<Set<String>> Function()? libraryImages})
+      : _libraryImages = libraryImages ?? _none;
+
+  static Future<Set<String>> _none() async => const {};
 
   /// Creates a new notebook with the given title and returns it.
   Future<Notebook> createNotebook(
@@ -98,7 +104,21 @@ class NoteRepository {
   /// stroke on disk forever with nothing pointing at it.
   Future<void> deleteNotebook(int id) async {
     late final List<String> audio;
+    final dir = 'notes/$id/';
+    var imagesInUse =
+        (await _libraryImages()).any((path) => path.startsWith(dir));
     await _isar.writeTxn(() async {
+      // A pasted image or library item can point into this notebook's folder
+      // from elsewhere; deleting the folder would blank it for good.
+      imagesInUse = imagesInUse ||
+          await _isar.sceneElementRecords
+              .filter()
+              .not()
+              .notebookIdEqualTo(id)
+              .and()
+              .relativeImagePathStartsWith(dir)
+              .count() >
+          0;
       audio = await purgeNotebookRows(_isar, id);
       await _isar.notePages.filter().notebookIdEqualTo(id).deleteAll();
       await _isar.sceneElementRecords
@@ -110,7 +130,12 @@ class NoteRepository {
       await _isar.notebooks.delete(id);
     });
     // After the commit: ink files, imports, recordings and transcripts.
-    await deleteContentFiles(notebookDirId: id, audioRelativePaths: audio);
+    // ponytail: keeps the whole folder when anything outside uses it (a little
+    // storage waste); copy-on-paste would be the proper fix.
+    await deleteContentFiles(
+      notebookDirId: imagesInUse ? null : id,
+      audioRelativePaths: audio,
+    );
   }
 
   /// Permanently deletes every trashed notebook whose retention window has
@@ -235,8 +260,7 @@ class NoteRepository {
     final cleaned = <String>{
       for (final tag in tags)
         if (tag.trim().isNotEmpty) tag.trim().toLowerCase(),
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     return cleaned;
   }
 
@@ -288,8 +312,10 @@ class NoteRepository {
   /// deleting a container must never delete the contents.
   Future<void> deleteFolder(int id) async {
     await _isar.writeTxn(() async {
-      final inside =
-          await _isar.notebooks.filter().folderIdEqualTo(id).findAll();
+      final inside = await _isar.notebooks
+          .filter()
+          .folderIdEqualTo(id)
+          .findAll();
       for (final notebook in inside) {
         notebook.folderId = null;
       }

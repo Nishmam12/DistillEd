@@ -311,6 +311,15 @@ class _ContextBody extends StatelessWidget {
           // already fill it.
           const SizedBox(height: 8),
           _RanOnBadge(ranOn: c.ranOn),
+          if (c.partial) ...[
+            const SizedBox(height: 6),
+            Text(
+              "Partial analysis: the model's reply was cut short, so some "
+              'items may be missing.',
+              style: TextStyle(
+                  fontSize: 12, color: buildContext.colors.textSecondary),
+            ),
+          ],
           const SizedBox(height: 14),
           _LevelIndicator(level: c.estimatedLevel, confidence: c.confidence),
           if (c.keyConcepts.isNotEmpty) ...[

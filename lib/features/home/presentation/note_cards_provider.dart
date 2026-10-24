@@ -17,6 +17,7 @@ import '../../../editor/state/scene_image_cache_provider.dart';
 import '../domain/models/folder.dart';
 import 'home_notifier.dart';
 import 'models/note_card_data.dart';
+import 'widgets/note_scene_preview.dart';
 
 final noteCardsProvider = FutureProvider<List<NoteCardData>>((ref) async {
   final notebooks = ref.watch(homeNotifierProvider);
@@ -30,7 +31,9 @@ final noteCardsProvider = FutureProvider<List<NoteCardData>>((ref) async {
     final pages = await pageRepository.getPagesForNotebook(notebook.id);
     final scene = pages.isEmpty
         ? const <SceneElement>[]
-        : await elements.loadForPage(pages.first.id);
+        : (await elements.loadForPage(pages.first.id))
+              .take(NoteScenePreview.maxElements)
+              .toList();
     // Every page's text, not just page one's: the preview only shows the first
     // few lines, but `matches()` searches the whole string, so a word written
     // on page 7 has to make the note findable from here.

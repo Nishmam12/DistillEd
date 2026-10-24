@@ -11,7 +11,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../domain/model/library_item.dart';
+import '../../domain/model/scene_element.dart';
 import 'scene_element_codec.dart';
+
+/// The image files library items show. Deleting a note or page must keep
+/// these, or the saved item turns into a blank placeholder.
+Future<Set<String>> libraryImagePaths(LibraryRepository repo) async => {
+      for (final item in await repo.load())
+        for (final e in item.elements)
+          if (e is ImageElement && e.relativeImagePath.isNotEmpty)
+            e.relativeImagePath,
+    };
 
 abstract class LibraryRepository {
   Future<List<LibraryItem>> load();
@@ -89,7 +99,11 @@ class FileLibraryRepository implements LibraryRepository {
       if (decoded.skipped > 0) {
         // The next save writes the library without the entries that did not
         // decode, so the original is kept beside it to recover them by hand.
-        await file.copy('${file.path}.bad');
+        try {
+          await file.copy('${file.path}.bad');
+        } catch (_) {
+          // The backup is a courtesy; the entries that did decode still load.
+        }
       }
       return decoded.items;
     } catch (_) {

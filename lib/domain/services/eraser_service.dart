@@ -8,6 +8,10 @@ import '../geometry/scene_geometry.dart';
 import '../geometry/scene_hit_test.dart';
 import '../model/scene_element.dart';
 
+// Elements are immutable, so a world box is computed once per element, not per
+// pointer event (ElementBounds walks every freehand point).
+final Expando<Rect> _worldBox = Expando<Rect>();
+
 class EraserService {
   EraserService._();
 
@@ -21,7 +25,7 @@ class EraserService {
     final hits = <String>{};
     for (final e in elements) {
       if (skip.contains(e.id) || e.isLocked) continue;
-      final box = SceneGeometry.worldAabb(e).inflate(radius);
+      final box = (_worldBox[e] ??= SceneGeometry.worldAabb(e)).inflate(radius);
       if (_segmentTouches(a, b, box, e, radius)) hits.add(e.id);
     }
     return hits;

@@ -78,9 +78,14 @@ class PageIndexState {
   final String contentSignature;
   final String embeddingModelId;
 
+  /// When those chunks were written, so a slower writer holding older text can
+  /// tell it would overwrite fresher chunks. Null when unknown.
+  final DateTime? embeddedAt;
+
   const PageIndexState({
     required this.contentSignature,
     required this.embeddingModelId,
+    this.embeddedAt,
   });
 }
 

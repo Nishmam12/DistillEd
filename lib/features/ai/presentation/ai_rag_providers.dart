@@ -7,7 +7,8 @@ part of 'ai_providers.dart';
 /// embeddings are model-locked and must never be routed: see the header of
 /// `domain/rag/text_embedder.dart`.
 final textEmbedderProvider = Provider<TextEmbedder>(
-    (ref) => LocalTextEmbedder(spec: ref.watch(servingEmbedderSpecProvider)));
+  (ref) => LocalTextEmbedder(spec: ref.watch(servingEmbedderSpecProvider)),
+);
 
 /// The embedding model that answers questions and embeds new notes: the one the
 /// rollout says is serving (docs/TECH_MIGRATION_PLAN.md, phase 4.5). It is the
@@ -15,8 +16,10 @@ final textEmbedderProvider = Provider<TextEmbedder>(
 /// spec has is an error: answering with another vector space would look plausible
 /// and be wrong.
 final servingEmbedderSpecProvider = Provider<EmbedderSpec>((ref) {
-  final serving =
-      ref.watch(embedderRolloutStatusProvider).value?.answeringModelId;
+  final serving = ref
+      .watch(embedderRolloutStatusProvider)
+      .value
+      ?.answeringModelId;
   if (serving == null) return EmbedderSpec.active;
   return EmbedderSpec.registry.firstWhere(
     (spec) => spec.modelId == serving,
@@ -45,14 +48,16 @@ final huggingFaceTokenProvider = Provider<String>((ref) {
 /// so Settings can check a token the moment it is pasted. Catching a bad paste
 /// there, instead of 185 MB into a download, is most of what makes the gated
 /// setup bearable.
-final huggingFaceIdentityProvider =
-    Provider<HuggingFaceIdentity>((ref) => DioHuggingFaceIdentity());
+final huggingFaceIdentityProvider = Provider<HuggingFaceIdentity>(
+  (ref) => DioHuggingFaceIdentity(),
+);
 
 /// Manages the gated, user-triggered download of the embedding model, reading
 /// the effective token at download time (see the manager's [authToken] doc for
 /// why it's read late, not captured here).
-final embedderDownloadManagerProvider =
-    Provider<EmbedderDownloadManager>((ref) {
+final embedderDownloadManagerProvider = Provider<EmbedderDownloadManager>((
+  ref,
+) {
   final manager = EmbedderDownloadManager(
     authToken: () => ref.read(huggingFaceTokenProvider),
   );
@@ -61,8 +66,9 @@ final embedderDownloadManagerProvider =
 });
 
 /// Durable store of embedded note chunks (Isar).
-final noteChunkStoreProvider =
-    Provider<NoteChunkStore>((ref) => IsarNoteChunkStore());
+final noteChunkStoreProvider = Provider<NoteChunkStore>(
+  (ref) => IsarNoteChunkStore(),
+);
 
 /// Keeps a page's chunks in step with its text.
 final ragIndexerProvider = Provider<RagIndexer>((ref) {
@@ -76,15 +82,18 @@ final ragIndexerProvider = Provider<RagIndexer>((ref) {
     // is embedded with it, so two notebooks that both mention "enthalpy" rank
     // apart. See [chunkTitle].
     titleOf: (notebookId, pageId) => _pageTitle(ref, notebookId, pageId),
+    pageExists: (notebookId, pageId) => _pageExists(ref, notebookId, pageId),
   );
 });
 
 /// What a page is embedded under: its notebook, and for an import its document.
 Future<String?> _pageTitle(Ref ref, int notebookId, int pageId) async {
-  final notebook =
-      await ref.read(noteRepositoryProvider).getNotebook(notebookId);
-  final pages =
-      await ref.read(pageRepositoryProvider).getPagesForNotebook(notebookId);
+  final notebook = await ref
+      .read(noteRepositoryProvider)
+      .getNotebook(notebookId);
+  final pages = await ref
+      .read(pageRepositoryProvider)
+      .getPagesForNotebook(notebookId);
   String? source;
   for (final page in pages) {
     if (page.id == pageId) source = page.importSourceName;
@@ -98,8 +107,9 @@ Future<String?> Function(int, int) _memoizedPageTitle(Ref ref) {
   final byNotebook = <int, Future<(String?, Map<int, String?>)>>{};
   return (notebookId, pageId) async {
     final (title, sources) = await byNotebook.putIfAbsent(notebookId, () async {
-      final notebook =
-          await ref.read(noteRepositoryProvider).getNotebook(notebookId);
+      final notebook = await ref
+          .read(noteRepositoryProvider)
+          .getNotebook(notebookId);
       final pages = await ref
           .read(pageRepositoryProvider)
           .getPagesForNotebook(notebookId);
@@ -112,20 +122,31 @@ Future<String?> Function(int, int) _memoizedPageTitle(Ref ref) {
   };
 }
 
+/// Whether [pageId] is still in [notebookId]. Background writes (chunks, concept
+/// rows) check this after their slow step so a page deleted meanwhile is not
+/// resurrected as orphan rows.
+Future<bool> _pageExists(Ref ref, int notebookId, int pageId) async =>
+    (await ref.read(pageRepositoryProvider).getPagesForNotebook(notebookId))
+        .any((p) => p.id == pageId);
+
 /// Every page with text, across every notebook, for the rollout's indexing job.
 Future<List<RolloutPage>> _rolloutPages(Ref ref) async {
   final pages = <RolloutPage>[];
   final notebooks = await ref.read(noteRepositoryProvider).getAllNotebooks();
   for (final notebook in notebooks) {
-    final texts = await ref.read(pageTextStoreProvider).forNotebook(notebook.id);
+    final texts = await ref
+        .read(pageTextStoreProvider)
+        .forNotebook(notebook.id);
     for (final page in texts) {
       // What the live and bulk indexers embedded, so a rebuilt index matches them.
       if (page.indexText.trim().isNotEmpty) {
-        pages.add(RolloutPage(
-          notebookId: notebook.id,
-          pageId: page.pageId,
-          text: page.indexText,
-        ));
+        pages.add(
+          RolloutPage(
+            notebookId: notebook.id,
+            pageId: page.pageId,
+            text: page.indexText,
+          ),
+        );
       }
     }
   }
@@ -162,6 +183,7 @@ final embedderRolloutRunnerProvider = Provider<EmbedderRolloutRunner>((ref) {
         deleteChunks: store.deleteForPage,
         indexStateOf: store.indexStateForPage,
         titleOf: _memoizedPageTitle(ref),
+        pageExists: (notebookId, pageId) => _pageExists(ref, notebookId, pageId),
       ),
       // The same rule the bulk indexer follows: wait while hot or low on power.
       pauseReason: () async =>
@@ -188,25 +210,30 @@ final embedderMobileDataPromptProvider = StateProvider<bool>((ref) => false);
 final embedderRolloutResumeProvider = FutureProvider<void>((ref) async {
   var waiting = false;
   try {
-    waiting = await ref.read(embedderRolloutRunnerProvider).resume(
-      EmbedderSpec.active.modelId,
-      mayDownload: () async {
-        if (EmbedderSpec.active.needsAuth &&
-            ref.read(huggingFaceTokenProvider).isEmpty) {
-          return false;
-        }
-        if (!(await ref.read(deviceHealthProvider).read()).metered) return true;
-        switch (await loadMobileDataChoice()) {
-          case MobileDataChoice.allow:
-            return true;
-          case MobileDataChoice.wifiOnly:
-            return false;
-          case MobileDataChoice.ask:
-            ref.read(embedderMobileDataPromptProvider.notifier).state = true;
-            return false;
-        }
-      },
-    );
+    waiting = await ref
+        .read(embedderRolloutRunnerProvider)
+        .resume(
+          EmbedderSpec.active.modelId,
+          mayDownload: () async {
+            if (EmbedderSpec.active.needsAuth &&
+                ref.read(huggingFaceTokenProvider).isEmpty) {
+              return false;
+            }
+            if (!(await ref.read(deviceHealthProvider).read()).metered) {
+              return true;
+            }
+            switch (await loadMobileDataChoice()) {
+              case MobileDataChoice.allow:
+                return true;
+              case MobileDataChoice.wifiOnly:
+                return false;
+              case MobileDataChoice.ask:
+                ref.read(embedderMobileDataPromptProvider.notifier).state =
+                    true;
+                return false;
+            }
+          },
+        );
   } catch (e) {
     debugPrint('embedder rollout resume failed: $e');
   }
@@ -223,8 +250,9 @@ final embedderRolloutResumeProvider = FutureProvider<void>((ref) async {
 /// answers questions. While a rollout runs it is read again every second, so the
 /// progress row moves; each step saves before the next one starts, so each read is
 /// current. Invalidate it after an action that changes the saved state.
-final embedderRolloutStatusProvider =
-    StreamProvider<EmbedderRollout>((ref) async* {
+final embedderRolloutStatusProvider = StreamProvider<EmbedderRollout>((
+  ref,
+) async* {
   final states = SharedPrefsRolloutStateStore();
   while (true) {
     final rollout = await states.load(EmbedderSpec.active.modelId);
@@ -237,7 +265,10 @@ final embedderRolloutStatusProvider =
 /// Debounces indexing off the Context Engine's extraction (see the file header
 /// for why it does not simply reuse the 2.5s analysis debounce).
 final ragIndexSchedulerProvider = Provider<RagIndexScheduler>((ref) {
-  final scheduler = RagIndexScheduler(indexer: ref.watch(ragIndexerProvider));
+  final scheduler = RagIndexScheduler(
+    indexer: ref.watch(ragIndexerProvider),
+    pageExists: (notebookId, pageId) => _pageExists(ref, notebookId, pageId),
+  );
   ref.onDispose(scheduler.dispose);
   return scheduler;
 });
@@ -294,23 +325,28 @@ final bulkRagIndexerProvider = Provider<BulkRagIndexer>((ref) {
     // ever been downloaded. (The live path writes the same store; see
     // `pageContextProvider`.) Figures are included: for an imported deck they
     // are part of what the document says.
-    onPageRead: (notebookId, pageId, text) =>
-        ref.read(pageTextStoreProvider).save(
-              notebookId: notebookId,
-              pageId: pageId,
-              text: text,
-              indexText: text,
-            ),
+    onPageRead: (notebookId, pageId, text) => ref
+        .read(pageTextStoreProvider)
+        .save(
+          notebookId: notebookId,
+          pageId: pageId,
+          text: text,
+          indexText: text,
+        ),
   );
 });
 
 /// Drives a bulk indexing run for one notebook. Family-scoped so two open
 /// notebooks keep separate progress; session-scoped (not autoDispose) so a run
 /// survives the sheet that started it being closed.
-final notebookIndexProvider = StateNotifierProvider.family<
-    NotebookIndexNotifier, NotebookIndexState, int>((ref, notebookId) {
-  return NotebookIndexNotifier(indexer: ref.watch(bulkRagIndexerProvider));
-});
+final notebookIndexProvider =
+    StateNotifierProvider.family<
+      NotebookIndexNotifier,
+      NotebookIndexState,
+      int
+    >((ref, notebookId) {
+      return NotebookIndexNotifier(indexer: ref.watch(bulkRagIndexerProvider));
+    });
 
 /// Resolves "this page / this PDF / the whole notebook" to concrete page ids.
 /// The single definition every AI feature scopes by — see `domain/ai_scope.dart`.
@@ -329,18 +365,20 @@ final aiScopeResolverProvider = Provider<AiScopeResolver>((ref) {
 });
 
 /// Semantic search over a notebook, feeding "Ask your notes".
-final ragRetrieverProvider = Provider<RagRetriever>((ref) => RagRetriever(
-      embedder: ref.watch(textEmbedderProvider),
-      loadChunks: ref.watch(noteChunkStoreProvider).forNotebook,
-      // Keyword search runs over the plain page text, which exists whether or
-      // not the embedding model has ever been downloaded — so a question about a
-      // course code or a defined term finds its page either way.
-      loadPageTexts: (notebookId) async => [
-        for (final page
-            in await ref.read(pageTextStoreProvider).forNotebook(notebookId))
-          (pageId: page.pageId, text: page.text),
-      ],
-    ));
+final ragRetrieverProvider = Provider<RagRetriever>(
+  (ref) => RagRetriever(
+    embedder: ref.watch(textEmbedderProvider),
+    loadChunks: ref.watch(noteChunkStoreProvider).forNotebook,
+    // Keyword search runs over the plain page text, which exists whether or
+    // not the embedding model has ever been downloaded — so a question about a
+    // course code or a defined term finds its page either way.
+    loadPageTexts: (notebookId) async => [
+      for (final page
+          in await ref.read(pageTextStoreProvider).forNotebook(notebookId))
+        (pageId: page.pageId, text: page.text),
+    ],
+  ),
+);
 
 /// The accuracy fail-safe shared by Explain, Ask, Summarize and the Context
 /// Engine: generate locally, check the output, escalate to the cloud when the
@@ -362,28 +400,30 @@ final aiQualityGuardProvider = Provider<AiQualityGuard>((ref) {
 
 /// "Ask your notes": grounded QA over a notebook (retrieve → answer from those
 /// passages only).
-final notesQaProvider = Provider<NotesQa>((ref) => NotesQa(
-      provider: ref.watch(localAiProvider),
-      retriever: ref.watch(ragRetrieverProvider),
-    ));
+final notesQaProvider = Provider<NotesQa>(
+  (ref) => NotesQa(
+    provider: ref.watch(localAiProvider),
+    retriever: ref.watch(ragRetrieverProvider),
+  ),
+);
 
 /// Drives the sidebar's Ask surface. Session-scoped (not autoDispose) for the
 /// same reason as Explain/Quiz: closing the sidebar must not abort an in-flight
 /// model download, and the answer stays put until dismissed.
 final askNotesNotifierProvider =
     StateNotifierProvider<AskNotesNotifier, AskNotesState>((ref) {
-  return AskNotesNotifier(
-    qa: ref.watch(notesQaProvider),
-    llmDownloads: ref.watch(modelDownloadManagerProvider),
-    embedderDownloads: ref.watch(embedderDownloadManagerProvider),
+      return AskNotesNotifier(
+        qa: ref.watch(notesQaProvider),
+        llmDownloads: ref.watch(modelDownloadManagerProvider),
+        embedderDownloads: ref.watch(embedderDownloadManagerProvider),
 
-    guard: ref.watch(aiQualityGuardProvider),
-    // The `/cloud on|off` command and the sidebar switch write the same stored
-    // setting, so neither can drift from the other.
-    cloudEnabled: () => ref.read(settingsProvider).cloudAiEnabled,
-    setCloudEnabled: (enabled) =>
-        ref.read(settingsProvider.notifier).setCloudAiEnabled(enabled),
-    privacyAsksEachTime: () =>
-        ref.read(settingsProvider).cloudPrivacy == CloudPrivacy.askEachTime,
-  );
-});
+        guard: ref.watch(aiQualityGuardProvider),
+        // The `/cloud on|off` command and the sidebar switch write the same stored
+        // setting, so neither can drift from the other.
+        cloudEnabled: () => ref.read(settingsProvider).cloudAiEnabled,
+        setCloudEnabled: (enabled) =>
+            ref.read(settingsProvider.notifier).setCloudAiEnabled(enabled),
+        privacyAsksEachTime: () =>
+            ref.read(settingsProvider).cloudPrivacy == CloudPrivacy.askEachTime,
+      );
+    });

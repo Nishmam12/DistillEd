@@ -159,22 +159,34 @@ class SettingsScreen extends ConsumerWidget {
                 onChanged: notifier.setAiMode,
               ),
               // SET-13.
-              _SettingsRow(
-                icon: PhosphorIconsRegular.translate,
-                title: 'Handwriting Language',
-                subtitle: 'Language used to read your notes',
-                trailing: AppChipGroup<String>(
-                  value: settings.recognitionLanguage,
-                  // 'bn-Latn' is Bangla written in English letters ("ami bhalo achi") — its
-                  // own ML Kit model, which reads those words far better than the
-                  // English one does.
-                  options: const [
-                    ('en', 'English'),
-                    ('bn', 'বাংলা'),
-                    ('bn-Latn', 'Banglish'),
-                  ],
-                  onChanged: notifier.setRecognitionLanguage,
-                ),
+              Column(
+                children: [
+                  const _SettingsRow(
+                    icon: PhosphorIconsRegular.translate,
+                    title: 'Handwriting Language',
+                    subtitle: 'Language used to read your notes',
+                  ),
+                  // Below the label, like the theme row: three chips are wider
+                  // than the space a trailing slot leaves on a phone.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: AppChipGroup<String>(
+                        value: settings.recognitionLanguage,
+                        // 'bn-Latn' is Bangla written in English letters
+                        // ("ami bhalo achi") — its own ML Kit model, which
+                        // reads those words far better than the English one.
+                        options: const [
+                          ('en', 'English'),
+                          ('bn', 'বাংলা'),
+                          ('bn-Latn', 'Banglish'),
+                        ],
+                        onChanged: notifier.setRecognitionLanguage,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               // SET-15. Lecture transcripts: the switch makes new recordings
               // WAV (the format the speech model reads) and downloads the

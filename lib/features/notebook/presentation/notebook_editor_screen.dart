@@ -134,10 +134,30 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   final SceneImportService _import =
       SceneImportService(scanner: MlKitDocumentScanner());
 
+  // Held from initState: `ref` is unusable in dispose().
+  late final ProviderContainer _container;
+
   @override
   void initState() {
     super.initState();
+    // listen: false — subscribing to an inherited widget in initState asserts.
+    _container = ProviderScope.containerOf(context, listen: false);
     Future.microtask(_init);
+  }
+
+  @override
+  void dispose() {
+    // Leaving the editor must not leave the microphone live with no control on
+    // screen (a killed process would also lose the unfinalized file). Only the
+    // route popping reaches here; backgrounding the app does not.
+    final provider = recordingNotifierProvider(widget.notebookId);
+    final active = _container.read(provider).active;
+    if (active != null) {
+      unawaited(_container.read(provider.notifier).stop(active.pageId));
+    }
+    // Per-page scene and undo state would otherwise live until the app dies.
+    _container.read(pageProvider(widget.notebookId).notifier).release();
+    super.dispose();
   }
 
   Future<void> _init() async {

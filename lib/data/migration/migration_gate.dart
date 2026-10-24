@@ -15,6 +15,9 @@ abstract class MigrationGate {
   /// page would otherwise get the old drawing back on the next launch.
   Future<bool> isPageMigrated(int pageId);
   Future<void> markPageMigrated(int pageId);
+
+  /// Counts a launch that ended with unreadable pages; returns the new total.
+  Future<int> bumpIncompleteRuns();
 }
 
 /// In-memory gate for tests.
@@ -35,6 +38,11 @@ class InMemoryMigrationGate implements MigrationGate {
 
   @override
   Future<void> markPageMigrated(int pageId) async => _pages.add(pageId);
+
+  int _runs = 0;
+
+  @override
+  Future<int> bumpIncompleteRuns() async => ++_runs;
 }
 
 /// Isar-backed gate using the singleton [AppMeta] row.
@@ -73,5 +81,15 @@ class IsarMigrationGate implements MigrationGate {
     if (!pages.contains('$pageId')) {
       await prefs.setStringList(_pagesKey, [...pages, '$pageId']);
     }
+  }
+
+  static const _runsKey = 'migration.v2.incompleteRuns';
+
+  @override
+  Future<int> bumpIncompleteRuns() async {
+    final prefs = await SharedPreferences.getInstance();
+    final n = (prefs.getInt(_runsKey) ?? 0) + 1;
+    await prefs.setInt(_runsKey, n);
+    return n;
   }
 }

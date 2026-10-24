@@ -10,6 +10,10 @@ import '../knowledge_graph/concept_relation.dart';
 /// The writer's apparent grasp of the page's topic.
 enum KnowledgeLevel { beginner, intermediate, advanced }
 
+/// Key [ContextEngine.tryExtractJsonObject] adds to a reply it had to salvage
+/// after the model was cut off, so callers can tell a partial result apart.
+const String kTruncatedJsonKey = '_truncated';
+
 /// What the engine understood about a page. Produced by one structured-output
 /// model call, so every field is best-effort: [confidence] says how much to
 /// trust the read (a page with three words of ink must not produce a
@@ -45,6 +49,10 @@ class PageContext {
   /// it used, because a model cannot be trusted to report where it ran.
   final AiRanOn ranOn;
 
+  /// The model's reply was cut off and only the items that arrived were kept,
+  /// so lists may be short. Shown in the panel rather than passing as complete.
+  final bool partial;
+
   const PageContext({
     required this.currentTopic,
     this.subtopics = const [],
@@ -56,6 +64,7 @@ class PageContext {
     this.estimatedLevel = KnowledgeLevel.beginner,
     this.confidence = 0.0,
     this.ranOn = AiRanOn.onDevice,
+    this.partial = false,
   });
 
   /// Same context, restamped with where it ran.
@@ -70,6 +79,7 @@ class PageContext {
         estimatedLevel: estimatedLevel,
         confidence: confidence,
         ranOn: value,
+        partial: partial,
       );
 
   /// The "engine has nothing to say" value — too little content, or the model
@@ -99,6 +109,7 @@ class PageContext {
       relatedConcepts: ConceptRelation.parseList(json['relatedConcepts']),
       estimatedLevel: _level(json['estimatedLevel']),
       confidence: _confidence(json['confidence']),
+      partial: json[kTruncatedJsonKey] == true,
     );
   }
 

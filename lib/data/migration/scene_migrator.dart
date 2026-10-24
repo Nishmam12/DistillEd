@@ -9,7 +9,9 @@
 //   * Resumable — a page that already has scene rows is skipped, so a run
 //     that died midway never overwrites edits made since on pages it finished.
 //   * Honest — a page whose ink file is unreadable is left for the next launch
-//     and the gate stays open, instead of being migrated as an empty page.
+//     and the gate stays open, instead of being migrated as an empty page. After
+//     [maxIncompleteRuns] launches it is given up on (its `.ink` file is never
+//     deleted), so one bad file cannot re-read the library at every boot.
 //   * Decoupled — depends on abstractions so it is fully unit-testable without
 //     a native Isar database.
 
@@ -20,6 +22,7 @@ import 'migration_gate.dart';
 
 class SceneMigratorV2 {
   static const int targetVersion = 2;
+  static const int maxIncompleteRuns = 3;
 
   final LegacyPageSource source;
   final SceneElementStore store;
@@ -36,9 +39,8 @@ class SceneMigratorV2 {
   Future<bool> run() async {
     if (await gate.currentVersion() >= targetVersion) return false;
 
-    final pages = await source.loadAllPages();
     var incomplete = false;
-    for (final page in pages) {
+    await for (final page in source.readPages()) {
       if (page.unreadable) {
         incomplete = true;
         continue;
@@ -56,7 +58,9 @@ class SceneMigratorV2 {
       await gate.markPageMigrated(page.pageId);
     }
 
-    if (incomplete) return true;
+    if (incomplete && await gate.bumpIncompleteRuns() < maxIncompleteRuns) {
+      return true;
+    }
     await gate.setVersion(targetVersion);
     return true;
   }

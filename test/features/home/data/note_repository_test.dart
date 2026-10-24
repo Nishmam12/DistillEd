@@ -12,6 +12,7 @@ import 'package:margo/data/persistence/page_text_record.dart';
 import 'package:margo/data/persistence/scene_element_record.dart';
 import 'package:margo/features/ai/data/flashcards/flashcard_record.dart';
 import 'package:margo/features/ai/data/memory/concept_mastery_record.dart';
+import 'package:margo/features/ai/data/ocr/read_cache_record.dart';
 import 'package:margo/features/ai/data/memory/concept_relation_record.dart';
 import 'package:margo/features/ai/data/memory/quiz_attempt_record.dart';
 import 'package:margo/features/ai/data/rag/note_chunk_record.dart';
@@ -54,6 +55,7 @@ Future<void> main() async {
           StudyPlanRecordSchema,
           ConceptMasteryRecordSchema,
           ConceptRelationRecordSchema,
+          ReadCacheRecordSchema,
         ],
         directory: dir.path,
         name: 'notes',

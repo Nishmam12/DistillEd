@@ -123,9 +123,15 @@ class EdgeAiInstaller implements ModelInstaller {
 
   /// The record and the file together. A backup restored without the model
   /// file keeps the record, and the download would then be skipped as done.
+  ///
+  /// A file whose checksum check never finished (the app died while hashing)
+  /// is not installed either: the plugin records it before we hash it, so
+  /// without this a corrupt download would be accepted for good.
   @override
   Future<bool> isInstalled(String modelId) async =>
-      await _isFileInstalled(modelId) && await _isFileOnDisk(modelId);
+      await _isFileInstalled(modelId) &&
+      await _isFileOnDisk(modelId) &&
+      !await isVerifyPending(modelId);
 
   /// The plugin's install skips a model whose record exists, file or no file, so
   /// a record that outlived its file is forgotten first and the download runs.
@@ -145,6 +151,9 @@ class EdgeAiInstaller implements ModelInstaller {
   }) async {
     await GemmaBootstrap.ensureInitialized();
     final alreadyThere = await isInstalled(spec.filename);
+    final expected = spec.sha256;
+    final mustVerify = !alreadyThere && expected != null;
+    if (mustVerify) await setVerifyPending(spec.filename, true);
     await forgetStaleRecords(spec.filename);
     var builder = FlutterEdgeAi.installModel(
       modelType: spec.modelType,
@@ -179,13 +188,15 @@ class EdgeAiInstaller implements ModelInstaller {
     if (onProgress != null) builder = builder.withProgress(onProgress);
     if (cancelToken != null) builder = builder.withCancelToken(cancelToken);
     await builder.install();
-    final expected = spec.sha256;
-    if (!alreadyThere && expected != null) {
+    if (mustVerify) {
       final path = await _pathOf(spec.filename);
       try {
         await verifySha256(
             path: path, expected: expected, name: spec.displayName);
+        await markVerified(spec.filename);
+        await setVerifyPending(spec.filename, false);
       } on ModelDownloadException {
+        await setVerifyPending(spec.filename, false);
         await _forgetFile(spec.filename);
         // The record goes, but a corrupt file must not outlive it.
         final leftover = File(path);
@@ -306,6 +317,18 @@ class EdgeAiRuntime implements LlmRuntime {
         !await FlutterEdgeAi.isModelInstalled(spec.filename)) {
       throw LlmNotReadyException();
     }
+    // A model installed before checksums were recorded is hashed once here,
+    // before its first load; a mismatch removes it so the download repairs it.
+    final path = await FlutterEdgeAi.getModelPath(spec.filename);
+    await ensureVerifiedOnce(
+      name: spec.filename,
+      files: () async => [(path, spec.sha256)],
+      onMismatch: () async {
+        await FlutterEdgeAi.uninstallModel(spec.filename);
+        final leftover = File(path);
+        if (await leftover.exists()) await leftover.delete();
+      },
+    );
   }
 
   static Future<InferenceModel> _pluginLoadModel(GemmaLoadRequest r) =>

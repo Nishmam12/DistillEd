@@ -125,10 +125,12 @@ const _idle = Duration(milliseconds: 20);
 RagIndexScheduler buildScheduler(
   TextEmbedder embedder, {
   Map<int, List<NoteChunk>>? saved,
+  Future<bool> Function(int notebookId, int pageId)? pageExists,
 }) {
   final store = saved ?? <int, List<NoteChunk>>{};
   return RagIndexScheduler(
     idleDelay: _idle,
+    pageExists: pageExists,
     indexer: RagIndexer(
       embedder: embedder,
       saveChunks: (pageId, chunks) async => store[pageId] = chunks,
@@ -214,6 +216,19 @@ void main() {
         .schedule(notebookId: 1, pageId: 7, text: 'some note');
     await settle();
     expect(embedder.batches, hasLength(1));
+  });
+
+  test('a page deleted during the idle wait is never embedded', () async {
+    final embedder = _RecordingEmbedder();
+    final scheduler = buildScheduler(
+      embedder,
+      pageExists: (notebookId, pageId) async => false,
+    );
+
+    scheduler.schedule(notebookId: 1, pageId: 7, text: 'note');
+
+    await settle();
+    expect(embedder.batches, isEmpty);
   });
 
   test('dispose drops pending work', () async {

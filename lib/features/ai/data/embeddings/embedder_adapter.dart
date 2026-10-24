@@ -119,7 +119,8 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
         return false;
       }
     }
-    return true;
+    // A checksum check cut short (app killed) leaves the files untrusted.
+    return !await isVerifyPending(spec.modelFilename);
   }
 
   /// The plugin's install skips a file whose record exists, file or no file, so
@@ -167,6 +168,7 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
 
     final tokenizerUrl = spec.tokenizerUrl;
     final alreadyThere = await isInstalled(spec);
+    if (!alreadyThere) await setVerifyPending(spec.modelFilename, true);
     await forgetStaleRecords(spec);
     var builder = FlutterEdgeAi.installEmbedder()
         .modelFromNetwork(spec.modelUrl, token: token);
@@ -182,17 +184,31 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
     }
     if (cancelToken != null) builder = builder.withCancelToken(cancelToken);
     await builder.install();
-    if (alreadyThere) return;
+    Future<List<(String, String?)>> files() async => [
+          (await _pathOf(spec.modelFilename), spec.modelSha256),
+          if (tokenizerUrl != null)
+            (await _pathOf(spec.tokenizerFilename), spec.tokenizerSha256),
+        ];
+    if (alreadyThere) {
+      // [EdgeAiEmbeddingRuntime.open] comes through here before every load, so
+      // a model installed before checksums were recorded is hashed once now.
+      await ensureVerifiedOnce(
+        name: spec.modelFilename,
+        files: files,
+        onMismatch: () => uninstall(spec),
+      );
+      return;
+    }
     try {
-      for (final (name, expected) in [
-        (spec.modelFilename, spec.modelSha256),
-        if (tokenizerUrl != null) (spec.tokenizerFilename, spec.tokenizerSha256),
-      ]) {
+      for (final (path, expected) in await files()) {
         if (expected == null) continue;
         await verifySha256(
-            path: await _pathOf(name), expected: expected, name: spec.displayName);
+            path: path, expected: expected, name: spec.displayName);
       }
+      await markVerified(spec.modelFilename);
+      await setVerifyPending(spec.modelFilename, false);
     } on ModelDownloadException {
+      await setVerifyPending(spec.modelFilename, false);
       await uninstall(spec);
       rethrow;
     }

@@ -44,6 +44,29 @@ void main() {
       expect(budget, ((4096 - 512 - 200) / 1.35).floor());
     });
 
+    test('a system prompt is paid for out of the budget, never past the window',
+        () {
+      const lite = AiCapabilities(
+        modelId: 'lite',
+        displayName: 'lite',
+        contextWindowTokens: 2048,
+        isLocal: true,
+      );
+      // ~1,400 tokens of tutor prompt, as Explain sends.
+      final prompt = 'x' * 4900;
+      final withPrompt =
+          AiRouter.inputWordBudgetFor(localCaps, systemPrompt: prompt);
+
+      expect(withPrompt, ((4096 - 512 - 200 - 1400) / 1.35).floor());
+      expect(withPrompt, lessThan(budget));
+      // A prompt bigger than the window leaves no passage, never a negative
+      // (or overflowing) one.
+      expect(AiRouter.inputWordBudgetFor(lite, systemPrompt: prompt), 0);
+      // A long reply request is capped at 3/8 of the window.
+      expect(AiRouter.inputWordBudgetFor(lite, responseTokens: 4096),
+          ((2048 - 768 - 200) / 1.35).floor());
+    });
+
     test('a larger context window raises the budget automatically', () {
       final bigger = AiRouter(
         localCapabilities: const AiCapabilities(

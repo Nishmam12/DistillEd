@@ -30,11 +30,17 @@ class RagIndexer {
   final Future<void> Function(int pageId) _deleteChunks;
 
   /// What a page's stored chunks were built with, or null if it has none.
-  final Future<PageIndexState?> Function(int pageId, String modelId) _indexStateOf;
+  final Future<PageIndexState?> Function(int pageId, String modelId)
+  _indexStateOf;
 
   /// What to call a page's notebook (and imported document) when embedding its
   /// chunks — see [chunkTitle]. Null embeds every chunk bare, as before.
   final Future<String?> Function(int notebookId, int pageId)? _titleOf;
+
+  /// Whether the page still exists. Embedding takes seconds to minutes, so a
+  /// page deleted meanwhile must not get its chunks written back (they would
+  /// stay searchable). Null skips the check.
+  final Future<bool> Function(int notebookId, int pageId)? _pageExists;
 
   final DateTime Function() _now;
 
@@ -44,6 +50,7 @@ class RagIndexer {
     required this._deleteChunks,
     required this._indexStateOf,
     this._titleOf,
+    this._pageExists,
     this._now = DateTime.now,
   });
 
@@ -91,7 +98,8 @@ class RagIndexer {
   /// text that is slow to embed can never be saved over the chunks of a newer one.
   final _queued = <int, Future<void>>{};
 
-  /// Brings [pageId]'s chunks in line with [text].
+  /// Brings [pageId]'s chunks in line with [text]. [textReadAt] is when the text
+  /// was read, for callers that read it long before indexing it.
   ///
   /// Throws whatever [TextEmbedder] throws (typically
   /// [AiModelNotReadyException] when the model isn't downloaded) — callers
@@ -102,10 +110,17 @@ class RagIndexer {
     required int notebookId,
     required int pageId,
     required String text,
+    DateTime? textReadAt,
   }) {
     final previous = _queued[pageId] ?? Future<void>.value();
     final run = previous.then(
-        (_) => _indexNow(notebookId: notebookId, pageId: pageId, text: text));
+      (_) => _indexNow(
+        notebookId: notebookId,
+        pageId: pageId,
+        text: text,
+        textReadAt: textReadAt,
+      ),
+    );
     // The queue carries on past a failed write: the next one has its own text.
     _queued[pageId] = run.then<void>((_) {}, onError: (_) {});
     return run;
@@ -115,6 +130,7 @@ class RagIndexer {
     required int notebookId,
     required int pageId,
     required String text,
+    DateTime? textReadAt,
   }) async {
     final drafts = chunkPage(
       text: text,
@@ -138,6 +154,13 @@ class RagIndexer {
       _embedder.promptContract.embeddingInput(title, text),
     );
     final state = await _indexStateOf(pageId, _embedder.modelId);
+    // [textReadAt] is when the caller read this text. Chunks written after that
+    // came from newer text (the live path indexed an edit while a slow bulk read
+    // was still going), so writing these would roll the page back.
+    final storedAt = state?.embeddedAt;
+    if (textReadAt != null && storedAt != null && storedAt.isAfter(textReadAt)) {
+      return RagIndexOutcome.unchanged;
+    }
     // The model check is as load-bearing as the signature: after a model swap
     // the old vectors are unusable, and RagRetriever ignores them, so a page
     // whose text never changes again would otherwise stay invisible forever.
@@ -147,13 +170,10 @@ class RagIndexer {
       return RagIndexOutcome.unchanged;
     }
 
-    final vectors = await _embedder.embedAll(
-      [
-        for (final draft in drafts)
-          _embedder.promptContract.embeddingInput(title, draft.text),
-      ],
-      taskType: EmbedTaskType.document,
-    );
+    final vectors = await _embedder.embedAll([
+      for (final draft in drafts)
+        _embedder.promptContract.embeddingInput(title, draft.text),
+    ], taskType: EmbedTaskType.document);
 
     final embeddedAt = _now();
     final chunks = [
@@ -166,6 +186,10 @@ class RagIndexer {
           embeddedAt: embeddedAt,
         ),
     ];
+    final exists = _pageExists;
+    if (exists != null && !await exists(notebookId, pageId)) {
+      return RagIndexOutcome.cleared;
+    }
     await _saveChunks(pageId, chunks);
     return RagIndexOutcome.indexed;
   }

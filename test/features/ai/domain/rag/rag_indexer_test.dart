@@ -89,6 +89,7 @@ class _FakeStore {
     return PageIndexState(
       contentSignature: chunks.first.contentSignature,
       embeddingModelId: chunks.first.embeddingModelId,
+      embeddedAt: chunks.first.embeddedAt,
     );
   }
 }
@@ -129,6 +130,38 @@ void main() {
     expect(chunk.notebookId, 1);
     expect(chunk.embedding, hasLength(3));
     expect(chunk.embeddingModelId, 'fake-v1');
+  });
+
+  test('text read before newer chunks were written does not overwrite them',
+      () async {
+    await index('Fresh text written by the live path.'); // embeddedAt 2026-07-17
+    final fresh = store.saved[7]!;
+
+    final outcome = await indexer.indexPage(
+      notebookId: 1,
+      pageId: 7,
+      text: 'Stale text a slow bulk read returned.',
+      textReadAt: DateTime(2026, 7, 16),
+    );
+
+    expect(outcome, RagIndexOutcome.unchanged);
+    expect(store.saved[7], same(fresh));
+  });
+
+  test('a page deleted while embedding is not written back', () async {
+    final gone = RagIndexer(
+      embedder: embedder,
+      saveChunks: store.save,
+      deleteChunks: store.delete,
+      indexStateOf: store.stateOf,
+      pageExists: (notebookId, pageId) async => false,
+    );
+
+    final outcome =
+        await gone.indexPage(notebookId: 1, pageId: 7, text: 'Some text.');
+
+    expect(outcome, RagIndexOutcome.cleared);
+    expect(store.saved, isEmpty);
   });
 
   test('chunks are embedded with DOCUMENT semantics, not query', () async {

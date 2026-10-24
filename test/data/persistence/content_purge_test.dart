@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
@@ -14,6 +15,7 @@ import 'package:margo/data/persistence/page_text_record.dart';
 import 'package:margo/data/persistence/scene_element_record.dart';
 import 'package:margo/features/ai/data/flashcards/flashcard_record.dart';
 import 'package:margo/features/ai/data/memory/concept_mastery_record.dart';
+import 'package:margo/features/ai/data/ocr/read_cache_record.dart';
 import 'package:margo/features/ai/data/memory/concept_relation_record.dart';
 import 'package:margo/features/ai/data/memory/quiz_attempt_record.dart';
 import 'package:margo/features/ai/data/rag/note_chunk_record.dart';
@@ -46,6 +48,7 @@ LectureRecordingRecord _recording(int notebookId, int pageId) =>
       ..durationMs = 1000;
 
 Future<void> main() async {
+  TestWidgetsFlutterBinding.ensureInitialized();
   final library = await isarNativeLibrary();
   final skip = library == null ? 'Isar native library not found' : null;
 
@@ -74,6 +77,7 @@ Future<void> main() async {
           StudyPlanRecordSchema,
           ConceptMasteryRecordSchema,
           ConceptRelationRecordSchema,
+          ReadCacheRecordSchema,
         ],
         directory: dir.path,
         name: 'purge',
@@ -99,6 +103,18 @@ Future<void> main() async {
       expect(chunks.map((c) => c.notebookId), [2]);
       final recs = await isar.lectureRecordingRecords.where().findAll();
       expect(recs.map((r) => r.notebookId), [2]);
+    });
+
+    test('deleting a notebook clears the vision read cache', () async {
+      await isar.writeTxn(() async {
+        await isar.readCacheRecords.put(ReadCacheRecord()
+          ..key = 'k'
+          ..text = 'verbatim transcription');
+      });
+
+      await NoteRepository(isar).deleteNotebook(1);
+
+      expect(await isar.readCacheRecords.count(), 0);
     });
 
     test('deleting a page removes that page\'s chunks and recordings only',
@@ -139,6 +155,48 @@ Future<void> main() async {
       expect(
           (await store.loadForPage(10)).map((e) => e.id).toSet(), {'x', 'y'});
       expect((await store.loadForPage(11)).map((e) => e.id), ['a']);
+    });
+
+    test('an image the element library shows survives page and notebook delete',
+        () async {
+      const channel = MethodChannel('plugins.flutter.io/path_provider');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (_) async => dir.path);
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+      final repo = NoteRepository(isar);
+      final nb = await repo.createNotebook('n');
+      final img = 'notes/${nb.id}/imports/a.png';
+      final file = File('${dir.path}/$img')..createSync(recursive: true);
+      Future<Set<String>> libraryImages() async => {img};
+      final pages = PageRepository(isar, libraryImages: libraryImages);
+      final second = await pages.createPage(nb.id);
+      await IsarSceneElementStore(isar: () => isar).upsertForPage(
+        nb.id,
+        second.id,
+        [
+          ImageElement(
+              id: 'i',
+              zOrder: 0,
+              geometryData: const [0, 0, 10, 10],
+              relativeImagePath: img),
+        ],
+      );
+
+      await pages.deletePage(nb.id, second.pageIndex);
+      expect(file.existsSync(), isTrue, reason: 'page delete');
+
+      await NoteRepository(isar, libraryImages: libraryImages)
+          .deleteNotebook(nb.id);
+      expect(file.existsSync(), isTrue, reason: 'notebook delete');
+
+      // Control: with nothing in the library the folder goes.
+      final nb2 = await repo.createNotebook('m');
+      final other = File('${dir.path}/notes/${nb2.id}/imports/b.png')
+        ..createSync(recursive: true);
+      await repo.deleteNotebook(nb2.id);
+      expect(other.existsSync(), isFalse);
     });
   }, skip: skip);
 }

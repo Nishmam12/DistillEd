@@ -30,7 +30,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from ..config import get_settings
-from ..guards import image_matches_mime
+from ..guards import image_matches_mime, stream_limiter
 from ..logging_config import (
     RequestLogEntry,
     Stopwatch,
@@ -38,7 +38,11 @@ from ..logging_config import (
     hash_device,
     log_request,
 )
-from ..provider_selection import NoVisionProviderError, select_vision_provider
+from ..provider_selection import (
+    NoVisionProviderError,
+    cost_weight,
+    select_vision_provider,
+)
 from ..providers.base import ProviderError
 from ..rate_limit import InvalidDeviceKeyError, RateLimitExceededError
 # Imported as a MODULE, not `from .generate import _get_rate_limiter`, so both
@@ -59,7 +63,8 @@ ALLOWED_MIME_TYPES = {"image/png", "image/jpeg", "image/webp"}
 # Vision calls are billed per image, not per word, so the word-count estimate
 # `/v1/generate` uses does not apply. This is the flat token cost charged
 # against the device's daily cap for one figure read — roughly what a
-# ~1MP image plus a short JSON reply actually costs on Gemini Flash.
+# ~1MP image costs on Gemini Flash. The prompt and the reply allowance are added
+# on top, since the caller sets both.
 VISION_TOKEN_COST = 1500
 
 
@@ -124,13 +129,24 @@ async def vision(
 
     # Same per-device daily budget as text generation, so a runaway figure loop
     # cannot bypass the cap by using a different endpoint.
+    cost = (
+        VISION_TOKEN_COST + len(request.prompt) // 4 + request.max_tokens
+    ) * cost_weight(provider, settings)
     limiter = generate_router._get_rate_limiter()
     try:
-        await asyncio.to_thread(limiter.check_and_record, x_device_key, VISION_TOKEN_COST)
+        await asyncio.to_thread(limiter.check_and_record, x_device_key, cost)
     except InvalidDeviceKeyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RateLimitExceededError as exc:
         raise HTTPException(status_code=429, detail=exc.message) from exc
+
+    # Same concurrency cap as streams: each call pins an upstream connection and
+    # a decoded image for as long as the provider takes.
+    try:
+        lease = stream_limiter.acquire(x_device_key)
+    except HTTPException:
+        await asyncio.to_thread(limiter.refund, x_device_key, cost)
+        raise
 
     request_id = str(uuid.uuid4())
     watch = Stopwatch()
@@ -144,13 +160,13 @@ async def vision(
         )
     except ProviderError as exc:
         _log.warning("provider error: %s", type(exc).__name__)
-        await asyncio.to_thread(limiter.refund, x_device_key, VISION_TOKEN_COST)
+        await asyncio.to_thread(limiter.refund, x_device_key, cost)
         log_request(
             RequestLogEntry(
                 request_id=request_id,
                 model_tier="vision",
                 provider=type(provider).__name__,
-                token_count=VISION_TOKEN_COST,
+                token_count=cost,
                 latency_ms=watch.elapsed_ms(),
                 approx_cost_usd=0.0,
                 status="error",
@@ -161,16 +177,18 @@ async def vision(
         raise HTTPException(
             status_code=502, detail="The AI provider failed. Try again."
         ) from exc
+    finally:
+        lease.release()
 
     log_request(
         RequestLogEntry(
             request_id=request_id,
             model_tier="vision",
             provider=type(provider).__name__,
-            token_count=VISION_TOKEN_COST,
+            token_count=cost,
             latency_ms=watch.elapsed_ms(),
             approx_cost_usd=approx_cost(
-                VISION_TOKEN_COST, settings.approx_cost_per_1k_tokens_usd
+                cost, settings.approx_cost_per_1k_tokens_usd
             ),
             status="ok",
             device=hash_device(x_device_key),

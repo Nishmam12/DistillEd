@@ -78,19 +78,23 @@ void main() {
   group('gatewayDio certificate pin', () {
     final cert = _Cert(Uint8List.fromList([1, 2, 3]));
     final digest = sha256.convert(cert.der).toString();
-    bool Function(X509Certificate?, String, int)? check(String pins) =>
-        (gatewayDio('https://h', pins: pins).httpClientAdapter
-                as IOHttpClientAdapter)
-            .validateCertificate;
+    IOHttpClientAdapter adapterFor(String pins) =>
+        gatewayDio('https://h', pins: pins).httpClientAdapter
+            as IOHttpClientAdapter;
 
-    test('no pins accepts any certificate', () {
-      expect(check(''), isNull);
+    test('no pins leaves the platform trust store in charge', () {
+      expect(adapterFor('').createHttpClient, isNull);
+    });
+
+    test('pins are enforced in the handshake, not after the response', () {
+      expect(adapterFor(digest).createHttpClient, isNotNull);
+      expect(adapterFor(digest).validateCertificate, isNull);
     });
 
     test('a listed digest is accepted, anything else is refused', () {
-      expect(check('bad, ${digest.toUpperCase()}')!(cert, 'h', 443), isTrue);
-      expect(check('bad')!(cert, 'h', 443), isFalse);
-      expect(check(digest)!(null, 'h', 443), isFalse);
+      expect(gatewayPinCheck('bad, ${digest.toUpperCase()}')(cert, 'h', 443),
+          isTrue);
+      expect(gatewayPinCheck('bad')(cert, 'h', 443), isFalse);
     });
   });
 

@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../data/persistence/library_repository.dart';
+import '../../../editor/state/library_controller.dart';
 import '../data/repositories/note_repository.dart';
 import '../domain/models/notebook.dart';
 import '../../../shared/isar/isar_service.dart';
@@ -85,7 +87,11 @@ class HomeNotifier extends StateNotifier<List<Notebook>> {
 
 /// Provider for the NoteRepository, depends on the Isar instance.
 final noteRepositoryProvider = Provider<NoteRepository>((ref) {
-  return NoteRepository(IsarService.instance);
+  return NoteRepository(
+    IsarService.instance,
+    libraryImages: () =>
+        libraryImagePaths(ref.read(libraryRepositoryProvider)),
+  );
 });
 
 /// Provider for the HomeNotifier, auto-loads notebooks on creation.

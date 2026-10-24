@@ -10,6 +10,7 @@
 // caller decides how to surface "no model yet".
 
 import '../untrusted_text.dart';
+
 import 'dart:convert';
 
 import '../ai_provenance.dart';
@@ -30,7 +31,8 @@ class ContextEngine {
   /// definition the note gives may itself be a formula, and it has to arrive in
   /// the same notation the views know how to render, or the knowledge graph and
   /// the flashcards built from it show raw backslashes.
-  static const String schemaInstruction = '''
+  static const String schemaInstruction =
+      '''
 $kUntrustedDataRule
 
 You analyze one page of a student's notes. Reply with ONLY a single JSON object — no markdown, no code fences, no text before or after it — in exactly this shape:
@@ -96,12 +98,17 @@ $kMathMarkup''';
     // a labelled circuit diagram has a topic and key concepts, and gating on
     // the written words alone would report it as empty.
     final text = content.combinedTextWithFigures;
-    final gate = _gate.evaluate(text, topScores: [
-      if (content.inkTopScore != null) content.inkTopScore!,
-    ]);
+    final gate = _gate.evaluate(
+      text,
+      topScores: [if (content.inkTopScore != null) content.inkTopScore!],
+    );
     if (!gate.passed) return PageContext.empty;
 
-    final budget = AiRouter.inputWordBudgetFor(_provider.capabilities);
+    final budget = AiRouter.inputWordBudgetFor(
+      _provider.capabilities,
+      systemPrompt: schemaInstruction,
+      responseTokens: extractOptions.maxTokens!,
+    );
     final prompt = _buildPrompt(truncateToWords(text, budget), previousContext);
 
     final guarded = await _completeGuarded(prompt);
@@ -127,8 +134,8 @@ $kMathMarkup''';
   static String _buildPrompt(String noteText, PageContext? previous) {
     final continuity = previous != null && previous.currentTopic.isNotEmpty
         ? '\n\nFor continuity: the previous analysis of this page detected '
-            'the topic:\n${fenceUntrusted(previous.currentTopic)}\nThe note may '
-            'have stayed on it or moved on — judge from the text alone.'
+              'the topic:\n${fenceUntrusted(previous.currentTopic)}\nThe note may '
+              'have stayed on it or moved on — judge from the text alone.'
         : '';
     return 'NOTE:\n${fenceUntrusted(noteText)}$continuity';
   }
@@ -136,8 +143,10 @@ $kMathMarkup''';
   /// Greedy decoding: structured extraction wants determinism, and small models
   /// emit valid JSON far more reliably without sampling. A constant so the
   /// guard's cloud re-run asks for the same thing.
-  static const AiGenerationOptions extractOptions =
-      AiGenerationOptions(temperature: 0.0, maxTokens: 512);
+  static const AiGenerationOptions extractOptions = AiGenerationOptions(
+    temperature: 0.0,
+    maxTokens: 1024,
+  );
 
   /// The first attempt, through the quality guard when one is wired.
   ///
@@ -184,13 +193,61 @@ $kMathMarkup''';
     final start = raw.indexOf('{');
     if (start < 0) return null;
     final end = _matchingBrace(raw, start);
-    if (end < 0) return null;
+    if (end < 0) return _salvageTruncated(raw, start);
     try {
       final decoded = jsonDecode(raw.substring(start, end + 1));
       return decoded is Map<String, dynamic> ? decoded : null;
     } on FormatException {
       return null;
     }
+  }
+
+  /// A reply cut off by the token limit is unbalanced; closing what is open, or
+  /// cutting back to the last complete comma-separated item and closing from
+  /// there, keeps the items that did arrive instead of dropping the page.
+  static Map<String, dynamic>? _salvageTruncated(String raw, int start) {
+    final open = <String>[]; // closers still owed, innermost last
+    final cuts = <(int, String)>[]; // each top-level comma, with its closers
+    var inString = false;
+    for (var i = start; i < raw.length; i++) {
+      final c = raw[i];
+      if (inString) {
+        if (c == r'\') {
+          i++;
+        } else if (c == '"') {
+          inString = false;
+        }
+      } else if (c == '"') {
+        inString = true;
+      } else if (c == '{') {
+        open.add('}');
+      } else if (c == '[') {
+        open.add(']');
+      } else if (c == '}' || c == ']') {
+        if (open.isNotEmpty) open.removeLast();
+      } else if (c == ',') {
+        cuts.add((i, open.reversed.join()));
+      }
+    }
+    final candidates = [
+      // Cut inside a string, the last value is incomplete: not worth keeping.
+      if (!inString) raw.substring(start) + open.reversed.join(),
+      // ponytail: tries only the last few cut points; enough for a reply that
+      // ends mid-item, not for one corrupt in the middle.
+      for (final (i, closers) in cuts.reversed.take(4))
+        raw.substring(start, i) + closers,
+    ];
+    for (final candidate in candidates) {
+      try {
+        final decoded = jsonDecode(candidate);
+        if (decoded is Map<String, dynamic>) {
+          return {...decoded, kTruncatedJsonKey: true};
+        }
+      } on FormatException {
+        continue;
+      }
+    }
+    return null;
   }
 
   /// Index of the brace closing the object opened at [start], honoring string

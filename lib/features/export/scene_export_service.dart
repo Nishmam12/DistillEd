@@ -20,7 +20,9 @@ class SceneExportService {
   /// Loads any referenced images into [cache] and returns its resolver, so
   /// exports render real bitmaps rather than placeholders.
   static Future<ui.Image? Function(String)?> _resolver(
-      List<SceneElement> elements, SceneImageCache? cache) async {
+    List<SceneElement> elements,
+    SceneImageCache? cache,
+  ) async {
     if (cache == null) return null;
     await cache.ensure([
       for (final e in elements)
@@ -35,9 +37,11 @@ class SceneExportService {
     Color background = Colors.white,
     SceneImageCache? imageCache,
   }) async {
-    final png = await SceneExporter.toPng(elements,
-        background: background,
-        imageResolver: await _resolver(elements, imageCache));
+    final png = await SceneExporter.toPng(
+      elements,
+      background: background,
+      imageResolver: await _resolver(elements, imageCache),
+    );
     if (png == null) return false;
     await ExportShareService.sharePng(png, title);
     return true;
@@ -49,9 +53,11 @@ class SceneExportService {
     Color background = Colors.white,
     SceneImageCache? imageCache,
   }) async {
-    final pdf = await SceneExporter.toPdf(elements,
-        background: background,
-        imageResolver: await _resolver(elements, imageCache));
+    final pdf = await SceneExporter.toPdf(
+      elements,
+      background: background,
+      imageResolver: await _resolver(elements, imageCache),
+    );
     if (pdf == null) return false;
     await ExportShareService.sharePdf(pdf, title);
     return true;
@@ -66,13 +72,15 @@ class SceneExportService {
     SceneImageCache? imageCache,
     void Function(int done, int total)? onProgress,
   }) async {
-    // One resolver pass over every page's images, so a picture reused across
-    // pages is decoded once rather than per page.
-    final all = [for (final page in pages) ...page];
+    // Images load per page, as it is drawn: the cache holds a bounded number of
+    // bitmaps, so one up-front pass over a long notebook evicts the early pages.
     final pdf = await SceneExporter.toNotebookPdf(
       pages,
       background: background,
-      imageResolver: await _resolver(all, imageCache),
+      imageResolver: imageCache?.get,
+      prepare: imageCache == null
+          ? null
+          : (page) => _resolver(page, imageCache),
       onProgress: onProgress,
     );
     if (pdf == null) return false;
@@ -95,7 +103,8 @@ class SceneExportService {
     );
     await ExportShareService.shareFile(
       bytes: Uint8List.fromList(utf8.encode(svg)),
-      filename: '${title}_${DateTime.now().millisecondsSinceEpoch}.svg',
+      filename: ExportShareService.fileName(
+          title, DateTime.now().millisecondsSinceEpoch, 'svg'),
       mimeType: 'image/svg+xml',
     );
     return true;

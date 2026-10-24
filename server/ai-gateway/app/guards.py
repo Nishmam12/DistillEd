@@ -8,12 +8,14 @@ may run at once, how fast one address may call, and how large a body may be.
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 
 from fastapi import HTTPException, Request
+from fastapi.responses import JSONResponse
 
 # The tools the app actually ships. Anything else is a client asking the model
 # to be handed a function the gateway never meant to expose.
@@ -112,6 +114,17 @@ def stream_deadline() -> "asyncio.Timeout":
 _MAX_TRACKED_IPS = 10_000
 
 
+def _bucket(ip: str) -> str:
+    """An IPv6 host owns a whole /64, so key those by prefix, not by address."""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    if addr.version == 6:
+        return str(ipaddress.ip_network(f"{addr}/64", strict=False))
+    return ip
+
+
 class IpThrottle:
     """Sliding-window calls-per-minute per client address.
 
@@ -138,7 +151,7 @@ class IpThrottle:
         if self._per_minute <= 0:
             return
         now = time.monotonic()
-        ip = self.client_ip(request)
+        ip = _bucket(self.client_ip(request))
         window = self._calls.pop(ip, None) or deque()
         self._calls[ip] = window  # re-insert last: dict order is LRU order
         while window and now - window[0] > 60:
@@ -150,6 +163,30 @@ class IpThrottle:
         window.append(now)
         while len(self._calls) > _MAX_TRACKED_IPS:  # evict least recently seen
             del self._calls[next(iter(self._calls))]
+
+
+class IpThrottleMiddleware:
+    """Applies [IpThrottle] before the body is read or parsed.
+
+    A FastAPI dependency runs after the body is parsed, so a throttled address
+    could still make the gateway parse 12 MB per refused call.
+    """
+
+    def __init__(self, app, throttle: IpThrottle, exempt_paths=("/health",)) -> None:
+        self._app = app
+        self._throttle = throttle
+        self._exempt = exempt_paths  # the host's own probe is not a caller
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] == "http" and scope["path"] not in self._exempt:
+            try:
+                self._throttle.check(Request(scope))
+            except HTTPException as exc:
+                await JSONResponse({"detail": exc.detail}, status_code=exc.status_code)(
+                    scope, receive, send
+                )
+                return
+        await self._app(scope, receive, send)
 
 
 class BodyLimitMiddleware:

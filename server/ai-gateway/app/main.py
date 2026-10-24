@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 
 from .config import get_settings
-from .guards import BodyLimitMiddleware, IpThrottle
+from .guards import BodyLimitMiddleware, IpThrottle, IpThrottleMiddleware
 from .routers import generate, tools, vision
 
 _settings = get_settings()
@@ -22,20 +22,16 @@ _throttle = IpThrottle(
 )
 
 
-def _throttle_by_ip(request: Request) -> None:
-    if request.url.path != "/health":  # the host's own probe is not a caller
-        _throttle.check(request)
-
-
 app = FastAPI(
     title="Margo AI Gateway",
     version="0.1.0",
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
-    dependencies=[Depends(_throttle_by_ip)],
 )
 app.add_middleware(BodyLimitMiddleware, max_bytes=_settings.max_body_bytes)
+# Added last, so outermost: a throttled caller is refused before any body is read.
+app.add_middleware(IpThrottleMiddleware, throttle=_throttle)
 app.include_router(generate.router)
 app.include_router(tools.router)
 app.include_router(vision.router)

@@ -133,6 +133,12 @@ void main() {
     await WritingAssistant(provider: provider).review(long);
 
     final words = RegExp(r'\bword\b').allMatches(provider.lastPrompt!).length;
-    expect(words, budget);
+    expect(
+      words,
+      AiRouter.inputWordBudgetFor(
+        provider.capabilities,
+        systemPrompt: provider.lastSystemPrompt!,
+      ),
+    );
   });
 }

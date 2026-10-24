@@ -58,7 +58,7 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
 
   void _submit() {
     Navigator.of(context).pop((
-      title: _controller.text,
+      title: _controller.text.trim().isEmpty ? 'Untitled' : _controller.text,
       templateIndex: _template,
       backgroundColor: newNotePaperColors[_paper].toARGB32(),
     ));

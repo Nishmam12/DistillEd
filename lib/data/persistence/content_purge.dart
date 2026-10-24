@@ -14,6 +14,7 @@ import '../../features/ai/data/flashcards/flashcard_record.dart';
 import '../../features/ai/data/memory/concept_mastery_record.dart';
 import '../../features/ai/data/memory/concept_relation_record.dart';
 import '../../features/ai/data/memory/quiz_attempt_record.dart';
+import '../../features/ai/data/ocr/read_cache_record.dart';
 import '../../features/ai/data/rag/note_chunk_record.dart';
 import '../../features/ai/data/study_planner/study_plan_record.dart';
 import '../../features/summarize/data/cache/summary_cache.dart';
@@ -55,6 +56,10 @@ Future<List<String>> purgeNotebookRows(Isar isar, int notebookId) async {
       .filter()
       .notebookIdEqualTo(notebookId)
       .deleteAll();
+  // The vision read cache holds verbatim transcriptions and is keyed by image
+  // hash, with no notebook to filter on, so it is cleared whole. Other
+  // notebooks only pay to re-read an image they had cached.
+  await isar.readCacheRecords.clear();
   return audio;
 }
 

@@ -30,6 +30,17 @@ void main() {
     expect(h.state.canUndo, isFalse);
   });
 
+  test('an empty remove is not an undo step and keeps the redo stack', () {
+    final h = HistoryController(_controller());
+    h.push(AddElementsCommand([_el('a', 0)]));
+    h.undo();
+
+    h.push(const RemoveElementsCommand([]));
+
+    expect(h.state.canUndo, isFalse);
+    expect(h.state.canRedo, isTrue);
+  });
+
   test('history keeps only the most recent commands', () {
     final ctl = _controller();
     final h = HistoryController(ctl, maxDepth: 3);

@@ -113,8 +113,8 @@ class ScenePixelEraserService {
     if (stroke.isEraser || stroke.points.isEmpty) return;
     if (!_strokeBounds(stroke).overlaps(eraserBounds)) return;
 
-    final dense = _densifyPoints(stroke.points);
-    final runs = _splitPoints(dense, eraserPath);
+    final dense = _densifyPoints(stroke.points, near: eraserBounds);
+    final runs = _splitPoints(dense, eraserPath, eraserBounds);
     final keptCount = runs.fold<int>(0, (n, r) => n + r.length);
     if (keptCount == dense.length) return; // nothing covered — keep as-is.
 
@@ -150,7 +150,7 @@ class ScenePixelEraserService {
 
     for (final (pts, closed) in outlines) {
       final dense = _densifyOffsets(pts, closed: closed);
-      final runs = _splitOffsets(dense, eraserPath, closed: closed);
+      final runs = _splitOffsets(dense, eraserPath, eraserBounds, closed: closed);
       final keptCount = runs.fold<int>(0, (n, r) => n + r.length);
       if (keptCount < dense.length) touched = true;
       for (final run in runs) {
@@ -179,11 +179,12 @@ class ScenePixelEraserService {
   /// Splits [dense] into maximal runs of consecutive points NOT inside the
   /// eraser hole.
   static List<List<StrokePoint>> _splitPoints(
-      List<StrokePoint> dense, Path eraser) {
+      List<StrokePoint> dense, Path eraser, Rect bounds) {
     final runs = <List<StrokePoint>>[];
     var cur = <StrokePoint>[];
     for (final p in dense) {
-      if (eraser.contains(Offset(p.x, p.y))) {
+      // The bounds test is cheap; Path.contains is not.
+      if (bounds.contains(Offset(p.x, p.y)) && eraser.contains(Offset(p.x, p.y))) {
         if (cur.isNotEmpty) {
           runs.add(cur);
           cur = <StrokePoint>[];
@@ -199,12 +200,13 @@ class ScenePixelEraserService {
   /// Same, for shape outlines. For a [closed] ring, a surviving span that
   /// straddles the first/last seam is merged so the ring reopens as one
   /// connected arc.
-  static List<List<Offset>> _splitOffsets(List<Offset> dense, Path eraser,
+  static List<List<Offset>> _splitOffsets(
+      List<Offset> dense, Path eraser, Rect bounds,
       {required bool closed}) {
     final runs = <List<Offset>>[];
     var cur = <Offset>[];
     for (final p in dense) {
-      if (eraser.contains(p)) {
+      if (bounds.contains(p) && eraser.contains(p)) {
         if (cur.isNotEmpty) {
           runs.add(cur);
           cur = <Offset>[];
@@ -228,14 +230,22 @@ class ScenePixelEraserService {
 
   /// Interpolated points get an interpolated capture timestamp (null only when
   /// an endpoint has none) — see the library-level note on recognition timing.
-  static List<StrokePoint> _densifyPoints(List<StrokePoint> pts) {
+  ///
+  /// Only segments whose box reaches [near] (the eraser) are resampled; the
+  /// rest keep their original points, so surviving pieces stay as light as the
+  /// stroke they came from.
+  static List<StrokePoint> _densifyPoints(List<StrokePoint> pts,
+      {required Rect near}) {
     if (pts.length < 2) return List<StrokePoint>.from(pts);
+    final zone = near.inflate(_spacing);
     final out = <StrokePoint>[pts.first];
     for (int i = 1; i < pts.length; i++) {
       final a = pts[i - 1], b = pts[i];
       final dist =
           math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
-      final steps = dist > _spacing ? (dist / _spacing).ceil() : 1;
+      final reaches =
+          Rect.fromPoints(Offset(a.x, a.y), Offset(b.x, b.y)).overlaps(zone);
+      final steps = reaches && dist > _spacing ? (dist / _spacing).ceil() : 1;
       for (int s = 1; s <= steps; s++) {
         final f = s / steps;
         out.add(StrokePoint(
