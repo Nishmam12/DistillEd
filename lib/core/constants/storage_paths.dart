@@ -27,6 +27,16 @@ class StoragePaths {
     return '${hasExtension ? audioPath.substring(0, dot) : audioPath}.transcript.json';
   }
 
+  /// Whether [rel] is a path the app itself writes under app documents: inside
+  /// `notes/` or `audio/`, relative, with no `.`/`..` segments. Stored paths can
+  /// arrive from pasted JSON, so anything else (`margo.isar`, `../x`, `/abs`)
+  /// must never be opened or deleted.
+  static bool isSafeRelativePath(String rel) {
+    if (!(rel.startsWith('notes/') || rel.startsWith('audio/'))) return false;
+    if (rel.contains('\\')) return false;
+    return !rel.split('/').any((s) => s.isEmpty || s == '.' || s == '..');
+  }
+
   /// Relative path for cached free images (relative to docsDir).
   static String getFreeImageCacheRelativePath(String notebookId, String contentId) =>
       'notes/$notebookId/imports/img_$contentId.png';

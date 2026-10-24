@@ -4,6 +4,7 @@
 // library (a JSON file) and the system clipboard (copy/paste). Enums are stored
 // by `.name` so the format stays readable and resilient to index reordering.
 
+import '../../core/constants/storage_paths.dart';
 import '../../domain/model/scene_element.dart';
 
 class SceneElementCodec {
@@ -12,9 +13,15 @@ class SceneElementCodec {
   static List<Map<String, dynamic>> encodeList(Iterable<SceneElement> els) =>
       [for (final e in els) encode(e)];
 
+  /// Decodes pasted or library JSON, which is untrusted: an image pointing
+  /// outside the app's own files is dropped (see
+  /// [StoragePaths.isSafeRelativePath]).
   static List<SceneElement> decodeList(Iterable<dynamic> json) => [
         for (final m in json) decode(Map<String, dynamic>.from(m as Map)),
-      ];
+      ]..removeWhere((e) =>
+          e is ImageElement &&
+          e.relativeImagePath.isNotEmpty &&
+          !StoragePaths.isSafeRelativePath(e.relativeImagePath));
 
   static Map<String, dynamic> encode(SceneElement e) {
     final base = <String, dynamic>{

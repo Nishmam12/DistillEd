@@ -14,7 +14,7 @@ Status: open. Items below are for follow-up. None met the 8/10 confidence bar fo
 
 | # | Item | Location | Severity | Confidence | Status |
 |---|------|----------|----------|------------|--------|
-| 1 | Page delete can remove app-private files through unvalidated image paths | `lib/data/persistence/content_purge.dart:110-111` | Medium | 6/10 | Open, below bar |
+| 1 | Page delete can remove app-private files through unvalidated image paths | `lib/data/persistence/content_purge.dart:110-111` | Medium | 6/10 | Fixed 2026-10-24 (`StoragePaths.isSafeRelativePath`) |
 | 2 | Gateway has no caller authentication | `server/ai-gateway/app/main.py`, `server/ai-gateway/README.md:65-66` | Accepted risk, outside criteria | n/a | Open, pre-launch |
 | 3 | Release build can silently use the debug signing key | `android/app/build.gradle.kts:62-71` | Shipping blocker | n/a | Open, pre-launch |
 

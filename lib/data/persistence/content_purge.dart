@@ -103,12 +103,17 @@ Future<void> deleteContentFiles({
     } catch (_) {}
   }
 
+  // Every path here came from a stored row, which pasted JSON can set.
+  Future<void> rmRel(String rel) async {
+    if (StoragePaths.isSafeRelativePath(rel)) await rm('$docs/$rel');
+  }
+
   for (final rel in audioRelativePaths) {
-    await rm('$docs/$rel');
-    await rm('$docs/${StoragePaths.transcriptSidecar(rel)}');
+    await rmRel(rel);
+    await rmRel(StoragePaths.transcriptSidecar(rel));
   }
   for (final rel in fileRelativePaths) {
-    await rm('$docs/$rel');
+    await rmRel(rel);
   }
   if (notebookDirId != null) {
     try {

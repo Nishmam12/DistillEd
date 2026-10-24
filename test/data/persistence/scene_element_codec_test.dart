@@ -53,7 +53,7 @@ void main() {
         id: 'i',
         zOrder: 3,
         geometryData: [0, 0, 50, 50],
-        relativeImagePath: 'imports/x.png',
+        relativeImagePath: 'notes/1/imports/x.png',
         sourceDescription: 'desc',
         isLocked: true,
       ),
@@ -98,7 +98,7 @@ void main() {
     expect(t.isBold, true);
 
     final i = back[3] as ImageElement;
-    expect(i.relativeImagePath, 'imports/x.png');
+    expect(i.relativeImagePath, 'notes/1/imports/x.png');
     expect(i.isLocked, true);
 
     final fr = back[4] as FrameElement;

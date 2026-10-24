@@ -33,9 +33,9 @@ void main() {
     test('returns the relative path unchanged when base is empty', () {
       expect(SceneImageCache.resolvePath('', 'a.png'), 'a.png');
     });
-    test('leaves absolute and drive paths alone', () {
-      expect(SceneImageCache.resolvePath('/docs', '/abs/x.png'), '/abs/x.png');
-      expect(SceneImageCache.resolvePath('/docs', r'C:\x.png'), r'C:\x.png');
+    test('refuses absolute and drive paths', () {
+      expect(SceneImageCache.resolvePath('/docs', '/abs/x.png'), '');
+      expect(SceneImageCache.resolvePath('/docs', r'C:\x.png'), '');
     });
   });
 

@@ -97,12 +97,14 @@ class SceneImageCache extends ChangeNotifier {
   }
 
   /// Resolves a stored relative path against [baseDir]. Absolute paths (and
-  /// Windows drive paths) are returned unchanged.
+  /// Windows drive paths) resolve to `''`, which fails to read: stored paths can
+  /// come from pasted JSON and must not reach files outside app documents.
   static String resolvePath(String baseDir, String relative) {
     final isAbsolute = relative.startsWith('/') ||
         relative.startsWith('\\') ||
         (relative.length > 1 && relative[1] == ':');
-    if (isAbsolute || baseDir.isEmpty) return relative;
+    if (isAbsolute) return '';
+    if (baseDir.isEmpty) return relative;
     final sep = baseDir.endsWith('/') || baseDir.endsWith('\\') ? '' : '/';
     return '$baseDir$sep$relative';
   }
