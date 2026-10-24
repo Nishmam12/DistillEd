@@ -32,10 +32,12 @@ void main() {
   test('shipped models are pinned to a commit and carry checksums', () {
     expect(LlmModelSpec.active.downloadUrl, isNot(contains('/resolve/main/')));
     expect(LlmModelSpec.active.sha256, hasLength(64));
-    const e = EmbedderSpec.active;
-    expect(e.modelUrl, isNot(contains('/resolve/main/')));
-    expect(e.tokenizerUrl, isNot(contains('/resolve/main/')));
-    expect(e.modelSha256, hasLength(64));
-    expect(e.tokenizerSha256, hasLength(64));
+    for (final e in EmbedderSpec.all) {
+      expect(e.modelUrl, isNot(contains('/resolve/main/')));
+      expect(e.modelSha256, hasLength(64));
+      if (e.tokenizerUrl == null) continue;
+      expect(e.tokenizerUrl, isNot(contains('/resolve/main/')));
+      expect(e.tokenizerSha256, hasLength(64));
+    }
   });
 }

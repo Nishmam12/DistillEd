@@ -178,7 +178,6 @@ Future<void> _pumpSettings(
   ModelDownloadManager? llm,
   HandwritingRecognitionService? handwriting,
   EmbedderRollout? rollout,
-  bool dryRunCopyInstalled = false,
 }) async {
   SharedPreferences.setMockInitialValues({});
   // Tall enough that the whole AI section is on screen, with no scrolling.
@@ -201,8 +200,6 @@ Future<void> _pumpSettings(
       embedderRolloutStatusProvider.overrideWith((ref) => Stream.value(
           rollout ??
               EmbedderRollout(servingModelId: EmbedderSpec.active.modelId))),
-      dryRunCopyInstalledProvider
-          .overrideWith((ref) async => dryRunCopyInstalled),
     ],
     child: MaterialApp(
       theme: MargoTheme.light,
@@ -403,64 +400,5 @@ void main() {
         cleaner: _FakeCleaner(const []));
 
     expect(find.byKey(const ValueKey('rollout-progress')), findsNothing);
-  });
-
-  group('the dry-run row', () {
-    bool enabled(WidgetTester tester, String key) =>
-        tester.widget<TextButton>(find.byKey(ValueKey(key))).onPressed != null;
-
-    testWidgets('installs the copy only while it is missing', (tester) async {
-      await _pumpSettings(tester,
-          embedder: _FakeEmbedder(installed: true),
-          cleaner: _FakeCleaner(const []));
-
-      expect(enabled(tester, 'dry-run-install'), isTrue);
-      expect(enabled(tester, 'dry-run-roll-out'), isFalse);
-      expect(enabled(tester, 'dry-run-roll-back'), isFalse);
-    });
-
-    testWidgets('rolls out to the copy once it is installed', (tester) async {
-      await _pumpSettings(tester,
-          embedder: _FakeEmbedder(installed: true),
-          cleaner: _FakeCleaner(const []),
-          dryRunCopyInstalled: true);
-
-      expect(enabled(tester, 'dry-run-install'), isFalse);
-      expect(enabled(tester, 'dry-run-roll-out'), isTrue);
-      expect(enabled(tester, 'dry-run-roll-back'), isFalse);
-    });
-
-    testWidgets('rolls back to the active model only while the copy serves',
-        (tester) async {
-      await _pumpSettings(tester,
-          embedder: _FakeEmbedder(installed: true),
-          cleaner: _FakeCleaner(const []),
-          dryRunCopyInstalled: true,
-          rollout:
-              EmbedderRollout(servingModelId: EmbedderSpec.dryRunCopy.modelId));
-
-      expect(enabled(tester, 'dry-run-roll-out'), isFalse);
-      expect(enabled(tester, 'dry-run-roll-back'), isTrue);
-    });
-
-    testWidgets('offers none of its actions while a rollout runs',
-        (tester) async {
-      final rollout =
-          EmbedderRollout(servingModelId: EmbedderSpec.dryRunCopy.modelId)
-              .start(
-        targetModelId: EmbedderSpec.active.modelId,
-        totalPages: 5,
-        now: DateTime(2026, 10, 9),
-      );
-      await _pumpSettings(tester,
-          embedder: _FakeEmbedder(installed: true),
-          cleaner: _FakeCleaner(const []),
-          dryRunCopyInstalled: true,
-          rollout: rollout);
-
-      expect(enabled(tester, 'dry-run-install'), isFalse);
-      expect(enabled(tester, 'dry-run-roll-out'), isFalse);
-      expect(enabled(tester, 'dry-run-roll-back'), isFalse);
-    });
   });
 }

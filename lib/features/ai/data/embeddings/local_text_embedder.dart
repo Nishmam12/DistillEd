@@ -4,7 +4,7 @@
 // embedder slot ([EmbedderSlot]), and the model stays loaded for [idleUnloadDelay] after the last one
 // rather than being rebuilt per call. It used to load and unload around every
 // batch, which put a model load in front of every "Ask your notes" question and
-// every page of a bulk index; at ~175 MB it is cheap enough to hold through a
+// every page of a bulk index; at ~165–175 MB it is cheap enough to hold through a
 // burst of work. Nothing stays resident once the app goes quiet.
 //
 // The slot is shared by the app's embedders but NOT with the LLM's — a deliberate
@@ -111,7 +111,7 @@ class LocalTextEmbedder implements TextEmbedder, EmbedderSlotOwner {
     List<String> texts, {
     required EmbedTaskType taskType,
   }) async {
-    // Before the slot: nothing to embed must not queue behind a 175 MB load,
+    // Before the slot: nothing to embed must not queue behind a model load,
     // and must not perform one either.
     if (texts.isEmpty) return const [];
     return _slot.run(() => _embedAll(texts, taskType));
@@ -144,8 +144,6 @@ class LocalTextEmbedder implements TextEmbedder, EmbedderSlotOwner {
         '${spec.displayName} is not downloaded yet.',
         cause: e,
       );
-    } on EmbedderRuntimeUnsupportedException catch (e) {
-      throw AiModelNotReadyException(e.message, cause: e);
     } on LlmException catch (e) {
       throw AiGenerationException(
         '${spec.displayName} failed to start.',

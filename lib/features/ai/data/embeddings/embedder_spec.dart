@@ -6,7 +6,6 @@
 // and the installer builds one internally from what we pass it. Two types with
 // one name would force an aliased import at every call site.
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_edge_ai/flutter_edge_ai.dart'
     show EmbeddingModelSpec, ModelSource;
 
@@ -20,7 +19,8 @@ enum EmbedderFormat {
   /// TFLite embedding backend.
   tfliteWithTokenizer,
 
-  /// A single .litertlm bundle with its tokenizer inside. Not runnable yet.
+  /// A single .litertlm bundle with its tokenizer inside, run by the same
+  /// backend.
   litertlmBundle,
 }
 
@@ -164,9 +164,46 @@ class EmbedderSpec {
 
   /// The model the app embeds with. Swap here — chunks record [modelId], so a
   /// change invalidates the old index rather than corrupting search.
-  static const EmbedderSpec active = embeddingGemma300m;
+  static const EmbedderSpec active = embeddingGemma2Text;
+
+  /// EmbeddingGemma 2, text only (~165 MB, one file).
+  ///
+  /// The same text transformer and embedder as the 740M build, without its
+  /// vision and audio encoders, so text vectors lose nothing to the smaller
+  /// file. Ungated and Apache 2.0: no HuggingFace token. The generic file, for
+  /// the reason given on [embeddingGemma300m]: the repo's per-SoC builds start
+  /// at Tensor G5 and the Snapdragon 8 Gen 2.
+  ///
+  /// • 1024 tokens is the input window flutter_edge_ai loads for this build.
+  ///   A 250-word chunk stays inside it even for Bangla at ~3 tokens a word;
+  ///   a longer input is trimmed by the runtime rather than refused.
+  ///
+  /// • Its prompts are the app's ([PromptContract.appGemma2]), so the title
+  ///   sits in the model's own title slot.
+  static const EmbedderSpec embeddingGemma2Text = EmbedderSpec(
+    displayName: 'EmbeddingGemma 2',
+    modelId: 'embeddinggemma-2-text-270m-hftitle',
+    // Pinned to a commit and a checksum, as for the 300M.
+    modelUrl:
+        'https://huggingface.co/litert-community/embeddinggemma-2-text-270m-litert-lm/'
+        'resolve/9be6e8b90982095dc05c2bd162e4b954ee4dbac7/'
+        'embeddinggemma-2-text-270m.litertlm',
+    modelSha256:
+        '2d079ee2f6f066b1f368e8d7c819f55214eaef1d0513b312321901f30ab286fb',
+    format: EmbedderFormat.litertlmBundle,
+    maxInputTokens: 1024,
+    chunkWords: kChunkWords,
+    chunkOverlapWords: kChunkOverlapWords,
+    promptContract: PromptContract.appGemma2,
+    runtimeSupported: true,
+    approxSizeBytes: 164626432,
+    dimensions: 768,
+    needsAuth: false,
+  );
 
   /// EmbeddingGemma 300M, LiteRT build (~171 MB model + ~4.5 MB tokenizer).
+  /// Retired: kept so an index built with it is still found as the serving
+  /// model while the rollout moves it to [active].
   ///
   /// Verified against the HuggingFace API on 2026-07-17:
   ///
@@ -213,43 +250,18 @@ class EmbedderSpec {
     needsAuth: true,
   );
 
-  /// EmbeddingGemma 300M under other file names, for a rollout dry run (phase 4.5).
-  /// The same weights and the same vector space: only its names differ, and so
-  /// its id, and therefore its chunks.
-  ///
-  /// Never shipped. It is in [registry] in a debug build only, and the debug
-  /// settings copy the active model's files into place for it
-  /// (`installDryRunCopy`, in embedder_dry_run_copy.dart).
-  static const EmbedderSpec dryRunCopy = EmbedderSpec(
-    displayName: 'EmbeddingGemma 300M (dry-run copy)',
-    modelId: 'embeddinggemma-300m-seq512-titled-dryrun',
-    modelUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/'
-        'resolve/main/embeddinggemma-300M_seq512_mixed-precision-dryrun.tflite',
-    tokenizerUrl: 'https://huggingface.co/litert-community/embeddinggemma-300m/'
-        'resolve/main/sentencepiece.model',
-    format: EmbedderFormat.tfliteWithTokenizer,
-    maxInputTokens: 512,
-    chunkWords: kChunkWords,
-    chunkOverlapWords: kChunkOverlapWords,
-    promptContract: PromptContract.pluginGemma300m,
-    runtimeSupported: true,
-    approxSizeBytes: 185 * 1024 * 1024,
-    dimensions: 768,
-    needsAuth: false,
-  );
-
   /// Every spec the shipped app knows about. Each one's identity is checked by
   /// embedder_spec_identity_test.dart.
-  static const List<EmbedderSpec> all = [embeddingGemma300m];
+  static const List<EmbedderSpec> all = [
+    embeddingGemma2Text,
+    embeddingGemma300m,
+  ];
 
-  /// What this build knows: [all], plus the dry-run copy in a debug build. Looked
-  /// up by id (the rollout, the serving model, the files a cleaner keeps), so a
-  /// copy installed for a dry run is found there, and the shipped list never names it.
+  /// What this build can run, looked up by id (the rollout, the serving model,
+  /// the files a cleaner keeps). A spec this build cannot run must never be
+  /// found as a serving or rollout target.
   static List<EmbedderSpec> get registry => [
-        // A spec this build cannot run must never be found as a serving or
-        // rollout target.
         for (final spec in all)
           if (spec.runtimeSupported) spec,
-        if (kDebugMode) dryRunCopy,
       ];
 }

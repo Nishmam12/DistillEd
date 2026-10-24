@@ -402,34 +402,34 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_edge_ai
-      sha256: b3071e204e43097ca124b49f65bece45617c5d43591b21d4ee9a01f1d30f5155
+      sha256: "46164ec6cdfb253031f41b16153566a0b7d93db153144b25f578094c8d2aac3e"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.1"
+    version: "2.5.2"
   flutter_edge_ai_embeddings:
     dependency: "direct main"
     description:
       name: flutter_edge_ai_embeddings
-      sha256: c9385ea9b42168d672150f81232588284daa8de16b7fef2d13952780215ce053
+      sha256: ba7af5572a40b353a63f50d2149d9a827dbf2673eaf480723ba81a0db042a2a7
       url: "https://pub.dev"
     source: hosted
-    version: "2.2.2"
+    version: "2.3.2"
   flutter_edge_ai_litertlm:
     dependency: "direct main"
     description:
       name: flutter_edge_ai_litertlm
-      sha256: fc9a82c7346da7cdbf9123492b9098b6e3c76b25fa29749398cd9e22f42e95a7
+      sha256: "2b76ab41db0293b21719fe4656a41b268fe9a1dfc87c4c991960b3f6668a0309"
       url: "https://pub.dev"
     source: hosted
-    version: "1.10.0"
+    version: "1.17.0"
   flutter_edge_ai_speech:
     dependency: "direct main"
     description:
       name: flutter_edge_ai_speech
-      sha256: aaa640c1b3675659e84c6c923703ba538ea709e3eea9a89a4d1bd0522cc02b52
+      sha256: dd3d25bfe45637c7c15cd44fc8f810b3275c86e485377e58b6ee8fc14b071f21
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.4"
+    version: "0.5.10"
   flutter_lints:
     dependency: "direct dev"
     description:

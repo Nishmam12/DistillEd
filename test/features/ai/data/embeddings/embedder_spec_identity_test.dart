@@ -15,7 +15,7 @@ import 'package:margo/features/ai/data/embeddings/embedder_spec.dart';
 void main() {
   test('the filenames the app looks for are the ones the plugin installs under',
       () {
-    const spec = EmbedderSpec.active;
+    const spec = EmbedderSpec.embeddingGemma300m;
     final installed = EmbeddingModelSpec(
       name: spec.modelFilename,
       modelSource: ModelSource.network(spec.modelUrl),
@@ -26,11 +26,22 @@ void main() {
     expect(spec.tokenizerFilename, installed[1].filename);
   });
 
+  test('a bundle is the one file the plugin installs it as', () {
+    const spec = EmbedderSpec.embeddingGemma2Text;
+    final installed = EmbeddingModelSpec(
+      name: spec.modelFilename,
+      modelSource: ModelSource.network(spec.modelUrl),
+    ).files;
+
+    expect(spec.files, [for (final file in installed) file.filename]);
+    expect(spec.files, ['embeddinggemma-2-text-270m.litertlm']);
+  });
+
   test('the tokenizer is named for its model, as the plugin files it', () {
     // Pinned to the literal as well, so a plugin that changes the scheme again
     // is noticed here rather than as an embedder that stops being recognised.
     expect(
-      EmbedderSpec.active.tokenizerFilename,
+      EmbedderSpec.embeddingGemma300m.tokenizerFilename,
       'embeddinggemma-300M_seq512_mixed-precision__sentencepiece.model',
     );
   });
@@ -38,7 +49,8 @@ void main() {
   group('the registry', () {
     test('the 300M model keeps its id, so no existing index is invalidated',
         () {
-      expect(EmbedderSpec.active.modelId, 'embeddinggemma-300m-seq512-titled');
+      expect(EmbedderSpec.embeddingGemma300m.modelId,
+          'embeddinggemma-300m-seq512-titled');
     });
 
     test('the active spec is in the registry and this build can run it', () {
@@ -82,43 +94,6 @@ void main() {
             spec.format == EmbedderFormat.tfliteWithTokenizer ? 2 : 1;
         expect(spec.files, hasLength(expected), reason: spec.displayName);
       }
-    });
-  });
-
-  group('the dry-run copy', () {
-    test('is a model of its own, with its own id and its own files', () {
-      const copy = EmbedderSpec.dryRunCopy;
-
-      expect(copy.modelId, isNot(EmbedderSpec.active.modelId));
-      expect(copy.files.toSet().intersection(EmbedderSpec.active.files.toSet()),
-          isEmpty);
-    });
-
-    test('differs from the active model only in its names', () {
-      const copy = EmbedderSpec.dryRunCopy;
-      const active = EmbedderSpec.active;
-
-      expect(copy.format, active.format);
-      expect(copy.dimensions, active.dimensions);
-      expect(copy.maxInputTokens, active.maxInputTokens);
-      expect(copy.chunkWords, active.chunkWords);
-      expect(copy.chunkOverlapWords, active.chunkOverlapWords);
-      expect(copy.promptContract.id, active.promptContract.id);
-      expect(copy.runtimeSupported, active.runtimeSupported);
-    });
-
-    test('its tokenizer is filed under its own model name, as the plugin does',
-        () {
-      expect(
-        EmbedderSpec.dryRunCopy.tokenizerFilename,
-        'embeddinggemma-300M_seq512_mixed-precision-dryrun__sentencepiece.model',
-      );
-    });
-
-    test('is in the registry in a debug build, and not in the shipped list',
-        () {
-      expect(EmbedderSpec.registry, contains(EmbedderSpec.dryRunCopy));
-      expect(EmbedderSpec.all, isNot(contains(EmbedderSpec.dryRunCopy)));
     });
   });
 }

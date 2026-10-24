@@ -109,7 +109,6 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
         ),
         const _MobileDataRow(),
         const _RolloutRow(),
-        if (kDebugMode) const _DryRunRow(),
         _ReclaimSpaceRow(
           key: ValueKey('reclaim-$_refresh'),
           onChanged: () => setState(() => _refresh++),
@@ -451,8 +450,10 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
     final sizeMb = _spec.approxSizeBytes / (1024 * 1024);
     final sizeLabel = '${sizeMb.round()} MB';
     // The effective token, so a local dev token (debug only) also enables the
-    // download — not just a token typed into Settings.
-    final hasToken = ref.watch(huggingFaceTokenProvider).isNotEmpty;
+    // download — not just a token typed into Settings. An ungated model needs
+    // none.
+    final hasToken = !_spec.needsAuth ||
+        ref.watch(huggingFaceTokenProvider).isNotEmpty;
     // Settings load from SharedPreferences asynchronously. Until that lands the
     // token reads as '' even when one is stored, so treat "not loaded yet" as
     // unknown rather than as "no token" — otherwise the row briefly tells a

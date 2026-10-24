@@ -35,8 +35,9 @@ class PromptContract {
   /// a blank line, before the passage.
   final bool titleInText;
 
-  /// The prefixes the model was trained with. Recorded for documentation and
-  /// tests; a [PromptAppliedBy.plugin] contract never applies them itself.
+  /// The prefixes the model was trained with. A [PromptAppliedBy.plugin]
+  /// contract only records them; an [PromptAppliedBy.app] contract writes them,
+  /// with `{title}` in [documentPrefix] standing for the notebook title.
   final String? documentPrefix;
   final String? queryPrefix;
 
@@ -50,9 +51,30 @@ class PromptContract {
     queryPrefix: 'task: search result | query: ',
   );
 
+  /// EmbeddingGemma 2, in the Hugging Face card's own format. The plugin can
+  /// embed raw text since 2.3.0 (`TaskType.none`), so the app writes the
+  /// prefixes and the title goes in the slot the model was trained with, not
+  /// at the front of the passage.
+  static const appGemma2 = PromptContract(
+    id: 'hftitle',
+    appliedBy: PromptAppliedBy.app,
+    titleInText: false,
+    documentPrefix: 'title: {title} | text: ',
+    queryPrefix: 'task: search result | query: ',
+  );
+
   /// The text to embed for [passage], given the notebook [title] (null when there
   /// is none). The stored chunk keeps the bare passage; only the model sees the
   /// title.
-  String embeddingInput(String? title, String passage) =>
-      titleInText && title != null ? '$title\n\n$passage' : passage;
+  String embeddingInput(String? title, String passage) {
+    if (appliedBy == PromptAppliedBy.app) {
+      return '${documentPrefix!.replaceFirst('{title}', title ?? 'none')}'
+          '$passage';
+    }
+    return titleInText && title != null ? '$title\n\n$passage' : passage;
+  }
+
+  /// The text to embed for a search [query].
+  String queryInput(String query) =>
+      appliedBy == PromptAppliedBy.app ? '${queryPrefix!}$query' : query;
 }

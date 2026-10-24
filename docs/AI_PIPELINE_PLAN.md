@@ -5,7 +5,7 @@ A prioritized list of changes to the on-device AI stack, grounded in the current
 - **Target:** 8 GB Android
 - **Reference device:** Pixel 7 Pro (Google Tensor G2, 11.7 GB RAM as the kernel reports it)
 - **Main LLM:** Gemma 4 E2B (kept)
-- **Embedder:** EmbeddingGemma 300M (kept)
+- **Embedder:** EmbeddingGemma 2 text 270M (replaced EmbeddingGemma 300M on 24 Oct 2026; docs/TECH_MIGRATION_PLAN.md, phase 5)
 
 > **Principle:** Load the 2.6 GB model only when it pays for itself. Everything cheaper (PDF text, ML Kit, caches) goes first, and the heavy model refines instead of starting from scratch.
 
@@ -279,7 +279,7 @@ Android and the app itself typically use 3–4 GB, leaving about 2–3 GB for mo
 | Gemma 4 E2B | LLM, vision, audio | 0.7–2.6 GB GPU† · ~1.7 GB CPU\* | Embedder, ML Kit |
 | PaddleOCR-VL-1.6 | Scanned documents (spike) | ~1.8 GB peak\* | Embedder, ML Kit. Never with Gemma. |
 | Whisper / Moonshine | Lecture audio | measure | Queued, never with Gemma |
-| EmbeddingGemma 300M | RAG vectors | ~0.2 GB | Anything |
+| EmbeddingGemma 2 text 270M | RAG vectors | ~0.33 GB\* | Anything |
 | ML Kit Digital Ink | Handwriting, shapes, gestures | ~20 MB per language | Anything |
 | ML Kit Text Rec. · Entity · Language ID · Doc Scanner | Utility | small | Anything |
 

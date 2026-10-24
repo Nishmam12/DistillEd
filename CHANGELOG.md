@@ -16,6 +16,18 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 ### Changed
+- **Search runs on EmbeddingGemma 2.** Ask your notes now uses Google's
+  EmbeddingGemma 2 (text only, ~165 MB) instead of EmbeddingGemma 300M. It is
+  free to download with no Hugging Face account or token. If you already had
+  notes indexed, the app downloads the new model and re-indexes them in the
+  background; questions keep working on the old index until it finishes, and
+  then the old model's files are removed. Notebook titles now go into the slot
+  the model was trained with, and a passage too long for the model is shortened
+  instead of failing. Expect slightly more memory use while searching.
+- **On-device AI packages updated** to `flutter_edge_ai` 2.5.2,
+  `flutter_edge_ai_litertlm` 1.17.0, `flutter_edge_ai_embeddings` 2.3.2 and
+  `flutter_edge_ai_speech` 0.5.10. The debug-only rollout dry run in Settings is
+  gone; the real switch to EmbeddingGemma 2 replaces it.
 - **The app is now called Margo.** The launcher label, window title, About
   screen, recording notification, exports and Anki decks all say Margo; the
   Dart package is `margo`, and the Android package is `com.margo.margo`. On

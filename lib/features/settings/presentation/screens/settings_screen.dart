@@ -11,7 +11,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/external_links.dart';
 import '../../../../widgets/app_chip_group.dart';
 import '../../../../widgets/app_segmented_control.dart';
-import '../../../ai/data/embeddings/embedder_dry_run_copy.dart';
 import '../../../ai/data/embeddings/embedder_spec.dart';
 import '../../../ai/data/rag/embedder_mobile_data_choice.dart';
 import '../../../ai/data/llm/hf_token_check.dart';
@@ -21,7 +20,6 @@ import '../../../ai/data/llm/model_storage_cleaner.dart';
 import '../../../ai/domain/compute_backend.dart';
 import '../../../ai/presentation/ai_providers.dart'
     show
-        dryRunCopyInstalledProvider,
         embedderRolloutResumeProvider,
         embedderRolloutRunnerProvider,
         embedderRolloutStatusProvider,

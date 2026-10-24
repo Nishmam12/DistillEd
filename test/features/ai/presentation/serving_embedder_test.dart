@@ -32,12 +32,13 @@ void main() {
         EmbedderSpec.active.modelId);
   });
 
-  test('after a switch, questions use the model that now serves', () async {
-    final copy = EmbedderSpec.dryRunCopy.modelId;
-    final container = _containerWith(EmbedderRollout(servingModelId: copy));
+  test('until a switch completes, questions use the model still serving',
+      () async {
+    final serving = EmbedderSpec.embeddingGemma300m.modelId;
+    final container = _containerWith(EmbedderRollout(servingModelId: serving));
     await container.read(embedderRolloutStatusProvider.future);
 
-    expect(container.read(textEmbedderProvider).modelId, copy);
+    expect(container.read(textEmbedderProvider).modelId, serving);
   });
 
   test(

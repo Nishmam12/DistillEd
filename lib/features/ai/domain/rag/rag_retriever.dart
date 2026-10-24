@@ -120,7 +120,7 @@ class RagRetriever {
     } else {
       try {
         final queryVector = await _embedder.embedOne(
-          query,
+          _embedder.promptContract.queryInput(query),
           taskType: EmbedTaskType.query,
         );
 

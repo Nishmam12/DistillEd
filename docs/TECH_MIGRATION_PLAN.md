@@ -44,7 +44,7 @@ This file is written to be executed by Claude Code, one phase at a time. Follow 
 | `flutter_gemma_embeddings` 2.2.1 | **Discontinued** 5 Oct 2026 | `flutter_edge_ai_embeddings` 2.2.2 | 1 |
 | `flutter_gemma_speech` 0.5.2 | **Final release** 0.5.3 says it moved | `flutter_edge_ai_speech` 0.5.4 | 1 |
 | `isar` / `isar_flutter_libs` / `isar_generator` 3.1.0+1 | **Abandoned**: last release 25 Apr 2023; 4.0 never left `-dev` | `isar_community` 3.3.2 (+ `_flutter_libs`, `_generator`) | 2 |
-| EmbeddingGemma 300M (`litert-community/embeddinggemma-300m`) | Superseded by EmbeddingGemma 2 (6 Oct 2026); still works | `litert-community/embeddinggemma-2-740m-litert-lm` | 4–5 |
+| EmbeddingGemma 300M (`litert-community/embeddinggemma-300m`) | Superseded by EmbeddingGemma 2 (6 Oct 2026); still works | `litert-community/embeddinggemma-2-text-270m-litert-lm` (24 Oct: the text-only build, not the 740M) | 4–5 |
 
 Not discontinued but several majors behind (Phase 3):
 
@@ -324,6 +324,8 @@ The UI must never offer a spec with `runtimeSupported == false` for download or 
 
 ### 4.8 Add the EmbeddingGemma 2 spec, disabled
 
+*Superseded by 5.4 (24 Oct 2026): the spec was added enabled, for the text-only 270M build.*
+
 Add `EmbedderSpec.embeddingGemma2` with the values known today and `runtimeSupported: false`:
 
 - `format: litertlmBundle`, `tokenizerUrl: null`
@@ -360,49 +362,53 @@ Benchmarks don't cover Bangla or OCR'd handwriting, which is most of what Margo 
 
 ## Phase 5 — Swap to EmbeddingGemma 2
 
-### 5.0 The condition (check before doing anything)
+Rewritten 24 Oct 2026, when the user decided to switch. What changed since 8 Oct:
 
-The app runs embeddings through `LiteRtEmbeddingBackend`, which loads a `.tflite` graph plus a SentencePiece tokenizer. EmbeddingGemma 2 is published for LiteRT only as a `.litertlm` bundle, which needs LiteRT-LM's `EmbeddingEngine`. As of 8 Oct 2026 nothing in the `flutter_edge_ai*` packages supports that.
+- **Condition A is met.** `flutter_edge_ai_litertlm` 1.13.0 (12 Oct) runs EmbeddingGemma 2 `.litertlm` text embeddings natively, through the same `LiteRtEmbeddingBackend` that runs the `.tflite` 300M. Routes B–D are no longer needed.
+- **The model is the text-only build, not the 740M.** `litert-community/embeddinggemma-2-text-270m-litert-lm` has the same text transformer and embedder as the 740M, without the vision and audio encoders: 165 MB instead of 485 MB, ungated, Apache 2.0. The generic file is the one for the Pixel 7 Pro (Tensor G2 has no per-SoC build).
+- **The prefix question is settled.** The plugin's `TaskType` prefixes are the Hugging Face card's (`config_sentence_transformers.json`), and `TaskType.none` (new in 2.3.0) embeds raw text, so the app can write the card's document format with the real title: `title: {title} | text: {passage}`.
+- **Expect more RAM, not less.** Google measured ~334 MB on CPU on an S26 Ultra for the text 270M, against ~200 MB for the 300M. The wins are no Hugging Face token, an ungated licence and a longer input window, not memory.
+- **The 4.9 eval is not a gate any more.** The user chose to switch on 24 Oct without it. Bangla answers are checked on the device instead (below).
 
-Proceed with Phase 5 only if **one** of these is true, and record which in the Progress log:
+### 5.1 Upgrade the plugin packages
 
-- **A (preferred).** A released `flutter_edge_ai_litertlm` / `flutter_edge_ai_embeddings` version loads `.litertlm` embedding models. Check their changelogs and source for EmbeddingGemma 2, `.litertlm` embedders, or a LiteRT-LM `EmbeddingEngine` binding.
-- **B.** The LiteRT-LM native library that `flutter_edge_ai_litertlm` already ships exports the embedding engine's C API (inspect the library's exported symbols and LiteRT-LM's C headers for that version), so the app can bind it with `dart:ffi` behind `LiteRtLmBundleEmbeddingRuntime`. Spike this for at most two days; if it works, offer it upstream as a PR.
-- **C (only with the user's explicit go-ahead).** An Android-only platform channel to `com.google.ai.edge.litertlm:litertlm-android`'s `EmbeddingEngine`. Risk: a second copy of the LiteRT-LM native library next to the plugin's, the duplicate-native-library failure the migration guide warns about. Prove it builds and both runtimes load in one process before writing anything else.
-- **D.** Google's announced ML Kit embedding service has shipped and serves EmbeddingGemma 2 (Android-only, model version not under your control).
+`flutter_edge_ai` 2.1.1 → 2.5.2, `flutter_edge_ai_litertlm` 1.10.0 → 1.17.0, `flutter_edge_ai_embeddings` 2.2.2 → 2.3.2, `flutter_edge_ai_speech` 0.5.4 → 0.5.10 (all four move together: each needs `flutter_edge_ai` ^2.3.0 or later). Breaking for this app, embeddings only (the LLM and speech code compile unchanged):
 
-If none holds, stop and report.
+- `createEmbeddingModel` no longer takes paths: "the active model is the only source". The runtime makes the spec active first (`modelManager.ensureModelReadyFromSpec`, which skips the download for a file already installed from the same source), then calls `FlutterEdgeAi.getActiveEmbedder(preferredBackend: cpu)`. The embedder slot already allows one embedder at a time, so the serving model and a rollout's target can still be loaded in turn.
+- `generateEmbeddings(texts)` is `embedAll([EmbeddingInput.text(...)])`.
+- An over-long input throws `EmbeddingInputTooLongException` instead of being cut off. The session trims the passage from the end to fit and retries once, which keeps the old behaviour (the 300M's seq512 graph truncated silently).
+- 2.3.0 changed Gemma tokenization for HTML-tag and BOM-led pieces. Run the 4.1 golden compare on the 300M after the upgrade; a mismatch on those inputs only is expected.
 
-### 5.1 Implement the bundle runtime
+### 5.2 One runtime for both formats
 
-Fill in `LiteRtLmBundleEmbeddingRuntime` and its installer using the route from 5.0. Single-file install through the existing download manager (resumable, progress, cancel), text encoder only (`visionBackend` / `audioBackend` unset), CPU backend first. Returned vectors must be L2-normalised 768-float lists so `vector_math.dart` and `_verifyShape` are unchanged; if truncating to 512 dimensions, truncate and then re-normalise.
+`LiteRtEmbeddingBackend` runs `.tflite` and `.litertlm`, so `EdgeAiEmbeddingRuntime` and `EdgeAiEmbedderInstaller` serve both: the tokenizer becomes optional (a bundle carries its own), and the `LiteRtLmBundle*` stubs from 4.7 are deleted.
 
-### 5.2 Decide the open spec values from the evaluation
+The dry-run copy from 4.5 is deleted too. It was installed from a file path, so under the "active model only" API it cannot be loaded without special-casing it, and its job — rehearsing a rollout — is now done by the real one.
 
-The Hugging Face card and Google's LiteRT-LM docs give different prefixes:
+### 5.3 The EmbeddingGemma 2 prompt contract
 
-| Source | Document | Query |
-|---|---|---|
-| Hugging Face card | `title: {title} \| text: {content}` | `task: search result \| query: {q}` |
-| LiteRT-LM docs | `task: search result \| text:` | `task: search query \| text:` |
+A new app-owned contract (`hftitle`): documents are `title: {notebook title, or none} | text: {passage}`, queries are `task: search result | query: {query}`, and the runtime is asked for `TaskType.none`. The contract shapes both inputs, so the retriever asks it for the query text the same way the indexer already asks it for the document text.
 
-Run the 4.9 harness, then repeat the best two configurations against the device runtime (a debug-only screen or integration test that runs the eval set through `TextEmbedder`). Set `promptContract`, `chunkWords`, `chunkOverlapWords`, `maxInputTokens` and `dimensions` on `EmbedderSpec.embeddingGemma2` from the results, give it its final `modelId` (e.g. `embeddinggemma-2-text-<promptContract.id>-w<chunkWords>`), and set `runtimeSupported: true`. Generate its golden file on the Pixel 7 Pro.
+### 5.4 Spec, flip, roll out
 
-**Gate:** switch only if EmbeddingGemma 2 is at least as good as the 300M model on the eval set overall and not worse on Bangla. If it is worse, stop and report the table; the token removal in Phase 6 alone is not worth worse search.
+Add `EmbedderSpec.embeddingGemma2Text` pinned to commit `9be6e8b90982095dc05c2bd162e4b954ee4dbac7` with its sha256, `format: litertlmBundle`, `maxInputTokens: 1024`, the current chunk sizes (250 words fits: even at ~3 tokens per Bangla word the chunk stays under 1024), 768 dimensions, `needsAuth: false`, id `embeddinggemma-2-text-270m-hftitle`. Make it `active`; the 300M stays in `all` so an existing index is found as the serving model while the 4.5 rollout runs.
 
-### 5.3 Flip and roll out
+The rollout's download check asks for a Hugging Face token whatever the target. It asks only when the target `needsAuth`, so a user without a token gets EmbeddingGemma 2.
 
-Set `EmbedderSpec.active = embeddingGemma2` and add `embeddingGemma300m` to `EmbedderSpec.retired`. Existing users get the 4.5 rollout; new installs start on EmbeddingGemma 2. Update the free-space check and download copy for ~485 MB.
+Update the size shown in the download copy and the free-space check (they read the spec), and the comments that name the 300M.
 
 ### Device checks — Phase 5
 
-- [ ] Peak memory with Gemma 4 E2B resident plus the EmbeddingGemma 2 text encoder stays inside budget on the Pixel 7 Pro (Google measured ~191 MB active for text-only on a Pixel 11 Pro)
-- [ ] Per-chunk embedding latency and a full re-index of a large notebook: time and battery
-- [ ] Rollout from a real 300M index to EmbeddingGemma 2 with search working throughout, then the 300M files gone
-- [ ] Fresh install: no Hugging Face token asked for embeddings
-- [ ] Eval set on device matches the desktop ranking within a couple of points
+- [ ] Golden compare on the 300M after 5.1, before anything else changes (`tool/run_golden.sh`)
+- [ ] Fresh install: Download search model fetches ~165 MB with no token asked; Ask your notes answers
+- [ ] Existing 300M index: the rollout downloads EmbeddingGemma 2, questions keep working during the re-index, the cut-over removes the 300M files and its chunks
+- [ ] Bangla: a few Bangla questions over Bangla notes find the right pages (no desktop eval was run)
+- [ ] A long page (dense Bangla or maths) indexes without an error (the too-long retry)
+- [ ] Peak memory with Gemma 4 E2B loaded and EmbeddingGemma 2 embedding stays inside budget on the Pixel 7 Pro
+- [ ] Per-chunk latency and a full re-index of a large notebook: time and battery
+- [ ] Generate the EmbeddingGemma 2 golden file
 
-- **Effort:** M once 5.0 is met
+- **Effort:** M
 
 ---
 
@@ -443,8 +449,9 @@ Tick each item with the date and a one-line summary when it's done. Note anythin
 - Phase 3 follow-up (2026-10-09): flutter_edge_ai 2.1.1 and flutter_edge_ai_litertlm 1.10.0 (litertlm 1.10.0 requires flutter_edge_ai ^2.1.1; LiteRT-LM v0.18.0). Golden compare on the phone with --no-uninstall: vectors match, and the database checksum is unchanged. Gemma on the phone: Ask answered with sources, Summarize rendered, and the engine initialized. The first Ask after a fresh start took 36.5 s to create the engine, and its retrieval embedding took 17.6 s; a second Ask reused the engine. No same-device timing exists for 1.9.0, so the cold-start change is not established. Not checked: the Settings row's backend text.
 - Release build (2026-10-09): the working tree does not build for release. GeneratedPluginRegistrant registers dev.flutter.plugins.integration_test (the golden harness, Phase 4.1), and release builds leave out dev dependencies, so that reference does not compile. The pinned tree before these changes fails the same way, so the failure is not from the package changes. A scratch copy with only that dev dependency removed release-builds with the current pins (flutter_edge_ai 2.1.1, flutter_edge_ai_litertlm 1.10.0, share_plus 13.3.1, file_picker 13.1.0, package_info_plus 10.2.2; APK 214.7 MB). Fixed 2026-10-09: integration_test is no longer in the app's pubspec; `tool/run_golden.sh <device>` adds it for one run (with --no-uninstall) and restores pubspec.yaml and pubspec.lock; analysis_options excludes integration_test/. The working tree now release-builds (APK 214.7 MB), and the golden compare still matches through the script.
 - [ ] Phase 5 — condition met: route B looks available (libLiteRtLm exports litert_lm_embedding_engine_create, _compute_embedding and _compute_embedding_batch); route A not met (no flutter_edge_ai release loads .litertlm embedding models); checked 2026-10-08; spike not started
-- [ ] Phase 5 — evaluation results recorded
-- [ ] Phase 5 — code
+- Phase 5 — condition A met (2026-10-24): `flutter_edge_ai_litertlm` 1.13.0 (12 Oct) runs EmbeddingGemma 2 `.litertlm` embeddings. Phase 5 rewritten for the text-only 270M build.
+- [ ] Phase 5 — evaluation results recorded. Skipped (2026-10-24, user decision): switched without the 4.9 eval; Bangla checked on the device instead.
+- [x] Phase 5 — code (2026-10-24, branch `embeddinggemma-2`): flutter_edge_ai 2.5.2, litertlm 1.17.0, embeddings 2.3.2, speech 0.5.10; one runtime for both formats that makes a spec active before loading it (the plugin loads only its active embedder since 2.3.0); over-long inputs trimmed and retried; `PromptContract.appGemma2` (`title: … | text: …`, `task: search result | query: …`) with the retriever asking the contract for the query text; `EmbedderSpec.embeddingGemma2Text` (`embeddinggemma-2-text-270m-hftitle`, pinned commit and sha256) active, the 300M kept in `all` for the rollout; rollout download and Settings row ask for a token only for a gated model; dry-run copy and its debug row removed; LiteRtLmBundle stubs and `EmbedderRuntimeUnsupportedException` removed. Analyze clean; 2678 tests pass. Not run: any device check.
 - [ ] Phase 5 — device checks (user)
 - Phase 5 deferred (2026-10-09, user decision): EmbeddingGemma 2 is still not available, so Phase 5 is not started. The shipped app and the tests keep EmbeddingGemma 300M (`embeddinggemma-300m-seq512-titled`). Phase 6 needs the shipped spec to be ungated, so it waits with Phase 5.
 - [ ] Phase 6 — code

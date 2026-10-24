@@ -180,8 +180,8 @@ final embedderRolloutRunnerProvider = Provider<EmbedderRolloutRunner>((ref) {
 /// True while a new search model waits on the user's mobile-data answer.
 final embedderMobileDataPromptProvider = StateProvider<bool>((ref) => false);
 
-/// Launch hook for the rollout (see [EmbedderRolloutRunner.resume]). The
-/// download needs the HuggingFace token, and on a metered network it needs the
+/// Launch hook for the rollout (see [EmbedderRolloutRunner.resume]). A gated
+/// model's download needs the HuggingFace token, and on a metered network it needs the
 /// user's say-so: until they answer, or while they chose Wi-Fi only, the rollout
 /// waits and this checks again every few minutes. Failures leave the saved state,
 /// so the next launch retries.
@@ -191,7 +191,10 @@ final embedderRolloutResumeProvider = FutureProvider<void>((ref) async {
     waiting = await ref.read(embedderRolloutRunnerProvider).resume(
       EmbedderSpec.active.modelId,
       mayDownload: () async {
-        if (ref.read(huggingFaceTokenProvider).isEmpty) return false;
+        if (EmbedderSpec.active.needsAuth &&
+            ref.read(huggingFaceTokenProvider).isEmpty) {
+          return false;
+        }
         if (!(await ref.read(deviceHealthProvider).read()).metered) return true;
         switch (await loadMobileDataChoice()) {
           case MobileDataChoice.allow:
@@ -229,12 +232,6 @@ final embedderRolloutStatusProvider =
     if (!rollout.isRunning) return;
     await Future<void>.delayed(const Duration(seconds: 1));
   }
-});
-
-/// Whether the dry run's copy is installed. Only the debug settings read it.
-final dryRunCopyInstalledProvider = FutureProvider<bool>((ref) {
-  const copy = EmbedderSpec.dryRunCopy;
-  return embedderInstallerFor(copy).isInstalled(copy);
 });
 
 /// Debounces indexing off the Context Engine's extraction (see the file header

@@ -2,10 +2,10 @@
 // so the embedder is unit-testable without a device (the plugin needs one).
 //
 // The install/inference split is deliberate and matches the LLM stack:
-// downloading ~175 MB is an explicit, user-triggered act, while opening the
+// downloading ~165 MB is an explicit, user-triggered act, while opening the
 // model is a background nicety that must FAIL rather than quietly start a
 // download over mobile data. [EdgeAiEmbeddingRuntime.open] therefore
-// refuses to install anything.
+// refuses a model that is not on the disk.
 
 import 'dart:io';
 
@@ -30,21 +30,14 @@ class EmbedderTokenRequiredException extends LlmException {
             'Settings → AI.');
 }
 
-/// The model's files form a single bundle, and this build has no runtime for one
-/// (phase 5 writes it). The UI never offers such a spec, so this is reached only
-/// by a spec wired in by hand.
-class EmbedderRuntimeUnsupportedException extends LlmException {
-  EmbedderRuntimeUnsupportedException(EmbedderSpec spec)
-      : super('${spec.displayName} cannot run in this version of the app yet.');
-}
-
 /// Installation seam — [EdgeAiEmbedderInstaller] in production.
 abstract class EmbedderInstaller {
-  /// True only when BOTH the model and its tokenizer are present.
+  /// True only when every file of [spec] is present: the model, and its
+  /// tokenizer when it has one.
   Future<bool> isInstalled(EmbedderSpec spec);
 
-  /// True when EXACTLY ONE of the two files is present — a half-finished
-  /// install.
+  /// True when some but not all of [spec]'s files are present — a
+  /// half-finished install. Never true for a single-file bundle.
   ///
   /// This state is reachable and is not self-clearing. flutter_edge_ai installs
   /// the two files as separate, independently-recorded steps with no
@@ -68,7 +61,7 @@ abstract class EmbedderInstaller {
     CancelToken? cancelToken,
   });
 
-  /// Removes both the model and tokenizer files for [spec].
+  /// Removes every file of [spec].
   Future<void> uninstall(EmbedderSpec spec);
 }
 
@@ -111,9 +104,9 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
     return File(await FlutterEdgeAi.getModelPath(filename)).exists();
   }
 
-  /// The model dominates the download (~171 MB vs ~4.5 MB), so its progress
-  /// owns almost the whole bar. Files install in this order, so a single
-  /// monotonic 0–100 is honest.
+  /// The model dominates a two-file download (~171 MB vs ~4.5 MB), so its
+  /// progress owns almost the whole bar. Files install in this order, so a
+  /// single monotonic 0–100 is honest. A bundle's one file owns all of it.
   static const int _modelShare = 97;
 
   /// Both files, each in the plugin's records and on disk. A backup restored
@@ -160,9 +153,9 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
     await GemmaBootstrap.ensureInitialized();
 
     // The token guard gates DOWNLOADS, not activations. install() is also the
-    // only way to (re)set the active embedding spec — [open] calls it with a
-    // null token purely to re-activate an already-downloaded model after a
-    // restart. In that case flutter_edge_ai's install() skips the network
+    // only way to (re)set the active embedding spec — [EdgeAiEmbeddingRuntime.open]
+    // calls it with a null token purely to make an already-downloaded model the
+    // active one. In that case flutter_edge_ai's install() skips the network
     // entirely, so demanding a token there would wrongly kill embedding on a
     // model already sitting on disk. Guard only when a real download impends.
     final token = authToken?.trim();
@@ -173,19 +166,19 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
     }
 
     final tokenizerUrl = spec.tokenizerUrl;
-    if (tokenizerUrl == null) {
-      throw StateError('${spec.displayName} is not a model with a tokenizer');
-    }
     final alreadyThere = await isInstalled(spec);
     await forgetStaleRecords(spec);
     var builder = FlutterEdgeAi.installEmbedder()
-        .modelFromNetwork(spec.modelUrl, token: token)
-        .tokenizerFromNetwork(tokenizerUrl, token: token);
+        .modelFromNetwork(spec.modelUrl, token: token);
+    if (tokenizerUrl != null) {
+      builder = builder.tokenizerFromNetwork(tokenizerUrl, token: token);
+    }
     if (onProgress != null) {
+      final modelShare = tokenizerUrl == null ? 100 : _modelShare;
       builder = builder
-          .withModelProgress((p) => onProgress(p * _modelShare ~/ 100))
+          .withModelProgress((p) => onProgress(p * modelShare ~/ 100))
           .withTokenizerProgress(
-              (p) => onProgress(_modelShare + p * (100 - _modelShare) ~/ 100));
+              (p) => onProgress(modelShare + p * (100 - modelShare) ~/ 100));
     }
     if (cancelToken != null) builder = builder.withCancelToken(cancelToken);
     await builder.install();
@@ -193,7 +186,7 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
     try {
       for (final (name, expected) in [
         (spec.modelFilename, spec.modelSha256),
-        (spec.tokenizerFilename, spec.tokenizerSha256),
+        if (tokenizerUrl != null) (spec.tokenizerFilename, spec.tokenizerSha256),
       ]) {
         if (expected == null) continue;
         await verifySha256(
@@ -231,10 +224,6 @@ class EdgeAiEmbedderInstaller implements EmbedderInstaller {
       // Lost a race with another delete, or the metadata vanished underneath
       // us. Either way the file is gone or unreachable; nothing to report.
     }
-    // The plugin deletes a file it downloaded, but not one it was handed by path
-    // (the dry-run copy). Its bytes would outlive its record, so they go here.
-    final leftover = File(await FlutterEdgeAi.getModelPath(filename));
-    if (await leftover.exists()) await leftover.delete();
   }
 }
 
@@ -258,148 +247,112 @@ abstract class EmbeddingRuntime {
 class EdgeAiEmbeddingRuntime implements EmbeddingRuntime {
   final EmbedderInstaller _installer;
 
-  /// Seams over the plugin, which needs a device. Each default asks the plugin.
-  final Future<String> Function(String filename) _pathOf;
-  final Future<EmbeddingModel> Function({
-    required String modelPath,
-    required String tokenizerPath,
-  }) _createModel;
+  /// Seam over the plugin, which needs a device: loads the active embedder.
+  final Future<EmbeddingModel> Function() _loadActive;
 
   EdgeAiEmbeddingRuntime({
     EmbedderInstaller? installer,
-    Future<String> Function(String filename)? pathOf,
-    Future<EmbeddingModel> Function({
-      required String modelPath,
-      required String tokenizerPath,
-    })? createModel,
+    Future<EmbeddingModel> Function()? loadActive,
   })  : _installer = installer ?? EdgeAiEmbedderInstaller(),
-        _pathOf = pathOf ?? _pluginPath,
-        _createModel = createModel ?? _pluginCreateModel;
+        _loadActive = loadActive ?? _pluginLoadActive;
 
-  static Future<String> _pluginPath(String filename) async {
+  static Future<EmbeddingModel> _pluginLoadActive() async {
     await GemmaBootstrap.ensureInitialized();
-    return FlutterEdgeAi.getModelPath(filename);
-  }
-
-  static Future<EmbeddingModel> _pluginCreateModel({
-    required String modelPath,
-    required String tokenizerPath,
-  }) async {
-    await GemmaBootstrap.ensureInitialized();
-    return FlutterEdgeAiPlugin.instance.createEmbeddingModel(
-      modelPath: modelPath,
-      tokenizerPath: tokenizerPath,
-        // CPU, stated outright. The LiteRT embedding backend (flutter_gemma_
-        // litertlm 1.8) runs on the CPU by decision, because its GPU delegate
-        // compiles and then returns all-zero vectors for EmbeddingGemma's int4
-        // weights. That suits us — it keeps the GPU free for Gemma — but an old
-        // "gpu, falls back internally" here read as if GPU embedding were
-        // happening. Naming the CPU keeps it the CPU if a later plugin version
-        // starts honouring the request. (The 1.x → 2.x move changed where this
-        // code lives, not the vectors: same tokenizer convention, prefixes and
-        // padding, so an index built before it stays valid.)
-        preferredBackend: PreferredBackend.cpu,
+    // CPU, stated outright. The LiteRT embedding backend runs on the CPU by
+    // decision, because its GPU delegate compiles and then returns all-zero
+    // vectors for EmbeddingGemma's int4 weights. That suits us — it keeps the
+    // GPU free for Gemma — and naming the CPU keeps it the CPU if a later
+    // plugin version starts honouring a GPU request.
+    return FlutterEdgeAi.getActiveEmbedder(
+      preferredBackend: PreferredBackend.cpu,
     );
   }
 
   @override
   Future<EmbeddingSession> open(EmbedderSpec spec) async {
-    // flutter_edge_ai always prepends its own prefix for a TaskType, and has no
-    // way to embed raw text, so an app-owned prompt would be doubled. Refused
-    // before the plugin is touched.
-    if (spec.promptContract.appliedBy == PromptAppliedBy.app) {
-      throw UnsupportedError(
-        '${spec.displayName}: app-owned prompts are not supported',
-      );
-    }
-    // Opening never installs: a download is always an explicit act, and install()
-    // would also re-mark a model as the plugin's active one. The files are named
-    // by the spec instead, so the serving model and a rollout's target can be
-    // loaded in turn without either becoming the active model.
+    // Opening never downloads: a download is always an explicit act.
     if (!await _installer.isInstalled(spec)) throw LlmNotReadyException();
+
+    // Since flutter_edge_ai 2.3.0 the plugin loads only its active embedder
+    // (loading by path was removed), so [spec] is made the active one first.
+    // install() does that without touching the network for a model already on
+    // disk. The embedder slot holds one embedder at a time, so the serving
+    // model and a rollout's target still load in turn.
+    await _installer.install(spec: spec);
 
     final EmbeddingModel model;
     try {
-      model = await _createModel(
-        modelPath: await _pathOf(spec.modelFilename),
-        tokenizerPath: await _pathOf(spec.tokenizerFilename),
-      );
+      model = await _loadActive();
     } on StateError {
       throw LlmNotReadyException();
     }
-    return _GemmaEmbeddingSession(model);
+    return _GemmaEmbeddingSession(model, spec.promptContract);
   }
 }
 
-/// The runtime for [spec]'s format. The format picks it, and nothing else about
-/// the spec does.
+/// The runtime for [spec]. Both formats run on the same LiteRT backend.
 EmbeddingRuntime embeddingRuntimeFor(EmbedderSpec spec) =>
-    switch (spec.format) {
-      EmbedderFormat.tfliteWithTokenizer => EdgeAiEmbeddingRuntime(),
-      EmbedderFormat.litertlmBundle => const LiteRtLmBundleEmbeddingRuntime(),
-    };
+    EdgeAiEmbeddingRuntime();
 
-/// The installer for [spec]'s format, chosen the same way as [embeddingRuntimeFor].
+/// The installer for [spec], chosen the same way as [embeddingRuntimeFor].
 EmbedderInstaller embedderInstallerFor(EmbedderSpec spec) =>
-    switch (spec.format) {
-      EmbedderFormat.tfliteWithTokenizer => EdgeAiEmbedderInstaller(),
-      EmbedderFormat.litertlmBundle => const LiteRtLmBundleEmbedderInstaller(),
-    };
-
-/// Stands in for the bundle runtime until phase 5 writes it.
-class LiteRtLmBundleEmbeddingRuntime implements EmbeddingRuntime {
-  const LiteRtLmBundleEmbeddingRuntime();
-
-  @override
-  Future<EmbeddingSession> open(EmbedderSpec spec) async {
-    throw EmbedderRuntimeUnsupportedException(spec);
-  }
-}
-
-/// Stands in for the bundle installer until phase 5 writes it. It reports
-/// nothing installed and refuses to install, so no download can start for it.
-class LiteRtLmBundleEmbedderInstaller implements EmbedderInstaller {
-  const LiteRtLmBundleEmbedderInstaller();
-
-  @override
-  Future<bool> isInstalled(EmbedderSpec spec) async => false;
-
-  @override
-  Future<bool> isPartiallyInstalled(EmbedderSpec spec) async => false;
-
-  @override
-  Future<void> install({
-    required EmbedderSpec spec,
-    String? authToken,
-    void Function(int percent)? onProgress,
-    CancelToken? cancelToken,
-  }) async {
-    throw EmbedderRuntimeUnsupportedException(spec);
-  }
-
-  @override
-  Future<void> uninstall(EmbedderSpec spec) async {}
-}
+    EdgeAiEmbedderInstaller();
 
 class _GemmaEmbeddingSession implements EmbeddingSession {
   final EmbeddingModel _model;
-  _GemmaEmbeddingSession(this._model);
+  final PromptContract _contract;
+  _GemmaEmbeddingSession(this._model, this._contract);
 
   @override
   Future<List<List<double>>> embedAll(
     List<String> texts, {
     required EmbedTaskType taskType,
-  }) =>
-      _model.generateEmbeddings(texts, taskType: _pluginTaskType(taskType));
+  }) async {
+    final type = _pluginTaskType(taskType);
+    try {
+      return await _model.embedAll(
+        [for (final text in texts) EmbeddingInput.text(text)],
+        taskType: type,
+      );
+    } on EmbeddingInputTooLongException {
+      // One input is over the window. One at a time, so only it is trimmed.
+      return [for (final text in texts) await _embedFitted(text, type)];
+    }
+  }
+
+  /// Embeds [text], trimmed from the end when it is over the model's window.
+  ///
+  /// Since flutter_edge_ai 2.3.0 an over-long input throws instead of being cut
+  /// off; the 300M's fixed seq512 graph cut it off silently, so trimming keeps
+  /// that behaviour. The prompt prefix is at the front, so it survives.
+  Future<List<double>> _embedFitted(String text, TaskType type) async {
+    try {
+      return await _model.embed(EmbeddingInput.text(text), taskType: type);
+    } on EmbeddingInputTooLongException catch (e) {
+      // ponytail: characters stand in for tokens; one retry at 90% of the
+      // ratio, so an input that is still too long fails the batch.
+      final ratio = e.maxInputTokens / (e.actualTokens ?? 2 * e.maxInputTokens);
+      final keep = (text.length * ratio * 0.9).floor();
+      return _model.embed(
+        EmbeddingInput.text(text.substring(0, keep)),
+        taskType: type,
+      );
+    }
+  }
 
   @override
   Future<void> close() => _model.close();
 
-  /// Our domain enum → the plugin's. The plugin prepends the matching prefix
-  /// (`'title: none | text: '` vs `'task: search result | query: '`) before
-  /// tokenizing; see [EmbedTaskType] for why this must never be guessed.
-  static TaskType _pluginTaskType(EmbedTaskType type) => switch (type) {
-        EmbedTaskType.document => TaskType.retrievalDocument,
-        EmbedTaskType.query => TaskType.retrievalQuery,
-      };
+  /// Our domain enum → the plugin's. For a plugin contract the plugin prepends
+  /// the matching prefix (`'title: none | text: '` vs `'task: search result |
+  /// query: '`) before tokenizing; see [EmbedTaskType] for why this must never
+  /// be guessed. An app contract has already written its prefixes, so the
+  /// plugin is asked for none.
+  TaskType _pluginTaskType(EmbedTaskType type) =>
+      _contract.appliedBy == PromptAppliedBy.app
+          ? TaskType.none
+          : switch (type) {
+              EmbedTaskType.document => TaskType.retrievalDocument,
+              EmbedTaskType.query => TaskType.retrievalQuery,
+            };
 }

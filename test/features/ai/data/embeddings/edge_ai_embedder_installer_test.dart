@@ -1,12 +1,13 @@
-// What counts as EmbeddingGemma installed: the plugin's records and the files
-// they point at, for the model and for its tokenizer.
+// What counts as an embedder installed: the plugin's records and the files
+// they point at, for the model and for its tokenizer. The 300M is the model with
+// a tokenizer; a bundle's one file follows the same rules.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margo/features/ai/data/embeddings/embedder_adapter.dart';
 import 'package:margo/features/ai/data/embeddings/embedder_spec.dart';
 
 void main() {
-  final spec = EmbedderSpec.active;
+  const spec = EmbedderSpec.embeddingGemma300m;
 
   test('records without files are not installed', () async {
     // A restored backup keeps the records and loses the files. The download

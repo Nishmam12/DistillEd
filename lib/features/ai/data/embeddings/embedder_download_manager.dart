@@ -1,8 +1,9 @@
 // Manages the on-device EMBEDDING model download — the sibling of
 // `model_download_manager.dart`, kept separate because the two differ where it
-// matters: this model is GATED (needs the user's HuggingFace token) and is not
-// "fetched on first use" (175 MB shouldn't leave over mobile data without an
-// explicit tap), so its download is a deliberate, user-triggered act.
+// matters: a gated model needs the user's HuggingFace token (the retired 300M
+// did; EmbeddingGemma 2 does not), and it is not "fetched on first use" (~165 MB
+// shouldn't leave over mobile data without an explicit tap), so its download is
+// a deliberate, user-triggered act.
 
 import 'dart:async';
 
