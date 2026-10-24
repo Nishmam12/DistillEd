@@ -11,8 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/geometry/selection_bounds.dart';
 import '../../domain/model/scene_element.dart';
 import '../state/page_notifier.dart';
-import '../../features/home/domain/models/notebook.dart';
-import '../../shared/isar/isar_service.dart';
+import '../../features/home/presentation/home_notifier.dart';
 import '../render/scene_image_cache.dart';
 import '../render/scene_static_layer.dart';
 import '../state/scene_controller.dart';
@@ -56,7 +55,8 @@ class _NotebookBookViewScreenState
   /// (which would recreate a page if the notebook were momentarily empty).
   /// Used after a page mutation, since this screen caches its own page list.
   Future<void> _refresh() async {
-    final nb = await IsarService.instance.notebooks.get(widget.notebookId);
+    final nb =
+        await ref.read(noteRepositoryProvider).getNotebook(widget.notebookId);
     if (!mounted) return;
     final pages = ref.read(pageProvider(widget.notebookId)).pages;
     final store = ref.read(sceneElementStoreProvider);

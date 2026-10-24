@@ -205,3 +205,16 @@ EOF
 
 Target edges to see disappear: `editor -> features/*/presentation`,
 `features/ai/domain -> features/ai/data`.
+
+## Progress log
+
+- Phase 1 (2026-10-24, working tree): `StoragePaths.isSafeRelativePath`
+  guards deletes, clipboard/library decode and `resolvePath`. It allows
+  `notes/` **and `audio/`**, since recordings live under `audio/`. Tests:
+  `test/data/persistence/content_path_safety_test.dart`. 2681 pass.
+- Phase 2 (2026-10-24, working tree): the editor and book view read and write
+  through `noteRepositoryProvider`. The four editor setters go through `_save`,
+  which awaits the write, refreshes the home list (it was left stale after a
+  rename or recolor) and reverts with a SnackBar on failure. No widget test
+  covers it: no test pumps `NotebookEditorScreen` yet. Check on device: rename
+  a note, go back, and the home list shows the new title.

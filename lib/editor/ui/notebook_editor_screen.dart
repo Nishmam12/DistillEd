@@ -37,8 +37,8 @@ import '../state/page_notifier.dart';
 import '../../features/home/data/repositories/note_repository.dart';
 import '../../features/home/domain/models/notebook.dart';
 import '../../features/summarize/presentation/summarize_notifier.dart';
+import '../../features/home/presentation/home_notifier.dart';
 import '../../features/summarize/presentation/widgets/summary_bottom_sheet.dart';
-import '../../shared/isar/isar_service.dart';
 import '../../widgets/template_icons.dart';
 import '../state/history_controller.dart';
 import '../state/library_controller.dart';
@@ -142,7 +142,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   Future<void> _init() async {
     await ref.read(pageProvider(widget.notebookId).notifier).initialize();
     if (!mounted) return;
-    final nb = await IsarService.instance.notebooks.get(widget.notebookId);
+    final nb =
+        await ref.read(noteRepositoryProvider).getNotebook(widget.notebookId);
     if (!mounted) return;
     await ref.read(libraryProvider.notifier).load();
     if (mounted) setState(() => _notebook = nb);
@@ -863,16 +864,15 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     if (nb == null) return;
     final mode = pageMode ? 1 : 0;
     setState(() => nb.layoutMode = mode);
-    NoteRepository(IsarService.instance)
-        .updateLayoutMode(widget.notebookId, mode);
+    unawaited(_save((r) => r.updateLayoutMode(widget.notebookId, mode)));
   }
 
   void _setTemplate(TemplateType type) {
     final nb = _notebook;
     if (nb == null) return;
     setState(() => nb.templateIndex = type.index);
-    NoteRepository(IsarService.instance)
-        .updateTemplateIndex(widget.notebookId, type.index);
+    unawaited(
+        _save((r) => r.updateTemplateIndex(widget.notebookId, type.index)));
   }
 
   void _setPaperColor(Color color) {
@@ -880,8 +880,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     if (nb == null) return;
     final argb = color.toARGB32();
     setState(() => nb.backgroundColor = argb);
-    NoteRepository(IsarService.instance)
-        .updateBackgroundColor(widget.notebookId, argb);
+    unawaited(_save((r) => r.updateBackgroundColor(widget.notebookId, argb)));
   }
 
   /// Persists a renamed note, reflecting it in the app bar immediately.
@@ -889,7 +888,27 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     final nb = _notebook;
     if (nb == null) return;
     setState(() => nb.title = title);
-    NoteRepository(IsarService.instance)
-        .updateTitle(widget.notebookId, title);
+    unawaited(_save((r) => r.updateTitle(widget.notebookId, title)));
+  }
+
+  /// Writes a notebook setting the screen already shows, then refreshes the
+  /// home list, which holds its own copies. A failed write reloads the notebook
+  /// so the screen never shows a value that was not saved.
+  Future<void> _save(Future<void> Function(NoteRepository repo) write) async {
+    final repo = ref.read(noteRepositoryProvider);
+    // Read before the await: the user may leave the editor mid-write.
+    final home = ref.read(homeNotifierProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await write(repo);
+    } catch (e) {
+      debugPrint('Notebook save failed: $e');
+      final nb = await repo.getNotebook(widget.notebookId);
+      if (mounted) setState(() => _notebook = nb);
+      messenger.showSnackBar(
+          const SnackBar(content: Text("Couldn't save that change.")));
+      return;
+    }
+    await home.loadNotebooks();
   }
 }
