@@ -34,12 +34,22 @@ class EditorLibrarySheet extends ConsumerWidget {
                     trailing: IconButton(
                       tooltip: 'Delete',
                       icon: const Icon(Icons.delete_outline),
-                      onPressed: () =>
-                          ref.read(libraryProvider.notifier).remove(item.id),
+                      onPressed: () => _remove(context, ref, item.id),
                     ),
                   ),
               ],
             ),
     );
+  }
+
+  Future<void> _remove(BuildContext context, WidgetRef ref, String id) async {
+    try {
+      await ref.read(libraryProvider.notifier).remove(id);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(content: Text("Couldn't remove that item. Try again.")),
+      );
+    }
   }
 }

@@ -18,6 +18,7 @@ flutter run                                   # debug on a device
 flutter build apk --release                   # signs with the debug key unless
                                               # android/key.properties exists
 flutter build apk --release -PrequireReleaseSigning=true   # fails without it
+flutter build appbundle --release -PrequireReleaseSigning=true   # the Play upload
 tool/check_16kb_alignment.sh build/app/outputs/flutter-apk/app-debug.apk
 ```
 

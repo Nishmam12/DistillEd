@@ -374,3 +374,48 @@ def test_frontier_providers_cost_more_of_the_cap():
     assert cost_weight(GeminiProvider(s), s) == 1
     assert cost_weight(ClaudeProvider(s), s) == s.frontier_cost_multiplier == 10
     assert cost_weight(GptProvider(s), s) == 10
+
+
+@pytest.mark.asyncio
+async def test_health_answer_is_cached_between_probes(client, monkeypatch):
+    # Probes inside the window do not touch the counter store, so they cannot
+    # queue behind metered requests for its lock.
+    from app import main
+
+    class _Broken:
+        def ping(self):
+            raise RuntimeError("disk gone")
+
+    async with client as c:
+        assert (await c.get("/health")).status_code == 200
+        monkeypatch.setattr(generate_module, "_get_rate_limiter", lambda: _Broken())
+        assert (await c.get("/health")).status_code == 200  # still inside the window
+        monkeypatch.setattr(main, "_health_checked_at", float("-inf"))
+        assert (await c.get("/health")).status_code == 503  # window expired
+
+
+@pytest.mark.asyncio
+async def test_stalled_request_body_is_cut_off_with_408(monkeypatch):
+    import asyncio
+
+    from app import guards
+
+    monkeypatch.setattr(guards, "BODY_READ_TIMEOUT_SECONDS", 0.05)
+
+    async def inner(scope, receive, send):
+        await receive()  # the handler waits for the body
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    async def stalled_receive():
+        await asyncio.sleep(10)  # the client never finishes sending
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    sent = []
+
+    async def send(message):
+        sent.append(message)
+
+    middleware = guards.BodyLimitMiddleware(inner, max_bytes=100)
+    await middleware({"type": "http", "headers": []}, stalled_receive, send)
+    assert sent[0]["status"] == 408

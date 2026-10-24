@@ -1,6 +1,7 @@
 // Root application widget — applies the light/dark themes and the persisted
 // theme mode, and sets up routing.
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/margo_theme.dart';
@@ -56,7 +57,7 @@ class MargoApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Margo',
       debugShowCheckedModeBanner: false,
-      showPerformanceOverlay: devMode,
+      showPerformanceOverlay: kDebugMode && devMode,
       theme: MargoTheme.light,
       darkTheme: MargoTheme.dark,
       themeMode: themeMode.toThemeMode,

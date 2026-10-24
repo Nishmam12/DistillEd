@@ -28,10 +28,15 @@ class SceneMigratorV2 {
   final SceneElementStore store;
   final MigrationGate gate;
 
+  /// Called with the number of pages left unmigrated when the migrator stops
+  /// retrying them, so the loss is recorded rather than silent.
+  final void Function(int unmigratedPages)? onGaveUp;
+
   SceneMigratorV2({
     required this.source,
     required this.store,
     required this.gate,
+    this.onGaveUp,
   });
 
   /// Runs the migration if needed. Returns true if it actually ran, false if it
@@ -40,9 +45,11 @@ class SceneMigratorV2 {
     if (await gate.currentVersion() >= targetVersion) return false;
 
     var incomplete = false;
+    var unreadable = 0;
     await for (final page in source.readPages()) {
       if (page.unreadable) {
         incomplete = true;
+        unreadable++;
         continue;
       }
       final elements = LegacyAdapters.pageToSceneElements(page);
@@ -58,8 +65,9 @@ class SceneMigratorV2 {
       await gate.markPageMigrated(page.pageId);
     }
 
-    if (incomplete && await gate.bumpIncompleteRuns() < maxIncompleteRuns) {
-      return true;
+    if (incomplete) {
+      if (await gate.bumpIncompleteRuns() < maxIncompleteRuns) return true;
+      onGaveUp?.call(unreadable);
     }
     await gate.setVersion(targetVersion);
     return true;

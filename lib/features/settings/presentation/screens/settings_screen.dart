@@ -224,8 +224,10 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const _SectionHeader('AI Models'),
           const _AiModelsCard(),
-          const _SectionHeader('Developer'),
-          _SettingsCard(
+          // Developer tools are debug-only; release builds never show them.
+          if (kDebugMode) const _SectionHeader('Developer'),
+          if (kDebugMode)
+            _SettingsCard(
             children: [
               _SettingsRow(
                 icon: PhosphorIconsRegular.terminalWindow,

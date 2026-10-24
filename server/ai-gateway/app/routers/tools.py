@@ -132,8 +132,11 @@ def _clean_results(data: dict) -> list[SearchResult]:
     links are passed on, and titles and snippets are bounded and stripped of
     control characters. The app fences them as untrusted data before the model
     sees them."""
+    items = data.get("results")
+    if not isinstance(items, list):
+        items = []
     results = []
-    for item in data.get("results", [])[:_MAX_RESULTS]:
+    for item in items[:_MAX_RESULTS]:
         if not isinstance(item, dict):
             continue
         url = item.get("url")

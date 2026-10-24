@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/error_log.dart';
 import '../../../core/icons/app_icon.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/paper_colors.dart';
@@ -117,6 +118,9 @@ class NotebookEditorScreen extends ConsumerStatefulWidget {
 class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   final Set<int> _loadedPages = {};
   Notebook? _notebook;
+  // Set when the notebook is missing or could not be opened. Without it the
+  // screen would wait on the page list forever.
+  bool _unavailable = false;
 
   /// Whether the docked AI panel is showing (wide screens only; on phones the
   /// AI action opens a bottom sheet instead and this stays false).
@@ -161,13 +165,22 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   }
 
   Future<void> _init() async {
-    await ref.read(pageProvider(widget.notebookId).notifier).initialize();
-    if (!mounted) return;
-    final nb =
-        await ref.read(noteRepositoryProvider).getNotebook(widget.notebookId);
-    if (!mounted) return;
-    await ref.read(libraryProvider.notifier).load();
-    if (mounted) setState(() => _notebook = nb);
+    try {
+      await ref.read(pageProvider(widget.notebookId).notifier).initialize();
+      if (!mounted) return;
+      final nb =
+          await ref.read(noteRepositoryProvider).getNotebook(widget.notebookId);
+      if (!mounted) return;
+      if (nb == null) {
+        setState(() => _unavailable = true);
+        return;
+      }
+      await ref.read(libraryProvider.notifier).load();
+      if (mounted) setState(() => _notebook = nb);
+    } catch (e, st) {
+      unawaited(ErrorLog.record(e, st));
+      if (mounted) setState(() => _unavailable = true);
+    }
   }
 
   Color get _paperColor => Color(_notebook?.backgroundColor ?? 0xFFFFFDF7);
@@ -192,6 +205,24 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final pageState = ref.watch(pageProvider(widget.notebookId));
+
+    if (_unavailable) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("This notebook couldn't be opened."),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () => context.go('/'),
+                child: const Text('Back to notes'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     if (pageState.pages.isEmpty) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -786,6 +817,9 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             locked: false,
           ),
         ]));
+    // The image is only in the page once its write has landed; the caller
+    // reports the import as done after this returns.
+    await SceneController.flushPage(key.pageId);
     return key.pageId;
   }
 

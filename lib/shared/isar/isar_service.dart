@@ -19,6 +19,8 @@ class IsarService {
       schemas,
       directory: dir.path,
       name: 'margo',
+      // Isar's default cap is 1 GiB; a heavy user can reach it.
+      maxSizeMiB: 4096,
     );
 
     return _isar!;

@@ -15,6 +15,172 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+
+## [5.0.0] - 2026-10-24
+### Changed
+- **Search runs on EmbeddingGemma 2.** Ask your notes now uses Google's
+  EmbeddingGemma 2 (text only, ~165 MB) instead of EmbeddingGemma 300M. It is
+  free to download with no Hugging Face account or token. If you already had
+  notes indexed, the app downloads the new model and re-indexes them in the
+  background; questions keep working on the old index until it finishes, and
+  then the old model's files are removed. Notebook titles now go into the slot
+  the model was trained with, and a passage too long for the model is shortened
+  instead of failing. Expect slightly more memory use while searching.
+- **On-device AI packages updated** to `flutter_edge_ai` 2.5.2,
+  `flutter_edge_ai_litertlm` 1.17.0, `flutter_edge_ai_embeddings` 2.3.2 and
+  `flutter_edge_ai_speech` 0.5.10. The debug-only rollout dry run in Settings is
+  gone; the real switch to EmbeddingGemma 2 replaces it.
+- **The app is now called Margo.** The launcher label, window title, About
+  screen, recording notification, exports and Anki decks all say Margo; the
+  Dart package is `margo`, and the Android package is `com.margo.margo`. On
+  Android this is a new app, so notes and settings from earlier installs don't
+  carry over.
+- **Home screen matches the margo design.** Cards sit three across at tablet
+  size with the design's spacing, larger titles and ink-coloured meta; the
+  sidebar uses the design's type sizes and compact selection pill; the header
+  icons are full size with the sort control under them; search opens a frosted
+  panel in place of the search icon; **+ new** and the template dialog are
+  frosted glass. The knowledge graph moved off the card face into the
+  long-press menu.
+- **Home screen redesigned ("margo").** The Notes screen is now a sage sidebar
+  (Notes, Favorites, Shared — coming soon — and your folders and tags) beside a
+  grid of note cards, each a thumbnail over a footer with the title, page count,
+  date and a bookmark to favourite it. On narrow screens the sidebar opens from a
+  menu button. Search moved to a popover under the search icon, and **+ new**
+  opens a redesigned template dialog where you also pick the page colour (white,
+  ivory or dark).
+- **Adapts to every Android screen size.** The home screen, its search popover and
+  new-note dialog, Settings, About and Trash now lay out correctly from a small
+  320 dp phone to a 14" tablet, in portrait and landscape, on a foldable's cover
+  and inner screens, and at large system font sizes. Wide windows (840 dp+) pin
+  the sidebar and show more columns; narrower ones use a drawer. Cards grow with
+  the font size instead of clipping, and the About page scrolls when it must. A
+  device-matrix test suite (12 devices × 2 orientations × 3 font scales) guards
+  this.
+- **New sage palette and Modulus Pro typeface, app-wide**, with a matching dark
+  theme (light sage on forest charcoal). Note: Modulus Pro is licensed for
+  personal use only — a commercial licence from its author is needed before any
+  public release.
+
+### Added
+- **Study planner.** A new planner icon in the notebook toolbar turns what the AI
+  has learned about your notes into a day-by-day study plan. Pick a horizon
+  (7 / 14 / 30 days, or an exam countdown) and it schedules the concepts you're
+  struggling with, the ones due for review, and the ones your notes mention but
+  never explain — spread sensibly across the days, with checkboxes to tick off
+  each day and a progress bar. Built entirely on-device and instantly: no model
+  download needed, because the schedule comes from your real progress data, not
+  a language model guessing.
+- **Knowledge graph.** A new graph icon in the notebook toolbar opens a concept
+  map built automatically from your notes: each concept is a node coloured by
+  how well you know it (learning → practiced → mastered), linked by the
+  relationships the AI spotted while reading. Concepts your notes *mention but
+  never actually explain* are ringed as "gap" nodes, so you can see what's
+  missing at a glance. Pan and zoom to explore. Built entirely from analysis
+  that was already happening — no extra waiting.
+- **Ask your notes (on-device).** A new **Ask notes** button in the AI sidebar
+  opens a question box: ask something in plain language and get an answer drawn
+  *only* from your own notes across the whole notebook, with **source cards**
+  showing the passages it used. If your notes don't cover it, it says so instead
+  of making something up. Fully offline — one model retrieves the relevant
+  passages, another answers from them.
+- **Semantic search foundation (on-device RAG).** As you write, each page's text
+  is quietly split into passages and embedded on-device with **EmbeddingGemma**,
+  so *Ask your notes* can find the *relevant* passages across a whole notebook
+  rather than keyword-matching. Everything is local: indexing runs in the
+  background after your text settles (not on every keystroke), only re-embeds
+  what actually changed, and never leaves the device.
+  - Download the search model from **Settings → AI Models → EmbeddingGemma**.
+    It's a gated Google model, so it needs the HuggingFace token you add just
+    above it (accept the licence once, paste a read token). ~185 MB.
+
+- **Cloud AI foundation (dev-only, not yet enabled).** A new, optional cloud
+  tier for tasks the on-device model genuinely can't handle alone — nothing
+  changes by default, and nothing is ever sent without an explicit prompt
+  showing exactly what's about to leave the device. Explain is the first
+  feature wired to it: a "Cloud" badge shows whenever an answer used it.
+  Everything else (Summarize, Ask your notes, Quiz, Flashcards, live context)
+  is unaffected and stays fully on-device. The gateway itself isn't deployed
+  anywhere yet, so this has no visible effect until that happens.
+- **Research (dev-only, not yet enabled).** A new **Research** button in the
+  AI sidebar answers free-form questions that go beyond your notes — it can
+  do arithmetic, look things up on Wikipedia, and search the web, showing
+  which of those it used for each answer. Unlike *Ask your notes*, which
+  only ever answers from your own writing, Research is explicitly for
+  reaching outside it — so it always uses the cloud tier and always asks
+  first, with the same "here's exactly what's about to be sent" prompt as
+  Explain. Same as the cloud foundation above: has no visible effect until
+  the gateway is actually deployed somewhere.
+
+### Added
+- **Import PDFs and photos into a notebook.** A new import button in the
+  notebook toolbar takes a **PDF** — every page comes in as its own page, sized
+  to fit and locked so you can write straight over it — or a **photo**, from
+  your library or the camera, which asks whether you want it on the page you're
+  on or on a page of its own. Re-importing the same PDF is instant and doesn't
+  duplicate anything on disk.
+- **Turn an imported page into editable text.** Select an imported PDF page or
+  photo and tap **Extract text**: the words in it become real text boxes sitting
+  where they were on the page, which you can select, edit and search like
+  anything else you've typed. The picture stays behind them — so you can always
+  check a misread against the original, and diagrams don't vanish — with a
+  one-tap **Remove picture** if you only wanted the text. Runs entirely
+  on-device, no network. One undo takes the whole extraction back.
+- **Edit text you've already placed.** Select a text box and tap **Edit text**
+  to change its words. Previously text could only be created, never corrected —
+  you had to delete it and start again.
+
+### Fixed
+- **"Insert as note" dropped notes out of sight, on top of your work.** An
+  inserted answer only avoided *other* inserted answers, so it could land over
+  your own writing, and on a busy page it was placed below the visible area
+  entirely — you had to zoom out to find it. It now lands in the first clear
+  space inside the part of the page you're actually looking at, clear of
+  everything already there, sized to read the same whether you insert at 14% or
+  300%. When there's genuinely no room in view it says so instead of hiding the
+  note somewhere off-screen.
+- **The AI couldn't read your handwriting.** Every feature that works from page
+  text — live insights, Ask notes, summaries, the knowledge graph — was getting
+  nonsense back from handwritten pages. The whole page was being handed to the
+  recogniser at once, in raw canvas coordinates, so it saw one enormous smear of
+  marks rather than writing. It now reads your notes the way you wrote them: a
+  line at a time, at a consistent size no matter what zoom you were at, with
+  each line's underlines set aside, table columns read separately, and each
+  piece given the words before it as context so it can tell what it's reading
+  into.
+- **AI insights suggesting gibberish to revisit.** "Worth revisiting" could fill
+  up with fragments like "ge sin" or "ug ns" — misread handwriting quoted back
+  at you as though it were a topic. The AI is now told the text comes from
+  handwriting and to leave anything it can't read out of its answer entirely.
+- **The page shrank when you opened AI insights.** On a single page, docking the
+  panel beside the canvas cut the page down to the space left over, hiding the
+  right-hand side of anything already written there. The page now keeps its
+  size and simply scales to fit the narrower view — and back again when you
+  close the panel. If you'd deliberately zoomed in, your zoom is left alone.
+- **Handwriting recognition failing on Android.** A recent upstream update to
+  the ML Kit digital-ink plugin broke recognition entirely on Android
+  (affecting live context, RAG indexing, and anything else that reads page
+  text). Pinned back to the last working release.
+- **Explain sometimes described the question instead of answering it.**
+  Asking to explain a short flagged term (rather than a full passage) could
+  make the on-device model talk about the prompt itself instead of teaching
+  the concept. Reworded the instructions so it stays focused on the subject.
+- Developer Mode, its settings section and the Canvas 2.0 playground are no longer shown in release builds.
+- Deleting a notebook library item that cannot be saved no longer drops it from the screen; the removal is rolled back and the error is shown.
+- Opening a notebook that is missing or unreadable shows an error and a way back to the notes list, instead of a spinner that never ends.
+- Importing an image waits until the image is saved before reporting success.
+- Duplicating or deleting a page waits for that page's pending edits, so no stray data is left behind.
+- A library file that cannot be read is no longer treated as empty, so it cannot be overwritten by the next save.
+- Pending edits are saved when the app is sent to the background (best effort).
+- Pages that the one-time v1 to v2 migration cannot read are recorded in the error log.
+- The database can grow to 4 GiB instead of stopping at 1 GiB.
+
+### Changed
+- **Navy and gold theme.** The whole app now uses the navy and gold design, in place of the warm coral skin: navy on warm off-white in light mode, gold and cream on near-black in dark mode. Paper and pen colours are unchanged, so your drawings look the same. Error messages and the recording indicator use the standard Material red. The old green, honey and periwinkle highlights are now navy or gold, so a few status colours are harder to tell apart: the study planner's task kinds, and the knowledge graph's practiced and mastered levels.
+- **On-device AI packages replaced.** The `flutter_gemma` packages were discontinued on 5 October 2026, so the on-device model stack now runs on their maintained successors: `flutter_edge_ai` 2.1.0, `flutter_edge_ai_litertlm` 1.9.0, `flutter_edge_ai_speech` 0.5.4 and `flutter_edge_ai_embeddings` 2.2.2. No user-visible change is intended. The Phase 1 device checks in `docs/TECH_MIGRATION_PLAN.md` are still to be run.
+- **Local database library replaced.** The Isar database now uses `isar_community` 3.3.2, the maintained fork of the Isar 3.x line, because plain `isar` was last released in April 2023. The collection and property layout is unchanged, so existing data should still open. A debug build logs the row count of each collection at startup. The device checks for this upgrade are still to be run.
+- **Dependencies refreshed.** Riverpod 3.4, go_router 18, record 7.1, just_audio 0.10, pdfx 2.11, image_picker 1.2, file_picker 10.3 and package_info_plus 9, with flutter_lints 6. file_picker 11 does not build for Android yet. file_picker 12 and later, and package_info_plus 10 and later, need a newer win32 than the pinned share_plus 12.0.2 allows. The device checks for navigation, background indexing, downloads and recording are still to be run.
+
 ### Changed
 - **Search runs on EmbeddingGemma 2.** Ask your notes now uses Google's
   EmbeddingGemma 2 (text only, ~165 MB) instead of EmbeddingGemma 300M. It is
@@ -169,6 +335,7 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 - **On-device AI packages replaced.** The `flutter_gemma` packages were discontinued on 5 October 2026, so the on-device model stack now runs on their maintained successors: `flutter_edge_ai` 2.1.0, `flutter_edge_ai_litertlm` 1.9.0, `flutter_edge_ai_speech` 0.5.4 and `flutter_edge_ai_embeddings` 2.2.2. No user-visible change is intended. The Phase 1 device checks in `docs/TECH_MIGRATION_PLAN.md` are still to be run.
 - **Local database library replaced.** The Isar database now uses `isar_community` 3.3.2, the maintained fork of the Isar 3.x line, because plain `isar` was last released in April 2023. The collection and property layout is unchanged, so existing data should still open. A debug build logs the row count of each collection at startup. The device checks for this upgrade are still to be run.
 - **Dependencies refreshed.** Riverpod 3.4, go_router 18, record 7.1, just_audio 0.10, pdfx 2.11, image_picker 1.2, file_picker 10.3 and package_info_plus 9, with flutter_lints 6. file_picker 11 does not build for Android yet. file_picker 12 and later, and package_info_plus 10 and later, need a newer win32 than the pinned share_plus 12.0.2 allows. The device checks for navigation, background indexing, downloads and recording are still to be run.
+
 
 ## [4.0.0] - 2026-07-31
 ### Fixed

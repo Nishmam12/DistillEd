@@ -41,9 +41,10 @@ Deliberate choices that are fine and should stay:
 
 ## Phase 1 — Fix the data-loss bug (do first)
 
-SECURITY_REVIEW item 1 is **still open in code**. A pasted element whose
-`relativeImagePath` is `margo.isar` or `../…` gets that file unlinked when its
-page is deleted, and the user loses every notebook.
+SECURITY_REVIEW item 1 was **open in code** until 2026-10-24. A pasted element
+whose `relativeImagePath` was `margo.isar` or `../…` got that file unlinked when
+its page was deleted, and the user lost every notebook. Fixed (see the
+status notes below); the steps are kept as the record of what was checked.
 
 ### 1.1 Contain deletes — `lib/data/persistence/content_purge.dart`
 

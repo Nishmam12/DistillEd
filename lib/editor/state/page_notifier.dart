@@ -84,6 +84,9 @@ class PageNotifier extends StateNotifier<PageState> {
     // in the store forever.
     final deletedPageId = state.pages[index].id;
 
+    // Queued writes for this page would otherwise land after the clear and
+    // leave orphan rows behind.
+    await SceneController.flushPage(deletedPageId);
     await _repository.deletePage(_notebookId, index);
     await _store.clearForPage(deletedPageId);
     _onPageDeleted?.call(deletedPageId);
@@ -109,6 +112,8 @@ class PageNotifier extends StateNotifier<PageState> {
   /// groups.
   Future<void> duplicatePage(int index) async {
     if (index < 0 || index >= state.pages.length) return;
+    // Read only after the source page's pending edits have landed.
+    await SceneController.flushPage(state.pages[index].id);
     final sourceElements = await _store.loadForPage(state.pages[index].id);
 
     final created = await _repository.createPage(_notebookId);

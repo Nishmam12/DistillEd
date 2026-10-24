@@ -9,6 +9,7 @@ streams the response back, and forgets it. See
 from __future__ import annotations
 
 import asyncio
+import time
 
 from fastapi import FastAPI, HTTPException
 
@@ -37,12 +38,25 @@ app.include_router(tools.router)
 app.include_router(vision.router)
 
 
+_HEALTH_CACHE_SECONDS = 10.0
+_health_checked_at = float("-inf")
+_health_ok = False
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     # Touches the counter database: a gateway that cannot count usage cannot
-    # enforce its caps, so it should not report itself healthy.
-    try:
-        await asyncio.to_thread(generate._get_rate_limiter().ping)
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=503, detail="Rate-limit store unavailable.") from exc
+    # enforce its caps, so it should not report itself healthy. The answer is
+    # cached for a few seconds so probes do not queue behind metered requests
+    # for the database lock.
+    global _health_checked_at, _health_ok
+    if time.monotonic() - _health_checked_at > _HEALTH_CACHE_SECONDS:
+        _health_checked_at = time.monotonic()  # set first: one probe per window
+        try:
+            await asyncio.to_thread(generate._get_rate_limiter().ping)
+            _health_ok = True
+        except Exception:  # noqa: BLE001
+            _health_ok = False
+    if not _health_ok:
+        raise HTTPException(status_code=503, detail="Rate-limit store unavailable.")
     return {"status": "ok"}

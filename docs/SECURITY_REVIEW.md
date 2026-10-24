@@ -56,7 +56,7 @@ The fix is small. It is worth doing even though the item is below the reporting 
 
 ## 2. Gateway has no caller authentication
 
-**Location:** `server/ai-gateway/app/main.py` (only `_throttle_by_ip` is applied as a dependency); `server/ai-gateway/app/routers/generate.py` (only the client-chosen `X-Device-Key` header is required); `server/ai-gateway/README.md:65-66`.
+**Location:** `server/ai-gateway/app/guards.py` (`IpThrottleMiddleware`, added in `server/ai-gateway/app/main.py`); `server/ai-gateway/app/routers/generate.py` (only the client-chosen `X-Device-Key` header is required); `server/ai-gateway/README.md` (the "Not done" note on attestation).
 
 **Category:** authentication_bypass (accepted design gap)
 
@@ -94,6 +94,35 @@ Per the area review reports:
 - Gateway: SQL is parameterized. Provider keys and upstream error text are not returned to clients or logged. Docker and Render config do not copy `.env` into the image, and `render.yaml` uses `sync: false` for keys. Docs endpoints are disabled in production.
 - Export: `ExportShareService.safeFilename` strips path separators and `..`. Anki HTML fields are escaped.
 - Logging: no HuggingFace token, device key, or note text is logged in the areas reviewed.
+
+## Deployability audit, 2026-10-24
+
+A project-wide pass (six lenses, three skeptical votes per finding; all 40 candidates survived). Gates: `flutter analyze` clean, `flutter test` 2714 passed, gateway `pytest` 78 passed (after the fixes below).
+
+Fixed in code during this audit:
+
+- Developer Mode, its settings section, the `/canvas-demo` route and the performance overlay are debug-only (`settings_screen.dart`, `router.dart`, `app.dart`).
+- Isar's size cap is raised from 1 GiB to 4 GiB (`isar_service.dart`).
+- Duplicating or deleting a page waits for that page's queued scene writes (`page_notifier.dart`, `scene_controller.dart`).
+- Gateway search no longer 500s when `results` is not a list (`routers/tools.py`).
+- Gateway Docker context excludes all `__pycache__`/`.pyc`/`.pytest_cache`; CI keys the pip cache on the lock file and builds and checks the release APK's native libraries; `.gitignore` covers keystores and `.env` at any depth.
+- `/health` caches its database probe for 10 s, so probes no longer queue behind metered requests for the counter lock.
+- A request body that stalls for 30 s mid-upload gets a 408 and is cut off. The container runs uvicorn with `--limit-concurrency 200`.
+- Unexpected gateway failures before any reply refund the caller's charge, on both the streaming and non-streaming paths.
+- Library: a read error no longer counts as an empty library, a removal is rolled back when its save fails, and saves are refused until a load succeeds.
+- Notebook editor: a missing or unreadable notebook shows an error with a way back, not a spinner. An image import reports success only after its write lands.
+- Scene writes are flushed when the app is paused or detached (best effort), and before a page is duplicated or deleted.
+- The v2 migration records pages it gave up on in the error log.
+- CI: Flutter pinned to 3.47.7 (the local toolchain); gateway dev tools pinned in `requirements-dev.txt`.
+
+Still open, needs a decision or secrets outside the repo:
+
+- Release signing (item 3): no `android/key.properties` on this machine, and CI never builds a release. Play upload is blocked until the keystore exists.
+- Launcher icon is still the default Flutter logo. Needs final artwork.
+- Gateway durability: the free Render plan resets the rate-limit counters and global kill switch on every restart (`render.yaml`). Use a paid disk, or set provider-side spend limits as the real backstop.
+- Gateway caller authentication (item 2): still the accepted gap; attestation is not implemented.
+- Certificate pin: release builds run unpinned unless `GATEWAY_CERT_SHA256` is supplied.
+- Migration gives up on unreadable pages after three launches. The loss is now recorded in the error log, but the user is not yet told in the UI.
 
 ## Not in scope
 

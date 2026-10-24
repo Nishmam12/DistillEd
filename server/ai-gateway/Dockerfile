@@ -33,4 +33,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # Bind $PORT when the host injects one (Render, Cloud Run, etc.); fall back to
 # 8000 for local `docker run`. `exec` keeps uvicorn as PID 1 so it still gets
 # SIGTERM for a graceful shutdown.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# --limit-concurrency bounds open connections (streams included); past it uvicorn
+# answers 503 instead of queueing without limit.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --limit-concurrency 200"]

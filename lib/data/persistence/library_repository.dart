@@ -94,8 +94,11 @@ class FileLibraryRepository implements LibraryRepository {
   @override
   Future<List<LibraryItem>> load() async {
     if (!await file.exists()) return const [];
+    // A read failure propagates. Reporting it as an empty library would let the
+    // next save replace a file that is still on disk.
+    final text = await file.readAsString();
     try {
-      final decoded = LibraryJson.decodeTolerant(await file.readAsString());
+      final decoded = LibraryJson.decodeTolerant(text);
       if (decoded.skipped > 0) {
         // The next save writes the library without the entries that did not
         // decode, so the original is kept beside it to recover them by hand.

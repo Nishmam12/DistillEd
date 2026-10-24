@@ -246,6 +246,10 @@ async def generate(
         _log_done(request_id, request, provider, estimated_tokens, watch,
                   x_device_key, "error", exc)
         raise HTTPException(status_code=502, detail=_UPSTREAM_ERROR) from exc
+    except Exception:
+        # A failure of ours before any reply is not the caller's to pay for.
+        await asyncio.to_thread(limiter.refund, x_device_key, estimated_tokens)
+        raise
     finally:
         lease.release()
 
@@ -298,6 +302,12 @@ async def _stream_events(source, request_id, request, provider, estimated_tokens
         # this final error event lets `CloudGatewayProvider` mark the reply
         # incomplete rather than silently truncating it.
         yield f"data: {json.dumps({'error': _UPSTREAM_ERROR})}\n\n"
+    except Exception as exc:
+        # Our own failure, not the caller's: a stream that produced nothing is
+        # refunded in the finally below, and the error is still raised.
+        failure = exc
+        status = "error"
+        raise
     finally:
         lease.release()
         if failure is not None and not produced:

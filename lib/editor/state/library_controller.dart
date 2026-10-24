@@ -17,9 +17,16 @@ class LibraryController extends StateNotifier<List<LibraryItem>> {
   // was removed since. Each save waits for the one before it.
   Future<void> _tail = Future.value();
 
+  // Set when the library could not be read. The state is then empty but the
+  // file on disk is not, so saving would replace it with nothing.
+  bool _loadFailed = false;
+
   Future<void> _save() {
     final snapshot = state;
-    final next = _tail.then((_) => _repo.saveAll(snapshot));
+    final next = _tail.then((_) {
+      if (_loadFailed) throw StateError('Library not loaded; refusing to overwrite it');
+      return _repo.saveAll(snapshot);
+    });
     _tail = next.catchError((_) {});
     return next;
   }
@@ -27,7 +34,12 @@ class LibraryController extends StateNotifier<List<LibraryItem>> {
   Future<void> load() async {
     // Let pending saves land first, so the read cannot bring back an older copy.
     await _tail;
-    state = List.unmodifiable(await _repo.load());
+    try {
+      state = List.unmodifiable(await _repo.load());
+      _loadFailed = false;
+    } catch (_) {
+      _loadFailed = true;
+    }
   }
 
   /// Saves [elements] as a new named library item (the cluster is stored in its
@@ -56,11 +68,18 @@ class LibraryController extends StateNotifier<List<LibraryItem>> {
   }
 
   Future<void> remove(String id) async {
+    final before = state;
     state = List.unmodifiable([
       for (final i in state)
         if (i.id != id) i,
     ]);
-    await _save();
+    try {
+      await _save();
+    } catch (_) {
+      // The item is still on disk, so the screen must still show it.
+      state = before;
+      rethrow;
+    }
   }
 }
 

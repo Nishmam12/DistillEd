@@ -1,4 +1,6 @@
 .env
 tests
 *.sqlite3
-__pycache__
+**/__pycache__
+**/*.pyc
+.pytest_cache

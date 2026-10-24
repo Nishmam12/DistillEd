@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -96,6 +97,50 @@ void main() {
     repo.finish(0);
     await added;
     await loaded;
+    expect(library.state.map((i) => i.id), ['1']);
+  });
+  registerLoadFailureTests();
+}
+
+class _UnreadableRepository implements LibraryRepository {
+  final saves = <List<LibraryItem>>[];
+
+  @override
+  Future<List<LibraryItem>> load() async => throw const FileSystemException('read');
+
+  @override
+  Future<void> saveAll(List<LibraryItem> items) async => saves.add(items);
+}
+
+class _RefusingRepository implements LibraryRepository {
+  @override
+  Future<List<LibraryItem>> load() async => const [];
+
+  @override
+  Future<void> saveAll(List<LibraryItem> items) async =>
+      throw const FileSystemException('disk full');
+}
+
+void registerLoadFailureTests() {
+  test('a library that could not be read is never saved over', () async {
+    final repo = _UnreadableRepository();
+    final library = LibraryController(repo);
+
+    await library.load();
+    await expectLater(
+      library.addFromElements('one', const [], id: '1'),
+      throwsStateError,
+    );
+    expect(repo.saves, isEmpty);
+  });
+
+  test('a removal is rolled back when its save fails', () async {
+    final library = LibraryController(_RefusingRepository());
+    library.state = [
+      LibraryItem(id: '1', name: 'one', createdAt: DateTime(2026), elements: const []),
+    ];
+
+    await expectLater(library.remove('1'), throwsA(isA<FileSystemException>()));
     expect(library.state.map((i) => i.id), ['1']);
   });
 }

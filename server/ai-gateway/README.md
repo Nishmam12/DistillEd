@@ -85,6 +85,7 @@ CI runs `pip-audit` against the lock.
 ## Tests
 
 ```bash
+pip install -r requirements-dev.txt
 pytest
 ```
 
@@ -113,6 +114,11 @@ back to 8000 for local `docker run`.
 3. First deploy builds the image and goes live at
    `https://margo-ai-gateway.onrender.com` (exact host shown in the
    dashboard). `GET /health` there should return `{"status":"ok"}`.
+4. Smoke check after every new service or host change: the app's default
+   gateway is `https://margo-ai-gateway.onrender.com` (`GATEWAY_URL` in
+   `lib/features/ai/presentation/ai_providers.dart`). If Render gave the service
+   a different host, the app must be rebuilt with `--dart-define=GATEWAY_URL=...`
+   or the service renamed; `curl https://<host>/health` should return 200.
 
 After that, every push to the deploy branch auto-redeploys. On the free plan
 the instance spins down after ~15 min idle, so the first request after a quiet

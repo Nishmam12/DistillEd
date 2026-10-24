@@ -36,6 +36,13 @@ class SceneController extends StateNotifier<List<SceneElement>>
 
   Future<void> get _tail => _tails[_pageId] ?? Future.value();
 
+  /// Completes once every write queued so far for [pageId] has landed. Callers
+  /// that read or remove a page's rows must wait for this first.
+  static Future<void> flushPage(int pageId) => _tails[pageId] ?? Future.value();
+
+  /// Completes once every queued write, for every page, has landed.
+  static Future<void> flushAll() => Future.wait(_tails.values.toList());
+
   Future<void> _enqueue(Future<void> Function() write) {
     final next = _tail.then((_) => write());
     final tail = next.catchError((_) {});

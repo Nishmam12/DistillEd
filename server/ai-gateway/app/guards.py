@@ -189,12 +189,19 @@ class IpThrottleMiddleware:
         await self._app(scope, receive, send)
 
 
+BODY_READ_TIMEOUT_SECONDS = 30.0
+
+
 class BodyLimitMiddleware:
     """Rejects a request body above [max_bytes] before it is parsed.
 
     Per-field limits still apply, but they only run after the whole body has been
     read; this stops the read. Counts bytes as they arrive, so a chunked upload
-    with no Content-Length is stopped too.
+    with no Content-Length is stopped too. A client that stops sending mid-body
+    is cut off after [BODY_READ_TIMEOUT_SECONDS] of silence, so it cannot hold a
+    connection open indefinitely. The timeout applies only while the request body
+    is still arriving: after that the app may wait on the connection for a long
+    time (streaming responses do), and that wait is not a stall.
     """
 
     def __init__(self, app, max_bytes: int) -> None:
@@ -213,26 +220,40 @@ class BodyLimitMiddleware:
 
         received = 0
         too_big = False
+        stalled = False
+        body_done = False
 
         async def counting_receive():
-            nonlocal received, too_big
-            message = await receive()
+            nonlocal received, too_big, stalled, body_done
+            if body_done:
+                return await receive()
+            try:
+                message = await asyncio.wait_for(receive(), BODY_READ_TIMEOUT_SECONDS)
+            except TimeoutError:
+                stalled = True
+                body_done = True
+                return {"type": "http.disconnect"}
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
                 if received > self._max:
                     too_big = True
+                    body_done = True
                     return {"type": "http.request", "body": b"", "more_body": False}
+                body_done = not message.get("more_body", False)
             return message
 
         started = False
 
         async def guarded_send(message):
             nonlocal started
-            if too_big and not started:
+            if (too_big or stalled) and not started:
                 started = True
-                await self._reject(send)
+                if stalled:
+                    await self._reject(send, 408, "Request body timed out.")
+                else:
+                    await self._reject(send)
                 return
-            if too_big:
+            if too_big or stalled:
                 return
             started = True
             await send(message)
@@ -240,12 +261,14 @@ class BodyLimitMiddleware:
         await self._app(scope, counting_receive, guarded_send)
 
     @staticmethod
-    async def _reject(send) -> None:
-        body = b'{"detail":"Request body too large."}'
+    async def _reject(
+        send, status: int = 413, detail: str = "Request body too large."
+    ) -> None:
+        body = json.dumps({"detail": detail}).encode()
         await send(
             {
                 "type": "http.response.start",
-                "status": 413,
+                "status": status,
                 "headers": [
                     (b"content-type", b"application/json"),
                     (b"content-length", str(len(body)).encode()),

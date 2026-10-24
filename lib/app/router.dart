@@ -1,5 +1,6 @@
 // GoRouter configuration — defines all app routes.
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart' show GlobalKey, NavigatorState;
 import 'package:go_router/go_router.dart';
 
@@ -87,10 +88,11 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AboutScreen(),
     ),
     // Dev-only: unified canvas playground (Phase 2). Surfaced from Settings when
-    // Developer Mode is enabled.
-    GoRoute(
-      path: '/canvas-demo',
-      builder: (context, state) => const SceneEditorScreen(),
-    ),
+    // Developer Mode is enabled. Debug builds only.
+    if (kDebugMode)
+      GoRoute(
+        path: '/canvas-demo',
+        builder: (context, state) => const SceneEditorScreen(),
+      ),
   ],
 );

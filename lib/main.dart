@@ -94,9 +94,23 @@ void _registerAssetLicenses() {
   });
 }
 
+/// Gives queued scene writes a chance to land when the app is sent to the
+/// background or closed. Best effort: the OS may end the process first, and a
+/// write that never completes is then lost, as it was before this existed.
+class _FlushPendingWrites with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(SceneController.flushAll());
+    }
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   _registerAssetLicenses();
+  WidgetsBinding.instance.addObserver(_FlushPendingWrites());
 
   // 1. Synchronous Flutter framework errors
   FlutterError.onError = (FlutterErrorDetails details) {

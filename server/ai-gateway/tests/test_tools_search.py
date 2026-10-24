@@ -250,3 +250,10 @@ async def test_a_junk_entry_is_skipped_and_the_rest_still_returned(client, monke
     assert resp.status_code == 200
     assert [r["title"] for r in resp.json()["results"]] == ["Ada Lovelace"]
 
+
+
+def test_clean_results_tolerates_non_list_results():
+    # Exa returning an object (or null) for `results` must not raise.
+    assert tools_module._clean_results({"results": {"url": "https://x"}}) == []
+    assert tools_module._clean_results({"results": None}) == []
+    assert tools_module._clean_results({}) == []

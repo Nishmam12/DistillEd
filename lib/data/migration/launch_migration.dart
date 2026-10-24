@@ -6,11 +6,13 @@
 // safe to call on every launch. The migrator's logic is unit-tested with
 // in-memory doubles; this is the thin production binding.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/error_log.dart';
 import '../../shared/isar/isar_service.dart';
 
 import '../persistence/isar_scene_element_store.dart';
@@ -49,6 +51,10 @@ Future<bool> runLaunchMigration() async {
       source: IsarLegacyPageSource(),
       store: IsarSceneElementStore(),
       gate: gate,
+      onGaveUp: (unmigrated) => unawaited(ErrorLog.record(
+        StateError('$unmigrated page(s) could not be read and were not migrated.'),
+        null,
+      )),
     );
     return await migrator.run();
   } catch (e, st) {
