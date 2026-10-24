@@ -30,8 +30,7 @@ const List<(ShapeType, IconData)> kEditorShapes = [
 ];
 
 // Ink text uses these generic family names, which each platform resolves with its
-// own font matching. The app's bundled UI fonts (Poppins, Nunito) are not offered
-// here: a stroke of text should look the way the device draws that family.
+// own font matching.
 const List<String> kFontFamilies = ['Roboto', 'Serif', 'Monospace', 'Cursive'];
 
 const Map<Arrowhead, IconData> kArrowheadIcons = {

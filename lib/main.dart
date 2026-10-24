@@ -83,8 +83,6 @@ Future<void> _logCollectionCounts(Isar isar) async {
 void _registerAssetLicenses() {
   LicenseRegistry.addLicense(() async* {
     for (final (package, asset) in const [
-      ('Poppins', 'assets/licenses/Poppins-OFL.txt'),
-      ('Nunito', 'assets/licenses/Nunito-OFL.txt'),
       ('Phosphor Icons', 'assets/licenses/Phosphor-MIT.txt'),
     ]) {
       yield LicenseEntryWithLineBreaks([
