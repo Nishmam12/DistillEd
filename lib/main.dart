@@ -39,31 +39,40 @@ import 'features/home/domain/models/note_page.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/margo_theme.dart';
 
+/// Every Isar collection the app stores. The one list both the database open
+/// and the debug counts read, so a new collection cannot be registered in one
+/// and forgotten in the other. Isar auto-migrates additive changes: a new
+/// schema appended here needs no migration.
+const _schemas = <CollectionSchema<dynamic>>[
+  NotebookSchema,
+  NotePageSchema,
+  SceneElementRecordSchema,
+  AppMetaSchema,
+  SummaryCacheSchema,
+  FlashcardRecordSchema,
+  ConceptMasteryRecordSchema,
+  QuizAttemptRecordSchema,
+  LearningPreferencesRecordSchema,
+  NoteChunkRecordSchema,
+  ConceptRelationRecordSchema,
+  StudyPlanRecordSchema,
+  PageTextRecordSchema,
+  FolderSchema,
+  LectureRecordingRecordSchema,
+  // A cache of vision reads.
+  ReadCacheRecordSchema,
+];
+
 /// Debug only: prints how many rows each collection holds, so an Isar upgrade
 /// can be checked against the old build on the same device (plan, phase 2.2).
 /// Phase 4.5 reuses it.
 Future<void> _logCollectionCounts(Isar isar) async {
   final counts = <String, int>{
-    'Notebook': await isar.collection<Notebook>().count(),
-    'NotePage': await isar.collection<NotePage>().count(),
-    'SceneElementRecord': await isar.collection<SceneElementRecord>().count(),
-    'AppMeta': await isar.collection<AppMeta>().count(),
-    'SummaryCache': await isar.collection<SummaryCache>().count(),
-    'FlashcardRecord': await isar.collection<FlashcardRecord>().count(),
-    'ConceptMasteryRecord':
-        await isar.collection<ConceptMasteryRecord>().count(),
-    'QuizAttemptRecord': await isar.collection<QuizAttemptRecord>().count(),
-    'LearningPreferencesRecord':
-        await isar.collection<LearningPreferencesRecord>().count(),
-    'NoteChunkRecord': await isar.collection<NoteChunkRecord>().count(),
-    'ConceptRelationRecord':
-        await isar.collection<ConceptRelationRecord>().count(),
-    'StudyPlanRecord': await isar.collection<StudyPlanRecord>().count(),
-    'PageTextRecord': await isar.collection<PageTextRecord>().count(),
-    'Folder': await isar.collection<Folder>().count(),
-    'LectureRecordingRecord':
-        await isar.collection<LectureRecordingRecord>().count(),
-    'ReadCacheRecord': await isar.collection<ReadCacheRecord>().count(),
+    for (final s in _schemas)
+      // Isar's only untyped lookup; fine for a debug readout, and it keeps
+      // this map from being a second list to maintain.
+      // ignore: invalid_use_of_protected_member
+      s.name: await isar.getCollectionByNameInternal(s.name)!.count(),
   };
   debugPrint('[IsarCounts] $counts');
 }
@@ -169,26 +178,7 @@ Future<void> _openAndRun() async {
   // unified collections (SceneElementRecord/AppMeta) are additive — Isar
   // auto-migrates the on-disk schema and existing Notebook/NotePage data is
   // untouched.
-  final isar = await IsarService.openDatabase([
-    NotebookSchema,
-    NotePageSchema,
-    SceneElementRecordSchema,
-    AppMetaSchema,
-    SummaryCacheSchema,
-    FlashcardRecordSchema,
-    ConceptMasteryRecordSchema,
-    QuizAttemptRecordSchema,
-    LearningPreferencesRecordSchema,
-    NoteChunkRecordSchema,
-    ConceptRelationRecordSchema,
-    StudyPlanRecordSchema,
-    PageTextRecordSchema,
-    FolderSchema,
-    LectureRecordingRecordSchema,
-    // Additive, like the collections above: a cache of vision reads, so no
-    // existing data is touched and nothing needs migrating.
-    ReadCacheRecordSchema,
-  ]);
+  final isar = await IsarService.openDatabase(_schemas);
   if (kDebugMode) await _logCollectionCounts(isar);
 
   // One-time, gated, non-destructive migration of legacy page content into the

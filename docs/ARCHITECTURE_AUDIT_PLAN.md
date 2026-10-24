@@ -234,3 +234,8 @@ Target edges to see disappear: `editor -> features/*/presentation`,
     service is used too widely for callbacks. The only real fix is interfaces
     for two single-implementation services. Accepted inside one feature; revisit
     if a second OCR backend appears.
+- Phase 4, schema list (2026-10-24, working tree): `main.dart` keeps one
+  `_schemas` list that both `IsarService.openDatabase` and the debug counts read.
+  It stays in `main.dart`, the composition root, rather than
+  `shared/isar_service.dart`, which would then import every feature's records.
+  The rest of Phase 4 stays opportunistic, as planned.
