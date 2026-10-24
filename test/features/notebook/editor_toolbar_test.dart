@@ -8,7 +8,7 @@ import 'package:margo/domain/model/scene_element.dart';
 import 'package:margo/editor/state/editor_tool_controller.dart';
 import 'package:margo/editor/state/history_controller.dart';
 import 'package:margo/editor/state/scene_controller.dart';
-import 'package:margo/editor/ui/controls/editor_bottom_bar.dart';
+import 'package:margo/features/notebook/presentation/controls/editor_bottom_bar.dart';
 import 'package:margo/editor/ui/controls/undo_redo_buttons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

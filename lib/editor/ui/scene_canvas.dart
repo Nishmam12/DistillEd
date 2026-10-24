@@ -24,7 +24,6 @@ import '../../domain/services/frame_service.dart';
 import '../../domain/services/pixel_eraser_service.dart';
 import '../../domain/services/snap_engine.dart';
 import '../../domain/model/template_type.dart';
-import '../../features/audio/presentation/audio_providers.dart';
 import '../render/background_layer.dart';
 import '../input/scene_pointer_listener.dart';
 import '../render/freehand_path.dart';
@@ -68,6 +67,13 @@ class SceneCanvas extends ConsumerStatefulWidget {
   /// canvas that is never rebuilt, but not for one keyed by page id.
   final Size? pageSize;
 
+  /// Stamps a new stroke with how far into a running lecture recording it
+  /// began, given its first point's time (null when the point has none). Null,
+  /// or a null answer, leaves the stroke unstamped. Supplied by the screen so
+  /// the canvas engine does not depend on the audio feature.
+  final ({int recordingId, int audioOffsetMs})? Function(int? firstPointMs)?
+      stampStroke;
+
   const SceneCanvas({
     super.key,
     required this.notebookId,
@@ -76,6 +82,7 @@ class SceneCanvas extends ConsumerStatefulWidget {
     this.templateType = TemplateType.blank,
     this.pageMode = false,
     this.pageSize,
+    this.stampStroke,
   });
 
   @override

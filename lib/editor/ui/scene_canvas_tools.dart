@@ -300,9 +300,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
     // If a lecture is being recorded, stamp the stroke with how far into that
     // recording it began — measured from the stroke's FIRST point, so tapping
     // it later seeks to when the writing started, not when the pen lifted.
-    final stamp = ref
-        .read(recordingSessionProvider(_key.notebookId))
-        .stampFor(points.first.t ?? _engineNowMs());
+    final stamp = widget.stampStroke?.call(points.first.t);
     final stroke = FreehandElement(
       id: _newId(),
       zOrder: _scene.nextZOrder(),
@@ -359,8 +357,6 @@ extension _SceneCanvasTools on _SceneCanvasState {
         ]));
     }
   }
-
-  int _engineNowMs() => ref.read(engineClockProvider)();
 
   void _commitShape(EditorToolState tool, Offset end) {
     final start = _shapeStart;

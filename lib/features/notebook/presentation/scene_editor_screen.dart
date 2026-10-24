@@ -6,15 +6,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/persistence/scene_element_store.dart';
-import '../state/scene_controller.dart';
-import '../state/viewport_controller.dart';
+import '../../../data/persistence/scene_element_store.dart';
+import '../../audio/presentation/audio_providers.dart';
+import '../../../editor/state/scene_controller.dart';
+import '../../../editor/state/viewport_controller.dart';
 import 'controls/editor_app_bar_actions.dart';
 import 'controls/editor_bottom_bar.dart';
-import 'controls/editor_tool_options_overlay.dart';
-import 'controls/undo_redo_buttons.dart';
-import 'scene_canvas.dart';
-import 'universal_color_palette.dart';
+import '../../../editor/ui/controls/editor_tool_options_overlay.dart';
+import '../../../editor/ui/controls/undo_redo_buttons.dart';
+import '../../../editor/ui/scene_canvas.dart';
+import '../../../editor/ui/universal_color_palette.dart';
 
 const ScenePageKey _demoKey = (notebookId: 0, pageId: 0);
 
@@ -55,12 +56,20 @@ class _SceneEditorBody extends ConsumerWidget {
           const EditorAppBarActions(pageKey: _demoKey),
         ],
       ),
-      body: const Stack(
+      body: Stack(
         children: [
-          Positioned.fill(child: SceneCanvas(notebookId: 0, pageId: 0)),
+          Positioned.fill(
+            child: SceneCanvas(
+              notebookId: 0,
+              pageId: 0,
+              stampStroke: (t) => ref
+                  .read(recordingSessionProvider(0))
+                  .stampFor(t ?? ref.read(engineClockProvider)()),
+            ),
+          ),
           // Toolbar sits below in bottomNavigationBar here, so its options
           // panel floats up from the bottom instead of down from the top.
-          Positioned(
+          const Positioned(
             bottom: 8,
             left: 8,
             right: 8,
@@ -69,7 +78,8 @@ class _SceneEditorBody extends ConsumerWidget {
               child: EditorToolOptionsOverlay(anchorBottom: true),
             ),
           ),
-          Positioned(top: 8, right: 8, child: UniversalColorPalette()),
+          const Positioned(
+              top: 8, right: 8, child: UniversalColorPalette()),
         ],
       ),
       bottomNavigationBar: const SafeArea(

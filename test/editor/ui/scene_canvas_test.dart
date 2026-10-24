@@ -55,6 +55,35 @@ void main() {
         greaterThanOrEqualTo(3));
   });
 
+  testWidgets('a stroke is stamped by the screen-supplied stampStroke',
+      (tester) async {
+    final container = _container();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        home: Scaffold(
+          body: SceneCanvas(
+            notebookId: 0,
+            pageId: 0,
+            stampStroke: (_) => (recordingId: 7, audioOffsetMs: 1234),
+          ),
+        ),
+      ),
+    ));
+
+    final g = await tester.startGesture(const Offset(100, 100),
+        kind: PointerDeviceKind.stylus);
+    await g.moveBy(const Offset(20, 0));
+    await g.up();
+    await tester.pump();
+
+    final stroke =
+        container.read(sceneControllerProvider(_key)).single as FreehandElement;
+    expect(stroke.recordingId, 7);
+    expect(stroke.audioOffsetMs, 1234);
+  });
+
   testWidgets('hand tool pans the viewport instead of drawing', (tester) async {
     final container = _container();
     addTearDown(container.dispose);

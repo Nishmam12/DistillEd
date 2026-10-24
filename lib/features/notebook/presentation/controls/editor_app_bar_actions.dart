@@ -4,23 +4,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/icons/app_icon.dart';
-import '../../../domain/commands/scene_command.dart';
-import '../../../domain/model/library_item.dart';
-import '../../../domain/services/library_service.dart';
-import '../../../domain/services/z_order_service.dart';
-import '../../../domain/model/scene_element.dart';
-import '../../../features/export/scene_export_service.dart';
-import '../../../features/home/presentation/home_notifier.dart';
-import '../../state/clipboard_service.dart';
-import '../../state/history_controller.dart';
-import '../../state/page_notifier.dart';
-import '../../state/scene_controller.dart';
-import '../../state/scene_image_cache_provider.dart';
-import '../../state/selection_controller.dart';
-import '../../state/viewport_controller.dart';
-import 'editor_controls_shared.dart';
-import 'editor_library_sheet.dart';
+import '../../../../core/icons/app_icon.dart';
+import '../../../../domain/commands/scene_command.dart';
+import '../../../../domain/model/library_item.dart';
+import '../../../../domain/services/library_service.dart';
+import '../../../../domain/services/z_order_service.dart';
+import '../../../../domain/model/scene_element.dart';
+import '../../../export/scene_export_service.dart';
+import '../../../home/presentation/home_notifier.dart';
+import '../../../../editor/state/clipboard_service.dart';
+import '../../../../editor/state/history_controller.dart';
+import '../../../../editor/state/page_notifier.dart';
+import '../../../../editor/state/scene_controller.dart';
+import '../../../../editor/state/scene_image_cache_provider.dart';
+import '../../../../editor/state/selection_controller.dart';
+import '../../../../editor/state/viewport_controller.dart';
+import '../../../../editor/ui/controls/editor_controls_shared.dart';
+import '../../../../editor/ui/controls/editor_library_sheet.dart';
 
 /// The secondary actions live here rather than as their own app-bar buttons so
 /// the top bar stays down to the handful of primary destinations (AI, study

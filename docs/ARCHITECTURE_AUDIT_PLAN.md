@@ -218,3 +218,19 @@ Target edges to see disappear: `editor -> features/*/presentation`,
   rename or recolor) and reverts with a SnackBar on failure. No widget test
   covers it: no test pumps `NotebookEditorScreen` yet. Check on device: rename
   a note, go back, and the home list shows the new title.
+- Phase 3 (2026-10-24, working tree):
+  - 3.1: `SceneCanvas` takes a `stampStroke` callback instead of reading
+    `audio_providers`. The screens pass `recordingSessionProvider(...).stampFor`,
+    and a new canvas test pins it. Seven files moved to
+    `lib/features/notebook/presentation/` (`controls/` for the bottom bar,
+    selection bar and app-bar actions), along with their four tests. `editor/`
+    now imports no feature presentation code. Its remaining feature imports are
+    `home` data/models, `import/pdf_service` and the ML Kit handwriting service,
+    all of which point the right way.
+  - 3.2: `web_search_tool` and `wikipedia_tool` (dio) moved to
+    `ai/data/tools/`. **Not done:** `page_content_extractor` still imports
+    `HandwritingRecognitionService` and `GemmaVisionOcrService`. Two domain
+    files depend on it, so moving it to `data/` relocates the edge, and the vision
+    service is used too widely for callbacks. The only real fix is interfaces
+    for two single-implementation services. Accepted inside one feature; revisit
+    if a second OCR backend appears.

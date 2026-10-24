@@ -8,11 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:margo/core/icons/phosphor_icons_regular.dart';
 
-import '../editor_constants.dart';
-import '../../../domain/model/scene_element.dart';
-import '../../state/editor_tool_controller.dart';
-import '../../state/scene_controller.dart';
-import '../../state/selection_controller.dart';
+import '../../../../editor/ui/editor_constants.dart';
+import '../../../../domain/model/scene_element.dart';
+import '../../../../editor/state/editor_tool_controller.dart';
+import '../../../../editor/state/scene_controller.dart';
+import '../../../../editor/state/selection_controller.dart';
 import 'selection_bar.dart';
 
 class EditorBottomBar extends ConsumerWidget {

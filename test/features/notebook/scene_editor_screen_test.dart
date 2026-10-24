@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:margo/core/icons/phosphor_icons_regular.dart';
 import 'package:margo/editor/ui/controls/editor_tool_options_overlay.dart';
 import 'package:margo/editor/ui/scene_canvas.dart';
-import 'package:margo/editor/ui/scene_editor_screen.dart';
+import 'package:margo/features/notebook/presentation/scene_editor_screen.dart';
 
 void main() {
   testWidgets('the options panel starts open, showing the default pen tool',

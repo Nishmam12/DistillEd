@@ -11,49 +11,50 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../core/icons/app_icon.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/paper_colors.dart';
-import '../../core/providers/settings_provider.dart';
-import '../../domain/commands/scene_command.dart';
-import '../../domain/geometry/element_bounds.dart';
-import '../../domain/model/scene_element.dart';
-import '../../features/ai/domain/ai_scope.dart';
-import '../../features/ai/presentation/ai_providers.dart';
-import '../../features/ai/presentation/notebook_index_notifier.dart';
-import '../../features/ai/presentation/sidebar/ai_sidebar.dart';
-import '../../domain/model/template_type.dart';
-import '../../features/import/pdf_service.dart' show ImportException;
-import '../../features/audio/presentation/lecture_transcript_sheet.dart';
-import '../../features/audio/presentation/lecture_transcription_notifier.dart';
-import '../../features/audio/presentation/recording_notifier.dart';
-import '../../features/audio/presentation/transcription_providers.dart';
-import '../../features/audio/presentation/lecture_language_picker.dart';
-import '../../features/search/presentation/note_search_sheet.dart';
-import '../import/fit_image_rect.dart';
-import '../import/ml_kit_document_scanner.dart';
-import '../import/scene_import_service.dart';
-import '../state/page_notifier.dart';
-import '../../features/home/data/repositories/note_repository.dart';
-import '../../features/home/domain/models/notebook.dart';
-import '../../features/summarize/presentation/summarize_notifier.dart';
-import '../../features/home/presentation/home_notifier.dart';
-import '../../features/summarize/presentation/widgets/summary_bottom_sheet.dart';
-import '../../widgets/template_icons.dart';
-import '../state/history_controller.dart';
-import '../state/library_controller.dart';
-import '../state/scene_controller.dart';
-import '../state/selection_controller.dart';
-import '../state/viewport_controller.dart';
-import 'editable_note_title.dart';
+import '../../../core/icons/app_icon.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/paper_colors.dart';
+import '../../../core/providers/settings_provider.dart';
+import '../../../domain/commands/scene_command.dart';
+import '../../../domain/geometry/element_bounds.dart';
+import '../../../domain/model/scene_element.dart';
+import '../../ai/domain/ai_scope.dart';
+import '../../ai/presentation/ai_providers.dart';
+import '../../ai/presentation/notebook_index_notifier.dart';
+import '../../ai/presentation/sidebar/ai_sidebar.dart';
+import '../../../domain/model/template_type.dart';
+import '../../import/pdf_service.dart' show ImportException;
+import '../../audio/presentation/audio_providers.dart';
+import '../../audio/presentation/lecture_transcript_sheet.dart';
+import '../../audio/presentation/lecture_transcription_notifier.dart';
+import '../../audio/presentation/recording_notifier.dart';
+import '../../audio/presentation/transcription_providers.dart';
+import '../../audio/presentation/lecture_language_picker.dart';
+import '../../search/presentation/note_search_sheet.dart';
+import '../../../editor/import/fit_image_rect.dart';
+import '../../../editor/import/ml_kit_document_scanner.dart';
+import '../../../editor/import/scene_import_service.dart';
+import '../../../editor/state/page_notifier.dart';
+import '../../home/data/repositories/note_repository.dart';
+import '../../home/domain/models/notebook.dart';
+import '../../summarize/presentation/summarize_notifier.dart';
+import '../../home/presentation/home_notifier.dart';
+import '../../summarize/presentation/widgets/summary_bottom_sheet.dart';
+import '../../../widgets/template_icons.dart';
+import '../../../editor/state/history_controller.dart';
+import '../../../editor/state/library_controller.dart';
+import '../../../editor/state/scene_controller.dart';
+import '../../../editor/state/selection_controller.dart';
+import '../../../editor/state/viewport_controller.dart';
+import '../../../editor/ui/editable_note_title.dart';
 import 'controls/editor_app_bar_actions.dart';
 import 'controls/editor_bottom_bar.dart';
-import 'controls/editor_tool_options_overlay.dart';
-import 'controls/page_actions_sheet.dart';
-import 'controls/undo_redo_buttons.dart';
-import 'scene_canvas.dart';
-import 'universal_color_palette.dart';
-import 'zoom_pill.dart';
+import '../../../editor/ui/controls/editor_tool_options_overlay.dart';
+import '../../../editor/ui/controls/page_actions_sheet.dart';
+import '../../../editor/ui/controls/undo_redo_buttons.dart';
+import '../../../editor/ui/scene_canvas.dart';
+import '../../../editor/ui/universal_color_palette.dart';
+import '../../../editor/ui/zoom_pill.dart';
 
 part 'notebook_editor_widgets.dart';
 
@@ -280,6 +281,10 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                             templateType: _template,
                             pageMode: _pageMode,
                             pageSize: _pageSheet,
+                            stampStroke: (t) => ref
+                                .read(recordingSessionProvider(
+                                    widget.notebookId))
+                                .stampFor(t ?? ref.read(engineClockProvider)()),
                           ),
                         ),
                         // Zoom level and the universal colour palette, both

@@ -6,8 +6,8 @@
 
 import 'package:dio/dio.dart';
 
-import '../untrusted_text.dart';
-import 'tool.dart';
+import '../../domain/untrusted_text.dart';
+import '../../domain/tools/tool.dart';
 
 class WebSearchTool implements Tool {
   final Dio _dio;

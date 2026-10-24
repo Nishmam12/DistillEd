@@ -8,16 +8,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../domain/geometry/selection_bounds.dart';
-import '../../domain/model/scene_element.dart';
-import '../state/page_notifier.dart';
-import '../../features/home/presentation/home_notifier.dart';
-import '../render/scene_image_cache.dart';
-import '../render/scene_static_layer.dart';
-import '../state/scene_controller.dart';
-import '../state/scene_image_cache_provider.dart';
-import 'controls/page_actions_sheet.dart';
-import '../../core/theme/app_colors.dart';
+import '../../../domain/geometry/selection_bounds.dart';
+import '../../../domain/model/scene_element.dart';
+import '../../../editor/state/page_notifier.dart';
+import '../../home/presentation/home_notifier.dart';
+import '../../../editor/render/scene_image_cache.dart';
+import '../../../editor/render/scene_static_layer.dart';
+import '../../../editor/state/scene_controller.dart';
+import '../../../editor/state/scene_image_cache_provider.dart';
+import '../../../editor/ui/controls/page_actions_sheet.dart';
+import '../../../core/theme/app_colors.dart';
 
 class NotebookBookViewScreen extends ConsumerStatefulWidget {
   final int notebookId;

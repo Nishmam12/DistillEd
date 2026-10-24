@@ -29,7 +29,9 @@ Delivered **one phase per turn**; each phase ends at a checkpoint
   `domain/` holds the `SceneElement` model, geometry, commands and services;
   `data/persistence` and `data/migration` hold the Isar stores and the v1→v2
   migrator; `editor/` holds `state`, `input`, `render`, `tools`, `ui`; features are
-  `ai`, `audio`, `export`, `home`, `import`, `search`, `settings`, `summarize`.
+  `ai`, `audio`, `export`, `home`, `import`, `notebook` (the notebook editor and
+  book view screens, which wire the features into the `editor/` engine),
+  `search`, `settings`, `summarize`. `editor/` imports no feature presentation code.
 * **Routes** (`lib/app/router.dart`): `/`, `/note2/:id` (+ `book`, `graph`,
   `review`, `plan`), `/trash`, `/settings`, `/about`, `/canvas-demo`.
 * **Persistence:** one Isar database (`margo`), 16 schemas registered in
