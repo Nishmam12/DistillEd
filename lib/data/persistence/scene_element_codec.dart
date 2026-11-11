@@ -46,6 +46,7 @@ class SceneElementCodec {
           'color': e.color,
           'size': e.size,
           'isEraser': e.isEraser,
+          'penKind': e.penKind.name,
         });
       case SceneShapeElement():
         base.addAll({
@@ -117,6 +118,10 @@ class SceneElementCodec {
           color: (m['color'] as num).toInt(),
           size: _d(m['size'], 1.0),
           isEraser: m['isEraser'] as bool? ?? false,
+          // By name; absent (older JSON) or unknown (a newer build's pen)
+          // draws as a plain pen.
+          penKind: PenKind.values.asNameMap()[m['penKind']] ??
+              PenKind.ballpoint,
         );
       case SceneElementKind.shape:
         return SceneShapeElement(

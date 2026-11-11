@@ -152,6 +152,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     super.initState();
     _ticker = createTicker(_onLaserTick);
     _imageCache = ref.read(sceneImageCacheProvider);
+    // So the first pencil stroke already has its grain.
+    FreehandPath.warmUp();
   }
 
   @override
@@ -197,6 +199,21 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
         : tool;
   }
 
+  /// Two fingers tapped together undo; three redo — the convention in
+  /// Goodnotes, Notability and Procreate.
+  void _onMultiFingerTap(int fingers) {
+    final history = ref.read(historyProvider(_key));
+    final ctl = ref.read(historyProvider(_key).notifier);
+    if (fingers == 2 && history.canUndo) {
+      ctl.undo();
+    } else if (fingers == 3 && history.canRedo) {
+      ctl.redo();
+    } else {
+      return;
+    }
+    unawaited(HapticFeedback.lightImpact());
+  }
+
   /// The first time a pen touches the page while a finger still draws, offers
   /// once to let a finger scroll instead.
   void _maybeOfferFingerScroll(PointerEvent event) {
@@ -234,7 +251,10 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
         _onSelectDown(p);
       case EditorTool.pen:
         _active.begin(_scenePoint(p),
-            color: tool.color, size: tool.size, opacity: tool.opacity);
+            color: tool.color,
+            size: tool.size,
+            opacity: tool.opacity,
+            kind: tool.penKind);
       case EditorTool.shape:
         _shapeStart = _toScene(p);
         _shapeSeed = math.Random().nextInt(0x7fffffff);
@@ -424,6 +444,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       return ScenePointerListener(
         isHandTool: tool.isHand,
         fingerPans: !fingerDraws,
+        onMultiFingerTap: _onMultiFingerTap,
         onPointerDown: _onDown,
         onPointerMove: _onMove,
         onPointerUp: _onUp,

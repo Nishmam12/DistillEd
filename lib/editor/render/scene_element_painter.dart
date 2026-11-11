@@ -88,16 +88,12 @@ class SceneElementPainter {
       final src = from == null ? null : _freehandCache[from.$1];
       path = src != null
           ? src.shift(from!.$2)
-          : FreehandPath.build(e.points, e.size, isComplete: true);
+          : FreehandPath.build(e.points, e.size,
+              isComplete: true, kind: e.penKind);
       if (path == null) return;
       _freehandCache[e] = path;
     }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Color(e.color).withValues(alpha: e.opacity)
-        ..style = PaintingStyle.fill,
-    );
+    canvas.drawPath(path, FreehandPath.paintFor(e.penKind, e.color, e.opacity));
   }
 
   // ---- shapes ---------------------------------------------------------------

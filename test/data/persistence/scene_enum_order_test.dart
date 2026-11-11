@@ -20,5 +20,7 @@ void main() {
     expect(_names(EdgeStyle.values), ['sharp', 'round']);
     expect(_names(Arrowhead.values), ['none', 'triangle', 'dot', 'bar']);
     expect(_names(TextAlignKind.values), ['left', 'center', 'right']);
+    expect(_names(PenKind.values),
+        ['ballpoint', 'highlighter', 'fountain', 'pencil']);
   });
 }

@@ -122,6 +122,44 @@ void main() {
     expect(f.points[1].t, isNull);
   });
 
+  test('the pen type survives JSON, and old JSON reads as ballpoint', () {
+    const e = FreehandElement(
+      id: 'h',
+      zOrder: 0,
+      color: 0xFFFFE066,
+      size: 16,
+      penKind: PenKind.highlighter,
+      points: [StrokePoint(x: 0, y: 0), StrokePoint(x: 9, y: 0)],
+    );
+    final back = SceneElementCodec.decode(SceneElementCodec.encode(e))
+        as FreehandElement;
+    expect(back.penKind, PenKind.highlighter);
+
+    final old = SceneElementCodec.decode({
+      'id': 'legacy',
+      'kind': 'freehand',
+      'zOrder': 0,
+      'points': [1.0, 2.0, 0.5],
+      'pointSim': [false],
+      'color': 0xFF000000,
+      'size': 2.0,
+    }) as FreehandElement;
+    expect(old.penKind, PenKind.ballpoint);
+
+    final unknown = SceneElementCodec.decode({
+      'id': 'future',
+      'kind': 'freehand',
+      'zOrder': 0,
+      'points': [1.0, 2.0, 0.5],
+      'pointSim': [false],
+      'color': 0xFF000000,
+      'size': 2.0,
+      'penKind': 'crayon',
+    }) as FreehandElement;
+    expect(unknown.penKind, PenKind.ballpoint,
+        reason: 'a pen this build does not know draws as a plain pen');
+  });
+
   test('decode tolerates missing optional fields with defaults', () {
     final el = SceneElementCodec.decode({
       'id': 'x',

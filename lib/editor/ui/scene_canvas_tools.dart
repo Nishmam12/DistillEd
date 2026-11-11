@@ -319,11 +319,27 @@ extension _SceneCanvasTools on _SceneCanvasState {
       color: tool.color,
       size: tool.size,
       opacity: tool.opacity,
+      penKind: tool.penKind,
       recordingId: stamp?.recordingId,
       audioOffsetMs: stamp?.audioOffsetMs,
     );
     _history.push(AddElementsCommand([stroke]));
-    _maybeResolveGesture(stroke, upMs ?? points.last.t ?? 0);
+
+    // Held at the end of a line: straighten it, as its own undo step so one
+    // undo brings back the line as drawn. Needs no model, and a straightened
+    // line is not then offered to the shape model as well.
+    final up = upMs ?? points.last.t ?? 0;
+    final straight = straightenedLine(points, up,
+        zoom: ref.read(viewportProvider).zoom);
+    if (straight != null) {
+      _history.push(ReplaceElementsCommand(
+        removed: [stroke],
+        added: [stroke.copyWith(points: straight)],
+      ));
+      unawaited(HapticFeedback.selectionClick());
+      return;
+    }
+    _maybeResolveGesture(stroke, up);
   }
 
   // ---- ink gestures ---------------------------------------------------------
@@ -360,6 +376,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
     switch (action) {
       case SnapToShape(:final shape):
         _history.push(ReplaceElementsCommand(removed: [stroke], added: [shape]));
+        unawaited(HapticFeedback.selectionClick());
       case ScribbleErase(:final victims):
         _history.push(RemoveElementsCommand([
           stroke,

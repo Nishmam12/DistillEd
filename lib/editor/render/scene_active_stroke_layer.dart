@@ -8,6 +8,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../domain/model/element_style.dart';
 import '../../domain/model/stroke_point.dart';
 import 'freehand_path.dart';
 
@@ -18,6 +19,7 @@ class ActiveStroke extends ChangeNotifier {
   int _color = 0xFF000000; // ARGB
   double _size = 0;
   double _opacity = 1.0;
+  PenKind _kind = PenKind.ballpoint;
 
   /// The live points. Owned by this object — read, do not keep or mutate; use
   /// [take] to receive them for good.
@@ -29,6 +31,7 @@ class ActiveStroke extends ChangeNotifier {
   int get color => _color;
   double get size => _size;
   double get opacity => _opacity;
+  PenKind get kind => _kind;
 
   /// Starts a stroke at [first], replacing whatever was in progress.
   void begin(
@@ -36,11 +39,13 @@ class ActiveStroke extends ChangeNotifier {
     required int color,
     required double size,
     double opacity = 1.0,
+    PenKind kind = PenKind.ballpoint,
   }) {
     _points = [first];
     _color = color;
     _size = size;
     _opacity = opacity;
+    _kind = kind;
     notifyListeners();
   }
 
@@ -76,15 +81,11 @@ class SceneActiveStrokeLayer extends CustomPainter {
   @override
   void paint(Canvas canvas, Size canvasSize) {
     if (stroke.isEmpty) return;
-    final path =
-        FreehandPath.build(stroke.points, stroke.size, isComplete: false);
+    final path = FreehandPath.build(stroke.points, stroke.size,
+        isComplete: false, kind: stroke.kind);
     if (path == null) return;
     canvas.drawPath(
-      path,
-      Paint()
-        ..color = Color(stroke.color).withValues(alpha: stroke.opacity)
-        ..style = PaintingStyle.fill,
-    );
+        path, FreehandPath.paintFor(stroke.kind, stroke.color, stroke.opacity));
   }
 
   @override

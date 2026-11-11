@@ -16,7 +16,16 @@ const List<(EditorTool, IconData)> kEditorTools = [
   (EditorTool.shape, PhosphorIconsRegular.shapes),
   (EditorTool.eraser, PhosphorIconsRegular.eraser),
   (EditorTool.text, PhosphorIconsRegular.textT),
-  (EditorTool.laser, PhosphorIconsRegular.highlighter),
+  // Not the highlighter glyph: that is a pen type now (see [kPenKinds]).
+  (EditorTool.laser, Icons.flare),
+];
+
+/// The pen types offered in the pen panel, in order, with their icon and name.
+const List<(PenKind, IconData, String)> kPenKinds = [
+  (PenKind.ballpoint, Icons.edit_outlined, 'Pen'),
+  (PenKind.fountain, Icons.history_edu_outlined, 'Fountain pen'),
+  (PenKind.pencil, PhosphorIconsRegular.pencilSimple, 'Pencil'),
+  (PenKind.highlighter, PhosphorIconsRegular.highlighter, 'Highlighter'),
 ];
 
 // Line and arrow are deliberately not chips here — they're reachable as their

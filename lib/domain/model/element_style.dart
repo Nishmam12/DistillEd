@@ -15,3 +15,20 @@ enum Arrowhead { none, triangle, dot, bar }
 
 /// Horizontal text alignment.
 enum TextAlignKind { left, center, right }
+
+/// Which pen drew a freehand stroke, which decides how it looks. Stored by
+/// position like the enums above, so append-only: a stroke saved before this
+/// existed reads back as index 0, [ballpoint], which is how it always drew.
+enum PenKind {
+  /// Smooth ink with moderate pressure response. The original pen.
+  ballpoint,
+
+  /// Wide, see-through, constant width: marks over writing without hiding it.
+  highlighter,
+
+  /// Strong thick-thin from pressure (or speed, without a pressure pen).
+  fountain,
+
+  /// Grainy, slightly lighter line, like graphite on paper.
+  pencil,
+}

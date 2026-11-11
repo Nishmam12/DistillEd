@@ -42,6 +42,36 @@ void main() {
       expect(f.points[1].simulatePressure, false);
     });
 
+    test('freehand keeps which pen drew it', () {
+      for (final kind in PenKind.values) {
+        final e = FreehandElement(
+          id: 'p',
+          zOrder: 0,
+          color: 0xFF000000,
+          size: 4,
+          penKind: kind,
+          points: const [StrokePoint(x: 0, y: 0), StrokePoint(x: 5, y: 5)],
+        );
+        final back = SceneElementRecordMapper.fromRecord(
+                SceneElementRecordMapper.toRecord(e, notebookId: 1, pageId: 1))
+            as FreehandElement;
+        expect(back.penKind, kind);
+      }
+    });
+
+    test('a stroke stored before pen types existed reads back as ballpoint', () {
+      const e = FreehandElement(
+        id: 'old',
+        zOrder: 0,
+        color: 0xFF000000,
+        size: 4,
+        points: [StrokePoint(x: 0, y: 0)],
+      );
+      final record =
+          SceneElementRecordMapper.toRecord(e, notebookId: 1, pageId: 1);
+      expect(record.penKind, PenKind.ballpoint);
+    });
+
     test('freehand preserves per-point capture timestamps (t), mixed with null',
         () {
       const e = FreehandElement(

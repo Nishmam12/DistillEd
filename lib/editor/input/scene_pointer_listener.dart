@@ -49,6 +49,11 @@ class ScenePointerListener extends StatefulWidget {
   /// which is unchanged: a touch rejected as a palm neither draws nor scrolls.
   final bool fingerPans;
 
+  /// Two or three fingers tapped together and lifted, without moving: the
+  /// count is passed (2 = undo, 3 = redo, by convention). Never fires while a
+  /// pen is on the page or for a touch rejected as a palm.
+  final ValueChanged<int>? onMultiFingerTap;
+
   const ScenePointerListener({
     super.key,
     required this.child,
@@ -60,6 +65,7 @@ class ScenePointerListener extends StatefulWidget {
     this.onViewportUpdate,
     this.isHandTool = false,
     this.fingerPans = false,
+    this.onMultiFingerTap,
   });
 
   @override
@@ -96,6 +102,35 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
   /// on. They never reach the host as a down, move or up.
   final Set<int> _panPointers = {};
   bool _isMultiTouch = false;
+
+  // ---- multi-finger tap ----
+  /// Longest a tap may last, first finger down to last finger up.
+  static const Duration _tapMaxDuration = Duration(milliseconds: 300);
+
+  /// How far a finger may drift and still be tapping, in logical pixels.
+  static const double _tapSlop = 12;
+
+  Duration? _tapStart;
+  int _tapFingers = 0;
+  bool _tapSpoiled = false;
+  final Map<int, Offset> _tapDownAt = {};
+
+  /// A new touch sequence begins: the first pointer of it went down.
+  void _beginTapTracking(PointerEvent event) {
+    _tapStart = event.timeStamp;
+    _tapFingers = 0;
+    _tapSpoiled = false;
+    _tapDownAt.clear();
+  }
+
+  /// The last pointer of a sequence lifted: report a tap if it was one.
+  void _endTapTracking(PointerEvent event) {
+    final start = _tapStart;
+    _tapStart = null;
+    if (start == null || _tapSpoiled || _tapFingers < 2) return;
+    if (event.timeStamp - start > _tapMaxDuration) return;
+    widget.onMultiFingerTap?.call(_tapFingers.clamp(2, 3));
+  }
   Duration? _lastStylusActivity;
 
   bool _shouldRejectTouch(PointerEvent event) {
@@ -111,6 +146,7 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
   }
 
   void _rejectActiveTouchPointers() {
+    _tapSpoiled = true;
     final touchIds = _activePointers.keys
         .where((id) => !_activeStylusPointers.contains(id))
         .toList();
@@ -169,12 +205,22 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
         }
 
         if (_shouldRejectTouch(event)) {
+          _tapSpoiled = true;
           _rejectedPointers.add(event.pointer);
           return;
         }
 
         final prevCount = _activePointers.length;
         _activePointers[event.pointer] = event.localPosition;
+        if (prevCount == 0) _beginTapTracking(event);
+        if (event.kind == PointerDeviceKind.touch) {
+          _tapDownAt[event.pointer] = event.localPosition;
+          if (_activePointers.length > _tapFingers) {
+            _tapFingers = _activePointers.length;
+          }
+        } else {
+          _tapSpoiled = true; // a pen is writing, not tapping
+        }
 
         if (_activePointers.length >= 2 && !_isMultiTouch) {
           _isMultiTouch = true;
@@ -203,6 +249,10 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
         if (oldPos == null) return;
 
         final newPos = event.localPosition;
+        final tapAt = _tapDownAt[event.pointer];
+        if (tapAt != null && (newPos - tapAt).distance > _tapSlop) {
+          _tapSpoiled = true;
+        }
 
         if (_isMultiTouch ||
             widget.isHandTool ||
@@ -228,7 +278,10 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
         // Remember before resetting: the last finger of a pinch must not reach
         // the host as an up without a down.
         final wasMultiTouch = _isMultiTouch;
-        if (_activePointers.isEmpty) _isMultiTouch = false;
+        if (_activePointers.isEmpty) {
+          _isMultiTouch = false;
+          _endTapTracking(event);
+        }
 
         if (wasMultiTouch || panned) return;
         if (widget.isHandTool) return;

@@ -99,6 +99,59 @@ bool isHoldToSnap(
   return screenSize >= 40 && _pathLength(points) * zoom >= 60;
 }
 
+/// How far a point may stray from the straight line between a stroke's ends,
+/// as a share of that line's length, for the stroke to count as a line.
+const double _kStraightTolerance = 0.06;
+
+/// The stroke as a clean straight line when it was meant as one: it ended with
+/// a deliberate hold ([isHoldToSnap]) and every point stays close to the line
+/// between its ends, without doubling back. Null otherwise, and the stroke is
+/// left as drawn.
+///
+/// Needs no model: a line is the one shape its own geometry proves. The result
+/// keeps the stroke's average pressure, so it is as thick as it was drawn.
+List<StrokePoint>? straightenedLine(
+  List<StrokePoint> points,
+  int upMs, {
+  double zoom = 1,
+  int holdMs = kSnapHoldMs,
+}) {
+  if (!isHoldToSnap(points, upMs, zoom: zoom, holdMs: holdMs)) return null;
+  final a = points.first;
+  final b = points.last;
+  final length = _distance(a, b);
+  if (length * zoom < 40) return null;
+  if (_pathLength(points) > length * 1.25) return null;
+
+  final ux = (b.x - a.x) / length;
+  final uy = (b.y - a.y) / length;
+  final allowed = math.max(_kStraightTolerance * length, 4 / zoom);
+  for (final p in points) {
+    final off = ((p.x - a.x) * uy - (p.y - a.y) * ux).abs();
+    if (off > allowed) return null;
+  }
+
+  var pressure = 0.0;
+  for (final p in points) {
+    pressure += p.pressure;
+  }
+  pressure /= points.length;
+
+  final n = math.max(2, math.min(points.length, 32));
+  final t0 = a.t;
+  final t1 = b.t;
+  return [
+    for (var i = 0; i < n; i++)
+      StrokePoint(
+        x: a.x + (b.x - a.x) * i / (n - 1),
+        y: a.y + (b.y - a.y) * i / (n - 1),
+        pressure: pressure,
+        simulatePressure: a.simulatePressure,
+        t: t0 == null || t1 == null ? null : (t0 + (t1 - t0) * i / (n - 1)).round(),
+      ),
+  ];
+}
+
 /// The shape an ML Kit shape label stands for, as the geometry a
 /// `SceneShapeElement` takes.
 typedef SnapGeometry = ({ShapeType type, List<double> geometry});

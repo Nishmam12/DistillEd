@@ -7,6 +7,7 @@ import 'package:margo/domain/commands/scene_command.dart';
 import 'package:margo/domain/model/scene_element.dart';
 import 'package:margo/editor/state/editor_tool_controller.dart';
 import 'package:margo/editor/state/history_controller.dart';
+import 'package:margo/editor/state/pen_presets.dart';
 import 'package:margo/editor/state/scene_controller.dart';
 import 'package:margo/features/notebook/presentation/controls/editor_bottom_bar.dart';
 import 'package:margo/editor/ui/controls/undo_redo_buttons.dart';
@@ -46,11 +47,13 @@ void main() {
       await pumpBar(tester, onImport: () {});
 
       expect(find.byIcon(PhosphorIconsRegular.lasso), findsOneWidget);
-      expect(find.byIcon(PhosphorIconsRegular.pencilSimple), findsOneWidget);
+      // The pen tool, plus the pencil among the saved pens beside it.
+      expect(find.byIcon(PhosphorIconsRegular.pencilSimple), findsWidgets);
       expect(find.byIcon(PhosphorIconsRegular.shapes), findsOneWidget);
       expect(find.byIcon(PhosphorIconsRegular.textT), findsOneWidget);
       expect(find.byIcon(PhosphorIconsRegular.eraser), findsOneWidget);
-      expect(find.byIcon(PhosphorIconsRegular.highlighter), findsOneWidget);
+      // The laser has its own glyph; the highlighter one is a pen type now.
+      expect(find.byIcon(Icons.flare), findsOneWidget);
       expect(find.byIcon(PhosphorIconsRegular.image), findsOneWidget);
     });
 
@@ -226,4 +229,49 @@ void main() {
   // separate floating overlay (see EditorToolOptionsOverlay) so opening it
   // never resizes the bar/canvas. Its own behaviour is covered in
   // editor_tool_options_overlay_test.dart.
+
+  group('saved pens', () {
+    testWidgets('tapping one switches to the pen drawing with it',
+        (tester) async {
+      final container = await pumpBar(tester);
+      container.read(editorToolProvider.notifier).setTool(EditorTool.eraser);
+      await tester.pump();
+
+      final highlighter = kDefaultPenPresets
+          .indexWhere((p) => p.kind == PenKind.highlighter);
+      await tester.tap(find.byKey(ValueKey('penPreset-$highlighter')));
+      await tester.pump();
+
+      final state = container.read(editorToolProvider);
+      expect(state.tool, EditorTool.pen);
+      expect(state.penKind, PenKind.highlighter);
+      expect(state.color, kDefaultPenPresets[highlighter].color);
+    });
+
+    testWidgets('+ saves the pen in use', (tester) async {
+      final container = await pumpBar(tester);
+      container.read(editorToolProvider.notifier)
+        ..setPenKind(PenKind.fountain)
+        ..setColor(0xFFE03131);
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('Save this pen'));
+      await tester.pump();
+
+      expect(container.read(penPresetsProvider).last.color, 0xFFE03131);
+      expect(container.read(penPresetsProvider).last.kind, PenKind.fountain);
+    });
+
+    testWidgets('long-press offers Remove', (tester) async {
+      final container = await pumpBar(tester);
+      final before = container.read(penPresetsProvider).length;
+
+      await tester.longPress(find.byKey(const ValueKey('penPreset-0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(penPresetsProvider).length, before - 1);
+    });
+  });
 }

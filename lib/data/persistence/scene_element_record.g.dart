@@ -23,11 +23,7 @@ const SceneElementRecordSchema = CollectionSchema(
       name: r'audioOffsetMs',
       type: IsarType.long,
     ),
-    r'color': PropertySchema(
-      id: 1,
-      name: r'color',
-      type: IsarType.long,
-    ),
+    r'color': PropertySchema(id: 1, name: r'color', type: IsarType.long),
     r'containerId': PropertySchema(
       id: 2,
       name: r'containerId',
@@ -39,11 +35,7 @@ const SceneElementRecordSchema = CollectionSchema(
       type: IsarType.byte,
       enumMap: _SceneElementRecordedgesEnumValueMap,
     ),
-    r'elbowed': PropertySchema(
-      id: 4,
-      name: r'elbowed',
-      type: IsarType.bool,
-    ),
+    r'elbowed': PropertySchema(id: 4, name: r'elbowed', type: IsarType.bool),
     r'elementId': PropertySchema(
       id: 5,
       name: r'elementId',
@@ -86,36 +78,12 @@ const SceneElementRecordSchema = CollectionSchema(
       name: r'geometryData',
       type: IsarType.doubleList,
     ),
-    r'groupId': PropertySchema(
-      id: 13,
-      name: r'groupId',
-      type: IsarType.string,
-    ),
-    r'hasFill': PropertySchema(
-      id: 14,
-      name: r'hasFill',
-      type: IsarType.bool,
-    ),
-    r'isBold': PropertySchema(
-      id: 15,
-      name: r'isBold',
-      type: IsarType.bool,
-    ),
-    r'isEraser': PropertySchema(
-      id: 16,
-      name: r'isEraser',
-      type: IsarType.bool,
-    ),
-    r'isItalic': PropertySchema(
-      id: 17,
-      name: r'isItalic',
-      type: IsarType.bool,
-    ),
-    r'isLocked': PropertySchema(
-      id: 18,
-      name: r'isLocked',
-      type: IsarType.bool,
-    ),
+    r'groupId': PropertySchema(id: 13, name: r'groupId', type: IsarType.string),
+    r'hasFill': PropertySchema(id: 14, name: r'hasFill', type: IsarType.bool),
+    r'isBold': PropertySchema(id: 15, name: r'isBold', type: IsarType.bool),
+    r'isEraser': PropertySchema(id: 16, name: r'isEraser', type: IsarType.bool),
+    r'isItalic': PropertySchema(id: 17, name: r'isItalic', type: IsarType.bool),
+    r'isLocked': PropertySchema(id: 18, name: r'isLocked', type: IsarType.bool),
     r'kind': PropertySchema(
       id: 19,
       name: r'kind',
@@ -127,106 +95,89 @@ const SceneElementRecordSchema = CollectionSchema(
       name: r'notebookId',
       type: IsarType.long,
     ),
-    r'opacity': PropertySchema(
-      id: 21,
-      name: r'opacity',
-      type: IsarType.double,
-    ),
-    r'pageId': PropertySchema(
-      id: 22,
-      name: r'pageId',
-      type: IsarType.long,
+    r'opacity': PropertySchema(id: 21, name: r'opacity', type: IsarType.double),
+    r'pageId': PropertySchema(id: 22, name: r'pageId', type: IsarType.long),
+    r'penKind': PropertySchema(
+      id: 23,
+      name: r'penKind',
+      type: IsarType.byte,
+      enumMap: _SceneElementRecordpenKindEnumValueMap,
     ),
     r'pointSim': PropertySchema(
-      id: 23,
+      id: 24,
       name: r'pointSim',
       type: IsarType.boolList,
     ),
-    r'pointT': PropertySchema(
-      id: 24,
-      name: r'pointT',
-      type: IsarType.longList,
-    ),
+    r'pointT': PropertySchema(id: 25, name: r'pointT', type: IsarType.longList),
     r'points': PropertySchema(
-      id: 25,
+      id: 26,
       name: r'points',
       type: IsarType.doubleList,
     ),
     r'recordingId': PropertySchema(
-      id: 26,
+      id: 27,
       name: r'recordingId',
       type: IsarType.long,
     ),
     r'relativeImagePath': PropertySchema(
-      id: 27,
+      id: 28,
       name: r'relativeImagePath',
       type: IsarType.string,
     ),
     r'rotation': PropertySchema(
-      id: 28,
+      id: 29,
       name: r'rotation',
       type: IsarType.double,
     ),
     r'roughness': PropertySchema(
-      id: 29,
+      id: 30,
       name: r'roughness',
       type: IsarType.double,
     ),
-    r'seed': PropertySchema(
-      id: 30,
-      name: r'seed',
-      type: IsarType.long,
-    ),
+    r'seed': PropertySchema(id: 31, name: r'seed', type: IsarType.long),
     r'shapeType': PropertySchema(
-      id: 31,
+      id: 32,
       name: r'shapeType',
       type: IsarType.byte,
       enumMap: _SceneElementRecordshapeTypeEnumValueMap,
     ),
     r'sourceDescription': PropertySchema(
-      id: 32,
+      id: 33,
       name: r'sourceDescription',
       type: IsarType.string,
     ),
     r'startArrowhead': PropertySchema(
-      id: 33,
+      id: 34,
       name: r'startArrowhead',
       type: IsarType.byte,
       enumMap: _SceneElementRecordstartArrowheadEnumValueMap,
     ),
     r'startBindingId': PropertySchema(
-      id: 34,
+      id: 35,
       name: r'startBindingId',
       type: IsarType.string,
     ),
     r'strokeStyle': PropertySchema(
-      id: 35,
+      id: 36,
       name: r'strokeStyle',
       type: IsarType.byte,
       enumMap: _SceneElementRecordstrokeStyleEnumValueMap,
     ),
     r'strokeWidth': PropertySchema(
-      id: 36,
+      id: 37,
       name: r'strokeWidth',
       type: IsarType.double,
     ),
-    r'text': PropertySchema(
-      id: 37,
-      name: r'text',
-      type: IsarType.string,
-    ),
+    r'text': PropertySchema(id: 38, name: r'text', type: IsarType.string),
     r'textAlign': PropertySchema(
-      id: 38,
+      id: 39,
       name: r'textAlign',
       type: IsarType.byte,
       enumMap: _SceneElementRecordtextAlignEnumValueMap,
     ),
-    r'zOrder': PropertySchema(
-      id: 39,
-      name: r'zOrder',
-      type: IsarType.long,
-    )
+    r'zOrder': PropertySchema(id: 40, name: r'zOrder', type: IsarType.long),
   },
+
   estimateSize: _sceneElementRecordEstimateSize,
   serialize: _sceneElementRecordSerialize,
   deserialize: _sceneElementRecordDeserialize,
@@ -243,7 +194,7 @@ const SceneElementRecordSchema = CollectionSchema(
           name: r'pageId',
           type: IndexType.value,
           caseSensitive: false,
-        )
+        ),
       ],
     ),
     r'notebookId': IndexSchema(
@@ -256,12 +207,13 @@ const SceneElementRecordSchema = CollectionSchema(
           name: r'notebookId',
           type: IndexType.value,
           caseSensitive: false,
-        )
+        ),
       ],
-    )
+    ),
   },
   links: {},
   embeddedSchemas: {},
+
   getId: _sceneElementRecordGetId,
   getLinks: _sceneElementRecordGetLinks,
   attach: _sceneElementRecordAttach,
@@ -319,23 +271,24 @@ void _sceneElementRecordSerialize(
   writer.writeLong(offsets[20], object.notebookId);
   writer.writeDouble(offsets[21], object.opacity);
   writer.writeLong(offsets[22], object.pageId);
-  writer.writeBoolList(offsets[23], object.pointSim);
-  writer.writeLongList(offsets[24], object.pointT);
-  writer.writeDoubleList(offsets[25], object.points);
-  writer.writeLong(offsets[26], object.recordingId);
-  writer.writeString(offsets[27], object.relativeImagePath);
-  writer.writeDouble(offsets[28], object.rotation);
-  writer.writeDouble(offsets[29], object.roughness);
-  writer.writeLong(offsets[30], object.seed);
-  writer.writeByte(offsets[31], object.shapeType.index);
-  writer.writeString(offsets[32], object.sourceDescription);
-  writer.writeByte(offsets[33], object.startArrowhead.index);
-  writer.writeString(offsets[34], object.startBindingId);
-  writer.writeByte(offsets[35], object.strokeStyle.index);
-  writer.writeDouble(offsets[36], object.strokeWidth);
-  writer.writeString(offsets[37], object.text);
-  writer.writeByte(offsets[38], object.textAlign.index);
-  writer.writeLong(offsets[39], object.zOrder);
+  writer.writeByte(offsets[23], object.penKind.index);
+  writer.writeBoolList(offsets[24], object.pointSim);
+  writer.writeLongList(offsets[25], object.pointT);
+  writer.writeDoubleList(offsets[26], object.points);
+  writer.writeLong(offsets[27], object.recordingId);
+  writer.writeString(offsets[28], object.relativeImagePath);
+  writer.writeDouble(offsets[29], object.rotation);
+  writer.writeDouble(offsets[30], object.roughness);
+  writer.writeLong(offsets[31], object.seed);
+  writer.writeByte(offsets[32], object.shapeType.index);
+  writer.writeString(offsets[33], object.sourceDescription);
+  writer.writeByte(offsets[34], object.startArrowhead.index);
+  writer.writeString(offsets[35], object.startBindingId);
+  writer.writeByte(offsets[36], object.strokeStyle.index);
+  writer.writeDouble(offsets[37], object.strokeWidth);
+  writer.writeString(offsets[38], object.text);
+  writer.writeByte(offsets[39], object.textAlign.index);
+  writer.writeLong(offsets[40], object.zOrder);
 }
 
 SceneElementRecord _sceneElementRecordDeserialize(
@@ -350,16 +303,20 @@ SceneElementRecord _sceneElementRecordDeserialize(
   object.containerId = reader.readString(offsets[2]);
   object.edges =
       _SceneElementRecordedgesValueEnumMap[reader.readByteOrNull(offsets[3])] ??
-          EdgeStyle.sharp;
+      EdgeStyle.sharp;
   object.elbowed = reader.readBool(offsets[4]);
   object.elementId = reader.readString(offsets[5]);
-  object.endArrowhead = _SceneElementRecordendArrowheadValueEnumMap[
-          reader.readByteOrNull(offsets[6])] ??
+  object.endArrowhead =
+      _SceneElementRecordendArrowheadValueEnumMap[reader.readByteOrNull(
+        offsets[6],
+      )] ??
       Arrowhead.none;
   object.endBindingId = reader.readString(offsets[7]);
   object.fillColor = reader.readLong(offsets[8]);
-  object.fillStyle = _SceneElementRecordfillStyleValueEnumMap[
-          reader.readByteOrNull(offsets[9])] ??
+  object.fillStyle =
+      _SceneElementRecordfillStyleValueEnumMap[reader.readByteOrNull(
+        offsets[9],
+      )] ??
       FillStyle.hachure;
   object.fontFamily = reader.readString(offsets[10]);
   object.fontSize = reader.readDouble(offsets[11]);
@@ -373,35 +330,48 @@ SceneElementRecord _sceneElementRecordDeserialize(
   object.isLocked = reader.readBool(offsets[18]);
   object.kind =
       _SceneElementRecordkindValueEnumMap[reader.readByteOrNull(offsets[19])] ??
-          SceneElementKind.freehand;
+      SceneElementKind.freehand;
   object.notebookId = reader.readLong(offsets[20]);
   object.opacity = reader.readDouble(offsets[21]);
   object.pageId = reader.readLong(offsets[22]);
-  object.pointSim = reader.readBoolList(offsets[23]) ?? [];
-  object.pointT = reader.readLongList(offsets[24]) ?? [];
-  object.points = reader.readDoubleList(offsets[25]) ?? [];
-  object.recordingId = reader.readLongOrNull(offsets[26]);
-  object.relativeImagePath = reader.readString(offsets[27]);
-  object.rotation = reader.readDouble(offsets[28]);
-  object.roughness = reader.readDouble(offsets[29]);
-  object.seed = reader.readLong(offsets[30]);
-  object.shapeType = _SceneElementRecordshapeTypeValueEnumMap[
-          reader.readByteOrNull(offsets[31])] ??
+  object.penKind =
+      _SceneElementRecordpenKindValueEnumMap[reader.readByteOrNull(
+        offsets[23],
+      )] ??
+      PenKind.ballpoint;
+  object.pointSim = reader.readBoolList(offsets[24]) ?? [];
+  object.pointT = reader.readLongList(offsets[25]) ?? [];
+  object.points = reader.readDoubleList(offsets[26]) ?? [];
+  object.recordingId = reader.readLongOrNull(offsets[27]);
+  object.relativeImagePath = reader.readString(offsets[28]);
+  object.rotation = reader.readDouble(offsets[29]);
+  object.roughness = reader.readDouble(offsets[30]);
+  object.seed = reader.readLong(offsets[31]);
+  object.shapeType =
+      _SceneElementRecordshapeTypeValueEnumMap[reader.readByteOrNull(
+        offsets[32],
+      )] ??
       ShapeType.line;
-  object.sourceDescription = reader.readString(offsets[32]);
-  object.startArrowhead = _SceneElementRecordstartArrowheadValueEnumMap[
-          reader.readByteOrNull(offsets[33])] ??
+  object.sourceDescription = reader.readString(offsets[33]);
+  object.startArrowhead =
+      _SceneElementRecordstartArrowheadValueEnumMap[reader.readByteOrNull(
+        offsets[34],
+      )] ??
       Arrowhead.none;
-  object.startBindingId = reader.readString(offsets[34]);
-  object.strokeStyle = _SceneElementRecordstrokeStyleValueEnumMap[
-          reader.readByteOrNull(offsets[35])] ??
+  object.startBindingId = reader.readString(offsets[35]);
+  object.strokeStyle =
+      _SceneElementRecordstrokeStyleValueEnumMap[reader.readByteOrNull(
+        offsets[36],
+      )] ??
       StrokeStyle.solid;
-  object.strokeWidth = reader.readDouble(offsets[36]);
-  object.text = reader.readString(offsets[37]);
-  object.textAlign = _SceneElementRecordtextAlignValueEnumMap[
-          reader.readByteOrNull(offsets[38])] ??
+  object.strokeWidth = reader.readDouble(offsets[37]);
+  object.text = reader.readString(offsets[38]);
+  object.textAlign =
+      _SceneElementRecordtextAlignValueEnumMap[reader.readByteOrNull(
+        offsets[39],
+      )] ??
       TextAlignKind.left;
-  object.zOrder = reader.readLong(offsets[39]);
+  object.zOrder = reader.readLong(offsets[40]);
   return object;
 }
 
@@ -419,25 +389,31 @@ P _sceneElementRecordDeserializeProp<P>(
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
-      return (_SceneElementRecordedgesValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          EdgeStyle.sharp) as P;
+      return (_SceneElementRecordedgesValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              EdgeStyle.sharp)
+          as P;
     case 4:
       return (reader.readBool(offset)) as P;
     case 5:
       return (reader.readString(offset)) as P;
     case 6:
-      return (_SceneElementRecordendArrowheadValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          Arrowhead.none) as P;
+      return (_SceneElementRecordendArrowheadValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              Arrowhead.none)
+          as P;
     case 7:
       return (reader.readString(offset)) as P;
     case 8:
       return (reader.readLong(offset)) as P;
     case 9:
-      return (_SceneElementRecordfillStyleValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          FillStyle.hachure) as P;
+      return (_SceneElementRecordfillStyleValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              FillStyle.hachure)
+          as P;
     case 10:
       return (reader.readString(offset)) as P;
     case 11:
@@ -457,9 +433,11 @@ P _sceneElementRecordDeserializeProp<P>(
     case 18:
       return (reader.readBool(offset)) as P;
     case 19:
-      return (_SceneElementRecordkindValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          SceneElementKind.freehand) as P;
+      return (_SceneElementRecordkindValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              SceneElementKind.freehand)
+          as P;
     case 20:
       return (reader.readLong(offset)) as P;
     case 21:
@@ -467,56 +445,66 @@ P _sceneElementRecordDeserializeProp<P>(
     case 22:
       return (reader.readLong(offset)) as P;
     case 23:
-      return (reader.readBoolList(offset) ?? []) as P;
+      return (_SceneElementRecordpenKindValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              PenKind.ballpoint)
+          as P;
     case 24:
-      return (reader.readLongList(offset) ?? []) as P;
+      return (reader.readBoolList(offset) ?? []) as P;
     case 25:
-      return (reader.readDoubleList(offset) ?? []) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 26:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readDoubleList(offset) ?? []) as P;
     case 27:
-      return (reader.readString(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 28:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 29:
       return (reader.readDouble(offset)) as P;
     case 30:
-      return (reader.readLong(offset)) as P;
-    case 31:
-      return (_SceneElementRecordshapeTypeValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          ShapeType.line) as P;
-    case 32:
-      return (reader.readString(offset)) as P;
-    case 33:
-      return (_SceneElementRecordstartArrowheadValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          Arrowhead.none) as P;
-    case 34:
-      return (reader.readString(offset)) as P;
-    case 35:
-      return (_SceneElementRecordstrokeStyleValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          StrokeStyle.solid) as P;
-    case 36:
       return (reader.readDouble(offset)) as P;
-    case 37:
+    case 31:
+      return (reader.readLong(offset)) as P;
+    case 32:
+      return (_SceneElementRecordshapeTypeValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              ShapeType.line)
+          as P;
+    case 33:
       return (reader.readString(offset)) as P;
+    case 34:
+      return (_SceneElementRecordstartArrowheadValueEnumMap[reader
+                  .readByteOrNull(offset)] ??
+              Arrowhead.none)
+          as P;
+    case 35:
+      return (reader.readString(offset)) as P;
+    case 36:
+      return (_SceneElementRecordstrokeStyleValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              StrokeStyle.solid)
+          as P;
+    case 37:
+      return (reader.readDouble(offset)) as P;
     case 38:
-      return (_SceneElementRecordtextAlignValueEnumMap[
-              reader.readByteOrNull(offset)] ??
-          TextAlignKind.left) as P;
+      return (reader.readString(offset)) as P;
     case 39:
+      return (_SceneElementRecordtextAlignValueEnumMap[reader.readByteOrNull(
+                offset,
+              )] ??
+              TextAlignKind.left)
+          as P;
+    case 40:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
 }
 
-const _SceneElementRecordedgesEnumValueMap = {
-  'sharp': 0,
-  'round': 1,
-};
+const _SceneElementRecordedgesEnumValueMap = {'sharp': 0, 'round': 1};
 const _SceneElementRecordedgesValueEnumMap = {
   0: EdgeStyle.sharp,
   1: EdgeStyle.round,
@@ -556,6 +544,18 @@ const _SceneElementRecordkindValueEnumMap = {
   2: SceneElementKind.text,
   3: SceneElementKind.image,
   4: SceneElementKind.frame,
+};
+const _SceneElementRecordpenKindEnumValueMap = {
+  'ballpoint': 0,
+  'highlighter': 1,
+  'fountain': 2,
+  'pencil': 3,
+};
+const _SceneElementRecordpenKindValueEnumMap = {
+  0: PenKind.ballpoint,
+  1: PenKind.highlighter,
+  2: PenKind.fountain,
+  3: PenKind.pencil,
 };
 const _SceneElementRecordshapeTypeEnumValueMap = {
   'line': 0,
@@ -617,12 +617,16 @@ Id _sceneElementRecordGetId(SceneElementRecord object) {
 }
 
 List<IsarLinkBase<dynamic>> _sceneElementRecordGetLinks(
-    SceneElementRecord object) {
+  SceneElementRecord object,
+) {
   return [];
 }
 
 void _sceneElementRecordAttach(
-    IsarCollection<dynamic> col, Id id, SceneElementRecord object) {
+  IsarCollection<dynamic> col,
+  Id id,
+  SceneElementRecord object,
+) {
   object.id = id;
 }
 
@@ -635,7 +639,7 @@ extension SceneElementRecordQueryWhereSort
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhere>
-      anyPageId() {
+  anyPageId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         const IndexWhereClause.any(indexName: r'pageId'),
@@ -644,7 +648,7 @@ extension SceneElementRecordQueryWhereSort
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhere>
-      anyNotebookId() {
+  anyNotebookId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         const IndexWhereClause.any(indexName: r'notebookId'),
@@ -656,17 +660,14 @@ extension SceneElementRecordQueryWhereSort
 extension SceneElementRecordQueryWhere
     on QueryBuilder<SceneElementRecord, SceneElementRecord, QWhereClause> {
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      idEqualTo(Id id) {
+  idEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: id,
-        upper: id,
-      ));
+      return query.addWhereClause(IdWhereClause.between(lower: id, upper: id));
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      idNotEqualTo(Id id) {
+  idNotEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -689,7 +690,7 @@ extension SceneElementRecordQueryWhere
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      idGreaterThan(Id id, {bool include = false}) {
+  idGreaterThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: id, includeLower: include),
@@ -698,7 +699,7 @@ extension SceneElementRecordQueryWhere
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      idLessThan(Id id, {bool include = false}) {
+  idLessThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: id, includeUpper: include),
@@ -707,205 +708,221 @@ extension SceneElementRecordQueryWhere
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      idBetween(
+  idBetween(
     Id lowerId,
     Id upperId, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: lowerId,
-        includeLower: includeLower,
-        upper: upperId,
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IdWhereClause.between(
+          lower: lowerId,
+          includeLower: includeLower,
+          upper: upperId,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      pageIdEqualTo(int pageId) {
+  pageIdEqualTo(int pageId) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'pageId',
-        value: [pageId],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'pageId', value: [pageId]),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      pageIdNotEqualTo(int pageId) {
+  pageIdNotEqualTo(int pageId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'pageId',
-              lower: [],
-              upper: [pageId],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'pageId',
-              lower: [pageId],
-              includeLower: false,
-              upper: [],
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'pageId',
+                lower: [],
+                upper: [pageId],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'pageId',
+                lower: [pageId],
+                includeLower: false,
+                upper: [],
+              ),
+            );
       } else {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'pageId',
-              lower: [pageId],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'pageId',
-              lower: [],
-              upper: [pageId],
-              includeUpper: false,
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'pageId',
+                lower: [pageId],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'pageId',
+                lower: [],
+                upper: [pageId],
+                includeUpper: false,
+              ),
+            );
       }
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      pageIdGreaterThan(
-    int pageId, {
-    bool include = false,
-  }) {
+  pageIdGreaterThan(int pageId, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'pageId',
-        lower: [pageId],
-        includeLower: include,
-        upper: [],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'pageId',
+          lower: [pageId],
+          includeLower: include,
+          upper: [],
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      pageIdLessThan(
-    int pageId, {
-    bool include = false,
-  }) {
+  pageIdLessThan(int pageId, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'pageId',
-        lower: [],
-        upper: [pageId],
-        includeUpper: include,
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'pageId',
+          lower: [],
+          upper: [pageId],
+          includeUpper: include,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      pageIdBetween(
+  pageIdBetween(
     int lowerPageId,
     int upperPageId, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'pageId',
-        lower: [lowerPageId],
-        includeLower: includeLower,
-        upper: [upperPageId],
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'pageId',
+          lower: [lowerPageId],
+          includeLower: includeLower,
+          upper: [upperPageId],
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      notebookIdEqualTo(int notebookId) {
+  notebookIdEqualTo(int notebookId) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'notebookId',
-        value: [notebookId],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'notebookId', value: [notebookId]),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      notebookIdNotEqualTo(int notebookId) {
+  notebookIdNotEqualTo(int notebookId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'notebookId',
-              lower: [],
-              upper: [notebookId],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'notebookId',
-              lower: [notebookId],
-              includeLower: false,
-              upper: [],
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'notebookId',
+                lower: [],
+                upper: [notebookId],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'notebookId',
+                lower: [notebookId],
+                includeLower: false,
+                upper: [],
+              ),
+            );
       } else {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'notebookId',
-              lower: [notebookId],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'notebookId',
-              lower: [],
-              upper: [notebookId],
-              includeUpper: false,
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'notebookId',
+                lower: [notebookId],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'notebookId',
+                lower: [],
+                upper: [notebookId],
+                includeUpper: false,
+              ),
+            );
       }
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      notebookIdGreaterThan(
-    int notebookId, {
-    bool include = false,
-  }) {
+  notebookIdGreaterThan(int notebookId, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'notebookId',
-        lower: [notebookId],
-        includeLower: include,
-        upper: [],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'notebookId',
+          lower: [notebookId],
+          includeLower: include,
+          upper: [],
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      notebookIdLessThan(
-    int notebookId, {
-    bool include = false,
-  }) {
+  notebookIdLessThan(int notebookId, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'notebookId',
-        lower: [],
-        upper: [notebookId],
-        includeUpper: include,
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'notebookId',
+          lower: [],
+          upper: [notebookId],
+          includeUpper: include,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterWhereClause>
-      notebookIdBetween(
+  notebookIdBetween(
     int lowerNotebookId,
     int upperNotebookId, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'notebookId',
-        lower: [lowerNotebookId],
-        includeLower: includeLower,
-        upper: [upperNotebookId],
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'notebookId',
+          lower: [lowerNotebookId],
+          includeLower: includeLower,
+          upper: [upperNotebookId],
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 }
@@ -913,183 +930,184 @@ extension SceneElementRecordQueryWhere
 extension SceneElementRecordQueryFilter
     on QueryBuilder<SceneElementRecord, SceneElementRecord, QFilterCondition> {
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      audioOffsetMsIsNull() {
+  audioOffsetMsIsNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'audioOffsetMs',
-      ));
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'audioOffsetMs'),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      audioOffsetMsIsNotNull() {
+  audioOffsetMsIsNotNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'audioOffsetMs',
-      ));
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'audioOffsetMs'),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      audioOffsetMsEqualTo(int? value) {
+  audioOffsetMsEqualTo(int? value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'audioOffsetMs',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'audioOffsetMs', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      audioOffsetMsGreaterThan(
-    int? value, {
-    bool include = false,
-  }) {
+  audioOffsetMsGreaterThan(int? value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'audioOffsetMs',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'audioOffsetMs',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      audioOffsetMsLessThan(
-    int? value, {
-    bool include = false,
-  }) {
+  audioOffsetMsLessThan(int? value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'audioOffsetMs',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'audioOffsetMs',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      audioOffsetMsBetween(
+  audioOffsetMsBetween(
     int? lower,
     int? upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'audioOffsetMs',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'audioOffsetMs',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      colorEqualTo(int value) {
+  colorEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'color',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'color', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      colorGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
+  colorGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'color',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'color',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      colorLessThan(
-    int value, {
-    bool include = false,
-  }) {
+  colorLessThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'color',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'color',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      colorBetween(
+  colorBetween(
     int lower,
     int upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'color',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'color',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      containerIdEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  containerIdEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'containerId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'containerId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      containerIdGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'containerId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      containerIdLessThan(
+  containerIdGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'containerId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'containerId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      containerIdBetween(
+  containerIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'containerId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  containerIdBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1097,201 +1115,204 @@ extension SceneElementRecordQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'containerId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'containerId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      containerIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  containerIdStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'containerId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'containerId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      containerIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  containerIdEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'containerId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'containerId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      containerIdContains(String value, {bool caseSensitive = true}) {
+  containerIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'containerId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'containerId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      containerIdMatches(String pattern, {bool caseSensitive = true}) {
+  containerIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'containerId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'containerId',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      containerIdIsEmpty() {
+  containerIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'containerId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'containerId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      containerIdIsNotEmpty() {
+  containerIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'containerId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'containerId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      edgesEqualTo(EdgeStyle value) {
+  edgesEqualTo(EdgeStyle value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'edges',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'edges', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      edgesGreaterThan(
-    EdgeStyle value, {
-    bool include = false,
-  }) {
+  edgesGreaterThan(EdgeStyle value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'edges',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'edges',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      edgesLessThan(
-    EdgeStyle value, {
-    bool include = false,
-  }) {
+  edgesLessThan(EdgeStyle value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'edges',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'edges',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      edgesBetween(
+  edgesBetween(
     EdgeStyle lower,
     EdgeStyle upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'edges',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'edges',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elbowedEqualTo(bool value) {
+  elbowedEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'elbowed',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'elbowed', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elementIdEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  elementIdEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'elementId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'elementId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elementIdGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'elementId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elementIdLessThan(
+  elementIdGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'elementId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'elementId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elementIdBetween(
+  elementIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'elementId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  elementIdBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1299,191 +1320,195 @@ extension SceneElementRecordQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'elementId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'elementId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elementIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  elementIdStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'elementId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'elementId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elementIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  elementIdEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'elementId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'elementId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elementIdContains(String value, {bool caseSensitive = true}) {
+  elementIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'elementId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'elementId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elementIdMatches(String pattern, {bool caseSensitive = true}) {
+  elementIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'elementId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'elementId',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elementIdIsEmpty() {
+  elementIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'elementId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'elementId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      elementIdIsNotEmpty() {
+  elementIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'elementId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'elementId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endArrowheadEqualTo(Arrowhead value) {
+  endArrowheadEqualTo(Arrowhead value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'endArrowhead',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'endArrowhead', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endArrowheadGreaterThan(
-    Arrowhead value, {
-    bool include = false,
-  }) {
+  endArrowheadGreaterThan(Arrowhead value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'endArrowhead',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'endArrowhead',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endArrowheadLessThan(
-    Arrowhead value, {
-    bool include = false,
-  }) {
+  endArrowheadLessThan(Arrowhead value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'endArrowhead',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'endArrowhead',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endArrowheadBetween(
+  endArrowheadBetween(
     Arrowhead lower,
     Arrowhead upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'endArrowhead',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'endArrowhead',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endBindingIdEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  endBindingIdEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'endBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'endBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endBindingIdGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'endBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endBindingIdLessThan(
+  endBindingIdGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'endBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'endBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endBindingIdBetween(
+  endBindingIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'endBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  endBindingIdBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1491,247 +1516,250 @@ extension SceneElementRecordQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'endBindingId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'endBindingId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endBindingIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  endBindingIdStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'endBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'endBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endBindingIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  endBindingIdEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'endBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'endBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endBindingIdContains(String value, {bool caseSensitive = true}) {
+  endBindingIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'endBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'endBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endBindingIdMatches(String pattern, {bool caseSensitive = true}) {
+  endBindingIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'endBindingId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'endBindingId',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endBindingIdIsEmpty() {
+  endBindingIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'endBindingId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'endBindingId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      endBindingIdIsNotEmpty() {
+  endBindingIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'endBindingId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'endBindingId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fillColorEqualTo(int value) {
+  fillColorEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'fillColor',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'fillColor', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fillColorGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
+  fillColorGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'fillColor',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'fillColor',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fillColorLessThan(
-    int value, {
-    bool include = false,
-  }) {
+  fillColorLessThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'fillColor',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'fillColor',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fillColorBetween(
+  fillColorBetween(
     int lower,
     int upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'fillColor',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'fillColor',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fillStyleEqualTo(FillStyle value) {
+  fillStyleEqualTo(FillStyle value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'fillStyle',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'fillStyle', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fillStyleGreaterThan(
-    FillStyle value, {
-    bool include = false,
-  }) {
+  fillStyleGreaterThan(FillStyle value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'fillStyle',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'fillStyle',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fillStyleLessThan(
-    FillStyle value, {
-    bool include = false,
-  }) {
+  fillStyleLessThan(FillStyle value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'fillStyle',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'fillStyle',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fillStyleBetween(
+  fillStyleBetween(
     FillStyle lower,
     FillStyle upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'fillStyle',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'fillStyle',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontFamilyEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  fontFamilyEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'fontFamily',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'fontFamily',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontFamilyGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'fontFamily',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontFamilyLessThan(
+  fontFamilyGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'fontFamily',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'fontFamily',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontFamilyBetween(
+  fontFamilyLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'fontFamily',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  fontFamilyBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1739,135 +1767,143 @@ extension SceneElementRecordQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'fontFamily',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'fontFamily',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontFamilyStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  fontFamilyStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'fontFamily',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'fontFamily',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontFamilyEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  fontFamilyEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'fontFamily',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'fontFamily',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontFamilyContains(String value, {bool caseSensitive = true}) {
+  fontFamilyContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'fontFamily',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'fontFamily',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontFamilyMatches(String pattern, {bool caseSensitive = true}) {
+  fontFamilyMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'fontFamily',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'fontFamily',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontFamilyIsEmpty() {
+  fontFamilyIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'fontFamily',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'fontFamily', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontFamilyIsNotEmpty() {
+  fontFamilyIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'fontFamily',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'fontFamily', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontSizeEqualTo(
-    double value, {
-    double epsilon = Query.epsilon,
-  }) {
+  fontSizeEqualTo(double value, {double epsilon = Query.epsilon}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'fontSize',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'fontSize',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontSizeGreaterThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'fontSize',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontSizeLessThan(
+  fontSizeGreaterThan(
     double value, {
     bool include = false,
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'fontSize',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'fontSize',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      fontSizeBetween(
+  fontSizeLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'fontSize',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  fontSizeBetween(
     double lower,
     double upper, {
     bool includeLower = true,
@@ -1875,65 +1911,74 @@ extension SceneElementRecordQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'fontSize',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'fontSize',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      geometryDataElementEqualTo(
-    double value, {
-    double epsilon = Query.epsilon,
-  }) {
+  geometryDataElementEqualTo(double value, {double epsilon = Query.epsilon}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'geometryData',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'geometryData',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      geometryDataElementGreaterThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'geometryData',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      geometryDataElementLessThan(
+  geometryDataElementGreaterThan(
     double value, {
     bool include = false,
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'geometryData',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'geometryData',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      geometryDataElementBetween(
+  geometryDataElementLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'geometryData',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  geometryDataElementBetween(
     double lower,
     double upper, {
     bool includeLower = true,
@@ -1941,90 +1986,57 @@ extension SceneElementRecordQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'geometryData',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        epsilon: epsilon,
-      ));
-    });
-  }
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'geometryData',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
 
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      geometryDataLengthEqualTo(int length) {
-    return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'geometryData',
-        length,
-        true,
-        length,
-        true,
+          epsilon: epsilon,
+        ),
       );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      geometryDataIsEmpty() {
+  geometryDataLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'geometryData',
-        0,
-        true,
-        0,
-        true,
-      );
+      return query.listLength(r'geometryData', length, true, length, true);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      geometryDataIsNotEmpty() {
+  geometryDataIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'geometryData',
-        0,
-        false,
-        999999,
-        true,
-      );
+      return query.listLength(r'geometryData', 0, true, 0, true);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      geometryDataLengthLessThan(
-    int length, {
-    bool include = false,
-  }) {
+  geometryDataIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'geometryData',
-        0,
-        true,
-        length,
-        include,
-      );
+      return query.listLength(r'geometryData', 0, false, 999999, true);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      geometryDataLengthGreaterThan(
-    int length, {
-    bool include = false,
-  }) {
+  geometryDataLengthLessThan(int length, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'geometryData',
-        length,
-        include,
-        999999,
-        true,
-      );
+      return query.listLength(r'geometryData', 0, true, length, include);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      geometryDataLengthBetween(
+  geometryDataLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'geometryData', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  geometryDataLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -2042,53 +2054,56 @@ extension SceneElementRecordQueryFilter
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      groupIdEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  groupIdEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'groupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'groupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      groupIdGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'groupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      groupIdLessThan(
+  groupIdGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'groupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'groupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      groupIdBetween(
+  groupIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'groupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  groupIdBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -2096,353 +2111,353 @@ extension SceneElementRecordQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'groupId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'groupId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      groupIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  groupIdStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'groupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'groupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      groupIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  groupIdEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'groupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'groupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      groupIdContains(String value, {bool caseSensitive = true}) {
+  groupIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'groupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'groupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      groupIdMatches(String pattern, {bool caseSensitive = true}) {
+  groupIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'groupId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'groupId',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      groupIdIsEmpty() {
+  groupIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'groupId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'groupId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      groupIdIsNotEmpty() {
+  groupIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'groupId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'groupId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      hasFillEqualTo(bool value) {
+  hasFillEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'hasFill',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'hasFill', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      idEqualTo(Id value) {
+  idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'id', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      idGreaterThan(
-    Id value, {
-    bool include = false,
-  }) {
+  idGreaterThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      idLessThan(
-    Id value, {
-    bool include = false,
-  }) {
+  idLessThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      idBetween(
+  idBetween(
     Id lower,
     Id upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'id',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'id',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      isBoldEqualTo(bool value) {
+  isBoldEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'isBold',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'isBold', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      isEraserEqualTo(bool value) {
+  isEraserEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'isEraser',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'isEraser', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      isItalicEqualTo(bool value) {
+  isItalicEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'isItalic',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'isItalic', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      isLockedEqualTo(bool value) {
+  isLockedEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'isLocked',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'isLocked', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      kindEqualTo(SceneElementKind value) {
+  kindEqualTo(SceneElementKind value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'kind',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'kind', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      kindGreaterThan(
-    SceneElementKind value, {
-    bool include = false,
-  }) {
+  kindGreaterThan(SceneElementKind value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'kind',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'kind',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      kindLessThan(
-    SceneElementKind value, {
-    bool include = false,
-  }) {
+  kindLessThan(SceneElementKind value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'kind',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'kind',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      kindBetween(
+  kindBetween(
     SceneElementKind lower,
     SceneElementKind upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'kind',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'kind',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      notebookIdEqualTo(int value) {
+  notebookIdEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'notebookId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'notebookId', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      notebookIdGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
+  notebookIdGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'notebookId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'notebookId',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      notebookIdLessThan(
-    int value, {
-    bool include = false,
-  }) {
+  notebookIdLessThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'notebookId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'notebookId',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      notebookIdBetween(
+  notebookIdBetween(
     int lower,
     int upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'notebookId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'notebookId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      opacityEqualTo(
-    double value, {
-    double epsilon = Query.epsilon,
-  }) {
+  opacityEqualTo(double value, {double epsilon = Query.epsilon}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'opacity',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'opacity',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      opacityGreaterThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'opacity',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      opacityLessThan(
+  opacityGreaterThan(
     double value, {
     bool include = false,
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'opacity',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'opacity',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      opacityBetween(
+  opacityLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'opacity',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  opacityBetween(
     double lower,
     double upper, {
     bool includeLower = true,
@@ -2450,156 +2465,176 @@ extension SceneElementRecordQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'opacity',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'opacity',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pageIdEqualTo(int value) {
+  pageIdEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'pageId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'pageId', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pageIdGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
+  pageIdGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'pageId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'pageId',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pageIdLessThan(
-    int value, {
-    bool include = false,
-  }) {
+  pageIdLessThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'pageId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'pageId',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pageIdBetween(
+  pageIdBetween(
     int lower,
     int upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'pageId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointSimElementEqualTo(bool value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'pointSim',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointSimLengthEqualTo(int length) {
-    return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'pointSim',
-        length,
-        true,
-        length,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'pageId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
       );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointSimIsEmpty() {
+  penKindEqualTo(PenKind value) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'pointSim',
-        0,
-        true,
-        0,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'penKind', value: value),
       );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointSimIsNotEmpty() {
+  penKindGreaterThan(PenKind value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'pointSim',
-        0,
-        false,
-        999999,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'penKind',
+          value: value,
+        ),
       );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointSimLengthLessThan(
-    int length, {
-    bool include = false,
+  penKindLessThan(PenKind value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'penKind',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  penKindBetween(
+    PenKind lower,
+    PenKind upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'pointSim',
-        0,
-        true,
-        length,
-        include,
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'penKind',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
       );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointSimLengthGreaterThan(
-    int length, {
-    bool include = false,
-  }) {
+  pointSimElementEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'pointSim',
-        length,
-        include,
-        999999,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'pointSim', value: value),
       );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointSimLengthBetween(
+  pointSimLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'pointSim', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  pointSimIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'pointSim', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  pointSimIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'pointSim', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  pointSimLengthLessThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'pointSim', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  pointSimLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'pointSim', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  pointSimLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -2617,134 +2652,97 @@ extension SceneElementRecordQueryFilter
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointTElementEqualTo(int value) {
+  pointTElementEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'pointT',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'pointT', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointTElementGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
+  pointTElementGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'pointT',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'pointT',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointTElementLessThan(
-    int value, {
-    bool include = false,
-  }) {
+  pointTElementLessThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'pointT',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'pointT',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointTElementBetween(
+  pointTElementBetween(
     int lower,
     int upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'pointT',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointTLengthEqualTo(int length) {
-    return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'pointT',
-        length,
-        true,
-        length,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'pointT',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
       );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointTIsEmpty() {
+  pointTLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'pointT',
-        0,
-        true,
-        0,
-        true,
-      );
+      return query.listLength(r'pointT', length, true, length, true);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointTIsNotEmpty() {
+  pointTIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'pointT',
-        0,
-        false,
-        999999,
-        true,
-      );
+      return query.listLength(r'pointT', 0, true, 0, true);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointTLengthLessThan(
-    int length, {
-    bool include = false,
-  }) {
+  pointTIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'pointT',
-        0,
-        true,
-        length,
-        include,
-      );
+      return query.listLength(r'pointT', 0, false, 999999, true);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointTLengthGreaterThan(
-    int length, {
-    bool include = false,
-  }) {
+  pointTLengthLessThan(int length, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'pointT',
-        length,
-        include,
-        999999,
-        true,
-      );
+      return query.listLength(r'pointT', 0, true, length, include);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointTLengthBetween(
+  pointTLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'pointT', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  pointTLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -2762,53 +2760,59 @@ extension SceneElementRecordQueryFilter
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointsElementEqualTo(
-    double value, {
-    double epsilon = Query.epsilon,
-  }) {
+  pointsElementEqualTo(double value, {double epsilon = Query.epsilon}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'points',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'points',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointsElementGreaterThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'points',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointsElementLessThan(
+  pointsElementGreaterThan(
     double value, {
     bool include = false,
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'points',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'points',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointsElementBetween(
+  pointsElementLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'points',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  pointsElementBetween(
     double lower,
     double upper, {
     bool includeLower = true,
@@ -2816,90 +2820,57 @@ extension SceneElementRecordQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'points',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        epsilon: epsilon,
-      ));
-    });
-  }
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'points',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
 
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointsLengthEqualTo(int length) {
-    return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'points',
-        length,
-        true,
-        length,
-        true,
+          epsilon: epsilon,
+        ),
       );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointsIsEmpty() {
+  pointsLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'points',
-        0,
-        true,
-        0,
-        true,
-      );
+      return query.listLength(r'points', length, true, length, true);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointsIsNotEmpty() {
+  pointsIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'points',
-        0,
-        false,
-        999999,
-        true,
-      );
+      return query.listLength(r'points', 0, true, 0, true);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointsLengthLessThan(
-    int length, {
-    bool include = false,
-  }) {
+  pointsIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'points',
-        0,
-        true,
-        length,
-        include,
-      );
+      return query.listLength(r'points', 0, false, 999999, true);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointsLengthGreaterThan(
-    int length, {
-    bool include = false,
-  }) {
+  pointsLengthLessThan(int length, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'points',
-        length,
-        include,
-        999999,
-        true,
-      );
+      return query.listLength(r'points', 0, true, length, include);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      pointsLengthBetween(
+  pointsLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'points', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  pointsLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -2917,127 +2888,129 @@ extension SceneElementRecordQueryFilter
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      recordingIdIsNull() {
+  recordingIdIsNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'recordingId',
-      ));
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'recordingId'),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      recordingIdIsNotNull() {
+  recordingIdIsNotNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'recordingId',
-      ));
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'recordingId'),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      recordingIdEqualTo(int? value) {
+  recordingIdEqualTo(int? value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'recordingId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'recordingId', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      recordingIdGreaterThan(
-    int? value, {
-    bool include = false,
-  }) {
+  recordingIdGreaterThan(int? value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'recordingId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'recordingId',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      recordingIdLessThan(
-    int? value, {
-    bool include = false,
-  }) {
+  recordingIdLessThan(int? value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'recordingId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'recordingId',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      recordingIdBetween(
+  recordingIdBetween(
     int? lower,
     int? upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'recordingId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'recordingId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      relativeImagePathEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  relativeImagePathEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'relativeImagePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'relativeImagePath',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      relativeImagePathGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'relativeImagePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      relativeImagePathLessThan(
+  relativeImagePathGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'relativeImagePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'relativeImagePath',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      relativeImagePathBetween(
+  relativeImagePathLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'relativeImagePath',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  relativeImagePathBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -3045,135 +3018,143 @@ extension SceneElementRecordQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'relativeImagePath',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'relativeImagePath',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      relativeImagePathStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  relativeImagePathStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'relativeImagePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'relativeImagePath',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      relativeImagePathEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  relativeImagePathEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'relativeImagePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'relativeImagePath',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      relativeImagePathContains(String value, {bool caseSensitive = true}) {
+  relativeImagePathContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'relativeImagePath',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'relativeImagePath',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      relativeImagePathMatches(String pattern, {bool caseSensitive = true}) {
+  relativeImagePathMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'relativeImagePath',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'relativeImagePath',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      relativeImagePathIsEmpty() {
+  relativeImagePathIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'relativeImagePath',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'relativeImagePath', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      relativeImagePathIsNotEmpty() {
+  relativeImagePathIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'relativeImagePath',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'relativeImagePath', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      rotationEqualTo(
-    double value, {
-    double epsilon = Query.epsilon,
-  }) {
+  rotationEqualTo(double value, {double epsilon = Query.epsilon}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'rotation',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'rotation',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      rotationGreaterThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'rotation',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      rotationLessThan(
+  rotationGreaterThan(
     double value, {
     bool include = false,
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'rotation',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'rotation',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      rotationBetween(
+  rotationLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'rotation',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  rotationBetween(
     double lower,
     double upper, {
     bool includeLower = true,
@@ -3181,65 +3162,74 @@ extension SceneElementRecordQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'rotation',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'rotation',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      roughnessEqualTo(
-    double value, {
-    double epsilon = Query.epsilon,
-  }) {
+  roughnessEqualTo(double value, {double epsilon = Query.epsilon}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'roughness',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'roughness',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      roughnessGreaterThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'roughness',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      roughnessLessThan(
+  roughnessGreaterThan(
     double value, {
     bool include = false,
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'roughness',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'roughness',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      roughnessBetween(
+  roughnessLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'roughness',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  roughnessBetween(
     double lower,
     double upper, {
     bool includeLower = true,
@@ -3247,177 +3237,181 @@ extension SceneElementRecordQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'roughness',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'roughness',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      seedEqualTo(int value) {
+  seedEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'seed',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'seed', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      seedGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
+  seedGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'seed',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'seed',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      seedLessThan(
-    int value, {
-    bool include = false,
-  }) {
+  seedLessThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'seed',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'seed',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      seedBetween(
+  seedBetween(
     int lower,
     int upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'seed',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'seed',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      shapeTypeEqualTo(ShapeType value) {
+  shapeTypeEqualTo(ShapeType value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'shapeType',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'shapeType', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      shapeTypeGreaterThan(
-    ShapeType value, {
-    bool include = false,
-  }) {
+  shapeTypeGreaterThan(ShapeType value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'shapeType',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'shapeType',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      shapeTypeLessThan(
-    ShapeType value, {
-    bool include = false,
-  }) {
+  shapeTypeLessThan(ShapeType value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'shapeType',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'shapeType',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      shapeTypeBetween(
+  shapeTypeBetween(
     ShapeType lower,
     ShapeType upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'shapeType',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'shapeType',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      sourceDescriptionEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  sourceDescriptionEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'sourceDescription',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'sourceDescription',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      sourceDescriptionGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'sourceDescription',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      sourceDescriptionLessThan(
+  sourceDescriptionGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'sourceDescription',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'sourceDescription',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      sourceDescriptionBetween(
+  sourceDescriptionLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'sourceDescription',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  sourceDescriptionBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -3425,191 +3419,195 @@ extension SceneElementRecordQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'sourceDescription',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'sourceDescription',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      sourceDescriptionStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  sourceDescriptionStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'sourceDescription',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'sourceDescription',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      sourceDescriptionEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  sourceDescriptionEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'sourceDescription',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'sourceDescription',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      sourceDescriptionContains(String value, {bool caseSensitive = true}) {
+  sourceDescriptionContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'sourceDescription',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'sourceDescription',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      sourceDescriptionMatches(String pattern, {bool caseSensitive = true}) {
+  sourceDescriptionMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'sourceDescription',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'sourceDescription',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      sourceDescriptionIsEmpty() {
+  sourceDescriptionIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'sourceDescription',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'sourceDescription', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      sourceDescriptionIsNotEmpty() {
+  sourceDescriptionIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'sourceDescription',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'sourceDescription', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startArrowheadEqualTo(Arrowhead value) {
+  startArrowheadEqualTo(Arrowhead value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'startArrowhead',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'startArrowhead', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startArrowheadGreaterThan(
-    Arrowhead value, {
-    bool include = false,
-  }) {
+  startArrowheadGreaterThan(Arrowhead value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'startArrowhead',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'startArrowhead',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startArrowheadLessThan(
-    Arrowhead value, {
-    bool include = false,
-  }) {
+  startArrowheadLessThan(Arrowhead value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'startArrowhead',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'startArrowhead',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startArrowheadBetween(
+  startArrowheadBetween(
     Arrowhead lower,
     Arrowhead upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'startArrowhead',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'startArrowhead',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startBindingIdEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  startBindingIdEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'startBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'startBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startBindingIdGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'startBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startBindingIdLessThan(
+  startBindingIdGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'startBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'startBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startBindingIdBetween(
+  startBindingIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'startBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  startBindingIdBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -3617,191 +3615,198 @@ extension SceneElementRecordQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'startBindingId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'startBindingId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startBindingIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  startBindingIdStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'startBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'startBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startBindingIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  startBindingIdEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'startBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'startBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startBindingIdContains(String value, {bool caseSensitive = true}) {
+  startBindingIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'startBindingId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'startBindingId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startBindingIdMatches(String pattern, {bool caseSensitive = true}) {
+  startBindingIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'startBindingId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'startBindingId',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startBindingIdIsEmpty() {
+  startBindingIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'startBindingId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'startBindingId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      startBindingIdIsNotEmpty() {
+  startBindingIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'startBindingId',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'startBindingId', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      strokeStyleEqualTo(StrokeStyle value) {
+  strokeStyleEqualTo(StrokeStyle value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'strokeStyle',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'strokeStyle', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      strokeStyleGreaterThan(
-    StrokeStyle value, {
-    bool include = false,
-  }) {
+  strokeStyleGreaterThan(StrokeStyle value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'strokeStyle',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'strokeStyle',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      strokeStyleLessThan(
-    StrokeStyle value, {
-    bool include = false,
-  }) {
+  strokeStyleLessThan(StrokeStyle value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'strokeStyle',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'strokeStyle',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      strokeStyleBetween(
+  strokeStyleBetween(
     StrokeStyle lower,
     StrokeStyle upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'strokeStyle',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'strokeStyle',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      strokeWidthEqualTo(
-    double value, {
-    double epsilon = Query.epsilon,
-  }) {
+  strokeWidthEqualTo(double value, {double epsilon = Query.epsilon}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'strokeWidth',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'strokeWidth',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      strokeWidthGreaterThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'strokeWidth',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      strokeWidthLessThan(
+  strokeWidthGreaterThan(
     double value, {
     bool include = false,
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'strokeWidth',
-        value: value,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'strokeWidth',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      strokeWidthBetween(
+  strokeWidthLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'strokeWidth',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  strokeWidthBetween(
     double lower,
     double upper, {
     bool includeLower = true,
@@ -3809,65 +3814,71 @@ extension SceneElementRecordQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'strokeWidth',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        epsilon: epsilon,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'strokeWidth',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  textEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'text',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'text',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'text',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textLessThan(
+  textGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'text',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'text',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textBetween(
+  textLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'text',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  textBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -3875,196 +3886,196 @@ extension SceneElementRecordQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'text',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'text',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  textStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'text',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'text',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  textEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'text',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'text',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textContains(String value, {bool caseSensitive = true}) {
+  textContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'text',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'text',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textMatches(String pattern, {bool caseSensitive = true}) {
+  textMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'text',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'text',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textIsEmpty() {
+  textIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'text',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'text', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textIsNotEmpty() {
+  textIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'text',
-        value: '',
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'text', value: ''),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textAlignEqualTo(TextAlignKind value) {
+  textAlignEqualTo(TextAlignKind value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'textAlign',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'textAlign', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textAlignGreaterThan(
-    TextAlignKind value, {
-    bool include = false,
-  }) {
+  textAlignGreaterThan(TextAlignKind value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'textAlign',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'textAlign',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textAlignLessThan(
-    TextAlignKind value, {
-    bool include = false,
-  }) {
+  textAlignLessThan(TextAlignKind value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'textAlign',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'textAlign',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      textAlignBetween(
+  textAlignBetween(
     TextAlignKind lower,
     TextAlignKind upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'textAlign',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'textAlign',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      zOrderEqualTo(int value) {
+  zOrderEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'zOrder',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'zOrder', value: value),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      zOrderGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
+  zOrderGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'zOrder',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'zOrder',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      zOrderLessThan(
-    int value, {
-    bool include = false,
-  }) {
+  zOrderLessThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'zOrder',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'zOrder',
+          value: value,
+        ),
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
-      zOrderBetween(
+  zOrderBetween(
     int lower,
     int upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'zOrder',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'zOrder',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 }
@@ -4078,504 +4089,518 @@ extension SceneElementRecordQueryLinks
 extension SceneElementRecordQuerySortBy
     on QueryBuilder<SceneElementRecord, SceneElementRecord, QSortBy> {
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByAudioOffsetMs() {
+  sortByAudioOffsetMs() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioOffsetMs', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByAudioOffsetMsDesc() {
+  sortByAudioOffsetMsDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioOffsetMs', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByColor() {
+  sortByColor() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'color', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByColorDesc() {
+  sortByColorDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'color', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByContainerId() {
+  sortByContainerId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'containerId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByContainerIdDesc() {
+  sortByContainerIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'containerId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByEdges() {
+  sortByEdges() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'edges', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByEdgesDesc() {
+  sortByEdgesDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'edges', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByElbowed() {
+  sortByElbowed() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'elbowed', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByElbowedDesc() {
+  sortByElbowedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'elbowed', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByElementId() {
+  sortByElementId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'elementId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByElementIdDesc() {
+  sortByElementIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'elementId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByEndArrowhead() {
+  sortByEndArrowhead() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'endArrowhead', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByEndArrowheadDesc() {
+  sortByEndArrowheadDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'endArrowhead', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByEndBindingId() {
+  sortByEndBindingId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'endBindingId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByEndBindingIdDesc() {
+  sortByEndBindingIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'endBindingId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByFillColor() {
+  sortByFillColor() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fillColor', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByFillColorDesc() {
+  sortByFillColorDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fillColor', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByFillStyle() {
+  sortByFillStyle() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fillStyle', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByFillStyleDesc() {
+  sortByFillStyleDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fillStyle', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByFontFamily() {
+  sortByFontFamily() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fontFamily', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByFontFamilyDesc() {
+  sortByFontFamilyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fontFamily', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByFontSize() {
+  sortByFontSize() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fontSize', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByFontSizeDesc() {
+  sortByFontSizeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fontSize', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByGroupId() {
+  sortByGroupId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'groupId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByGroupIdDesc() {
+  sortByGroupIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'groupId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByHasFill() {
+  sortByHasFill() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'hasFill', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByHasFillDesc() {
+  sortByHasFillDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'hasFill', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByIsBold() {
+  sortByIsBold() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isBold', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByIsBoldDesc() {
+  sortByIsBoldDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isBold', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByIsEraser() {
+  sortByIsEraser() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isEraser', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByIsEraserDesc() {
+  sortByIsEraserDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isEraser', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByIsItalic() {
+  sortByIsItalic() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isItalic', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByIsItalicDesc() {
+  sortByIsItalicDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isItalic', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByIsLocked() {
+  sortByIsLocked() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isLocked', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByIsLockedDesc() {
+  sortByIsLockedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isLocked', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByKind() {
+  sortByKind() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'kind', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByKindDesc() {
+  sortByKindDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'kind', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByNotebookId() {
+  sortByNotebookId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notebookId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByNotebookIdDesc() {
+  sortByNotebookIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notebookId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByOpacity() {
+  sortByOpacity() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'opacity', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByOpacityDesc() {
+  sortByOpacityDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'opacity', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByPageId() {
+  sortByPageId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'pageId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByPageIdDesc() {
+  sortByPageIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'pageId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByRecordingId() {
+  sortByPenKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'penKind', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  sortByPenKindDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'penKind', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  sortByRecordingId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'recordingId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByRecordingIdDesc() {
+  sortByRecordingIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'recordingId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByRelativeImagePath() {
+  sortByRelativeImagePath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'relativeImagePath', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByRelativeImagePathDesc() {
+  sortByRelativeImagePathDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'relativeImagePath', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByRotation() {
+  sortByRotation() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'rotation', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByRotationDesc() {
+  sortByRotationDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'rotation', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByRoughness() {
+  sortByRoughness() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'roughness', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByRoughnessDesc() {
+  sortByRoughnessDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'roughness', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortBySeed() {
+  sortBySeed() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'seed', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortBySeedDesc() {
+  sortBySeedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'seed', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByShapeType() {
+  sortByShapeType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'shapeType', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByShapeTypeDesc() {
+  sortByShapeTypeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'shapeType', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortBySourceDescription() {
+  sortBySourceDescription() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sourceDescription', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortBySourceDescriptionDesc() {
+  sortBySourceDescriptionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sourceDescription', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByStartArrowhead() {
+  sortByStartArrowhead() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'startArrowhead', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByStartArrowheadDesc() {
+  sortByStartArrowheadDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'startArrowhead', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByStartBindingId() {
+  sortByStartBindingId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'startBindingId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByStartBindingIdDesc() {
+  sortByStartBindingIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'startBindingId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByStrokeStyle() {
+  sortByStrokeStyle() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'strokeStyle', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByStrokeStyleDesc() {
+  sortByStrokeStyleDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'strokeStyle', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByStrokeWidth() {
+  sortByStrokeWidth() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'strokeWidth', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByStrokeWidthDesc() {
+  sortByStrokeWidthDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'strokeWidth', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByText() {
+  sortByText() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'text', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByTextDesc() {
+  sortByTextDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'text', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByTextAlign() {
+  sortByTextAlign() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'textAlign', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByTextAlignDesc() {
+  sortByTextAlignDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'textAlign', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByZOrder() {
+  sortByZOrder() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'zOrder', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      sortByZOrderDesc() {
+  sortByZOrderDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'zOrder', Sort.desc);
     });
@@ -4585,518 +4610,532 @@ extension SceneElementRecordQuerySortBy
 extension SceneElementRecordQuerySortThenBy
     on QueryBuilder<SceneElementRecord, SceneElementRecord, QSortThenBy> {
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByAudioOffsetMs() {
+  thenByAudioOffsetMs() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioOffsetMs', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByAudioOffsetMsDesc() {
+  thenByAudioOffsetMsDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioOffsetMs', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByColor() {
+  thenByColor() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'color', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByColorDesc() {
+  thenByColorDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'color', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByContainerId() {
+  thenByContainerId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'containerId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByContainerIdDesc() {
+  thenByContainerIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'containerId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByEdges() {
+  thenByEdges() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'edges', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByEdgesDesc() {
+  thenByEdgesDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'edges', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByElbowed() {
+  thenByElbowed() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'elbowed', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByElbowedDesc() {
+  thenByElbowedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'elbowed', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByElementId() {
+  thenByElementId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'elementId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByElementIdDesc() {
+  thenByElementIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'elementId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByEndArrowhead() {
+  thenByEndArrowhead() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'endArrowhead', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByEndArrowheadDesc() {
+  thenByEndArrowheadDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'endArrowhead', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByEndBindingId() {
+  thenByEndBindingId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'endBindingId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByEndBindingIdDesc() {
+  thenByEndBindingIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'endBindingId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByFillColor() {
+  thenByFillColor() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fillColor', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByFillColorDesc() {
+  thenByFillColorDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fillColor', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByFillStyle() {
+  thenByFillStyle() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fillStyle', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByFillStyleDesc() {
+  thenByFillStyleDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fillStyle', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByFontFamily() {
+  thenByFontFamily() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fontFamily', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByFontFamilyDesc() {
+  thenByFontFamilyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fontFamily', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByFontSize() {
+  thenByFontSize() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fontSize', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByFontSizeDesc() {
+  thenByFontSizeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fontSize', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByGroupId() {
+  thenByGroupId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'groupId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByGroupIdDesc() {
+  thenByGroupIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'groupId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByHasFill() {
+  thenByHasFill() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'hasFill', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByHasFillDesc() {
+  thenByHasFillDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'hasFill', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenById() {
+  thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByIdDesc() {
+  thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByIsBold() {
+  thenByIsBold() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isBold', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByIsBoldDesc() {
+  thenByIsBoldDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isBold', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByIsEraser() {
+  thenByIsEraser() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isEraser', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByIsEraserDesc() {
+  thenByIsEraserDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isEraser', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByIsItalic() {
+  thenByIsItalic() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isItalic', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByIsItalicDesc() {
+  thenByIsItalicDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isItalic', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByIsLocked() {
+  thenByIsLocked() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isLocked', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByIsLockedDesc() {
+  thenByIsLockedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isLocked', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByKind() {
+  thenByKind() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'kind', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByKindDesc() {
+  thenByKindDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'kind', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByNotebookId() {
+  thenByNotebookId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notebookId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByNotebookIdDesc() {
+  thenByNotebookIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notebookId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByOpacity() {
+  thenByOpacity() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'opacity', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByOpacityDesc() {
+  thenByOpacityDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'opacity', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByPageId() {
+  thenByPageId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'pageId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByPageIdDesc() {
+  thenByPageIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'pageId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByRecordingId() {
+  thenByPenKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'penKind', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  thenByPenKindDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'penKind', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  thenByRecordingId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'recordingId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByRecordingIdDesc() {
+  thenByRecordingIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'recordingId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByRelativeImagePath() {
+  thenByRelativeImagePath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'relativeImagePath', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByRelativeImagePathDesc() {
+  thenByRelativeImagePathDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'relativeImagePath', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByRotation() {
+  thenByRotation() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'rotation', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByRotationDesc() {
+  thenByRotationDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'rotation', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByRoughness() {
+  thenByRoughness() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'roughness', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByRoughnessDesc() {
+  thenByRoughnessDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'roughness', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenBySeed() {
+  thenBySeed() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'seed', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenBySeedDesc() {
+  thenBySeedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'seed', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByShapeType() {
+  thenByShapeType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'shapeType', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByShapeTypeDesc() {
+  thenByShapeTypeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'shapeType', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenBySourceDescription() {
+  thenBySourceDescription() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sourceDescription', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenBySourceDescriptionDesc() {
+  thenBySourceDescriptionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sourceDescription', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByStartArrowhead() {
+  thenByStartArrowhead() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'startArrowhead', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByStartArrowheadDesc() {
+  thenByStartArrowheadDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'startArrowhead', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByStartBindingId() {
+  thenByStartBindingId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'startBindingId', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByStartBindingIdDesc() {
+  thenByStartBindingIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'startBindingId', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByStrokeStyle() {
+  thenByStrokeStyle() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'strokeStyle', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByStrokeStyleDesc() {
+  thenByStrokeStyleDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'strokeStyle', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByStrokeWidth() {
+  thenByStrokeWidth() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'strokeWidth', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByStrokeWidthDesc() {
+  thenByStrokeWidthDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'strokeWidth', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByText() {
+  thenByText() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'text', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByTextDesc() {
+  thenByTextDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'text', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByTextAlign() {
+  thenByTextAlign() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'textAlign', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByTextAlignDesc() {
+  thenByTextAlignDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'textAlign', Sort.desc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByZOrder() {
+  thenByZOrder() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'zOrder', Sort.asc);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
-      thenByZOrderDesc() {
+  thenByZOrderDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'zOrder', Sort.desc);
     });
@@ -5106,283 +5145,296 @@ extension SceneElementRecordQuerySortThenBy
 extension SceneElementRecordQueryWhereDistinct
     on QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct> {
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByAudioOffsetMs() {
+  distinctByAudioOffsetMs() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'audioOffsetMs');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByColor() {
+  distinctByColor() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'color');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByContainerId({bool caseSensitive = true}) {
+  distinctByContainerId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'containerId', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByEdges() {
+  distinctByEdges() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'edges');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByElbowed() {
+  distinctByElbowed() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'elbowed');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByElementId({bool caseSensitive = true}) {
+  distinctByElementId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'elementId', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByEndArrowhead() {
+  distinctByEndArrowhead() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'endArrowhead');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByEndBindingId({bool caseSensitive = true}) {
+  distinctByEndBindingId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'endBindingId', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByFillColor() {
+  distinctByFillColor() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'fillColor');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByFillStyle() {
+  distinctByFillStyle() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'fillStyle');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByFontFamily({bool caseSensitive = true}) {
+  distinctByFontFamily({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'fontFamily', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByFontSize() {
+  distinctByFontSize() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'fontSize');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByGeometryData() {
+  distinctByGeometryData() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'geometryData');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByGroupId({bool caseSensitive = true}) {
+  distinctByGroupId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'groupId', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByHasFill() {
+  distinctByHasFill() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'hasFill');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByIsBold() {
+  distinctByIsBold() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isBold');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByIsEraser() {
+  distinctByIsEraser() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isEraser');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByIsItalic() {
+  distinctByIsItalic() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isItalic');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByIsLocked() {
+  distinctByIsLocked() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isLocked');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByKind() {
+  distinctByKind() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'kind');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByNotebookId() {
+  distinctByNotebookId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'notebookId');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByOpacity() {
+  distinctByOpacity() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'opacity');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByPageId() {
+  distinctByPageId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'pageId');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByPointSim() {
+  distinctByPenKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'penKind');
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
+  distinctByPointSim() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'pointSim');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByPointT() {
+  distinctByPointT() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'pointT');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByPoints() {
+  distinctByPoints() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'points');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByRecordingId() {
+  distinctByRecordingId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'recordingId');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByRelativeImagePath({bool caseSensitive = true}) {
+  distinctByRelativeImagePath({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'relativeImagePath',
-          caseSensitive: caseSensitive);
+      return query.addDistinctBy(
+        r'relativeImagePath',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByRotation() {
+  distinctByRotation() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'rotation');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByRoughness() {
+  distinctByRoughness() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'roughness');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctBySeed() {
+  distinctBySeed() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'seed');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByShapeType() {
+  distinctByShapeType() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'shapeType');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctBySourceDescription({bool caseSensitive = true}) {
+  distinctBySourceDescription({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'sourceDescription',
-          caseSensitive: caseSensitive);
+      return query.addDistinctBy(
+        r'sourceDescription',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByStartArrowhead() {
+  distinctByStartArrowhead() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'startArrowhead');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByStartBindingId({bool caseSensitive = true}) {
+  distinctByStartBindingId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'startBindingId',
-          caseSensitive: caseSensitive);
+      return query.addDistinctBy(
+        r'startBindingId',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByStrokeStyle() {
+  distinctByStrokeStyle() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'strokeStyle');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByStrokeWidth() {
+  distinctByStrokeWidth() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'strokeWidth');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByText({bool caseSensitive = true}) {
+  distinctByText({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'text', caseSensitive: caseSensitive);
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByTextAlign() {
+  distinctByTextAlign() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'textAlign');
     });
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
-      distinctByZOrder() {
+  distinctByZOrder() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'zOrder');
     });
@@ -5398,7 +5450,7 @@ extension SceneElementRecordQueryProperty
   }
 
   QueryBuilder<SceneElementRecord, int?, QQueryOperations>
-      audioOffsetMsProperty() {
+  audioOffsetMsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'audioOffsetMs');
     });
@@ -5411,14 +5463,14 @@ extension SceneElementRecordQueryProperty
   }
 
   QueryBuilder<SceneElementRecord, String, QQueryOperations>
-      containerIdProperty() {
+  containerIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'containerId');
     });
   }
 
   QueryBuilder<SceneElementRecord, EdgeStyle, QQueryOperations>
-      edgesProperty() {
+  edgesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'edges');
     });
@@ -5431,21 +5483,21 @@ extension SceneElementRecordQueryProperty
   }
 
   QueryBuilder<SceneElementRecord, String, QQueryOperations>
-      elementIdProperty() {
+  elementIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'elementId');
     });
   }
 
   QueryBuilder<SceneElementRecord, Arrowhead, QQueryOperations>
-      endArrowheadProperty() {
+  endArrowheadProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'endArrowhead');
     });
   }
 
   QueryBuilder<SceneElementRecord, String, QQueryOperations>
-      endBindingIdProperty() {
+  endBindingIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'endBindingId');
     });
@@ -5458,28 +5510,28 @@ extension SceneElementRecordQueryProperty
   }
 
   QueryBuilder<SceneElementRecord, FillStyle, QQueryOperations>
-      fillStyleProperty() {
+  fillStyleProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'fillStyle');
     });
   }
 
   QueryBuilder<SceneElementRecord, String, QQueryOperations>
-      fontFamilyProperty() {
+  fontFamilyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'fontFamily');
     });
   }
 
   QueryBuilder<SceneElementRecord, double, QQueryOperations>
-      fontSizeProperty() {
+  fontSizeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'fontSize');
     });
   }
 
   QueryBuilder<SceneElementRecord, List<double>, QQueryOperations>
-      geometryDataProperty() {
+  geometryDataProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'geometryData');
     });
@@ -5522,7 +5574,7 @@ extension SceneElementRecordQueryProperty
   }
 
   QueryBuilder<SceneElementRecord, SceneElementKind, QQueryOperations>
-      kindProperty() {
+  kindProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'kind');
     });
@@ -5546,50 +5598,57 @@ extension SceneElementRecordQueryProperty
     });
   }
 
+  QueryBuilder<SceneElementRecord, PenKind, QQueryOperations>
+  penKindProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'penKind');
+    });
+  }
+
   QueryBuilder<SceneElementRecord, List<bool>, QQueryOperations>
-      pointSimProperty() {
+  pointSimProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'pointSim');
     });
   }
 
   QueryBuilder<SceneElementRecord, List<int>, QQueryOperations>
-      pointTProperty() {
+  pointTProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'pointT');
     });
   }
 
   QueryBuilder<SceneElementRecord, List<double>, QQueryOperations>
-      pointsProperty() {
+  pointsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'points');
     });
   }
 
   QueryBuilder<SceneElementRecord, int?, QQueryOperations>
-      recordingIdProperty() {
+  recordingIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'recordingId');
     });
   }
 
   QueryBuilder<SceneElementRecord, String, QQueryOperations>
-      relativeImagePathProperty() {
+  relativeImagePathProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'relativeImagePath');
     });
   }
 
   QueryBuilder<SceneElementRecord, double, QQueryOperations>
-      rotationProperty() {
+  rotationProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'rotation');
     });
   }
 
   QueryBuilder<SceneElementRecord, double, QQueryOperations>
-      roughnessProperty() {
+  roughnessProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'roughness');
     });
@@ -5602,42 +5661,42 @@ extension SceneElementRecordQueryProperty
   }
 
   QueryBuilder<SceneElementRecord, ShapeType, QQueryOperations>
-      shapeTypeProperty() {
+  shapeTypeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'shapeType');
     });
   }
 
   QueryBuilder<SceneElementRecord, String, QQueryOperations>
-      sourceDescriptionProperty() {
+  sourceDescriptionProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'sourceDescription');
     });
   }
 
   QueryBuilder<SceneElementRecord, Arrowhead, QQueryOperations>
-      startArrowheadProperty() {
+  startArrowheadProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'startArrowhead');
     });
   }
 
   QueryBuilder<SceneElementRecord, String, QQueryOperations>
-      startBindingIdProperty() {
+  startBindingIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'startBindingId');
     });
   }
 
   QueryBuilder<SceneElementRecord, StrokeStyle, QQueryOperations>
-      strokeStyleProperty() {
+  strokeStyleProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'strokeStyle');
     });
   }
 
   QueryBuilder<SceneElementRecord, double, QQueryOperations>
-      strokeWidthProperty() {
+  strokeWidthProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'strokeWidth');
     });
@@ -5650,7 +5709,7 @@ extension SceneElementRecordQueryProperty
   }
 
   QueryBuilder<SceneElementRecord, TextAlignKind, QQueryOperations>
-      textAlignProperty() {
+  textAlignProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'textAlign');
     });
@@ -5678,8 +5737,9 @@ const AppMetaSchema = CollectionSchema(
       id: 0,
       name: r'schemaVersion',
       type: IsarType.long,
-    )
+    ),
   },
+
   estimateSize: _appMetaEstimateSize,
   serialize: _appMetaSerialize,
   deserialize: _appMetaDeserialize,
@@ -5688,6 +5748,7 @@ const AppMetaSchema = CollectionSchema(
   indexes: {},
   links: {},
   embeddedSchemas: {},
+
   getId: _appMetaGetId,
   getLinks: _appMetaGetLinks,
   attach: _appMetaAttach,
@@ -5761,10 +5822,7 @@ extension AppMetaQueryWhereSort on QueryBuilder<AppMeta, AppMeta, QWhere> {
 extension AppMetaQueryWhere on QueryBuilder<AppMeta, AppMeta, QWhereClause> {
   QueryBuilder<AppMeta, AppMeta, QAfterWhereClause> idEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: id,
-        upper: id,
-      ));
+      return query.addWhereClause(IdWhereClause.between(lower: id, upper: id));
     });
   }
 
@@ -5790,8 +5848,10 @@ extension AppMetaQueryWhere on QueryBuilder<AppMeta, AppMeta, QWhereClause> {
     });
   }
 
-  QueryBuilder<AppMeta, AppMeta, QAfterWhereClause> idGreaterThan(Id id,
-      {bool include = false}) {
+  QueryBuilder<AppMeta, AppMeta, QAfterWhereClause> idGreaterThan(
+    Id id, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: id, includeLower: include),
@@ -5799,8 +5859,10 @@ extension AppMetaQueryWhere on QueryBuilder<AppMeta, AppMeta, QWhereClause> {
     });
   }
 
-  QueryBuilder<AppMeta, AppMeta, QAfterWhereClause> idLessThan(Id id,
-      {bool include = false}) {
+  QueryBuilder<AppMeta, AppMeta, QAfterWhereClause> idLessThan(
+    Id id, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: id, includeUpper: include),
@@ -5815,12 +5877,14 @@ extension AppMetaQueryWhere on QueryBuilder<AppMeta, AppMeta, QWhereClause> {
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: lowerId,
-        includeLower: includeLower,
-        upper: upperId,
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IdWhereClause.between(
+          lower: lowerId,
+          includeLower: includeLower,
+          upper: upperId,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 }
@@ -5829,10 +5893,9 @@ extension AppMetaQueryFilter
     on QueryBuilder<AppMeta, AppMeta, QFilterCondition> {
   QueryBuilder<AppMeta, AppMeta, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'id', value: value),
+      );
     });
   }
 
@@ -5841,11 +5904,13 @@ extension AppMetaQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -5854,11 +5919,13 @@ extension AppMetaQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -5869,37 +5936,38 @@ extension AppMetaQueryFilter
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'id',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'id',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<AppMeta, AppMeta, QAfterFilterCondition> schemaVersionEqualTo(
-      int value) {
+    int value,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'schemaVersion',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'schemaVersion', value: value),
+      );
     });
   }
 
   QueryBuilder<AppMeta, AppMeta, QAfterFilterCondition>
-      schemaVersionGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
+  schemaVersionGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'schemaVersion',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'schemaVersion',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -5908,11 +5976,13 @@ extension AppMetaQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'schemaVersion',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'schemaVersion',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -5923,13 +5993,15 @@ extension AppMetaQueryFilter
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'schemaVersion',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'schemaVersion',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 }

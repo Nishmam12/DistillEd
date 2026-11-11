@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margo/editor/state/editor_tool_controller.dart';
+import 'package:margo/editor/state/pen_presets.dart';
 import 'package:margo/editor/ui/editor_constants.dart' show kFavoritePickerColors;
 import 'package:margo/editor/ui/universal_color_palette.dart';
 
@@ -114,4 +115,22 @@ void main() {
     final decoration = surface.decoration as ShapeDecoration;
     expect(decoration.shape, isA<ContinuousRectangleBorder>());
   });
+
+  testWidgets('a colour from Custom… is used and kept under Recent',
+      (tester) async {
+    final container = await pumpPalette(tester);
+    await tester.tap(find.byTooltip('Colour'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Custom…'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const ValueKey('hexField')), '#12B886');
+    await tester.pump();
+    await tester.tap(find.text('Use'));
+    await tester.pumpAndSettle();
+
+    expect(container.read(editorToolProvider).color, 0xFF12B886);
+    expect(container.read(recentColorsProvider), [0xFF12B886]);
+  });
 }
+

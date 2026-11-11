@@ -149,8 +149,8 @@ Widget _panelRow(IconData icon, Widget control) {
 String _percentLabel(double v) => '${(v * 100).round()}%';
 String _roundedLabel(double v) => v.round().toString();
 
-/// Pen options: a reserved slot for future brush types (only "Pen" exists
-/// today), thickness and opacity.
+/// Pen options: which pen (ballpoint, fountain, pencil, highlighter),
+/// thickness and opacity.
 class _PenPanel extends StatelessWidget {
   final EditorToolState state;
   final EditorToolController ctl;
@@ -164,19 +164,27 @@ class _PenPanel extends StatelessWidget {
         const SizedBox(height: 6),
         Align(
           alignment: Alignment.centerLeft,
-          child: ChoiceChip(
-            showCheckmark: false,
-            label: const Icon(Icons.brush, size: 18),
-            tooltip: 'Pen',
-            selected: true,
-            onSelected: (_) {},
+          child: Wrap(
+            spacing: 6,
+            children: [
+              for (final (kind, icon, name) in kPenKinds)
+                ChoiceChip(
+                  key: ValueKey('penKind-${kind.name}'),
+                  showCheckmark: false,
+                  label: Icon(icon, size: 18),
+                  tooltip: name,
+                  selected: state.penKind == kind,
+                  onSelected: (_) => ctl.setPenKind(kind),
+                ),
+            ],
           ),
         ),
         _PanelSlider(
           icon: Icons.line_weight,
           value: state.size,
           min: 1,
-          max: 24,
+          // A highlighter is meant to cover a line of writing.
+          max: state.penKind == PenKind.highlighter ? 40 : 24,
           onChanged: ctl.setSize,
           label: _roundedLabel,
         ),

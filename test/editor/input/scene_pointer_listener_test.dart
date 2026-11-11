@@ -14,6 +14,7 @@ void main() {
   late int cancels;
   late int ups;
   late List<Offset> pans;
+  late List<int> fingerTaps;
 
   Future<void> pump(WidgetTester tester,
       {bool handTool = false, bool fingerPans = false}) async {
@@ -22,6 +23,7 @@ void main() {
     cancels = 0;
     ups = 0;
     pans = [];
+    fingerTaps = [];
     await tester.pumpWidget(
       Directionality(
         textDirection: TextDirection.ltr,
@@ -29,6 +31,7 @@ void main() {
           isHandTool: handTool,
           fingerPans: fingerPans,
           onViewportUpdate: (delta, _, _) => pans.add(delta),
+          onMultiFingerTap: fingerTaps.add,
           onStrokeCancel: () => cancels++,
           onPointerDown: (e, StrokePoint _) => downs.add(e.kind),
           onPointerMove: (e, StrokePoint _) => moves.add(e.kind),
@@ -172,6 +175,64 @@ void main() {
 
       expect(downs, [PointerDeviceKind.touch]);
       expect(pans, isEmpty);
+    });
+  });
+
+  group('multi-finger taps', () {
+    Future<void> tapWith(WidgetTester tester, int fingers,
+        {Offset move = Offset.zero, Duration hold = Duration.zero}) async {
+      final gestures = <TestGesture>[];
+      for (var i = 0; i < fingers; i++) {
+        gestures.add(await tester.startGesture(Offset(100.0 + i * 60, 200),
+            kind: PointerDeviceKind.touch));
+      }
+      if (move != Offset.zero) await gestures.first.moveBy(move);
+      // Test gestures stamp every event at zero unless told otherwise, so the
+      // lift time says how long the fingers stayed down.
+      final up = hold == Duration.zero ? const Duration(milliseconds: 80) : hold;
+      for (final g in gestures) {
+        await g.up(timeStamp: up);
+      }
+    }
+
+    testWidgets('two fingers tapped together report 2', (tester) async {
+      await pump(tester);
+      await tapWith(tester, 2);
+      expect(fingerTaps, [2]);
+      expect(ups, 0, reason: 'nothing was drawn');
+    });
+
+    testWidgets('three fingers report 3', (tester) async {
+      await pump(tester);
+      await tapWith(tester, 3);
+      expect(fingerTaps, [3]);
+    });
+
+    testWidgets('a pinch is not a tap', (tester) async {
+      await pump(tester);
+      await tapWith(tester, 2, move: const Offset(40, 0));
+      expect(fingerTaps, isEmpty);
+    });
+
+    testWidgets('fingers held down are not a tap', (tester) async {
+      await pump(tester);
+      await tapWith(tester, 2, hold: const Duration(milliseconds: 600));
+      expect(fingerTaps, isEmpty);
+    });
+
+    testWidgets('one finger is not a multi-finger tap', (tester) async {
+      await pump(tester);
+      await tapWith(tester, 1);
+      expect(fingerTaps, isEmpty);
+    });
+
+    testWidgets('a palm while writing is not a tap', (tester) async {
+      await pump(tester);
+      final pen = await tester.startGesture(const Offset(300, 300),
+          kind: PointerDeviceKind.stylus);
+      await tapWith(tester, 2);
+      await pen.up();
+      expect(fingerTaps, isEmpty);
     });
   });
 

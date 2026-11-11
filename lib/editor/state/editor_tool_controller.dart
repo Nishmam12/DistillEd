@@ -7,6 +7,7 @@
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../domain/model/scene_element.dart';
+import 'pen_presets.dart';
 
 enum EditorTool { select, pen, shape, text, frame, eraser, laser, hand }
 
@@ -15,6 +16,9 @@ class EditorToolState {
   final int color; // stroke / text colour, ARGB
   final double size; // stroke width
   final double opacity; // 0..1
+
+  /// Which pen the pen tool draws with.
+  final PenKind penKind;
 
   // Shape options.
   final ShapeType shapeType;
@@ -45,6 +49,7 @@ class EditorToolState {
     this.color = 0xFF1F2933,
     this.size = 4.0,
     this.opacity = 1.0,
+    this.penKind = PenKind.ballpoint,
     this.shapeType = ShapeType.rectangle,
     this.hasFill = false,
     this.fillColor = 0xFFFFE066,
@@ -67,6 +72,7 @@ class EditorToolState {
     int? color,
     double? size,
     double? opacity,
+    PenKind? penKind,
     ShapeType? shapeType,
     bool? hasFill,
     int? fillColor,
@@ -86,6 +92,7 @@ class EditorToolState {
       color: color ?? this.color,
       size: size ?? this.size,
       opacity: opacity ?? this.opacity,
+      penKind: penKind ?? this.penKind,
       shapeType: shapeType ?? this.shapeType,
       hasFill: hasFill ?? this.hasFill,
       fillColor: fillColor ?? this.fillColor,
@@ -105,6 +112,20 @@ class EditorToolState {
 
 class EditorToolController extends StateNotifier<EditorToolState> {
   EditorToolController() : super(const EditorToolState());
+
+  /// Applies [pen], remembered from last time, unless the user has already
+  /// changed something: a pen picked in the first moments must not be replaced
+  /// by the remembered one when it finishes loading.
+  void restorePen(PenStyle pen) {
+    if (!identical(state, const EditorToolState())) return;
+    state = state.copyWith(
+      penKind: pen.kind,
+      color: pen.color,
+      fillColor: pen.color,
+      size: pen.size,
+      opacity: pen.opacity,
+    );
+  }
 
   /// Selects [tool]. Picking a *different* tool (re)opens its options panel —
   /// each tool gets a brief look at its own settings before the panel closes
@@ -139,6 +160,22 @@ class EditorToolController extends StateNotifier<EditorToolState> {
   void setSize(double size) => state = state.copyWith(size: size);
   void setOpacity(double opacity) => state = state.copyWith(opacity: opacity);
 
+  /// Switches to the pen tool drawing with [pen] (a saved pen, or the one
+  /// remembered from last time). Shape fill follows the colour, as with
+  /// [setColor].
+  void usePen(PenStyle pen) => state = state.copyWith(
+        tool: EditorTool.pen,
+        penKind: pen.kind,
+        color: pen.color,
+        fillColor: pen.color,
+        size: pen.size,
+        opacity: pen.opacity,
+      );
+
+  /// Picks which pen the pen tool draws with (and makes the pen the tool).
+  void setPenKind(PenKind kind) =>
+      state = state.copyWith(tool: EditorTool.pen, penKind: kind);
+
   void setShapeType(ShapeType t) =>
       state = state.copyWith(tool: EditorTool.shape, shapeType: t);
 
@@ -171,7 +208,28 @@ class EditorToolController extends StateNotifier<EditorToolState> {
   void setEraserPixel(bool v) => state = state.copyWith(eraserPixel: v);
 }
 
+/// The tool state for the open editor. Opens with the pen used last time, and
+/// saves the pen (type, colour, size, opacity) whenever it changes — not on
+/// tool switches, which change nothing worth remembering.
 final editorToolProvider =
     StateNotifierProvider.autoDispose<EditorToolController, EditorToolState>(
-  (ref) => EditorToolController(),
+  (ref) {
+    final prefs = ref.watch(penPreferencesProvider);
+    final controller = EditorToolController();
+    var lastPen = PenStyle.of(const EditorToolState());
+
+    prefs.loadCurrent().then((pen) {
+      if (pen == null || !controller.mounted) return;
+      lastPen = pen; // restoring it is not a change worth saving
+      controller.restorePen(pen);
+    });
+
+    controller.addListener((state) {
+      final pen = PenStyle.of(state);
+      if (pen == lastPen) return;
+      lastPen = pen;
+      prefs.saveCurrent(pen);
+    }, fireImmediately: false);
+    return controller;
+  },
 );

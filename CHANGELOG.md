@@ -36,6 +36,24 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   and you can cancel.
 
 ### Added
+- **Four pens.** The pen panel now offers a pen, a fountain pen (strong
+  thick-thin), a pencil (grainy graphite) and a highlighter (wide and
+  see-through, so the writing under it stays readable). Each stroke remembers
+  which pen drew it; existing ink stays as it was. The laser pointer has its
+  own icon.
+- **Saved pens on the toolbar.** Next to the pen tool: tap one to write with
+  it, long-press to replace or remove it, **+** to save the pen you're using
+  (up to five). You start with a pen, a blue fountain pen, a pencil and a
+  yellow highlighter.
+- **Margo remembers your pen.** A note opens with the pen, colour and size you
+  last used.
+- **Any colour.** **Custom…** in the colour palette opens hue, colour and
+  brightness sliders and a hex field. Colours you pick there are kept under
+  **Recent**.
+- **Hold to straighten.** Draw a line and hold the pen still at the end: it
+  snaps straight. One undo brings back the line as drawn.
+- **Tap with two fingers to undo, three to redo.** A small vibration confirms
+  it, and confirms a straightened line or snapped shape too.
 - **Draw with finger** (Settings → Pen). Turn it off and one finger scrolls the
   page while only the pen draws. The first time you write with a pen, Margo
   offers to turn it off for you.

@@ -50,6 +50,11 @@ class SceneElementRecord {
   List<int> pointT = const [];
   bool isEraser = false;
 
+  /// Which pen drew the stroke. Rows written before pen types existed hold
+  /// index 0, [PenKind.ballpoint] — exactly how they always drew.
+  @enumerated
+  PenKind penKind = PenKind.ballpoint;
+
   /// Lecture-recording link (Tier 4.12). Null on strokes drawn with no
   /// recording running, and on every row written before these fields existed.
   int? recordingId;

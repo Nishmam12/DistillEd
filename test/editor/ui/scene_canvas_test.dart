@@ -55,6 +55,91 @@ void main() {
         greaterThanOrEqualTo(3));
   });
 
+  testWidgets('a stroke is saved with the pen type it was drawn with',
+      (tester) async {
+    final container = _container();
+    addTearDown(container.dispose);
+    await _pump(tester, container);
+    container.read(editorToolProvider.notifier).setPenKind(PenKind.highlighter);
+    await tester.pump();
+
+    final g = await tester.startGesture(const Offset(100, 100),
+        kind: PointerDeviceKind.stylus);
+    await g.moveBy(const Offset(40, 0));
+    await g.up();
+    await tester.pump();
+
+    final stroke =
+        container.read(sceneControllerProvider(_key)).single as FreehandElement;
+    expect(stroke.penKind, PenKind.highlighter);
+  });
+
+  testWidgets('holding the pen at the end of a line straightens it',
+      (tester) async {
+    final container = _container();
+    addTearDown(container.dispose);
+    await _pump(tester, container);
+
+    final g = await tester.startGesture(const Offset(100, 100),
+        kind: PointerDeviceKind.stylus);
+    for (var i = 1; i <= 10; i++) {
+      await g.moveTo(Offset(100 + i * 20.0, 100 + (i.isEven ? 3 : -3)),
+          timeStamp: Duration(milliseconds: i * 20));
+    }
+    await g.moveTo(const Offset(300, 100),
+        timeStamp: const Duration(milliseconds: 220));
+    // The pen rests where it ended.
+    await g.moveTo(const Offset(300, 101),
+        timeStamp: const Duration(milliseconds: 900));
+    await g.up(timeStamp: const Duration(milliseconds: 950));
+    await tester.pump();
+
+    final line =
+        container.read(sceneControllerProvider(_key)).single as FreehandElement;
+    for (final p in line.points) {
+      expect(p.y, closeTo(100, 1.5));
+    }
+
+    // One undo brings back the line as drawn.
+    container.read(historyProvider(_key).notifier).undo();
+    final drawn =
+        container.read(sceneControllerProvider(_key)).single as FreehandElement;
+    expect(drawn.points.any((p) => (p.y - 100).abs() > 2), isTrue);
+  });
+
+  testWidgets('a two-finger tap undoes, a three-finger tap redoes',
+      (tester) async {
+    final container = _container();
+    addTearDown(container.dispose);
+    await _pump(tester, container);
+
+    final g = await tester.startGesture(const Offset(100, 100),
+        kind: PointerDeviceKind.stylus);
+    await g.moveBy(const Offset(40, 0));
+    await g.up();
+    await tester.pump();
+    expect(container.read(sceneControllerProvider(_key)), hasLength(1));
+
+    Future<void> tap(int fingers) async {
+      // Well past the palm-rejection window after the pen lifted.
+      const at = Duration(seconds: 5);
+      final touches = <TestGesture>[];
+      for (var i = 0; i < fingers; i++) {
+        touches.add(await tester.createGesture(kind: PointerDeviceKind.touch));
+        await touches.last.down(Offset(200.0 + i * 50, 300), timeStamp: at);
+      }
+      for (final t in touches) {
+        await t.up(timeStamp: at + const Duration(milliseconds: 80));
+      }
+      await tester.pump();
+    }
+
+    await tap(2);
+    expect(container.read(sceneControllerProvider(_key)), isEmpty);
+    await tap(3);
+    expect(container.read(sceneControllerProvider(_key)), hasLength(1));
+  });
+
   testWidgets('a stroke is stamped by the screen-supplied stampStroke',
       (tester) async {
     final container = _container();

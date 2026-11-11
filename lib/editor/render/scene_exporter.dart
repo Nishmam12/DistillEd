@@ -20,6 +20,7 @@ import '../../domain/geometry/scene_geometry.dart';
 import '../../domain/geometry/selection_bounds.dart';
 import '../../domain/model/scene_element.dart';
 import '../../domain/geometry/shape_geometry.dart';
+import 'freehand_path.dart';
 import 'scene_element_painter.dart';
 import 'scene_static_layer.dart';
 
@@ -268,8 +269,15 @@ class SceneExporter {
         if (!e.isEraser && e.points.length >= 2) {
           final pts =
               e.points.map((p) => '${_n(p.x)},${_n(p.y)}').join(' ');
+          // Match the canvas: a highlighter is see-through, pencil lighter.
+          final opacity = switch (e.penKind) {
+            PenKind.highlighter => FreehandPath.highlighterAlpha * e.opacity,
+            PenKind.pencil =>
+              _alpha(e.color, e.opacity) * FreehandPath.pencilAlpha,
+            _ => _alpha(e.color, e.opacity),
+          };
           b.writeln('<polyline points="$pts" fill="none" '
-              'stroke="${_hex(e.color)}" stroke-opacity="${_n(_alpha(e.color, e.opacity))}" '
+              'stroke="${_hex(e.color)}" stroke-opacity="${_n(opacity)}" '
               'stroke-width="${_n(e.size)}" stroke-linecap="round" stroke-linejoin="round"/>');
         }
       case SceneShapeElement():

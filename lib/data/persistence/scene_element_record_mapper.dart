@@ -29,6 +29,7 @@ class SceneElementRecordMapper {
         r.color = element.color;
         r.strokeWidth = element.size;
         r.isEraser = element.isEraser;
+        r.penKind = element.penKind;
         r.recordingId = element.recordingId;
         r.audioOffsetMs = element.audioOffsetMs;
         final pts = <double>[];
@@ -107,6 +108,7 @@ class SceneElementRecordMapper {
           color: r.color,
           size: r.strokeWidth,
           isEraser: r.isEraser,
+          penKind: r.penKind,
           recordingId: r.recordingId,
           audioOffsetMs: r.audioOffsetMs,
         );

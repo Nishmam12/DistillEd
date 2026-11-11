@@ -8,9 +8,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'custom_color_dialog.dart';
 import 'editor_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../state/editor_tool_controller.dart';
+import '../state/pen_presets.dart';
 
 class UniversalColorPalette extends ConsumerStatefulWidget {
   const UniversalColorPalette({super.key});
@@ -23,10 +25,24 @@ class UniversalColorPalette extends ConsumerStatefulWidget {
 class _UniversalColorPaletteState extends ConsumerState<UniversalColorPalette> {
   bool _open = false;
 
+  void _pick(int c) {
+    ref.read(editorToolProvider.notifier).setColor(c);
+    setState(() => _open = false);
+  }
+
+  /// Opens the custom colour dialog; a colour chosen there is used and
+  /// remembered under Recent.
+  Future<void> _custom(int current) async {
+    final c = await showCustomColorDialog(context, current);
+    if (c == null || !mounted) return;
+    ref.read(recentColorsProvider.notifier).use(c);
+    _pick(c);
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = ref.watch(editorToolProvider.select((s) => s.color));
-    final ctl = ref.read(editorToolProvider.notifier);
+    final recent = ref.watch(recentColorsProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -61,19 +77,46 @@ class _UniversalColorPaletteState extends ConsumerState<UniversalColorPalette> {
                       side: BorderSide(color: context.colors.border),
                     ),
                   ),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final c in kFavoritePickerColors)
-                        _Swatch(
-                          color: c,
-                          selected: color == c,
-                          onTap: () {
-                            ctl.setColor(c);
-                            setState(() => _open = false);
-                          },
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final c in kFavoritePickerColors)
+                            _Swatch(
+                              color: c,
+                              selected: color == c,
+                              onTap: () => _pick(c),
+                            ),
+                        ],
+                      ),
+                      if (recent.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text('Recent',
+                            style: Theme.of(context).textTheme.labelSmall),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final c in recent)
+                              _Swatch(
+                                color: c,
+                                selected: color == c,
+                                onTap: () => _pick(c),
+                              ),
+                          ],
                         ),
+                      ],
+                      const SizedBox(height: 6),
+                      TextButton.icon(
+                        onPressed: () => _custom(color),
+                        icon: const Icon(Icons.colorize_outlined, size: 18),
+                        label: const Text('Custom…'),
+                      ),
                     ],
                   ),
                 ),

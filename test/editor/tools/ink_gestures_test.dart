@@ -372,4 +372,65 @@ void main() {
       expect(scribbleVictims([eraser], scribble, excludeId: 'x'), isEmpty);
     });
   });
+
+  group('straightenedLine — hold at the end of a line to straighten it', () {
+    /// A slightly wobbly left-to-right line, then the pen resting at its end
+    /// for [holdMs].
+    List<StrokePoint> wobblyLine({int holdMs = 700, double wobble = 3}) {
+      final out = <StrokePoint>[];
+      for (var i = 0; i <= 20; i++) {
+        out.add(StrokePoint(
+            x: i * 10.0,
+            y: 100 + (i.isEven ? wobble : -wobble),
+            pressure: 0.4 + i / 100,
+            t: i * 10));
+      }
+      out.add(StrokePoint(x: 200, y: 100, pressure: 0.6, t: 200 + holdMs));
+      return out;
+    }
+
+    test('a held, nearly straight line comes back straight', () {
+      final line = wobblyLine();
+      final straight = straightenedLine(line, line.last.t!)!;
+      expect(straight.first.x, closeTo(0, 0.01));
+      expect(straight.last.x, closeTo(200, 0.01));
+      for (final p in straight) {
+        expect(p.y, closeTo(line.first.y + (line.last.y - line.first.y) * p.x / 200, 0.01));
+      }
+      expect(straight.length, greaterThanOrEqualTo(2));
+    });
+
+    test('keeps the pressure it was drawn with', () {
+      final line = wobblyLine();
+      final straight = straightenedLine(line, line.last.t!)!;
+      for (final p in straight) {
+        expect(p.pressure, inInclusiveRange(0.4, 0.61));
+      }
+    });
+
+    test('no hold, no change', () {
+      final line = wobblyLine(holdMs: 50);
+      expect(straightenedLine(line, line.last.t!), isNull);
+    });
+
+    test('a curve is left alone, even held', () {
+      final curve = [
+        for (var i = 0; i <= 20; i++)
+          StrokePoint(
+              x: i * 10.0, y: 100 + 60 * math.sin(i / 20 * math.pi), t: i * 10),
+        const StrokePoint(x: 200, y: 100, t: 900),
+      ];
+      expect(straightenedLine(curve, 900), isNull);
+    });
+
+    test('a short dash is too small to be a deliberate line', () {
+      final dash = [
+        const StrokePoint(x: 0, y: 0, t: 0),
+        const StrokePoint(x: 10, y: 0, t: 10),
+        const StrokePoint(x: 10, y: 0, t: 800),
+      ];
+      expect(straightenedLine(dash, 800), isNull);
+    });
+  });
 }
+

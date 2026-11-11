@@ -67,6 +67,9 @@ final class FreehandElement extends SceneElement {
   final double size;
   final bool isEraser;
 
+  /// Which pen drew this stroke; decides how it is rendered.
+  final PenKind penKind;
+
   /// The lecture recording this stroke was drawn during, or null if there was
   /// none. Paired with [audioOffsetMs] to seek audio from a tapped stroke.
   final int? recordingId;
@@ -85,6 +88,7 @@ final class FreehandElement extends SceneElement {
     required this.color,
     required this.size,
     this.isEraser = false,
+    this.penKind = PenKind.ballpoint,
     this.recordingId,
     this.audioOffsetMs,
     super.rotation,
@@ -110,6 +114,7 @@ final class FreehandElement extends SceneElement {
     int? color,
     double? size,
     bool? isEraser,
+    PenKind? penKind,
     int? recordingId,
     int? audioOffsetMs,
   }) {
@@ -124,6 +129,7 @@ final class FreehandElement extends SceneElement {
       color: color ?? this.color,
       size: size ?? this.size,
       isEraser: isEraser ?? this.isEraser,
+      penKind: penKind ?? this.penKind,
       recordingId: recordingId ?? this.recordingId,
       audioOffsetMs: audioOffsetMs ?? this.audioOffsetMs,
     );
