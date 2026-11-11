@@ -8,7 +8,9 @@ extension _SceneCanvasTools on _SceneCanvasState {
 
   void _onEraserDown(EditorToolState tool, StrokePoint p) {
     if (tool.eraserPixel) {
-      _active.value = [_scenePoint(p)];
+      // The preview of what will be cut: a grey ghost, not the pen's colour.
+      _active.begin(_scenePoint(p),
+          color: 0xFF9AA0A6, size: tool.size, opacity: 0.4);
       return;
     }
     final scene = _toScene(p);
@@ -23,9 +25,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
 
   void _onEraserMove(EditorToolState tool, StrokePoint p) {
     if (tool.eraserPixel) {
-      if (_active.value.isNotEmpty) {
-        _active.value = [..._active.value, _scenePoint(p)];
-      }
+      _active.add(_scenePoint(p));
       return;
     }
     final scene = _toScene(p);
@@ -44,8 +44,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
 
   void _onEraserUp(EditorToolState tool) {
     if (tool.eraserPixel) {
-      final points = _active.value;
-      _active.value = const [];
+      final points = _active.take();
       if (points.isEmpty) return;
       // True pixel erase: cut the previewed hole out of real geometry
       // (splitting strokes, converting cut shapes to strokes) as one undo
@@ -296,8 +295,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
   // ---- commit (pen / shape / text) ------------------------------------------
 
   void _commitStroke(EditorToolState tool, {int? upMs}) {
-    final points = _active.value;
-    _active.value = const [];
+    final points = _active.take();
     if (points.isEmpty) return;
     // If a lecture is being recorded, stamp the stroke with how far into that
     // recording it began — measured from the stroke's FIRST point, so tapping

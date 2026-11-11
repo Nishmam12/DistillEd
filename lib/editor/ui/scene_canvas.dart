@@ -92,7 +92,7 @@ class SceneCanvas extends ConsumerStatefulWidget {
 
 class _SceneCanvasState extends ConsumerState<SceneCanvas>
     with SingleTickerProviderStateMixin {
-  final ValueNotifier<List<StrokePoint>> _active = ValueNotifier(const []);
+  final ActiveStroke _active = ActiveStroke();
   final ValueNotifier<SceneShapeElement?> _preview = ValueNotifier(null);
   final ValueNotifier<Rect?> _marquee = ValueNotifier(null);
   final ValueNotifier<List<(Offset, Offset)>> _guides = ValueNotifier(const []);
@@ -109,6 +109,11 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   int _shapeSeed = 0;
   int _seq = 0;
   Offset _lastErase = Offset.zero;
+
+  // Whether the gesture in progress erases whatever tool is selected: the pen
+  // is upside down, or its side button was held when it touched down. Latched
+  // at pointer-down so the whole gesture is one thing.
+  bool _eraserGesture = false;
 
   // Selection gesture state.
   _SelMode _selMode = _SelMode.none;
@@ -177,8 +182,18 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
 
   // ---- pointer routing ------------------------------------------------------
 
-  void _onDown(PointerEvent _, StrokePoint p) {
+  /// The tool this gesture acts as: the selected one, or the eraser when the
+  /// pen itself asked for it (see [_eraserGesture]).
+  EditorToolState _gestureTool() {
     final tool = ref.read(editorToolProvider);
+    return _eraserGesture && tool.tool != EditorTool.eraser
+        ? tool.copyWith(tool: EditorTool.eraser)
+        : tool;
+  }
+
+  void _onDown(PointerEvent event, StrokePoint p) {
+    _eraserGesture = isEraserGesture(event);
+    final tool = _gestureTool();
     // The tool's options panel is only ever meant to be seen briefly after
     // picking the tool — the moment the user actually starts using it on the
     // page, the panel should get out of the way.
@@ -187,7 +202,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       case EditorTool.select:
         _onSelectDown(p);
       case EditorTool.pen:
-        _active.value = [_scenePoint(p)];
+        _active.begin(_scenePoint(p),
+            color: tool.color, size: tool.size, opacity: tool.opacity);
       case EditorTool.shape:
         _shapeStart = _toScene(p);
         _shapeSeed = math.Random().nextInt(0x7fffffff);
@@ -212,14 +228,12 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   }
 
   void _onMove(PointerEvent _, StrokePoint p) {
-    final tool = ref.read(editorToolProvider);
+    final tool = _gestureTool();
     switch (tool.tool) {
       case EditorTool.select:
         _onSelectMove(p);
       case EditorTool.pen:
-        if (_active.value.isNotEmpty) {
-          _active.value = [..._active.value, _scenePoint(p)];
-        }
+        _active.add(_scenePoint(p));
       case EditorTool.shape:
         if (_shapeStart != null) {
           _preview.value = ShapeFactory.build(
@@ -245,7 +259,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   }
 
   void _onUp(PointerEvent _, StrokePoint p) {
-    final tool = ref.read(editorToolProvider);
+    final tool = _gestureTool();
+    _eraserGesture = false;
     switch (tool.tool) {
       case EditorTool.select:
         _onSelectUp(p);
@@ -266,7 +281,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   }
 
   void _cancel() {
-    _active.value = const [];
+    _active.clear();
+    _eraserGesture = false;
     _preview.value = null;
     _shapeStart = null;
     _marquee.value = null;
@@ -363,11 +379,6 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       }
     }
 
-    final eraserPixelActive =
-        tool.tool == EditorTool.eraser && tool.eraserPixel;
-    final activeColor = eraserPixelActive ? 0xFF9AA0A6 : tool.color;
-    final activeOpacity = eraserPixelActive ? 0.4 : tool.opacity;
-
     return LayoutBuilder(builder: (context, constraints) {
       final canvasSize = constraints.biggest;
       _syncViewportConfig(canvasSize);
@@ -429,17 +440,9 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
                           ),
                         ),
                         RepaintBoundary(
-                          child: ValueListenableBuilder<List<StrokePoint>>(
-                            valueListenable: _active,
-                            builder: (_, points, _) => CustomPaint(
-                              painter: SceneActiveStrokeLayer(
-                                points: points,
-                                color: activeColor,
-                                size: tool.size,
-                                opacity: activeOpacity,
-                              ),
-                              size: Size.infinite,
-                            ),
+                          child: CustomPaint(
+                            painter: SceneActiveStrokeLayer(_active),
+                            size: Size.infinite,
                           ),
                         ),
                         RepaintBoundary(

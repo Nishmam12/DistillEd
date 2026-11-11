@@ -144,4 +144,112 @@ void main() {
       }
     });
   });
+
+  group('pressure', () {
+    Future<StrokePoint> downPoint(
+        WidgetTester tester, PointerDownEvent event) async {
+      StrokePoint? seen;
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: ScenePointerListener(
+            onPointerDown: (_, p) => seen = p,
+            onPointerMove: (_, _) {},
+            onPointerUp: (_, _) {},
+            child: const SizedBox.expand(),
+          ),
+        ),
+      );
+      await tester.sendEventToBinding(event);
+      await tester.sendEventToBinding(PointerUpEvent(
+          pointer: event.pointer, position: event.position, kind: event.kind));
+      return seen!;
+    }
+
+    testWidgets('a pen reporting exactly 0.5 is real pressure, not a guess',
+        (tester) async {
+      final p = await downPoint(
+          tester,
+          const PointerDownEvent(
+              pointer: 1,
+              position: Offset(100, 100),
+              kind: PointerDeviceKind.stylus,
+              pressure: 0.5,
+              pressureMin: 0,
+              pressureMax: 1));
+
+      expect(p.simulatePressure, isFalse);
+      expect(p.pressure, 0.5);
+    });
+
+    testWidgets('a pen pressing lightly keeps its own value', (tester) async {
+      final p = await downPoint(
+          tester,
+          const PointerDownEvent(
+              pointer: 1,
+              position: Offset(100, 100),
+              kind: PointerDeviceKind.stylus,
+              pressure: 0.2,
+              pressureMin: 0,
+              pressureMax: 1));
+
+      expect(p.simulatePressure, isFalse);
+      expect(p.pressure, closeTo(0.2, 1e-9));
+    });
+
+    testWidgets('a finger is simulated whatever value it reports',
+        (tester) async {
+      final p = await downPoint(
+          tester,
+          const PointerDownEvent(
+              pointer: 1,
+              position: Offset(100, 100),
+              pressure: 0.83,
+              pressureMin: 0,
+              pressureMax: 1));
+
+      expect(p.simulatePressure, isTrue);
+      expect(p.pressure, 0.5);
+    });
+
+    testWidgets('a pen with no pressure range is simulated', (tester) async {
+      final p = await downPoint(
+          tester,
+          const PointerDownEvent(
+              pointer: 1,
+              position: Offset(100, 100),
+              kind: PointerDeviceKind.stylus));
+
+      expect(p.simulatePressure, isTrue);
+    });
+  });
+
+  group('isEraserGesture', () {
+    test('an upside-down pen erases', () {
+      expect(
+          isEraserGesture(const PointerDownEvent(
+              kind: PointerDeviceKind.invertedStylus)),
+          isTrue);
+    });
+
+    test('a pen with its side button held erases', () {
+      expect(
+          isEraserGesture(const PointerDownEvent(
+              kind: PointerDeviceKind.stylus, buttons: kPrimaryStylusButton)),
+          isTrue);
+    });
+
+    test('a plain pen, a finger and a right-click do not', () {
+      expect(
+          isEraserGesture(
+              const PointerDownEvent(kind: PointerDeviceKind.stylus)),
+          isFalse);
+      expect(isEraserGesture(const PointerDownEvent()), isFalse);
+      // The secondary mouse button shares the stylus button's bit.
+      expect(
+          isEraserGesture(const PointerDownEvent(
+              kind: PointerDeviceKind.mouse, buttons: kSecondaryMouseButton)),
+          isFalse);
+    });
+  });
 }

@@ -65,6 +65,20 @@ class ScenePointerListener extends StatefulWidget {
 bool _isStylus(PointerDeviceKind k) =>
     k == PointerDeviceKind.stylus || k == PointerDeviceKind.invertedStylus;
 
+/// Whether [event] comes from a pen that reports how hard it is pressed.
+///
+/// Decided by what the device is, never by the value it sent: a real pen can
+/// report exactly 0.5, and a finger's "pressure" is contact area, not force.
+bool reportsPressure(PointerEvent event) =>
+    _isStylus(event.kind) && event.pressureMax > event.pressureMin;
+
+/// Whether [event] is the pen asking to erase: held upside down, or with its
+/// side button pressed.
+bool isEraserGesture(PointerEvent event) =>
+    event.kind == PointerDeviceKind.invertedStylus ||
+    (event.kind == PointerDeviceKind.stylus &&
+        event.buttons & kPrimaryStylusButton != 0);
+
 class _ScenePointerListenerState extends State<ScenePointerListener> {
   static const Duration _palmRejectionGrace = Duration(milliseconds: 500);
 
@@ -101,7 +115,7 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
   }
 
   StrokePoint _extractPoint(PointerEvent event) {
-    final bool simulate = event.pressure == 0.0 || event.pressure == 0.5;
+    final bool simulate = !reportsPressure(event);
     final double pressure = simulate ? 0.5 : event.pressure.clamp(0.01, 1.0);
     return StrokePoint(
       x: event.localPosition.dx,

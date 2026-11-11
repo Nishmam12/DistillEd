@@ -308,4 +308,54 @@ void main() {
 
     expect(container.read(sceneControllerProvider(_key)), isEmpty);
   });
+
+  group('erasing from the pen itself', () {
+    Future<void> drawStroke(WidgetTester tester) async {
+      final g = await tester.startGesture(const Offset(100, 100),
+          kind: PointerDeviceKind.stylus);
+      await g.moveBy(const Offset(40, 0));
+      await g.moveBy(const Offset(40, 0));
+      await g.up();
+      await tester.pump();
+    }
+
+    Future<void> swipeAcross(WidgetTester tester,
+        {required PointerDeviceKind kind, int buttons = kPrimaryButton}) async {
+      final g = await tester.startGesture(const Offset(140, 60),
+          kind: kind, buttons: buttons);
+      await g.moveBy(const Offset(0, 40));
+      await g.moveBy(const Offset(0, 40));
+      await g.up();
+      await tester.pump();
+    }
+
+    testWidgets('the eraser end removes ink while the pen tool is selected',
+        (tester) async {
+      final container = _container();
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+      await drawStroke(tester);
+      expect(container.read(sceneControllerProvider(_key)), hasLength(1));
+
+      await swipeAcross(tester, kind: PointerDeviceKind.invertedStylus);
+
+      expect(container.read(sceneControllerProvider(_key)), isEmpty);
+      expect(container.read(editorToolProvider).tool, EditorTool.pen);
+    });
+
+    testWidgets('the side button erases, and releasing it draws again',
+        (tester) async {
+      final container = _container();
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+      await drawStroke(tester);
+
+      await swipeAcross(tester,
+          kind: PointerDeviceKind.stylus, buttons: kPrimaryStylusButton);
+      expect(container.read(sceneControllerProvider(_key)), isEmpty);
+
+      await swipeAcross(tester, kind: PointerDeviceKind.stylus);
+      expect(container.read(sceneControllerProvider(_key)), hasLength(1));
+    });
+  });
 }
