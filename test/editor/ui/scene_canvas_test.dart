@@ -187,6 +187,61 @@ void main() {
     expect(moved.geometryData[1], closeTo(110, 1)); // 100 + 10
   });
 
+  group('select tool over a locked PDF page', () {
+    Future<ProviderContainer> seeded(WidgetTester tester) async {
+      final container = _container();
+      addTearDown(container.dispose);
+      await _pump(tester, container);
+      await container.read(sceneControllerProvider(_key).notifier).addMany([
+        const ImageElement(
+          id: 'pdf',
+          zOrder: 0,
+          geometryData: [0, 0, 700, 500],
+          relativeImagePath: 'notes/0/imports/p1.png',
+          isLocked: true,
+        ),
+        const SceneShapeElement(
+          id: 'ink',
+          zOrder: 1,
+          shapeType: ShapeType.rectangle,
+          geometryData: [100, 100, 160, 140],
+          color: 0xFF000000,
+          strokeWidth: 2,
+        ),
+      ]);
+      container.read(editorToolProvider.notifier).setTool(EditorTool.select);
+      await tester.pump();
+      return container;
+    }
+
+    testWidgets('a drag across the page selects the ink on it, not the page',
+        (tester) async {
+      final container = await seeded(tester);
+
+      final m = await tester.startGesture(const Offset(60, 60),
+          kind: PointerDeviceKind.stylus);
+      await m.moveBy(const Offset(140, 120));
+      await m.up();
+      await tester.pump();
+
+      expect(container.read(selectionProvider), {'ink'});
+      final pdf = container
+          .read(sceneControllerProvider(_key))
+          .firstWhere((e) => e.id == 'pdf') as ImageElement;
+      expect(pdf.geometryData, [0, 0, 700, 500]);
+    });
+
+    testWidgets('a tap on a bare part of the page still selects it',
+        (tester) async {
+      final container = await seeded(tester);
+
+      await tester.tapAt(const Offset(400, 300), kind: PointerDeviceKind.stylus);
+      await tester.pump();
+
+      expect(container.read(selectionProvider), {'pdf'});
+    });
+  });
+
   testWidgets('pen draw is undoable', (tester) async {
     final container = _container();
     addTearDown(container.dispose);

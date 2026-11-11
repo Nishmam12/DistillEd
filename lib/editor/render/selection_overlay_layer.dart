@@ -8,6 +8,9 @@ const double kHandleSize = 9.0;
 const double kHandleHitRadius = 16.0;
 const double kRotateGap = 26.0;
 
+/// A select-tool marquee no bigger than this on screen is a tap, not a drag.
+const double kTapSlopPx = 8.0;
+
 class SelectionOverlayLayer extends CustomPainter {
   final Rect? boxScreen;
   final List<Offset> handleScreen;

@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -124,6 +125,11 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   List<Rect> _snapTargets = const [];
   bool _didTransform = false;
 
+  /// The locked element (a PDF page) under a select-tool touch that hit
+  /// nothing else. Selected if the touch turns out to be a tap; see
+  /// [_onSelectDown].
+  String? _lockedUnderTap;
+
   // Last viewport configuration pushed to the controller, to avoid redundant
   // post-frame updates.
   Size? _configuredSize;
@@ -191,7 +197,32 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
         : tool;
   }
 
+  /// The first time a pen touches the page while a finger still draws, offers
+  /// once to let a finger scroll instead.
+  void _maybeOfferFingerScroll(PointerEvent event) {
+    if (event.kind != PointerDeviceKind.stylus &&
+        event.kind != PointerDeviceKind.invertedStylus) {
+      return;
+    }
+    final settings = ref.read(settingsProvider);
+    if (!settings.loaded || settings.stylusTipShown || !settings.fingerDraws) {
+      return;
+    }
+    final notifier = ref.read(settingsProvider.notifier);
+    unawaited(notifier.markStylusTipShown());
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
+      duration: const Duration(seconds: 8),
+      content: const Text(
+          'Writing with a pen? Let one finger scroll the page instead of drawing.'),
+      action: SnackBarAction(
+        label: 'Turn on',
+        onPressed: () => unawaited(notifier.setFingerDraws(false)),
+      ),
+    ));
+  }
+
   void _onDown(PointerEvent event, StrokePoint p) {
+    _maybeOfferFingerScroll(event);
     _eraserGesture = isEraserGesture(event);
     final tool = _gestureTool();
     // The tool's options panel is only ever meant to be seen briefly after
@@ -347,6 +378,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     final tool = ref.watch(editorToolProvider);
     final elements = ref.watch(sceneControllerProvider(_key));
     final selectedIds = ref.watch(selectionProvider);
+    final fingerDraws =
+        ref.watch(settingsProvider.select((s) => s.fingerDraws));
 
     // Kick off decoding of any referenced images (idempotent / deduped). The
     // path scan only reruns when the element list changes, not on every pan
@@ -390,6 +423,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
 
       return ScenePointerListener(
         isHandTool: tool.isHand,
+        fingerPans: !fingerDraws,
         onPointerDown: _onDown,
         onPointerMove: _onMove,
         onPointerUp: _onUp,

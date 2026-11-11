@@ -13,17 +13,22 @@ void main() {
   late List<PointerDeviceKind> moves;
   late int cancels;
   late int ups;
+  late List<Offset> pans;
 
-  Future<void> pump(WidgetTester tester, {bool handTool = false}) async {
+  Future<void> pump(WidgetTester tester,
+      {bool handTool = false, bool fingerPans = false}) async {
     downs = [];
     moves = [];
     cancels = 0;
     ups = 0;
+    pans = [];
     await tester.pumpWidget(
       Directionality(
         textDirection: TextDirection.ltr,
         child: ScenePointerListener(
           isHandTool: handTool,
+          fingerPans: fingerPans,
+          onViewportUpdate: (delta, _, _) => pans.add(delta),
           onStrokeCancel: () => cancels++,
           onPointerDown: (e, StrokePoint _) => downs.add(e.kind),
           onPointerMove: (e, StrokePoint _) => moves.add(e.kind),
@@ -112,6 +117,61 @@ void main() {
 
       expect(ups, 0);
       expect(cancels, 1);
+    });
+  });
+
+  group('drawing with a finger switched off', () {
+    testWidgets('one finger scrolls instead of drawing', (tester) async {
+      await pump(tester, fingerPans: true);
+      final finger = await tester.startGesture(const Offset(100, 100),
+          kind: PointerDeviceKind.touch);
+      await finger.moveBy(const Offset(0, -40));
+      await finger.up();
+
+      expect(downs, isEmpty);
+      expect(moves, isEmpty);
+      expect(ups, 0);
+      expect(pans, [const Offset(0, -40)]);
+    });
+
+    testWidgets('the pen still draws', (tester) async {
+      await pump(tester, fingerPans: true);
+      final pen = await tester.startGesture(const Offset(100, 100),
+          kind: PointerDeviceKind.stylus);
+      await pen.moveBy(const Offset(10, 0));
+      await pen.up();
+
+      expect(downs, [PointerDeviceKind.stylus]);
+      expect(moves, [PointerDeviceKind.stylus]);
+      expect(ups, 1);
+      expect(pans, isEmpty);
+    });
+
+    testWidgets('a palm on the page while writing still neither draws nor '
+        'scrolls', (tester) async {
+      await pump(tester, fingerPans: true);
+      final pen = await tester.startGesture(const Offset(100, 100),
+          kind: PointerDeviceKind.stylus);
+      final palm = await tester.startGesture(const Offset(50, 50),
+          kind: PointerDeviceKind.touch);
+      await palm.moveBy(const Offset(5, 5));
+      await pen.moveBy(const Offset(5, 5));
+      await pen.up();
+      await palm.up();
+
+      expect(downs, [PointerDeviceKind.stylus]);
+      expect(pans, isEmpty);
+    });
+
+    testWidgets('by default a finger draws, as before', (tester) async {
+      await pump(tester);
+      final finger = await tester.startGesture(const Offset(100, 100),
+          kind: PointerDeviceKind.touch);
+      await finger.moveBy(const Offset(0, -40));
+      await finger.up();
+
+      expect(downs, [PointerDeviceKind.touch]);
+      expect(pans, isEmpty);
     });
   });
 

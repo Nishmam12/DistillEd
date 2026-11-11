@@ -253,4 +253,37 @@ void main() {
       expect(reloaded.map((p) => p.pageIndex), [0, 1, 2]);
     });
   });
+
+  group('movePagesAfter', () {
+    test('imported pages go right after the page the user was on', () async {
+      await notifier.initialize(); // page A
+      await notifier.insertPage(); // B
+      await notifier.insertPage(); // C
+      final ids = notifier.state.pages.map((p) => p.id).toList();
+      // Two imported pages, appended at the end as the import does.
+      await notifier.insertPage();
+      await notifier.insertPage();
+      final imported = notifier.state.pages.skip(3).map((p) => p.id).toList();
+
+      await notifier.movePagesAfter(imported, afterIndex: 0);
+
+      expect(notifier.state.pages.map((p) => p.id),
+          [ids[0], ...imported, ids[1], ids[2]]);
+      expect(notifier.state.currentPageIndex, 1,
+          reason: 'opens on the first imported page');
+    });
+
+    test('after the last page is the same as at the end', () async {
+      await notifier.initialize();
+      await notifier.insertPage();
+      final before = notifier.state.pages.map((p) => p.id).toList();
+      await notifier.insertPage();
+      final imported = [notifier.state.pages.last.id];
+
+      await notifier.movePagesAfter(imported, afterIndex: 1);
+
+      expect(notifier.state.pages.map((p) => p.id), [...before, ...imported]);
+      expect(notifier.state.currentPageIndex, 2);
+    });
+  });
 }

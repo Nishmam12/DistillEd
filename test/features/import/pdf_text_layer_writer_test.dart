@@ -44,6 +44,22 @@ void main() {
     expect(File(sidecar(2)).readAsStringSync(), 'Second slide text');
   });
 
+  test('importing pages 3–4 keeps the text of pages 3–4, not 1–2', () async {
+    final source = _FakeSource(['one', 'two', 'three', 'four']);
+
+    await PdfTextLayerWriter(source).write(
+      pdfPath: '/x.pdf',
+      pageImagePaths: [
+        '${dir.path}/imports/pdf_abc_3.png',
+        '${dir.path}/imports/pdf_abc_4.png',
+      ],
+      firstPage: 3,
+    );
+
+    expect(File(sidecar(3)).readAsStringSync(), 'three');
+    expect(File(sidecar(4)).readAsStringSync(), 'four');
+  });
+
   test('a page with no text gets an EMPTY file — "looked, found nothing"',
       () async {
     final source = _FakeSource(['Some text', '   \n ', '']);

@@ -116,6 +116,12 @@ class EditorToolController extends StateNotifier<EditorToolState> {
         : state.copyWith(tool: tool, panelOpen: true);
   }
 
+  /// Switches to [tool] without opening its options panel: for the app moving
+  /// the user between tools (into Select to place a picture, and back), where
+  /// a panel sliding in would be noise.
+  void useTool(EditorTool tool) =>
+      state = state.copyWith(tool: tool, panelOpen: false);
+
   /// Hides the options panel without changing the active tool. Called the
   /// moment a canvas gesture begins (draw, erase, shape drag, …) so the panel
   /// never lingers over what the user is making.

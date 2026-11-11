@@ -15,6 +15,30 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+### Changed
+- **Opening the AI panel keeps your page as it was.** The same writing stays
+  on screen, just narrower, instead of the page jumping to 100 % or staying
+  zoomed in with half of it cut off. Closing the panel puts the view back
+  exactly. The keyboard no longer shrinks the page while you type in the panel.
+- **Drag the AI panel's left edge to make it wider or narrower.** Margo
+  remembers the width.
+- **Pictures arrive ready to place.** A photo lands in a clear part of the page,
+  selected, so the next drag moves it and a corner resizes it. A bar offers
+  Done, Own page (for a whiteboard shot to write over) and Remove, and your pen
+  comes back when you finish. The "Where should it go?" question is gone, and
+  you can pick several photos at once.
+- **PDF pages stay put.** Imported PDF pages, scans and photos given their own
+  page are locked, so the Select tool picks up the ink on them instead of
+  sliding the page away. Tap a bare part of the page to select it, then Unlock
+  it to move it.
+- **Choose what to import from a PDF.** Pick a page range and whether the pages
+  go after the page you're on or at the end. Progress is shown page by page,
+  and you can cancel.
+
+### Added
+- **Draw with finger** (Settings → Pen). Turn it off and one finger scrolls the
+  page while only the pen draws. The first time you write with a pen, Margo
+  offers to turn it off for you.
 
 ## [5.0.0] - 2026-10-24
 ### Changed

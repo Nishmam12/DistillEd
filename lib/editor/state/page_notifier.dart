@@ -138,6 +138,25 @@ class PageNotifier extends StateNotifier<PageState> {
     state = PageState(currentPageIndex: index + 1, pages: updatedPages);
   }
 
+  /// Moves [pageIds] (in their current relative order) to sit right after the
+  /// page at [afterIndex], and opens the first of them. How an import lands
+  /// after the page the user was on: pages are created at the end and then
+  /// moved here in one reorder.
+  Future<void> movePagesAfter(List<int> pageIds,
+      {required int afterIndex}) async {
+    if (pageIds.isEmpty) return;
+    final moving = pageIds.toSet();
+    final ids = [for (final p in state.pages) p.id];
+    final rest = [for (final id in ids) if (!moving.contains(id)) id];
+    final kept = [for (final id in ids) if (moving.contains(id)) id];
+    final at = (afterIndex + 1).clamp(0, rest.length);
+    final order = [...rest.take(at), ...kept, ...rest.skip(at)];
+
+    await _repository.reorderPages(_notebookId, order);
+    final pages = await _repository.getPagesForNotebook(_notebookId);
+    state = PageState(currentPageIndex: at, pages: pages);
+  }
+
   Future<void> reorderPages(int oldIndex, int newIndex) async {
     await _repository.movePage(_notebookId, oldIndex, newIndex);
     final pages = await _repository.getPagesForNotebook(_notebookId);

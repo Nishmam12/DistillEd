@@ -3,9 +3,10 @@
 //
 // Supports two layout modes (see [configure]): an infinite whiteboard and a
 // single bounded page (pan clamped so the page stays in view / centred when
-// it is smaller than the viewport). Zoom is bounded to 50–300% in both modes
-// — the toolbar's zoom pill only ever zooms in/out within that range, never
-// past it.
+// it is smaller than the viewport). Manual zoom is bounded to 50–300% in both
+// modes — the toolbar's zoom pill only ever zooms in/out within that range.
+// A resize of the canvas (the AI panel docking) may take it lower, to keep the
+// same writing on screen; see [ViewportController._resizeViewport].
 
 import 'dart:math' as math;
 
@@ -115,6 +116,20 @@ class ViewportController extends StateNotifier<ViewportState> {
         _viewportSize != viewportSize;
     if (!changed) return;
 
+    // Only the window onto the scene changed (the AI panel docked or closed,
+    // the window was resized): keep the same writing on screen. On the
+    // infinite canvas the "page" is just the canvas size, so it is ignored.
+    final onlyResized = _pageMode == pageMode &&
+        (!pageMode || _pageSize == pageSize) &&
+        !_viewportSize.isEmpty &&
+        !viewportSize.isEmpty;
+    if (onlyResized) {
+      _pageSize = pageSize;
+      _resizeViewport(viewportSize);
+      return;
+    }
+    _restorePoint = null;
+
     // Whether the whole page fitted on screen *before* this change, judged
     // against the old geometry — see the re-fit below.
     final wasWhole = state.zoom <= fitZoom + 1e-6;
@@ -152,7 +167,48 @@ class ViewportController extends StateNotifier<ViewportState> {
         _viewportSize.height / _pageSize.height);
   }
 
+  /// The view to put back when the canvas returns to the size it had before it
+  /// was last narrowed, so closing the AI panel undoes opening it exactly.
+  /// Dropped as soon as the user moves the view themselves: after that the
+  /// view they made is the one to keep, scaled back up by [_resizeViewport].
+  ({Size size, ViewportState view})? _restorePoint;
+
+  /// How far a resize may scale the view down. Well below the 50 % manual
+  /// floor on purpose: keeping the same writing on screen in a canvas a third
+  /// as wide needs a third of the zoom, and clamping it at 50 % is what used
+  /// to cut the right-hand side off.
+  static const double resizeMinZoom = 0.1;
+
+  /// Keeps what was on screen on screen when the canvas changes size: zoom
+  /// follows the change in width, and the scene point at the top-left corner
+  /// stays there. A change in height alone (a keyboard, a split-screen
+  /// divider) changes neither. Going back to the size recorded in
+  /// [_restorePoint] restores that view exactly.
+  void _resizeViewport(Size to) {
+    final from = _viewportSize;
+    final before = state;
+    _viewportSize = to;
+
+    final restore = _restorePoint;
+    if (restore != null && restore.size == to) {
+      _restorePoint = null;
+      state = _constrain(restore.view);
+      return;
+    }
+    _restorePoint ??= (size: from, view: before);
+
+    final widthRatio = from.width > 0 ? to.width / from.width : 1.0;
+    final zoom = (before.zoom * widthRatio).clamp(resizeMinZoom, _maxZoom);
+    final k = zoom / before.zoom;
+    state = _constrain(ViewportState(
+      scrollX: before.scrollX * k,
+      scrollY: before.scrollY * k,
+      zoom: zoom,
+    ));
+  }
+
   void pan(Offset delta) {
+    if (delta != Offset.zero) _restorePoint = null;
     state = _constrain(state.copyWith(
       scrollX: state.scrollX + delta.dx,
       scrollY: state.scrollY + delta.dy,
@@ -161,8 +217,13 @@ class ViewportController extends StateNotifier<ViewportState> {
 
   /// Zoom toward [focalScreen] (screen coords): the scene point under the focal
   /// stays put on screen.
+  ///
+  /// A view a resize left below [minZoom] may stay there or zoom in, but not
+  /// zoom out further — and must not snap up to the floor on the first pinch.
   void zoomAtPoint(double newZoom, Offset focalScreen) {
-    final clamped = newZoom.clamp(_minZoom, _maxZoom);
+    if (newZoom != state.zoom) _restorePoint = null;
+    final floor = math.min(_minZoom, state.zoom);
+    final clamped = newZoom.clamp(floor, _maxZoom);
     final sceneX = (focalScreen.dx - state.scrollX) / state.zoom;
     final sceneY = (focalScreen.dy - state.scrollY) / state.zoom;
     state = _constrain(state.copyWith(
@@ -175,6 +236,7 @@ class ViewportController extends StateNotifier<ViewportState> {
   /// Resets to a neutral view: identity in infinite mode, page centred at 100%
   /// (clamped into range) in page mode.
   void reset() {
+    _restorePoint = null;
     final z = 1.0.clamp(_minZoom, _maxZoom);
     state = _constrain(const ViewportState().copyWith(zoom: z));
   }

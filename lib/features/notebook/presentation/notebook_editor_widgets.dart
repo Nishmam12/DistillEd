@@ -148,15 +148,18 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
     if (old.pageId != widget.pageId) _loadRecordings();
   }
 
-  void _loadRecordings() => Future.microtask(() => ref
-      .read(recordingNotifierProvider(widget.notebookId).notifier)
-      .loadForPage(widget.pageId));
+  void _loadRecordings() => Future.microtask(
+    () => ref
+        .read(recordingNotifierProvider(widget.notebookId).notifier)
+        .loadForPage(widget.pageId),
+  );
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(recordingNotifierProvider(widget.notebookId));
-    final notifier =
-        ref.read(recordingNotifierProvider(widget.notebookId).notifier);
+    final notifier = ref.read(
+      recordingNotifierProvider(widget.notebookId).notifier,
+    );
 
     // Surface a failure once, then clear it — a permission refusal should say
     // so rather than leaving a button that silently does nothing.
@@ -172,7 +175,10 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
     ref.listen(lectureTranscriptionProvider, (previous, next) {
       if (!mounted) return;
       for (final notice in transcriptionNotices(
-          previous: previous, next: next, onPage: state.onPage)) {
+        previous: previous,
+        next: next,
+        onPage: state.onPage,
+      )) {
         _toastTranscript(notice);
       }
     });
@@ -193,8 +199,10 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
         IconButton(
           tooltip: state.isRecording ? 'Stop recording' : 'Record lecture',
           icon: state.isRecording
-              ? Icon(Icons.stop_circle,
-                  color: Theme.of(context).colorScheme.error)
+              ? Icon(
+                  Icons.stop_circle,
+                  color: Theme.of(context).colorScheme.error,
+                )
               : const AppIcon(AppIcons.mic),
           onPressed: () async {
             if (state.isRecording) {
@@ -212,8 +220,9 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
     );
   }
 
-  void _toastTranscript(String message) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(message)));
+  void _toastTranscript(String message) =>
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
 }
 
 class _PageNavBar extends StatelessWidget {
@@ -276,6 +285,220 @@ class _PageNavBar extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Floats over the canvas while just-added pictures are being positioned:
+/// says how, and offers the three ways to finish.
+class _PlacementBar extends StatelessWidget {
+  final int count;
+  final VoidCallback onDone;
+  final VoidCallback onOwnPage;
+  final VoidCallback onRemove;
+
+  const _PlacementBar({
+    required this.count,
+    required this.onDone,
+    required this.onOwnPage,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final many = count > 1;
+    return Material(
+      key: const ValueKey('placementBar'),
+      color: context.colors.surface,
+      elevation: 3,
+      shape: StadiumBorder(side: BorderSide(color: context.colors.border)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 4,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                many
+                    ? 'Drag to move · corners to resize'
+                    : 'Drag to move · corner to resize',
+              ),
+            ),
+            TextButton.icon(
+              onPressed: onRemove,
+              icon: const Icon(Icons.delete_outline, size: 18),
+              label: const Text('Remove'),
+            ),
+            TextButton.icon(
+              onPressed: onOwnPage,
+              icon: const Icon(Icons.note_add_outlined, size: 18),
+              label: Text(many ? 'Own pages' : 'Own page'),
+            ),
+            FilledButton.icon(
+              onPressed: onDone,
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text('Done'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// What the PDF import sheet returns: which pages (1-based, inclusive) and
+/// where they go.
+typedef PdfImportOptions = ({int first, int last, bool afterCurrent});
+
+/// Asked after a PDF is picked: which pages to bring in, and whether they go
+/// after the page the user is on or at the end of the notebook.
+class PdfImportSheet extends StatefulWidget {
+  final String fileName;
+  final int pageCount;
+
+  const PdfImportSheet({
+    super.key,
+    required this.fileName,
+    required this.pageCount,
+  });
+
+  @override
+  State<PdfImportSheet> createState() => _PdfImportSheetState();
+}
+
+class _PdfImportSheetState extends State<PdfImportSheet> {
+  late RangeValues _range = RangeValues(1, widget.pageCount.toDouble());
+  bool _afterCurrent = true;
+
+  int get _first => _range.start.round();
+  int get _last => _range.end.round();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final n = widget.pageCount;
+    final chosen = _last - _first + 1;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.fileName,
+              style: theme.textTheme.titleMedium,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              '$n page${n == 1 ? '' : 's'}',
+              style: theme.textTheme.bodySmall,
+            ),
+            if (n > 1) ...[
+              const SizedBox(height: 16),
+              Text(
+                _first == 1 && _last == n
+                    ? 'All pages'
+                    : 'Pages $_first–$_last',
+              ),
+              RangeSlider(
+                min: 1,
+                max: n.toDouble(),
+                divisions: n - 1,
+                values: _range,
+                labels: RangeLabels('$_first', '$_last'),
+                onChanged: (v) => setState(() => _range = v),
+              ),
+            ],
+            const SizedBox(height: 8),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: true, label: Text('After this page')),
+                ButtonSegment(value: false, label: Text('At the end')),
+              ],
+              selected: {_afterCurrent},
+              onSelectionChanged: (v) =>
+                  setState(() => _afterCurrent = v.first),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  key: const ValueKey('pdfImportConfirm'),
+                  onPressed: () => Navigator.of(context).pop<PdfImportOptions>((
+                    first: _first,
+                    last: _last,
+                    afterCurrent: _afterCurrent,
+                  )),
+                  child: Text('Import $chosen page${chosen == 1 ? '' : 's'}'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown while a PDF's pages are being rendered: how far it has got, and a
+/// way to stop.
+class _ImportProgressDialog extends StatefulWidget {
+  final ValueNotifier<(int, int)> progress;
+  final VoidCallback onCancel;
+
+  const _ImportProgressDialog({required this.progress, required this.onCancel});
+
+  @override
+  State<_ImportProgressDialog> createState() => _ImportProgressDialogState();
+}
+
+class _ImportProgressDialogState extends State<_ImportProgressDialog> {
+  bool _stopping = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Importing PDF'),
+      content: ValueListenableBuilder<(int, int)>(
+        valueListenable: widget.progress,
+        builder: (_, value, _) {
+          final (done, total) = value;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LinearProgressIndicator(value: total == 0 ? null : done / total),
+              const SizedBox(height: 12),
+              Text(
+                _stopping
+                    ? 'Stopping…'
+                    : 'Page ${done.clamp(0, total)} of $total',
+              ),
+            ],
+          );
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: _stopping
+              ? null
+              : () {
+                  setState(() => _stopping = true);
+                  widget.onCancel();
+                },
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 }

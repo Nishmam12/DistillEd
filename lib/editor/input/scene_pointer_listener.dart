@@ -44,6 +44,11 @@ class ScenePointerListener extends StatefulWidget {
   /// When true, single-pointer moves pan instead of draw.
   final bool isHandTool;
 
+  /// When true, a single finger scrolls the page and only a pen draws (the
+  /// "Draw with finger" setting switched off). Applied after palm rejection,
+  /// which is unchanged: a touch rejected as a palm neither draws nor scrolls.
+  final bool fingerPans;
+
   const ScenePointerListener({
     super.key,
     required this.child,
@@ -54,6 +59,7 @@ class ScenePointerListener extends StatefulWidget {
     this.onStrokeCancel,
     this.onViewportUpdate,
     this.isHandTool = false,
+    this.fingerPans = false,
   });
 
   @override
@@ -85,6 +91,10 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
   final Set<int> _activeStylusPointers = {};
   final Set<int> _rejectedPointers = {};
   final Map<int, Offset> _activePointers = {};
+
+  /// Fingers that are scrolling because [ScenePointerListener.fingerPans] is
+  /// on. They never reach the host as a down, move or up.
+  final Set<int> _panPointers = {};
   bool _isMultiTouch = false;
   Duration? _lastStylusActivity;
 
@@ -174,6 +184,10 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
 
         if (_isMultiTouch) return;
         if (widget.isHandTool) return;
+        if (widget.fingerPans && event.kind == PointerDeviceKind.touch) {
+          _panPointers.add(event.pointer);
+          return;
+        }
 
         if (prevCount == 0) {
           widget.onPointerDown(event, _extractPoint(event));
@@ -190,7 +204,9 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
 
         final newPos = event.localPosition;
 
-        if (_isMultiTouch || widget.isHandTool) {
+        if (_isMultiTouch ||
+            widget.isHandTool ||
+            _panPointers.contains(event.pointer)) {
           _emitViewportUpdate(event.pointer, oldPos, newPos);
           _activePointers[event.pointer] = newPos;
           return;
@@ -204,6 +220,7 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
           _lastStylusActivity = event.timeStamp;
         }
         _activeStylusPointers.remove(event.pointer);
+        final panned = _panPointers.remove(event.pointer);
 
         if (_rejectedPointers.remove(event.pointer)) return;
 
@@ -213,7 +230,7 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
         final wasMultiTouch = _isMultiTouch;
         if (_activePointers.isEmpty) _isMultiTouch = false;
 
-        if (wasMultiTouch) return;
+        if (wasMultiTouch || panned) return;
         if (widget.isHandTool) return;
 
         widget.onPointerUp(event, _extractPoint(event));
@@ -223,12 +240,13 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
           _lastStylusActivity = event.timeStamp;
         }
         _activeStylusPointers.remove(event.pointer);
+        final panned = _panPointers.remove(event.pointer);
         if (_rejectedPointers.remove(event.pointer)) return;
         if (_activePointers.remove(event.pointer) == null) return;
         final wasMultiTouch = _isMultiTouch;
         if (_activePointers.isEmpty) _isMultiTouch = false;
 
-        if (wasMultiTouch || widget.isHandTool) return;
+        if (wasMultiTouch || widget.isHandTool || panned) return;
 
         // A cancelled stroke is discarded, never committed.
         widget.onStrokeCancel?.call();

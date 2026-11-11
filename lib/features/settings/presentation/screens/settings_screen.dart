@@ -107,6 +107,18 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionHeader('Pen'),
           _SettingsCard(
             children: [
+              _SettingsRow(
+                icon: Icons.touch_app_outlined,
+                title: 'Draw with finger',
+                subtitle: settings.fingerDraws
+                    ? 'One finger draws. Two fingers scroll and zoom.'
+                    : 'Only the pen draws. One finger scrolls the page.',
+                trailing: _AccentSwitch(
+                  value: settings.fingerDraws,
+                  onChanged: notifier.setFingerDraws,
+                ),
+                onTap: () => notifier.setFingerDraws(!settings.fingerDraws),
+              ),
               // SET-16. Draw-to-shape: hold the pen at the end of a stroke.
               _InkGestureRow(
                 icon: PhosphorIconsRegular.shapes,

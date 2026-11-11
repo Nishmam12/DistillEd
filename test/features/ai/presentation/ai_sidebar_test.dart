@@ -105,6 +105,9 @@ void main() {
     _RecordingExplain? explain,
     ValueChanged<SummarizeScopeChoice>? onSummarize,
     ValueChanged<String>? onInsertNote,
+    double width = kAiSidebarWidth,
+    ValueChanged<double>? onResize,
+    VoidCallback? onResizeEnd,
   }) {
     return tester.pumpWidget(
       ProviderScope(
@@ -127,12 +130,46 @@ void main() {
               onClose: () {},
               onSummarize: onSummarize ?? (_) {},
               onInsertNote: onInsertNote ?? (_) {},
+              width: width,
+              onResize: onResize,
+              onResizeEnd: onResizeEnd,
             ),
           ),
         ),
       ),
     );
   }
+
+  group('resizing the docked panel', () {
+    testWidgets('dragging the left edge left asks for a wider panel',
+        (tester) async {
+      final asked = <double>[];
+      var ended = 0;
+      await pump(tester,
+          onResize: asked.add, onResizeEnd: () => ended++);
+
+      final handle = find.bySemanticsLabel('Resize AI panel');
+      await tester.drag(handle, const Offset(-60, 0));
+      await tester.pumpAndSettle();
+
+      expect(asked, isNotEmpty);
+      expect(asked.last, greaterThan(kAiSidebarWidth));
+      expect(ended, 1);
+    });
+
+    testWidgets('no handle when the editor does not allow resizing',
+        (tester) async {
+      await pump(tester);
+      expect(find.bySemanticsLabel('Resize AI panel'), findsNothing);
+    });
+
+    test('never takes more than half the screen, nor goes below the minimum',
+        () {
+      expect(aiSidebarMaxWidth(800), 400);
+      expect(aiSidebarMaxWidth(2000), 560);
+      expect(aiSidebarMaxWidth(400), kAiSidebarMinWidth);
+    });
+  });
 
   group('Summarize launcher', () {
     testWidgets('offers page/notebook scope; selection hidden with none',

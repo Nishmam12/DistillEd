@@ -123,11 +123,14 @@ extension _SceneCanvasTools on _SceneCanvasState {
 
     final shift = HardwareKeyboard.instance.isShiftPressed;
     final all = ref.read(sceneControllerProvider(_key));
-    // Locked elements ARE selectable (a page-locked import must still be
-    // reachable for "Extract text" / "Unlock" in the selection bar — otherwise
-    // locking it makes it permanently inert) but must not be draggable, or
-    // locking would do nothing to protect it from a stray move gesture.
-    final hitId = SceneHitTest.topmostAt(scene, all, includeLocked: true);
+    // Locked elements (a PDF page, a photo given its own page) are the paper,
+    // not something on it: a touch there starts a marquee, so the ink written
+    // over a PDF can be selected without grabbing the PDF. They stay
+    // selectable for "Extract text" / "Unlock" with a plain TAP, resolved in
+    // [_onSelectUp] from [_lockedUnderTap].
+    final hitId = SceneHitTest.topmostAt(scene, all);
+    _lockedUnderTap =
+        hitId == null ? SceneHitTest.topmostAt(scene, all, includeLocked: true) : null;
     final selCtl = ref.read(selectionProvider.notifier);
 
     if (hitId != null) {
@@ -249,10 +252,18 @@ extension _SceneCanvasTools on _SceneCanvasState {
   }
 
   void _onSelectUp(StrokePoint p) {
+    final lockedUnderTap = _lockedUnderTap;
+    _lockedUnderTap = null;
     if (_selMode == _SelMode.marquee) {
       final rect = _marquee.value;
       _marquee.value = null;
-      if (rect != null) {
+      final zoom = ref.read(viewportProvider).zoom;
+      final isTap = rect != null &&
+          rect.width * zoom <= kTapSlopPx &&
+          rect.height * zoom <= kTapSlopPx;
+      if (isTap && lockedUnderTap != null) {
+        ref.read(selectionProvider.notifier).selectMany({lockedUnderTap});
+      } else if (rect != null) {
         final all = ref.read(sceneControllerProvider(_key));
         final ids = SceneHitTest.within(rect, all);
         final expanded = <String>{};

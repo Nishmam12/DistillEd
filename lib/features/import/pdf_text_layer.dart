@@ -116,7 +116,8 @@ class PdfTextLayerWriter {
   final PdfTextSource _source;
 
   /// Keeps the text of the PDF at [pdfPath] beside each of [pageImagePaths]
-  /// (absolute, in page order).
+  /// (absolute, in page order), the first of which is PDF page [firstPage]
+  /// (1-based) — not page 1 when only part of the document was imported.
   ///
   /// A page with no text still gets an EMPTY file — "looked, found nothing" — so
   /// re-importing a PDF whose pages all have a file never opens it again, like
@@ -128,8 +129,10 @@ class PdfTextLayerWriter {
   Future<void> write({
     required String pdfPath,
     required List<String> pageImagePaths,
+    int firstPage = 1,
   }) async {
     if (pageImagePaths.isEmpty) return;
+    final offset = firstPage < 1 ? 0 : firstPage - 1;
     final targets = [
       for (final image in pageImagePaths)
         File(StoragePaths.pdfTextSidecar(image)),
@@ -144,7 +147,7 @@ class PdfTextLayerWriter {
       return;
     }
 
-    for (var i = 0; i < targets.length && i < texts.length; i++) {
+    for (var i = 0; i < targets.length && offset + i < texts.length; i++) {
       final file = targets[i];
       try {
         if (await file.exists()) continue;
@@ -153,7 +156,7 @@ class PdfTextLayerWriter {
         // exists() checks would trust.
         final tmp = File('${file.path}.tmp');
         await tmp.writeAsString(
-          texts[i].trim().isEmpty ? '' : texts[i],
+          texts[offset + i].trim().isEmpty ? '' : texts[offset + i],
           flush: true,
         );
         await tmp.rename(file.path);

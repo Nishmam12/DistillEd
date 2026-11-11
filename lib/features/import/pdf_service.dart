@@ -16,13 +16,34 @@ class ImportException implements Exception {
   String toString() => 'ImportException: $message';
 }
 
+/// Thrown by [PdfService.renderAll] when the caller cancelled the import.
+/// Pages already rendered stay in the cache, so importing again is quicker.
+class ImportCancelledException implements Exception {
+  const ImportCancelledException();
+}
+
 class _PdfRenderPayload {
   final RootIsolateToken token;
   final String filePath;
   final String notebookId;
   final String docsDir;
 
-  _PdfRenderPayload(this.token, this.filePath, this.notebookId, this.docsDir);
+  /// 1-based, inclusive.
+  final int firstPage;
+  final int lastPage;
+
+  /// The PDF's content hash when an earlier chunk already worked it out.
+  final String? pdfHash;
+
+  _PdfRenderPayload(
+    this.token,
+    this.filePath,
+    this.notebookId,
+    this.docsDir, {
+    required this.firstPage,
+    required this.lastPage,
+    this.pdfHash,
+  });
 }
 
 class PdfService {
@@ -33,24 +54,66 @@ class PdfService {
 
   final PdfTextLayerWriter _textLayers;
 
-  /// Renders all pages of a PDF and creates an ImportedContent for each page.
-  /// Runs inside a background isolate to prevent UI thread blocking.
-  Future<List<ImportedContent>> renderAll(
-    String filePath,
-    String notebookId,
-  ) async {
-    final file = File(filePath);
-    if (!await file.exists()) {
+  /// How many pages are rendered per background job. Small enough that
+  /// progress moves and Cancel answers within a few pages; large enough that
+  /// reopening the document per job costs little.
+  static const int pagesPerChunk = 4;
+
+  /// How many pages the PDF at [filePath] has.
+  ///
+  /// Throws [ImportException] when the file is missing or not a PDF.
+  Future<int> pageCount(String filePath) async {
+    if (!await File(filePath).exists()) {
       throw ImportException('PDF not found at path: $filePath');
     }
+    PdfDocument? document;
+    try {
+      document = await PdfDocument.openFile(filePath);
+      return document.pagesCount;
+    } catch (_) {
+      throw const ImportException('File is not a valid PDF');
+    } finally {
+      await document?.close();
+    }
+  }
+
+  /// Renders pages [firstPage]..[lastPage] (1-based, inclusive; null = to the
+  /// end) of a PDF and creates an ImportedContent for each. Runs in background
+  /// isolates, [pagesPerChunk] pages at a time, reporting [onProgress] (pages
+  /// done, pages asked for) between chunks and stopping with
+  /// [ImportCancelledException] once [isCancelled] says so.
+  Future<List<ImportedContent>> renderAll(
+    String filePath,
+    String notebookId, {
+    int firstPage = 1,
+    int? lastPage,
+    void Function(int done, int total)? onProgress,
+    bool Function()? isCancelled,
+  }) async {
+    final count = await pageCount(filePath);
+    final first = firstPage.clamp(1, count);
+    final last = (lastPage ?? count).clamp(first, count);
+    final total = last - first + 1;
 
     final docsDir = (await getApplicationDocumentsDirectory()).path;
     final token = RootIsolateToken.instance!;
 
-    final payload = _PdfRenderPayload(token, filePath, notebookId, docsDir);
-
-    // Spawn background isolate
-    final pages = await compute(_renderPdfIsolate, payload);
+    final pages = <ImportedContent>[];
+    String? hash;
+    onProgress?.call(0, total);
+    for (var from = first; from <= last; from += pagesPerChunk) {
+      if (isCancelled?.call() ?? false) throw const ImportCancelledException();
+      final to = (from + pagesPerChunk - 1).clamp(from, last);
+      final chunk = await compute(
+        _renderPdfIsolate,
+        _PdfRenderPayload(token, filePath, notebookId, docsDir,
+            firstPage: from, lastPage: to, pdfHash: hash),
+      );
+      hash = chunk.hash;
+      pages.addAll(chunk.pages);
+      onProgress?.call(to - first + 1, total);
+    }
+    if (isCancelled?.call() ?? false) throw const ImportCancelledException();
 
     // The text PDFium can read off each page, kept beside its image. It never
     // fails the import: a PDF it cannot read is simply read as pictures.
@@ -59,6 +122,7 @@ class PdfService {
       pageImagePaths: [
         for (final p in pages) '$docsDir/${p.relativeImagePath}',
       ],
+      firstPage: first,
     );
     return pages;
   }
@@ -102,23 +166,29 @@ const double kPdfMaxRenderSide = 4096;
 @visibleForTesting
 String pdfContentHashHex(List<int> bytes) => _fnv1aHashHex(bytes);
 
-Future<List<ImportedContent>> _renderPdfIsolate(
+Future<({String hash, List<ImportedContent> pages})> _renderPdfIsolate(
   _PdfRenderPayload payload,
 ) async {
   BackgroundIsolateBinaryMessenger.ensureInitialized(payload.token);
 
   // Hash the PDF *contents* (off the main thread) for a stable, collision-safe
-  // cache key. Falls back to the path hash if the file can't be read for hashing.
+  // cache key, once per import: later chunks are handed it. Falls back to the
+  // path hash if the file can't be read for hashing.
   String pdfHash;
-  try {
-    // Streamed: a 200 MB PDF is not held in memory just to be hashed.
-    var hash = _fnvSeed;
-    await for (final chunk in File(payload.filePath).openRead()) {
-      hash = _fnvUpdate(hash, chunk);
+  final known = payload.pdfHash;
+  if (known != null) {
+    pdfHash = known;
+  } else {
+    try {
+      // Streamed: a 200 MB PDF is not held in memory just to be hashed.
+      var hash = _fnvSeed;
+      await for (final chunk in File(payload.filePath).openRead()) {
+        hash = _fnvUpdate(hash, chunk);
+      }
+      pdfHash = _fnvHex(hash);
+    } catch (_) {
+      pdfHash = _fnv1aHashHex(payload.filePath.codeUnits);
     }
-    pdfHash = _fnvHex(hash);
-  } catch (_) {
-    pdfHash = _fnv1aHashHex(payload.filePath.codeUnits);
   }
 
   PdfDocument? document;
@@ -132,9 +202,9 @@ Future<List<ImportedContent>> _renderPdfIsolate(
   final failedPages = <int>[];
 
   try {
-    final pageCount = document.pagesCount;
+    final last = payload.lastPage.clamp(1, document.pagesCount);
 
-    for (int i = 1; i <= pageCount; i++) {
+    for (int i = payload.firstPage; i <= last; i++) {
       final relativeCachePath = StoragePaths.getPdfPageCacheRelativePath(
         payload.notebookId,
         pdfHash,
@@ -200,5 +270,5 @@ Future<List<ImportedContent>> _renderPdfIsolate(
       '${failedPages.length > 1 ? ' and ${failedPages.length - 1} more' : ''}.',
     );
   }
-  return importedPages;
+  return (hash: pdfHash, pages: importedPages);
 }

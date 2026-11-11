@@ -117,9 +117,12 @@ void main() {
         expect(c.state.zoom, closeTo(1.0, 1e-9));
       });
 
-      test('a user zoomed in past the fit keeps their zoom', () {
+      test('a page zoomed past the fit keeps the same part on screen', () {
+        // It used to keep the zoom, so half the canvas showed half as much:
+        // the page looked as if it had zoomed in when the panel opened.
         final c = laidOut();
         c.zoomAtPoint(2.0, const Offset(500, 500));
+        final before = c.state.visibleSceneRect(const Size(1000, 1000));
 
         c.configure(
           pageMode: true,
@@ -127,8 +130,10 @@ void main() {
           viewportSize: const Size(560, 1000),
         );
 
-        expect(c.state.zoom, 2.0,
-            reason: 'they are inspecting detail, not reading the whole page');
+        final after = c.state.visibleSceneRect(const Size(560, 1000));
+        expect(c.state.zoom, closeTo(1.12, 1e-9));
+        expect(after.left, closeTo(before.left, 1e-6));
+        expect(after.right, closeTo(before.right, 1e-6));
       });
 
       test('the page size is what the canvas reports, not the viewport', () {
@@ -141,16 +146,135 @@ void main() {
           viewportSize: const Size(400, 500),
         );
         expect(c.fitZoom, closeTo(0.4, 1e-9));
-        // 0.4 is below the auto-fit's own legibility floor (well below the
-        // page-mode manual-zoom floor, which this safety net ignores), so
-        // zoom clamps there and the page is pannable rather than shrunk past
-        // legibility.
-        expect(c.state.zoom, ViewportController.autoFitMinZoom);
+        // The whole width of the page stays on screen, below the 50 % floor
+        // that only manual zoom is held to.
+        expect(c.state.zoom, closeTo(0.4, 1e-9));
+      });
+
+      test('closing the panel puts a zoomed page back exactly', () {
+        final c = laidOut();
+        c.zoomAtPoint(1.2, const Offset(300, 700));
+        final before = c.state;
+
+        c.configure(
+          pageMode: true,
+          pageSize: const Size(1000, 1000),
+          viewportSize: const Size(560, 1000),
+        );
+        c.configure(
+          pageMode: true,
+          pageSize: const Size(1000, 1000),
+          viewportSize: const Size(1000, 1000),
+        );
+
+        expect(c.state.zoom, closeTo(before.zoom, 1e-9));
+        expect(c.state.scrollX, closeTo(before.scrollX, 1e-9));
+        expect(c.state.scrollY, closeTo(before.scrollY, 1e-9));
+      });
+
+      test('a view moved while the panel was open is scaled back, not reset',
+          () {
+        final c = laidOut();
+        c.configure(
+          pageMode: true,
+          pageSize: const Size(1000, 1000),
+          viewportSize: const Size(560, 1000),
+        );
+        c.zoomAtPoint(1.12, const Offset(0, 0));
+
+        c.configure(
+          pageMode: true,
+          pageSize: const Size(1000, 1000),
+          viewportSize: const Size(1000, 1000),
+        );
+
+        expect(c.state.zoom, closeTo(2.0, 1e-9));
+      });
+
+      test('a pinch below the auto-fitted zoom does not jump to the floor', () {
+        final c = laidOut();
+        c.configure(
+          pageMode: true,
+          pageSize: const Size(1000, 1000),
+          viewportSize: const Size(400, 1000),
+        );
+        expect(c.state.zoom, closeTo(0.4, 1e-9));
+
+        c.zoomAtPoint(0.39, const Offset(200, 500));
+        expect(c.state.zoom, closeTo(0.4, 1e-9),
+            reason: 'cannot go further out, but must not snap in to 50 %');
+        c.zoomAtPoint(0.45, const Offset(200, 500));
+        expect(c.state.zoom, closeTo(0.45, 1e-9));
       });
 
       test('fitZoom is 1.0 on the infinite canvas', () {
         final c = ViewportController();
         expect(c.fitZoom, 1.0);
+      });
+    });
+
+    group('the infinite canvas when the AI panel docks', () {
+      ViewportController laidOut() => ViewportController()
+        ..configure(
+          pageMode: false,
+          pageSize: const Size(1000, 800),
+          viewportSize: const Size(1000, 800),
+        );
+
+      void dock(ViewportController c) => c.configure(
+            pageMode: false,
+            pageSize: const Size(560, 800),
+            viewportSize: const Size(560, 800),
+          );
+
+      void undock(ViewportController c) => c.configure(
+            pageMode: false,
+            pageSize: const Size(1000, 800),
+            viewportSize: const Size(1000, 800),
+          );
+
+      test('zoomed out, it does not jump back to 100 %', () {
+        final c = laidOut();
+        c.zoomAtPoint(0.7, Offset.zero);
+        dock(c);
+        expect(c.state.zoom, lessThan(0.7));
+      });
+
+      test('keeps the same width of writing on screen', () {
+        final c = laidOut();
+        c.pan(const Offset(-300, -200));
+        final before = c.state.visibleSceneRect(const Size(1000, 800));
+        dock(c);
+        final after = c.state.visibleSceneRect(const Size(560, 800));
+        expect(after.left, closeTo(before.left, 1e-6));
+        expect(after.top, closeTo(before.top, 1e-6));
+        expect(after.right, closeTo(before.right, 1e-6));
+      });
+
+      test('closing the panel puts the view back exactly', () {
+        final c = laidOut();
+        c.zoomAtPoint(1.3, const Offset(400, 300));
+        c.pan(const Offset(-50, -120));
+        final before = c.state;
+        dock(c);
+        undock(c);
+        expect(c.state.zoom, closeTo(before.zoom, 1e-9));
+        expect(c.state.scrollX, closeTo(before.scrollX, 1e-9));
+        expect(c.state.scrollY, closeTo(before.scrollY, 1e-9));
+      });
+
+      test('a keyboard shrinking only the height changes nothing', () {
+        final c = laidOut();
+        c.zoomAtPoint(1.3, const Offset(400, 300));
+        final before = c.state;
+        c.configure(
+          pageMode: false,
+          pageSize: const Size(1000, 450),
+          viewportSize: const Size(1000, 450),
+        );
+        expect(c.state.zoom, closeTo(before.zoom, 1e-9));
+        expect(c.state.scrollX, closeTo(before.scrollX, 1e-9));
+        expect(c.state.scrollY, closeTo(before.scrollY, 1e-9));
       });
     });
 

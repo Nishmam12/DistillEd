@@ -9,7 +9,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/error_log.dart';
 import '../../../core/icons/app_icon.dart';
@@ -24,7 +23,8 @@ import '../../ai/presentation/ai_providers.dart';
 import '../../ai/presentation/notebook_index_notifier.dart';
 import '../../ai/presentation/sidebar/ai_sidebar.dart';
 import '../../../domain/model/template_type.dart';
-import '../../import/pdf_service.dart' show ImportException;
+import '../../import/pdf_service.dart'
+    show ImportCancelledException, ImportException;
 import '../../audio/presentation/audio_providers.dart';
 import '../../audio/presentation/lecture_transcript_sheet.dart';
 import '../../audio/presentation/lecture_transcription_notifier.dart';
@@ -42,6 +42,7 @@ import '../../summarize/presentation/summarize_notifier.dart';
 import '../../home/presentation/home_notifier.dart';
 import '../../summarize/presentation/widgets/summary_bottom_sheet.dart';
 import '../../../widgets/template_icons.dart';
+import '../../../editor/state/editor_tool_controller.dart';
 import '../../../editor/state/history_controller.dart';
 import '../../../editor/state/library_controller.dart';
 import '../../../editor/state/scene_controller.dart';
@@ -103,6 +104,36 @@ Rect? placeNoteSlot({
   return null;
 }
 
+/// Where a picture added to the current page lands: half the size of the area
+/// it lands in, centred there if that spot is clear of [existing] content, else
+/// in the first clear slot ([placeNoteSlot]), else centred anyway — it arrives
+/// selected, ready to be dragged, so a crowded view still gets it.
+///
+/// [page] is the sheet in page mode: only the paper is drawn there, so the
+/// picture is kept on it. [Rect.zero] when [source] cannot be measured.
+@visibleForTesting
+Rect placeImageInView({
+  required Size source,
+  required Rect visible,
+  Rect? page,
+  required List<Rect> existing,
+}) {
+  final centred = inlinePlacement(source, visible, page: page);
+  if (centred.isEmpty) return Rect.zero;
+  if (!existing.any(centred.overlaps)) return centred;
+
+  final area = page == null || page.isEmpty
+      ? visible
+      : (visible.overlaps(page) ? visible.intersect(page) : page);
+  return placeNoteSlot(
+        bounds: area,
+        width: centred.width,
+        height: centred.height,
+        existing: existing,
+      ) ??
+      centred;
+}
+
 /// What the user picked from the import sheet.
 enum _ImportSource { gallery, camera, pdf }
 
@@ -126,10 +157,23 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// AI action opens a bottom sheet instead and this stays false).
   bool _aiPanelOpen = false;
 
+  /// Pictures just added to the page that the user is still positioning; null
+  /// when nothing is being placed. See [_placeOnPage].
+  ({
+    ScenePageKey key,
+    Set<String> ids,
+    List<ImportedImage> images,
+    EditorTool previousTool,
+  })? _placing;
+
   /// The page's size in page mode, taken from the first layout of the canvas
   /// area and held for the rest of the session. See the [LayoutBuilder] in
   /// [build] for why it cannot live in the canvas.
   Size? _pageSheet;
+
+  /// The docked AI panel's width while its edge is being dragged; null when
+  /// not dragging, and the saved width is used.
+  double? _aiPanelDragWidth;
 
   /// Disambiguates ids of AI-inserted notes and imported images created in the
   /// same microsecond.
@@ -206,6 +250,18 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   Widget build(BuildContext context) {
     final pageState = ref.watch(pageProvider(widget.notebookId));
 
+    // Placing pictures ends when they stop being selected (a tap elsewhere,
+    // Done, a page turn) or when the user picks another tool themselves.
+    ref.listen<Set<String>>(selectionProvider, (_, next) {
+      final placing = _placing;
+      if (placing != null && !next.containsAll(placing.ids)) _endPlacement();
+    });
+    ref.listen<EditorTool>(editorToolProvider.select((s) => s.tool), (_, next) {
+      if (_placing != null && next != EditorTool.select) {
+        setState(() => _placing = null);
+      }
+    });
+
     if (_unavailable) {
       return Scaffold(
         body: Center(
@@ -235,6 +291,10 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     _ensureLoaded(key);
 
     return Scaffold(
+      // The keyboard must not resize the canvas: it would shrink the page on
+      // every frame of the keyboard's slide. Text fields that need to stay
+      // above it (the docked AI panel) pad themselves instead.
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         leading: AppIconButton(
           AppIcons.home,
@@ -366,6 +426,24 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                             child: EditorToolOptionsOverlay(),
                           ),
                         ),
+                        if (_placing case final placing?
+                            when placing.key.pageId == page.id)
+                          Positioned(
+                            left: 16,
+                            right: 16,
+                            bottom: 16,
+                            child: Center(
+                              child: _PlacementBar(
+                                count: placing.ids.length,
+                                onDone: () => ref
+                                    .read(selectionProvider.notifier)
+                                    .clear(),
+                                onOwnPage: () =>
+                                    unawaited(_placedToOwnPages()),
+                                onRemove: _removePlaced,
+                              ),
+                            ),
+                          ),
                       ],
                     );
                   }),
@@ -379,6 +457,16 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
               MediaQuery.of(context).size.width >= kAiSidebarBreakpoint)
             AiSidebar(
               pageKey: key,
+              width: _aiPanelWidth(context),
+              onResize: (w) => setState(() => _aiPanelDragWidth = w.clamp(
+                  kAiSidebarMinWidth,
+                  aiSidebarMaxWidth(MediaQuery.sizeOf(context).width))),
+              onResizeEnd: () {
+                final w = _aiPanelDragWidth;
+                if (w == null) return;
+                unawaited(ref.read(settingsProvider.notifier).setAiPanelWidth(w));
+                setState(() => _aiPanelDragWidth = null);
+              },
               onClose: () => setState(() => _aiPanelOpen = false),
               onSummarize: (choice) => _summarizeScope(key, choice),
               onInsertNote: (text) => _insertNote(key, text),
@@ -407,6 +495,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       ),
     );
   }
+
+  double _aiPanelWidth(BuildContext context) =>
+      (_aiPanelDragWidth ?? ref.watch(settingsProvider).aiPanelWidth).clamp(
+          kAiSidebarMinWidth,
+          aiSidebarMaxWidth(MediaQuery.sizeOf(context).width));
 
   void _switchTo(int i) {
     ref.read(selectionProvider.notifier).clear();
@@ -534,9 +627,9 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
   // ---- import ---------------------------------------------------------------
 
-  /// Offers the import sources. PDFs always become new pages (one per PDF
-  /// page); a photo asks, since either answer is reasonable — a diagram
-  /// alongside your notes, or a whiteboard shot to annotate on its own sheet.
+  /// Offers the import sources. Photos land on the current page, selected and
+  /// ready to place (with an "Own page" button for a whiteboard shot to write
+  /// over); scans and PDFs become pages of their own.
   Future<void> _showImportSheet(ScenePageKey key) async {
     final choice = await showModalBottomSheet<_ImportSource>(
       context: context,
@@ -547,6 +640,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
               title: const Text('Photo library'),
+              subtitle: const Text('Pick one or more'),
               onTap: () => Navigator.of(context).pop(_ImportSource.gallery),
             ),
             // Where the device has a document scanner the camera entry is that:
@@ -577,7 +671,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     try {
       switch (choice) {
         case _ImportSource.gallery:
-          await _importPhoto(key, ImageSource.gallery);
+          await _importPhotos(key);
         case _ImportSource.camera:
           await _importCapture(key);
         case _ImportSource.pdf:
@@ -588,53 +682,28 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     }
   }
 
-  Future<void> _importPhoto(ScenePageKey key, ImageSource source) async {
-    final imported = await _import.importPhoto(source, '${widget.notebookId}');
-    if (imported == null || !mounted) return;
-    await _placePhoto(key, imported);
+  Future<void> _importPhotos(ScenePageKey key) async {
+    final imported = await _import.importPhotos('${widget.notebookId}');
+    if (imported.isEmpty || !mounted) return;
+    _placeOnPage(key, imported);
   }
 
   /// The camera entry: a document scan where the device has a scanner, a plain
-  /// photo where it doesn't. One page is placed like any photo; several become a
-  /// page each, grouped like a PDF so "the whole scan" can be named as a scope.
+  /// photo where it doesn't. A scan is a page to write over, so it gets a page
+  /// of its own (several become a page each, grouped like a PDF so "the whole
+  /// scan" can be named as a scope); a plain photo is placed like any photo.
   Future<void> _importCapture(ScenePageKey key) async {
+    final scanned = _import.canScan;
     final captured = await _import.importCapture('${widget.notebookId}');
     if (captured.isEmpty || !mounted) return;
-    if (captured.length == 1) {
-      await _placePhoto(key, captured.single);
-    } else {
+    if (captured.length > 1) {
       await _addImportedPages(captured,
           sourceName: SceneImportService.scanSourceName(DateTime.now()));
-    }
-  }
-
-  /// Asks where one picture goes — onto this page, or a page of its own — and
-  /// puts it there.
-  Future<void> _placePhoto(ScenePageKey key, ImportedImage imported) async {
-    final asPage = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Where should it go?'),
-        content: const Text(
-            'Add it to the page you are on, or give it a page of its own?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('This page'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('New page'),
-          ),
-        ],
-      ),
-    );
-    if (asPage == null || !mounted) return;
-
-    if (asPage) {
-      await _addImageOnNewPage(imported);
+    } else if (scanned) {
+      final pageId = await _addImageOnNewPage(captured.single);
+      if (pageId != null) _indexPages([pageId], announce: false);
     } else {
-      _addImageInline(key, imported);
+      _placeOnPage(key, captured);
     }
   }
 
@@ -648,8 +717,53 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       return;
     }
 
-    _toast('Importing…');
-    final pages = await _import.importPdf(path, '${widget.notebookId}');
+    final count = await _import.pdfPageCount(path);
+    if (!mounted) return;
+    if (count < 1) {
+      _toast('That PDF had no pages to import.');
+      return;
+    }
+    final options = await showModalBottomSheet<PdfImportOptions>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => PdfImportSheet(
+        fileName: SceneImportService.importSourceNameOf(path),
+        pageCount: count,
+      ),
+    );
+    if (options == null || !mounted) return;
+
+    var cancelled = false;
+    final progress =
+        ValueNotifier<(int, int)>((0, options.last - options.first + 1));
+    final dialog = showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _ImportProgressDialog(
+        progress: progress,
+        onCancel: () => cancelled = true,
+      ),
+    );
+    // Disposed once the dialog has fully gone, not while it animates out.
+    unawaited(dialog.whenComplete(progress.dispose));
+
+    final List<ImportedImage> pages;
+    try {
+      pages = await _import.importPdf(
+        path,
+        '${widget.notebookId}',
+        firstPage: options.first,
+        lastPage: options.last,
+        onProgress: (done, total) => progress.value = (done, total),
+        isCancelled: () => cancelled,
+      );
+    } on ImportCancelledException {
+      if (mounted) _toast('Import cancelled.');
+      return;
+    } finally {
+      if (mounted) Navigator.of(context).pop();
+    }
     if (!mounted) return;
     if (pages.isEmpty) {
       _toast('That PDF had no pages to import.');
@@ -657,13 +771,17 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     }
 
     await _addImportedPages(pages,
-        sourceName: SceneImportService.importSourceNameOf(path));
+        sourceName: SceneImportService.importSourceNameOf(path),
+        afterCurrent: options.afterCurrent);
   }
 
-  /// Appends one page per image of a multi-page import (a PDF, a scan) and
+  /// Adds one page per image of a multi-page import (a PDF, a scan) — right
+  /// after the page the user was on when [afterCurrent], else at the end — and
   /// starts reading the whole document for search.
   Future<void> _addImportedPages(List<ImportedImage> pages,
-      {required String sourceName}) async {
+      {required String sourceName, bool afterCurrent = true}) async {
+    final startedOn =
+        ref.read(pageProvider(widget.notebookId)).currentPageIndex;
     // One id for the whole document, stamped on every page it becomes. This is
     // what later lets "the whole PDF" be a scope the AI features can name —
     // without it, a 40-page import is just 40 loose pages (see
@@ -682,6 +800,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
         importSourceName: sourceName,
       );
       createdPageIds.add(pageId);
+      if (!mounted) return;
+    }
+    if (afterCurrent) {
+      await ref
+          .read(pageProvider(widget.notebookId).notifier)
+          .movePagesAfter(createdPageIds, afterIndex: startedOn);
       if (!mounted) return;
     }
     _toast('Imported ${pages.length} page${pages.length == 1 ? '' : 's'}.');
@@ -735,45 +859,107 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     _indexPages([for (final p in pages) p.id], announce: true);
   }
 
-  /// Drops [imported] onto the current page, sized against what's on screen and
-  /// centred in it.
+  /// Adds [images] to the current page and starts placing them: they arrive
+  /// selected, on the Select tool, so the next drag moves them and a corner
+  /// resizes them, with the placement bar offering Done / Own page / Remove.
+  /// The tool the user had comes back when they finish (see [_endPlacement]).
   ///
-  /// Centred, rather than slotted into the first clear gap the way an inserted
-  /// AI note is: a picture is something the user positions and resizes by hand
-  /// straight away, and the note's slide-down search would carry it to the far
-  /// corner of a page that already has work on it — or off the sheet entirely
-  /// in page mode, where the visible area extends past the paper and anything
-  /// outside it is clipped away.
-  void _addImageInline(ScenePageKey key, ImportedImage imported) {
+  /// Each lands where [placeImageInView] puts it — in a clear part of what is on
+  /// screen, never on top of writing when there is room — and several are kept
+  /// clear of one another.
+  void _placeOnPage(ScenePageKey key, List<ImportedImage> images) {
     final viewport = ref.read(viewportProvider);
     final canvasSize = ref.read(viewportProvider.notifier).viewportSize;
     if (canvasSize.isEmpty) return; // canvas hasn't laid out yet
 
     final sheet = _pageSheet;
-    // Sized in scene units against the area it lands in, so a photo occupies
-    // the same share of the screen whatever the zoom.
-    final box = inlinePlacement(
-      imported.pixelSize,
-      viewport.visibleSceneRect(canvasSize),
-      page: _pageMode && sheet != null && !sheet.isEmpty
-          ? Offset.zero & sheet
-          : null,
-    );
-    if (box.isEmpty) {
+    final page =
+        _pageMode && sheet != null && !sheet.isEmpty ? Offset.zero & sheet : null;
+    final visible = viewport.visibleSceneRect(canvasSize);
+    final existing = <Rect>[
+      for (final e in ref.read(sceneControllerProvider(key)))
+        if (!(e is FreehandElement && e.isEraser) && !e.isLocked)
+          ElementBounds.of(e),
+    ]..removeWhere((r) => r.isEmpty);
+
+    final scene = ref.read(sceneControllerProvider(key).notifier);
+    var zOrder = scene.nextZOrder();
+    final added = <ImageElement>[];
+    for (final image in images) {
+      final box = placeImageInView(
+        source: image.pixelSize,
+        visible: visible,
+        page: page,
+        existing: existing,
+      );
+      if (box.isEmpty) continue;
+      existing.add(box);
+      // Inline images are content the user will want to move and resize.
+      added.add(_imageElement(image, box, zOrder++, locked: false));
+    }
+    if (added.isEmpty) {
       _toast("That image couldn't be measured.");
       return;
     }
 
-    ref.read(historyProvider(key).notifier).push(AddElementsCommand([
-          _imageElement(
-            imported,
-            box,
-            ref.read(sceneControllerProvider(key).notifier).nextZOrder(),
-            // Inline images are content the user will want to move and resize.
-            locked: false,
-          ),
-        ]));
-    _toast('Added to the page');
+    ref.read(historyProvider(key).notifier).push(AddElementsCommand(added));
+    final toolCtl = ref.read(editorToolProvider.notifier);
+    final previous = ref.read(editorToolProvider).tool;
+    toolCtl.useTool(EditorTool.select);
+    setState(() => _placing = (
+          key: key,
+          ids: {for (final e in added) e.id},
+          images: [
+            for (final image in images)
+              if (added.any((e) => e.relativeImagePath == image.relativePath))
+                image,
+          ],
+          previousTool: previous,
+        ));
+    ref.read(selectionProvider.notifier).selectMany(_placing!.ids);
+  }
+
+  /// Ends placing: called when the pictures stop being selected (a tap
+  /// elsewhere, Done, a page turn) or the user picks another tool. Puts back
+  /// the tool they had before, unless they have already chosen a new one.
+  void _endPlacement() {
+    final placing = _placing;
+    if (placing == null) return;
+    setState(() => _placing = null);
+    if (ref.read(editorToolProvider).tool == EditorTool.select) {
+      ref.read(editorToolProvider.notifier).useTool(placing.previousTool);
+    }
+  }
+
+  /// Takes the pictures being placed back off the page (undoable).
+  void _removePlaced() {
+    final placing = _placing;
+    if (placing == null) return;
+    final current = [
+      for (final e in ref.read(sceneControllerProvider(placing.key)))
+        if (placing.ids.contains(e.id)) e,
+    ];
+    if (current.isNotEmpty) {
+      ref
+          .read(historyProvider(placing.key).notifier)
+          .push(RemoveElementsCommand(current));
+    }
+    ref.read(selectionProvider.notifier).clear();
+    _endPlacement();
+  }
+
+  /// Moves the pictures being placed onto pages of their own, one each.
+  Future<void> _placedToOwnPages() async {
+    final placing = _placing;
+    if (placing == null) return;
+    _removePlaced();
+    final pageIds = <int>[];
+    for (final image in placing.images) {
+      final id = await _addImageOnNewPage(image);
+      if (!mounted) return;
+      if (id != null) pageIds.add(id);
+    }
+    _indexPages(pageIds, announce: false);
   }
 
   /// Appends a page and fills it with [imported], aspect-fitted to the sheet.
@@ -810,11 +996,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             imported,
             box,
             ref.read(sceneControllerProvider(key).notifier).nextZOrder(),
-            // Imported unlocked, so it can be moved and resized straight away —
-            // that turned out to matter more than protecting a backdrop from a
-            // stray drag. Users who want it pinned can Lock it from the
-            // selection bar; annotating with the pen never moves it regardless.
-            locked: false,
+            // Locked: a page-sized import is the paper, not something on it.
+            // Unlocked, the Select tool grabbed it from under the ink written
+            // over it, so annotations could not be selected and the page slid
+            // away. It is still selected by a tap (for Unlock / Extract text);
+            // Unlock from the selection bar to move or resize it.
+            locked: true,
           ),
         ]));
     // The image is only in the page once its write has landed; the caller

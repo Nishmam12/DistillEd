@@ -86,13 +86,33 @@ class SceneImportService {
     return parts.isEmpty ? filePath : parts.last;
   }
 
-  /// Renders every page of the PDF at [filePath], one [ImportedImage] per page
-  /// in document order.
+  /// How many pages the PDF at [filePath] has.
   ///
   /// Throws [ImportException] when the file is missing or not a PDF.
+  Future<int> pdfPageCount(String filePath) => _pdf.pageCount(filePath);
+
+  /// Renders pages [firstPage]..[lastPage] (1-based, inclusive; null = to the
+  /// end) of the PDF at [filePath], one [ImportedImage] per page in document
+  /// order. See [PdfService.renderAll] for [onProgress] and [isCancelled].
+  ///
+  /// Throws [ImportException] when the file is missing or not a PDF, and
+  /// [ImportCancelledException] when cancelled.
   Future<List<ImportedImage>> importPdf(
-      String filePath, String notebookId) async {
-    final pages = await _pdf.renderAll(filePath, notebookId);
+    String filePath,
+    String notebookId, {
+    int firstPage = 1,
+    int? lastPage,
+    void Function(int done, int total)? onProgress,
+    bool Function()? isCancelled,
+  }) async {
+    final pages = await _pdf.renderAll(
+      filePath,
+      notebookId,
+      firstPage: firstPage,
+      lastPage: lastPage,
+      onProgress: onProgress,
+      isCancelled: isCancelled,
+    );
     final docsDir = await _documentsDir();
 
     final out = <ImportedImage>[];
@@ -116,8 +136,26 @@ class SceneImportService {
       ImageSource source, String notebookId) async {
     final picked = await _picker.pickImage(source: source);
     if (picked == null) return null;
+    return _store(picked, notebookId, DateTime.now().microsecondsSinceEpoch.toString());
+  }
 
-    final id = DateTime.now().microsecondsSinceEpoch.toString();
+  /// Lets the user pick one or more photos from the library and stores each
+  /// the way [importPhoto] does. Empty when they cancel.
+  ///
+  /// Throws [ImportException] when a picked file cannot be decoded.
+  Future<List<ImportedImage>> importPhotos(String notebookId) async {
+    final picked = await _picker.pickMultiImage();
+    if (picked.isEmpty) return const [];
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    return [
+      for (var i = 0; i < picked.length; i++)
+        await _store(picked[i], notebookId, '${stamp}_$i'),
+    ];
+  }
+
+  /// Downscales and re-encodes [picked] off the main thread into the
+  /// notebook's imports directory under [id].
+  Future<ImportedImage> _store(XFile picked, String notebookId, String id) async {
     final relativePath =
         StoragePaths.getFreeImageCacheRelativePath(notebookId, id);
     final docsDir = await _documentsDir();

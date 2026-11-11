@@ -7,6 +7,7 @@
 // Both show the same body: the live [AiContextView], or the [AiExplainView]
 // while an explanation is streaming, plus a Summarize/Explain action footer.
 
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,8 +33,17 @@ import 'ai_context_view.dart';
 import 'ai_explain_view.dart';
 import 'ai_research_view.dart';
 
-/// Width of the docked panel on wide screens.
+/// Default width of the docked panel on wide screens. The user can drag its
+/// left edge to change it, between [kAiSidebarMinWidth] and [aiSidebarMaxWidth].
 const double kAiSidebarWidth = 340;
+
+/// Narrowest the docked panel can be dragged: below this its buttons wrap.
+const double kAiSidebarMinWidth = 280;
+
+/// Widest the docked panel may be in a window [screenWidth] wide: never more
+/// than 560, and never so wide that the page gets less than half the screen.
+double aiSidebarMaxWidth(double screenWidth) =>
+    math.max(kAiSidebarMinWidth, math.min(560.0, screenWidth * 0.5));
 
 /// At or above this width the sidebar docks beside the canvas; below it, the
 /// AI action opens the bottom sheet instead.
@@ -73,12 +83,49 @@ class AiSidebar extends StatelessWidget {
     required this.onSummarize,
     required this.onInsertNote,
     this.onJumpToSource,
+    this.width = kAiSidebarWidth,
+    this.onResize,
+    this.onResizeEnd,
   });
+
+  /// Current width. Owned by the editor so it survives the panel closing.
+  final double width;
+
+  /// Called while the left-edge handle is dragged, with the width asked for.
+  /// No handle is shown when null.
+  final ValueChanged<double>? onResize;
+
+  /// Called when the drag ends, so the editor can remember the width.
+  final VoidCallback? onResizeEnd;
 
   @override
   Widget build(BuildContext context) {
+    final panel = _panel(context);
+    final resize = onResize;
+    if (resize == null) return panel;
+    return Stack(
+      children: [
+        panel,
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 16,
+          child: _ResizeHandle(
+            onDrag: (dx) => resize(width - dx),
+            onDragEnd: onResizeEnd,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _panel(BuildContext context) {
     return Container(
-      width: kAiSidebarWidth,
+      width: width,
+      // The editor no longer resizes for the keyboard (so the page does not
+      // shrink under it); the panel lifts its own content above it instead.
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       decoration: BoxDecoration(
         color: context.colors.surface,
         border: Border(left: BorderSide(color: context.colors.border)),
@@ -101,6 +148,40 @@ class AiSidebar extends StatelessWidget {
             ),
             _SidebarFooter(pageKey: pageKey, onSummarize: onSummarize),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The grip on the docked panel's left edge. Dragging it left widens the
+/// panel, right narrows it.
+class _ResizeHandle extends StatelessWidget {
+  final ValueChanged<double> onDrag;
+  final VoidCallback? onDragEnd;
+
+  const _ResizeHandle({required this.onDrag, this.onDragEnd});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Resize AI panel',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
+          onHorizontalDragEnd: (_) => onDragEnd?.call(),
+          child: Center(
+            child: Container(
+              width: 4,
+              height: 40,
+              decoration: BoxDecoration(
+                color: context.colors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -110,6 +110,19 @@ class SettingsState {
   /// wrongly deletes work, even though it can be undone.
   final bool scribbleErase;
 
+  /// Whether one finger draws on the page. On by default, as it always was.
+  /// Off, a finger scrolls the page and only a pen draws — what most people
+  /// writing with a stylus want, and what stops a resting finger leaving ink.
+  final bool fingerDraws;
+
+  /// Whether the one-time "a pen was detected — let a finger scroll?" offer has
+  /// been shown. Persisted so it is offered once per install.
+  final bool stylusTipShown;
+
+  /// Width the docked AI panel was last dragged to, in logical pixels.
+  /// Clamped to what fits when it is shown.
+  final double aiPanelWidth;
+
   /// Record lectures for transcription: 16 kHz mono WAV (about 2 MB a minute)
   /// instead of compressed AAC (about 0.5 MB), because the speech model reads
   /// nothing else — and transcribe them on the device once they stop. Off by
@@ -151,6 +164,9 @@ class SettingsState {
     this.transcribeLectures = false,
     this.snapShapes = false,
     this.scribbleErase = false,
+    this.fingerDraws = true,
+    this.stylusTipShown = false,
+    this.aiPanelWidth = 340,
     this.huggingFaceToken = '',
     this.loaded = false,
   });
@@ -177,6 +193,9 @@ class SettingsState {
     bool? transcribeLectures,
     bool? snapShapes,
     bool? scribbleErase,
+    bool? fingerDraws,
+    bool? stylusTipShown,
+    double? aiPanelWidth,
     String? huggingFaceToken,
     bool? loaded,
   }) {
@@ -191,6 +210,9 @@ class SettingsState {
       transcribeLectures: transcribeLectures ?? this.transcribeLectures,
       snapShapes: snapShapes ?? this.snapShapes,
       scribbleErase: scribbleErase ?? this.scribbleErase,
+      fingerDraws: fingerDraws ?? this.fingerDraws,
+      stylusTipShown: stylusTipShown ?? this.stylusTipShown,
+      aiPanelWidth: aiPanelWidth ?? this.aiPanelWidth,
       huggingFaceToken: huggingFaceToken ?? this.huggingFaceToken,
       loaded: loaded ?? this.loaded,
     );
@@ -218,6 +240,9 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kTranscribeLectures = 'ai.transcribeLectures';
   static const _kSnapShapes = 'ui.snapShapes';
   static const _kScribbleErase = 'ui.scribbleErase';
+  static const _kFingerDraws = 'ui.fingerDraws';
+  static const _kStylusTipShown = 'ui.stylusTipShown';
+  static const _kAiPanelWidth = 'ui.aiPanelWidth';
   static const _kHuggingFaceToken = 'ai.huggingFaceToken';
 
   /// Export formats the Settings picker offers. A persisted value outside this
@@ -253,6 +278,9 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       transcribeLectures: prefs.getBool(_kTranscribeLectures) ?? false,
       snapShapes: prefs.getBool(_kSnapShapes) ?? false,
       scribbleErase: prefs.getBool(_kScribbleErase) ?? false,
+      fingerDraws: prefs.getBool(_kFingerDraws) ?? true,
+      stylusTipShown: prefs.getBool(_kStylusTipShown) ?? false,
+      aiPanelWidth: prefs.getDouble(_kAiPanelWidth) ?? 340,
     );
     // The keystore is slower than prefs, so everything else lands first; `loaded`
     // waits for the token, because the download UI reads it as "nothing stored".
@@ -367,6 +395,25 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(scribbleErase: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kScribbleErase, value);
+  }
+
+  Future<void> setFingerDraws(bool value) async {
+    state = state.copyWith(fingerDraws: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kFingerDraws, value);
+  }
+
+  Future<void> markStylusTipShown() async {
+    if (state.stylusTipShown) return;
+    state = state.copyWith(stylusTipShown: true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kStylusTipShown, true);
+  }
+
+  Future<void> setAiPanelWidth(double value) async {
+    state = state.copyWith(aiPanelWidth: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_kAiPanelWidth, value);
   }
 
   Future<void> setTranscribeLectures(bool value) async {
