@@ -48,7 +48,10 @@ class _ReclaimSpaceRowState extends ConsumerState<_ReclaimSpaceRow> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
         ],
       ),
@@ -101,9 +104,10 @@ class _ReclaimSpaceRowState extends ConsumerState<_ReclaimSpaceRow> {
 
         final freed = orphans.fold<int>(0, (sum, o) => sum + o.sizeBytes);
         return _SettingsRow(
-          icon: PhosphorIconsRegular.broom,
+          icon: AppIcons.folder,
           title: 'Leftover download files',
-          subtitle: _error ??
+          subtitle:
+              _error ??
               '${_formatBytes(freed)} from downloads that did not finish',
           trailing: _busy
               ? const SizedBox(
@@ -112,8 +116,7 @@ class _ReclaimSpaceRowState extends ConsumerState<_ReclaimSpaceRow> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : TextButton(
-                  onPressed:
-                      orphans.isEmpty ? null : () => _cleanup(orphans),
+                  onPressed: orphans.isEmpty ? null : () => _cleanup(orphans),
                   child: const Text('Free up'),
                 ),
         );
@@ -151,7 +154,10 @@ class _RolloutRow extends ConsumerWidget {
               onPressed: runner.isAdvancing
                   ? null
                   : () => _advanceRollout(
-                      container, messenger, rollout.servingModelId),
+                      container,
+                      messenger,
+                      rollout.servingModelId,
+                    ),
               child: const Text('Continue'),
             ),
             TextButton(
@@ -183,8 +189,13 @@ Future<void> _advanceRollout(
   try {
     await container.read(embedderRolloutRunnerProvider).advance(servingModelId);
   } catch (_) {
-    messenger.showSnackBar(const SnackBar(
-        content: Text('Search model upgrade stopped. Press Continue to resume.')));
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Search model upgrade stopped. Press Continue to resume.',
+        ),
+      ),
+    );
   } finally {
     container.invalidate(embedderRolloutStatusProvider);
   }

@@ -186,35 +186,43 @@ Future<void> _pumpSettings(
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  await tester.pumpWidget(ProviderScope(
-    overrides: [
-      huggingFaceTokenProvider.overrideWithValue('hf_test'),
-      secretStoreProvider.overrideWithValue(InMemorySecretStore()),
-      embedderDownloadManagerProvider.overrideWithValue(embedder),
-      modelDownloadManagerProvider.overrideWithValue(llm ?? _FakeLlm()),
-      handwritingRecognitionServiceProvider
-          .overrideWithValue(handwriting ?? _FakeHandwriting()),
-      modelStorageCleanerProvider.overrideWithValue(cleaner),
-      speechModelInstallerProvider
-          .overrideWithValue(speech ?? _FakeSpeechInstaller()),
-      embedderRolloutStatusProvider.overrideWith((ref) => Stream.value(
-          rollout ??
-              EmbedderRollout(servingModelId: EmbedderSpec.active.modelId))),
-    ],
-    child: MaterialApp(
-      theme: MargoTheme.light,
-      home: const SettingsScreen(),
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        huggingFaceTokenProvider.overrideWithValue('hf_test'),
+        secretStoreProvider.overrideWithValue(InMemorySecretStore()),
+        embedderDownloadManagerProvider.overrideWithValue(embedder),
+        modelDownloadManagerProvider.overrideWithValue(llm ?? _FakeLlm()),
+        handwritingRecognitionServiceProvider.overrideWithValue(
+          handwriting ?? _FakeHandwriting(),
+        ),
+        modelStorageCleanerProvider.overrideWithValue(cleaner),
+        speechModelInstallerProvider.overrideWithValue(
+          speech ?? _FakeSpeechInstaller(),
+        ),
+        embedderRolloutStatusProvider.overrideWith(
+          (ref) => Stream.value(
+            rollout ??
+                EmbedderRollout(servingModelId: EmbedderSpec.active.modelId),
+          ),
+        ),
+      ],
+      child: MaterialApp(theme: MargoTheme.light, home: const AiModelsScreen()),
     ),
-  ));
+  );
   await tester.pumpAndSettle();
 }
 
 void main() {
-  testWidgets('EmbeddingGemma reads as downloaded once its download finishes',
-      (tester) async {
+  testWidgets('EmbeddingGemma reads as downloaded once its download finishes', (
+    tester,
+  ) async {
     final embedder = _FakeEmbedder(installed: false);
-    await _pumpSettings(tester,
-        embedder: embedder, cleaner: _FakeCleaner(const []));
+    await _pumpSettings(
+      tester,
+      embedder: embedder,
+      cleaner: _FakeCleaner(const []),
+    );
 
     await tester.tap(_downloadButton(_embedTitle));
     await tester.pumpAndSettle();
@@ -225,45 +233,58 @@ void main() {
     expect(_downloadButton(_embedTitle), findsNothing);
   });
 
-  testWidgets('deleting EmbeddingGemma reads as not downloaded, offering Download',
-      (tester) async {
-    final embedder = _FakeEmbedder(installed: true);
-    await _pumpSettings(tester,
-        embedder: embedder, cleaner: _FakeCleaner(const []));
+  testWidgets(
+    'deleting EmbeddingGemma reads as not downloaded, offering Download',
+    (tester) async {
+      final embedder = _FakeEmbedder(installed: true);
+      await _pumpSettings(
+        tester,
+        embedder: embedder,
+        cleaner: _FakeCleaner(const []),
+      );
 
-    await tester.tap(find.byTooltip('Delete model'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Delete model'));
+      await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
-    expect(embedder.installed, isFalse);
-    expect(_downloadButton(_embedTitle), findsOneWidget);
-  });
+      expect(tester.takeException(), isNull);
+      expect(embedder.installed, isFalse);
+      expect(_downloadButton(_embedTitle), findsOneWidget);
+    },
+  );
 
-  testWidgets('Whisper reads as downloaded on the screen once its download finishes',
-      (tester) async {
-    final speech = _FakeSpeechInstaller();
-    await _pumpSettings(tester,
+  testWidgets(
+    'Whisper reads as downloaded on the screen once its download finishes',
+    (tester) async {
+      final speech = _FakeSpeechInstaller();
+      await _pumpSettings(
+        tester,
         embedder: _FakeEmbedder(installed: true),
         cleaner: _FakeCleaner(const []),
-        speech: speech);
-    expect(find.textContaining('~80 MB · Downloaded'), findsNothing);
+        speech: speech,
+      );
+      expect(find.textContaining('~80 MB · Downloaded'), findsNothing);
 
-    // The switch starts the download through the same provider.
-    final container =
-        ProviderScope.containerOf(tester.element(find.byType(SettingsScreen)));
-    await container.read(speechModelProvider.notifier).download();
-    await tester.pumpAndSettle();
+      // The switch starts the download through the same provider.
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AiModelsScreen)),
+      );
+      await container.read(speechModelProvider.notifier).download();
+      await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
-    expect(speech.installed, isTrue);
-    expect(find.textContaining('~80 MB · Downloaded'), findsOneWidget);
-  });
+      expect(tester.takeException(), isNull);
+      expect(speech.installed, isTrue);
+      expect(find.textContaining('~80 MB · Downloaded'), findsOneWidget);
+    },
+  );
 
-  testWidgets('every model that is not downloaded offers a Download button',
-      (tester) async {
-    await _pumpSettings(tester,
-        embedder: _FakeEmbedder(installed: false),
-        cleaner: _FakeCleaner(const []));
+  testWidgets('every model that is not downloaded offers a Download button', (
+    tester,
+  ) async {
+    await _pumpSettings(
+      tester,
+      embedder: _FakeEmbedder(installed: false),
+      cleaner: _FakeCleaner(const []),
+    );
 
     for (final title in [
       _gemmaTitle,
@@ -277,13 +298,16 @@ void main() {
     }
   });
 
-  testWidgets('Gemma downloads from its own button, and reads as downloaded',
-      (tester) async {
+  testWidgets('Gemma downloads from its own button, and reads as downloaded', (
+    tester,
+  ) async {
     final llm = _FakeLlm();
-    await _pumpSettings(tester,
-        embedder: _FakeEmbedder(installed: true),
-        cleaner: _FakeCleaner(const []),
-        llm: llm);
+    await _pumpSettings(
+      tester,
+      embedder: _FakeEmbedder(installed: true),
+      cleaner: _FakeCleaner(const []),
+      llm: llm,
+    );
 
     await tester.tap(_downloadButton(_gemmaTitle));
     await tester.pumpAndSettle();
@@ -294,30 +318,37 @@ void main() {
     expect(_downloadButton(_gemmaTitle), findsNothing);
   });
 
-  testWidgets('Whisper downloads from its own button, and reads as downloaded',
-      (tester) async {
-    final speech = _FakeSpeechInstaller();
-    await _pumpSettings(tester,
+  testWidgets(
+    'Whisper downloads from its own button, and reads as downloaded',
+    (tester) async {
+      final speech = _FakeSpeechInstaller();
+      await _pumpSettings(
+        tester,
         embedder: _FakeEmbedder(installed: true),
         cleaner: _FakeCleaner(const []),
-        speech: speech);
+        speech: speech,
+      );
 
-    await tester.tap(_downloadButton(_whisperTitle));
-    await tester.pumpAndSettle();
+      await tester.tap(_downloadButton(_whisperTitle));
+      await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
-    expect(speech.installed, isTrue);
-    expect(find.textContaining('~80 MB · Downloaded'), findsOneWidget);
-    expect(_downloadButton(_whisperTitle), findsNothing);
-  });
+      expect(tester.takeException(), isNull);
+      expect(speech.installed, isTrue);
+      expect(find.textContaining('~80 MB · Downloaded'), findsOneWidget);
+      expect(_downloadButton(_whisperTitle), findsNothing);
+    },
+  );
 
-  testWidgets('a handwriting model downloads from its own button',
-      (tester) async {
+  testWidgets('a handwriting model downloads from its own button', (
+    tester,
+  ) async {
     final handwriting = _FakeHandwriting();
-    await _pumpSettings(tester,
-        embedder: _FakeEmbedder(installed: true),
-        cleaner: _FakeCleaner(const []),
-        handwriting: handwriting);
+    await _pumpSettings(
+      tester,
+      embedder: _FakeEmbedder(installed: true),
+      cleaner: _FakeCleaner(const []),
+      handwriting: handwriting,
+    );
 
     await tester.tap(_downloadButton(_englishTitle));
     await tester.pumpAndSettle();
@@ -328,32 +359,44 @@ void main() {
     expect(find.textContaining('~20 MB · Downloaded'), findsOneWidget);
   });
 
-  testWidgets('a failed download says so, and the button stays for another try',
-      (tester) async {
-    final llm = _FakeLlm()..failWith = StateError('no network');
-    await _pumpSettings(tester,
+  testWidgets(
+    'a failed download says so, and the button stays for another try',
+    (tester) async {
+      final llm = _FakeLlm()..failWith = StateError('no network');
+      await _pumpSettings(
+        tester,
         embedder: _FakeEmbedder(installed: true),
         cleaner: _FakeCleaner(const []),
-        llm: llm);
+        llm: llm,
+      );
 
-    await tester.tap(_downloadButton(_gemmaTitle));
-    await tester.pumpAndSettle();
+      await tester.tap(_downloadButton(_gemmaTitle));
+      await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
-    expect(llm.installed, isFalse);
-    expect(find.textContaining("Couldn't download $_gemmaTitle"),
-        findsOneWidget);
-    expect(_downloadButton(_gemmaTitle), findsOneWidget);
-  });
+      expect(tester.takeException(), isNull);
+      expect(llm.installed, isFalse);
+      expect(
+        find.textContaining("Couldn't download $_gemmaTitle"),
+        findsOneWidget,
+      );
+      expect(_downloadButton(_gemmaTitle), findsOneWidget);
+    },
+  );
 
-  testWidgets('freeing leftover files clears the row, without an error',
-      (tester) async {
+  testWidgets('freeing leftover files clears the row, without an error', (
+    tester,
+  ) async {
     final cleaner = _FakeCleaner([
       const OrphanedModelFile(
-          filename: 'partial.tflite', sizeBytes: 5 * 1024 * 1024),
+        filename: 'partial.tflite',
+        sizeBytes: 5 * 1024 * 1024,
+      ),
     ]);
-    await _pumpSettings(tester,
-        embedder: _FakeEmbedder(installed: true), cleaner: cleaner);
+    await _pumpSettings(
+      tester,
+      embedder: _FakeEmbedder(installed: true),
+      cleaner: cleaner,
+    );
     expect(find.text('Leftover download files'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(TextButton, 'Free up'));
@@ -366,17 +409,21 @@ void main() {
     expect(find.text('Leftover download files'), findsNothing);
   });
 
-  testWidgets('the corpus export is offered in debug builds, where tests run',
-      (tester) async {
-    await _pumpSettings(tester,
-        embedder: _FakeEmbedder(installed: true),
-        cleaner: _FakeCleaner(const []));
+  testWidgets('the corpus export is offered in debug builds, where tests run', (
+    tester,
+  ) async {
+    await _pumpSettings(
+      tester,
+      embedder: _FakeEmbedder(installed: true),
+      cleaner: _FakeCleaner(const []),
+    );
 
     expect(find.byKey(const ValueKey('export-rag-corpus')), findsOneWidget);
   });
 
-  testWidgets('a running rollout shows its progress, and offers to cancel it',
-      (tester) async {
+  testWidgets('a running rollout shows its progress, and offers to cancel it', (
+    tester,
+  ) async {
     final rollout = const EmbedderRollout(servingModelId: 'serving')
         .start(
           targetModelId: 'target',
@@ -385,19 +432,25 @@ void main() {
         )
         .downloaded()
         .progress(2);
-    await _pumpSettings(tester,
-        embedder: _FakeEmbedder(installed: true),
-        cleaner: _FakeCleaner(const []),
-        rollout: rollout);
+    await _pumpSettings(
+      tester,
+      embedder: _FakeEmbedder(installed: true),
+      cleaner: _FakeCleaner(const []),
+      rollout: rollout,
+    );
 
     expect(find.text('Upgrading search model: 2 of 5 pages'), findsOneWidget);
     expect(find.byKey(const ValueKey('rollout-cancel')), findsOneWidget);
   });
 
-  testWidgets('with no rollout running there is no progress row', (tester) async {
-    await _pumpSettings(tester,
-        embedder: _FakeEmbedder(installed: true),
-        cleaner: _FakeCleaner(const []));
+  testWidgets('with no rollout running there is no progress row', (
+    tester,
+  ) async {
+    await _pumpSettings(
+      tester,
+      embedder: _FakeEmbedder(installed: true),
+      cleaner: _FakeCleaner(const []),
+    );
 
     expect(find.byKey(const ValueKey('rollout-progress')), findsNothing);
   });

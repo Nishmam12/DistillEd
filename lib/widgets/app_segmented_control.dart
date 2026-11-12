@@ -25,13 +25,11 @@ import '../core/theme/app_colors.dart';
 class AppSegment<T> {
   final T value;
   final String label;
-  final IconData icon;
 
-  const AppSegment({
-    required this.value,
-    required this.label,
-    required this.icon,
-  });
+  /// Optional leading glyph. Omitted where the design is text-only.
+  final IconData? icon;
+
+  const AppSegment({required this.value, required this.label, this.icon});
 }
 
 class AppSegmentedControl<T> extends StatelessWidget {
@@ -124,8 +122,10 @@ class _Segment<T> extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(segment.icon, size: 18, color: foreground),
-              const SizedBox(width: 8),
+              if (segment.icon != null) ...[
+                Icon(segment.icon, size: 18, color: foreground),
+                const SizedBox(width: 8),
+              ],
               Flexible(
                 child: Text(
                   segment.label,
