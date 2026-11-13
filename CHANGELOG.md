@@ -16,6 +16,51 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 ### Changed
+- **The AI reads each figure on its own.** A page used to be shown to the AI
+  as one picture, so a small diagram on a full page was a blur and two
+  diagrams came back as one confused description. Margo now finds each
+  drawing on the page, shows the AI just that drawing, and remembers where on
+  the page it is. Writing next to a drawing (its caption) is given to the AI
+  as context.
+- **The AI looks at the figure when you ask about it.** Ask used to answer
+  from the short description made when the page was first read, so a question
+  that description had not thought of ("what is the value at x = 3?", "which
+  arrow leaves B?") could not be answered. When a question is about a figure,
+  Margo now shows the figure itself to the vision model together with your
+  question, and the answer draws on what it sees. The Sources list shows what
+  was seen. It runs on the device; a figure is sent to the cloud only under
+  the same setting as other page images.
+- **Figures on this page.** The AI panel now lists every chart, diagram and
+  picture it read on the page: a thumbnail, what it understood, whether it was
+  read on the device, by the cloud or exactly from shapes, and a "Not
+  confirmed" mark when the labels in the reading were not found on the page.
+  Each one can be read again, sent to the cloud model (when cloud AI is on),
+  or fixed by writing what it shows yourself. Your description replaces the
+  AI's and is what summaries, answers and quizzes use from then on.
+- **Maths and tables are kept as maths and tables.** When the AI finds an
+  equation it now also writes it out as LaTeX, and when it finds a table it
+  keeps the rows and columns, so a question about one term or one cell has
+  something exact to answer from. The Figures list shows the equation drawn
+  as maths and the table as a grid.
+- **Figure reading is kept light on the device.** The on-device model reads
+  at most two separate drawings per page one by one (more are read together),
+  and when a whole notebook is indexed in the background it does the minimum:
+  one figure read per page, no extra look at PDF slides, no LaTeX or table
+  follow-up. The rest happens when you open the page in the AI panel or ask
+  about the figure. With cloud-first reading on, the cloud does the full job
+  and the device does none of it.
+- **Flowcharts made with the shape tools are read exactly.** Boxes with typed
+  labels joined by arrows are read straight from the shapes — every label and
+  every arrow, with no AI model involved, so it is instant, works without the
+  model downloaded, and cannot misread.
+- **Charts on PDF slides are no longer skipped.** A PDF page whose text Margo
+  already had was never looked at for figures. Pages that mention one
+  ("Figure 2", "the graph shows") now are.
+- **A confident wrong reading is caught.** What the AI says a figure shows is
+  checked against the labels Margo can read another way (typed text, the
+  PDF's own text, handwriting recognition). A reading that names things which
+  are not there is sent to the stronger model when you have allowed the
+  cloud, and otherwise kept but marked as unconfirmed.
 - **Opening the AI panel keeps your page as it was.** The same writing stays
   on screen, just narrower, instead of the page jumping to 100 % or staying
   zoomed in with half of it cut off. Closing the panel puts the view back
@@ -36,6 +81,16 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   and you can cancel.
 
 ### Added
+- **Automatic backup** (Settings → Backup). Switch it on and Margo saves every
+  notebook that changed to **Download/Margo**: a `.margo` file you can restore,
+  and a readable `.md` copy of the text. Pick how often: after each note,
+  hourly, daily or weekly. **Back up now** runs it at once, and the screen
+  shows when it last ran, where it went, and any error. These files survive
+  uninstalling the app.
+- **Restore from a backup** (Settings → Backup). Pick one or more `.margo`
+  files; each comes back as a new notebook. Nothing is overwritten.
+- **Share notebook (.margo)** in the editor's ⋯ menu sends a whole notebook,
+  with its pictures and PDF pages, to another Margo.
 - **Four pens.** The pen panel now offers a pen, a fountain pen (strong
   thick-thin), a pencil (grainy graphite) and a highlighter (wide and
   see-through, so the writing under it stays readable). Each stroke remembers

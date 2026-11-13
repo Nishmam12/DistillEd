@@ -37,3 +37,24 @@ String normalizePdfText(String text) => text
     .replaceAll('\r', '\n')
     .replaceAll(RegExp(r'[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]'), '')
     .trim();
+
+final RegExp _figureWords = RegExp(
+  r'\b(fig(ure)?\.?\s*\d|table\s*\d|chart|graph|diagram|plot(ted)?|flowchart|'
+  r'schematic|x-axis|y-axis|axes|histogram)\b',
+  caseSensitive: false,
+);
+
+/// Whether a PDF page whose text is already known is still worth showing to
+/// the vision model for a figure.
+///
+/// The page's own text makes OCR unnecessary, but it says nothing about a
+/// chart or diagram on the page — the text layer of a graph is a few axis
+/// labels. Looking at every page of a 60-slide deck would undo what reading
+/// the text layer saved, so only pages that mention a figure are looked at
+/// ("Figure 2", "the graph shows"). A page that is a picture under a title
+/// needs no rule here: its text is too short to stand for the page
+/// ([kMinPdfTextChars]), so it is already read as a picture, figure and all.
+///
+/// ponytail: a first cut. Tune against the figure benchmark — the cost of a
+/// miss is an unread figure, of a false hit one vision call (remembered).
+bool pdfTextSuggestsFigure(String text) => _figureWords.hasMatch(text);

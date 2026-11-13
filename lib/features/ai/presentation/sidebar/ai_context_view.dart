@@ -18,6 +18,7 @@ import '../../domain/context_engine/page_context.dart';
 import '../../domain/features/explainer.dart';
 import '../../domain/features/writing_assistant.dart';
 import '../ai_providers.dart';
+import 'ai_figures_strip.dart';
 import '../explain_notifier.dart';
 import '../model_download_notifier.dart';
 import '../widgets/model_download_progress.dart';
@@ -346,6 +347,7 @@ class _ContextBody extends StatelessWidget {
             for (final entry in c.definitions.entries)
               _DefinitionRow(term: entry.key, definition: entry.value),
           ],
+          AiFiguresStrip(pageKey: pageKey),
           _WritingSection(pageKey: pageKey),
         ],
       ),

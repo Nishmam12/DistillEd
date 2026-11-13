@@ -21,6 +21,7 @@ import '../quality/output_quality.dart';
 import '../rag/rag_retriever.dart';
 import '../text_budget.dart';
 import '../tutor_voice.dart';
+import 'figure_qa.dart';
 
 class NotesQa {
   final AiProvider _provider;
@@ -109,6 +110,7 @@ class NotesQa {
   Stream<String> answer({
     required String question,
     required List<RetrievedChunk> sources,
+    FigureAnswer? figure,
   }) {
     // Refusing, rather than the assert this used to carry.
     //
@@ -126,7 +128,7 @@ class NotesQa {
     if (sources.isEmpty) return Stream.value(notFoundReply);
 
     return _provider.generate(
-      prompt: promptFor(question: question, sources: sources),
+      prompt: promptFor(question: question, sources: sources, figure: figure),
       systemPrompt: systemPrompt,
       options: answerOptions,
     );
@@ -138,11 +140,19 @@ class NotesQa {
   /// tier when the local answer fails its quality check. Building it here rather
   /// than in the guard keeps one definition of what the model is shown — a
   /// cloud re-run that saw different passages would not be a check on anything.
+  ///
+  /// [figure] is what a vision model saw when it was shown a figure from these
+  /// pages together with the question (see `figure_qa.dart`). It goes in as one
+  /// more numbered passage: it is the student's own figure, so it is inside the
+  /// grounding contract, and it is fenced like the rest because a model wrote
+  /// it from a picture that may hold any text.
   String promptFor({
     required String question,
     required List<RetrievedChunk> sources,
+    FigureAnswer? figure,
   }) =>
-      'PASSAGES FROM YOUR NOTES:\n${fenceUntrusted(_formatPassages(sources))}\n\n'
+      'PASSAGES FROM YOUR NOTES:\n'
+      '${fenceUntrusted(_formatPassages(sources, figure))}\n\n'
       'QUESTION: ${question.trim()}';
 
   /// What the answer must be grounded in, for the quality check.
@@ -153,9 +163,13 @@ class NotesQa {
   /// escalate every honest "not in your notes" to the cloud and have it answered
   /// from world knowledge — the precise failure the whole feature exists to
   /// prevent.
-  static QualityContext qualityContextFor(List<RetrievedChunk> sources) =>
+  static QualityContext qualityContextFor(List<RetrievedChunk> sources,
+          {FigureAnswer? figure}) =>
       QualityContext(
-        sourcePassages: [for (final s in sources) s.chunk.text],
+        sourcePassages: [
+          for (final s in sources) s.chunk.text,
+          if (figure != null) figure.passage,
+        ],
         allowedRefusal: notFoundReply,
       );
 
@@ -167,11 +181,13 @@ class NotesQa {
   /// a larger topK or model swap must truncate rather than overrun. Whole
   /// passages are dropped from the end rather than cutting one mid-sentence, so
   /// every number the model sees maps to a passage it saw in full.
-  String _formatPassages(List<RetrievedChunk> sources) {
+  String _formatPassages(List<RetrievedChunk> sources, [FigureAnswer? figure]) {
     final shown = fitToBudget(sources);
     return [
       for (var i = 0; i < shown.length; i++)
         '[${i + 1}] ${shown[i].chunk.text.trim()}',
+      // Short (a few sentences), so it rides on top of the passage budget.
+      if (figure != null) '[${shown.length + 1}] ${figure.passage}',
     ].join('\n\n');
   }
 

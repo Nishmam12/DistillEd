@@ -74,7 +74,8 @@ class FakeExtractor extends PageContentExtractor {
   Future<PageContent> extractPage(int pageId,
       {required String languageCode,
       bool useVision = false,
-      bool varyVision = false}) async {
+      bool varyVision = false,
+      bool economy = false}) async {
     final index = calls++;
     visionFlags.add(useVision);
     varyFlags.add(varyVision);

@@ -20,15 +20,19 @@
 // SceneElementStore.loadForPage in production) so the extractor stays free of
 // persistence details and trivially testable.
 
+import 'dart:convert' show utf8;
 import 'dart:typed_data';
 import 'dart:ui';
 
+import '../../../domain/geometry/element_bounds.dart';
 import '../../../domain/model/scene_element.dart';
 import '../data/handwriting/handwriting_recognition_service.dart';
 import '../data/ocr/gemma_vision_ocr_service.dart';
 import 'ai_exception.dart';
 import 'figure.dart';
 import 'figure_analyzer.dart';
+import 'figure_locator.dart';
+import 'scene_graph_figure.dart';
 import 'handwriting/ink_trust.dart';
 import 'language/language_detector.dart';
 import 'page_content.dart';
@@ -61,6 +65,12 @@ typedef ImageBytesLoader = Future<Uint8List?> Function(String relativeImagePath)
 /// text, or '' when it has none. Must not throw: a transcript that cannot be
 /// read should cost itself, not the page.
 typedef LectureTranscriptReader = Future<String> Function(int pageId);
+
+/// The most separate drawings on one page that the ON-DEVICE model reads one
+/// by one; past it they are read as a single picture, as before figures were
+/// located. Each is a full vision call, and a page read must stay cheap on a
+/// tablet. The cloud, when it is the one reading, gets [kMaxFigureRegions].
+const int kLocalFigureRegions = 2;
 
 class PageContentExtractor {
   final Future<List<SceneElement>> Function(int pageId) _loadElements;
@@ -112,6 +122,12 @@ class PageContentExtractor {
   final String Function()? _readModelId;
 
   final bool _persistReads;
+
+  /// Figure reads that came back empty this session, by cache key. An empty
+  /// answer is not remembered for good (it is as likely a failed run as a page
+  /// with no figure), but asking again on every read of the page would cost a
+  /// model call each time.
+  final Set<String> _noFigureThisSession = {};
 
   /// Tells real text from the noise ML Kit's Latin recogniser makes of a script
   /// it cannot read (Bengali). Null keeps ML Kit's text as it comes.
@@ -181,6 +197,101 @@ class PageContentExtractor {
     }
   }
 
+  // ---- Replaced readings ---------------------------------------------------
+  //
+  // A figure the student read again, sent to the stronger model, or described
+  // themselves has a reading that outranks whatever the normal read would
+  // give. It is kept in the read cache under a key made of the figure's
+  // picture alone — not the model or the prompt — so it survives both
+  // changing, and is found by every later read of the same figure.
+
+  String? _pinKeyOf(Uint8List? picture) => _readCache == null || picture == null
+      ? null
+      : readCacheKey(
+          kind: 'pin', content: picture, version: 'pin1', modelId: 'any');
+
+  Future<FigureDescription?> _pinned(String? key) async {
+    if (key == null) return null;
+    try {
+      return (await _readCache!.find(key))?.figure;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _pin(FigureDescription figure) async {
+    if (_readCache == null || figure.pinKey.isEmpty) return;
+    await _readCache.save(figure.pinKey, CachedRead(text: '', figure: figure));
+  }
+
+  /// Reads [figure] (found on [pageId]) again and keeps the new reading in
+  /// place of the old one: a differently sampled on-device read, or with
+  /// [onCloud] the stronger model's. Null when nothing came of it — no picture,
+  /// no model, a reply with no figure in it — and the old reading stands.
+  ///
+  /// [onCloud] asks no policy: the caller is acting on the student's explicit
+  /// request for this one figure. A missing on-device model surfaces as
+  /// [AiModelNotReadyException].
+  Future<FigureDescription?> rereadFigure(
+    int pageId,
+    FigureDescription figure, {
+    bool onCloud = false,
+  }) async {
+    final analyzer = _figures;
+    if (analyzer == null) return null;
+    final picture = await figureImage(pageId, figure);
+    if (picture == null) return null;
+
+    // What the new reading is checked against: OCR of the picture, or the
+    // typed labels sitting inside a drawing.
+    Future<String> reference() async {
+      if (figure.imagePath.isNotEmpty) {
+        return _readImageTextOrEmpty(figure.imagePath);
+      }
+      final area = figure.bounds?.inflate(1);
+      if (area == null) return '';
+      return [
+        for (final e in await _loadElements(pageId))
+          if (e is TextElement && ElementBounds.of(e).overlaps(area)) e.text,
+      ].join('\n');
+    }
+
+    final FigureDescription? read;
+    try {
+      read = onCloud
+          ? await analyzer.readOnCloud(picture,
+              context: figure.nearbyText, referenceOf: reference)
+          : await analyzer.analyze(picture,
+              context: figure.nearbyText, referenceOf: reference, vary: true);
+    } on AiModelNotReadyException {
+      rethrow;
+    } on AiException {
+      return null;
+    }
+    if (read == null) return null;
+
+    final placed = read.copyWith(
+      bounds: figure.bounds,
+      imagePath: figure.imagePath,
+      nearbyText: figure.nearbyText,
+      pinKey: figure.pinKey,
+    );
+    await _pin(placed);
+    return placed;
+  }
+
+  /// Replaces what the AI understood of [figure] with the student's own
+  /// description, which every later read of the figure then uses.
+  Future<FigureDescription> correctFigure(
+    FigureDescription figure, {
+    required String title,
+    required String summary,
+  }) async {
+    final corrected = figure.correctedTo(title: title, summary: summary);
+    await _pin(corrected);
+    return corrected;
+  }
+
   /// Extracts everything AI-readable from the page. The recognition language
   /// model for [languageCode] must be present (see
   /// [HandwritingRecognitionService.ensureModelDownloaded]); recognition
@@ -194,14 +305,23 @@ class PageContentExtractor {
   /// [varyVision] asks Gemma for a fresh, differently-sampled reading (the
   /// "Re-read" path) instead of the deterministic first pass — so re-reading a
   /// page that already read cleanly can still change and correct a misread.
+  ///
+  /// [economy] is for reads nobody is waiting on — indexing a whole imported
+  /// PDF in the background. It keeps the on-device model to the least that
+  /// still reads the page: one figure call for everything drawn, no look at
+  /// text-layer PDF pages for charts, no LaTeX or table follow-up. None of
+  /// that is lost for good: it happens when the page is opened in the AI
+  /// panel, or when a question is asked about the figure. It changes nothing
+  /// when the cloud is doing the reading.
   Future<PageContent> extractPage(
     int pageId, {
     required String languageCode,
     bool useVision = false,
     bool varyVision = false,
+    bool economy = false,
   }) async {
     final content = await _extractFrom(await _loadElements(pageId), languageCode,
-        useVision: useVision, varyVision: varyVision);
+        useVision: useVision, varyVision: varyVision, economy: economy);
     // What was SAID on this page, beside what was written. The whole page only —
     // a selection of elements has no recording in it.
     final transcript = await _transcriptOf(pageId);
@@ -252,6 +372,7 @@ class PageContentExtractor {
     String languageCode, {
     required bool useVision,
     bool varyVision = false,
+    bool economy = false,
   }) async {
     if (elements.isEmpty) return PageContent.empty;
 
@@ -267,6 +388,13 @@ class PageContentExtractor {
             !(_lite?.call() ?? false)
         ? _figures
         : null;
+    // How much to ask of the figure pass. The cloud reading first costs the
+    // device nothing, so it gets everything; the device gets the least that
+    // still reads the page when nobody is waiting, a little more when someone
+    // is.
+    final cloudFirst =
+        figureAnalyzer != null && await figureAnalyzer.cloudReadsFirst();
+    final thrifty = economy && !cloudFirst;
     final sources = <PageContentSource>[];
     final figures = <FigureDescription>[];
 
@@ -282,13 +410,16 @@ class PageContentExtractor {
     }
     var inkText = '';
     double? inkScore;
-    var inkIsPlainText = false;
+    // With no ink at all it IS known which ink is writing: none of it.
+    Set<String>? writingIds = const {};
+    var inkLines = const <PageTextLine>[];
     if (inkElements.isNotEmpty) {
       final read = await _readInk(
           inkElements, elements, languageCode, vision, varyVision);
       inkText = read.text;
       inkScore = read.score;
-      inkIsPlainText = read.plainText;
+      writingIds = read.writingIds;
+      inkLines = read.lines;
     }
 
     // Typed text in reading order: top-to-bottom, then left-to-right.
@@ -328,6 +459,15 @@ class PageContentExtractor {
           bounds: _rectOf(e.geometryData),
           needsOcr: false,
         ));
+        // The text is known, but a chart on the page is not in it. Pages that
+        // hint at a figure are shown to the model for that alone; its reading
+        // is checked against the page's own text.
+        if (figureAnalyzer != null &&
+            !thrifty &&
+            pdfTextSuggestsFigure(layer)) {
+          final figure = await _figureOfTextPage(e, layer, figureAnalyzer);
+          if (figure != null) figures.add(_placed(figure, e));
+        }
         continue;
       }
 
@@ -375,7 +515,9 @@ class PageContentExtractor {
         // every piece of text off the image, so the second call was re-deriving
         // what the first had produced.
         if (bytes != null && figureAnalyzer != null && vision != null) {
-          final merged = await _analyzeWithText(figureAnalyzer, bytes);
+          final merged = await _analyzeWithText(figureAnalyzer, bytes,
+              localDetail: !thrifty,
+              referenceOf: () => _readImageTextOrEmpty(e.relativeImagePath));
           figure = merged.figure;
           // `verbatim_text` arrives as a JSON string field, so it is far more
           // exposed to truncation than a raw-text OCR reply. Hold it to the same
@@ -392,7 +534,10 @@ class PageContentExtractor {
           // described it.
           figure = bytes == null
               ? null
-              : await _analyzeFigure(figureAnalyzer, bytes);
+              : await _analyzeFigure(figureAnalyzer, bytes,
+                  localDetail: !thrifty,
+                  referenceOf: () =>
+                      _readImageTextOrEmpty(e.relativeImagePath));
         }
         // A read that found nothing is as likely a transient failure as a blank
         // picture; remembering it would stop the page ever being read properly.
@@ -401,7 +546,13 @@ class PageContentExtractor {
         }
       }
       if (text.isNotEmpty) imageTexts.add(text);
-      if (figure != null) figures.add(figure);
+      // A replaced reading outranks the model's. Looked for on deep reads only:
+      // the key hashes the picture, too much for every writing pause.
+      final pinKey = useVision ? _pinKeyOf(bytes) : null;
+      figure = await _pinned(pinKey) ?? figure;
+      if (figure != null) {
+        figures.add(_placed(figure, e).copyWith(pinKey: pinKey));
+      }
 
       sources.add(PageContentSource(
         kind: PageSourceKind.image,
@@ -411,42 +562,19 @@ class PageContentExtractor {
       ));
     }
 
-    // The hand-drawn figure: strokes, shapes, arrows and their labels rendered
-    // together, so a flowchart built from the shape tools is finally visible.
-    // Rendered separately from the OCR ink image because that one deliberately
-    // excludes shapes and typed labels.
-    final drawn = _drawnLayer(elements);
-    // The drawn layer includes the ink, so without this a deep read of ANY
-    // handwriting page ran a full figure pass over it — a vision call whose
-    // answer for prose is `{"kind": "none"}`, loading the model just to say so
-    // and undoing the point of reading ink with ML Kit first. Ink ML Kit read
-    // cleanly line by line is writing, not a drawing; shapes, and ink it could
-    // not fully read, still get the pass.
-    final hasShapes = elements.any((e) => e is SceneShapeElement);
-    if (figureAnalyzer != null &&
-        drawn.isNotEmpty &&
-        (hasShapes || !inkIsPlainText)) {
-      final render = _renderInk;
-      final png = render == null ? null : await render(drawn);
-      if (png != null) {
-        final cacheKey = _cacheOn
-            ? _cacheKey('drawn', png, FigureAnalyzer.cacheVersion)
-            : null;
-        final remembered = cacheKey == null
-            ? null
-            : await _remembered(cacheKey, vary: varyVision);
-        final FigureDescription? figure;
-        if (remembered != null) {
-          figure = remembered.figure;
-        } else {
-          figure = await _analyzeFigure(figureAnalyzer, png);
-          if (cacheKey != null && figure != null) {
-            await _remember(cacheKey, CachedRead(text: '', figure: figure));
-          }
-        }
-        if (figure != null) figures.add(figure);
-      }
-    }
+    figures.addAll(await _drawnFigures(
+      elements,
+      writingIds: writingIds,
+      inkLines: inkLines,
+      analyzer: figureAnalyzer,
+      vary: varyVision,
+      maxRegions: cloudFirst
+          ? kMaxFigureRegions
+          : thrifty
+              ? 1
+              : kLocalFigureRegions,
+      localDetail: !thrifty,
+    ));
 
     return PageContent(
       recognizedInkText: inkText,
@@ -456,6 +584,229 @@ class PageContentExtractor {
       figures: figures,
       sources: sources,
     );
+  }
+
+  /// [figure] with where it is: the picture it was read from, and that
+  /// picture's place on the page.
+  static FigureDescription _placed(FigureDescription figure, ImageElement e) =>
+      figure.copyWith(
+        bounds: _rectOf(e.geometryData),
+        imagePath: e.relativeImagePath,
+      );
+
+  /// The figure on a PDF page whose text is already known, or null.
+  Future<FigureDescription?> _figureOfTextPage(
+      ImageElement e, String layer, FigureAnalyzer analyzer) async {
+    final bytes = await _imageBytesOf(e);
+    if (bytes == null) return null;
+    final pinKey = _pinKeyOf(bytes);
+    final pinned = await _pinned(pinKey);
+    if (pinned != null) return pinned;
+    final found = await _readFigureOfTextPage(bytes, layer, analyzer);
+    return found?.copyWith(pinKey: pinKey);
+  }
+
+  Future<FigureDescription?> _readFigureOfTextPage(
+      Uint8List bytes, String layer, FigureAnalyzer analyzer) async {
+    final key =
+        _cacheOn ? _cacheKey('fig', bytes, FigureAnalyzer.cacheVersion) : null;
+    if (key != null) {
+      final remembered = await _remembered(key, vary: false);
+      if (remembered != null) return remembered.figure;
+      if (_noFigureThisSession.contains(key)) return null;
+    }
+    final figure = await _analyzeFigure(analyzer, bytes, reference: layer);
+    if (key != null) {
+      if (figure != null) {
+        await _remember(key, CachedRead(text: '', figure: figure));
+      } else {
+        _noFigureThisSession.add(key);
+      }
+    }
+    return figure;
+  }
+
+  /// The figures DRAWN on the page — with the shape tools or the pen — each
+  /// found, cropped and read on its own (see `figure_locator.dart`).
+  ///
+  /// A flowchart made of labelled shapes is read straight from the shapes,
+  /// exactly and with no model, on every kind of read. Everything else is
+  /// rendered region by region for the vision model when [analyzer] is given:
+  /// a small diagram then fills its own picture instead of a corner of the
+  /// page's, and two diagrams are two readings.
+  ///
+  /// Ink ML Kit read cleanly as lines of text is writing, not a drawing, and
+  /// costs no figure call — so a page of plain handwriting never loads the
+  /// model just to hear that it holds no figure.
+  Future<List<FigureDescription>> _drawnFigures(
+    List<SceneElement> elements, {
+    required Set<String>? writingIds,
+    required List<PageTextLine> inkLines,
+    required FigureAnalyzer? analyzer,
+    required bool vary,
+    int maxRegions = kMaxFigureRegions,
+    bool localDetail = true,
+  }) async {
+    final drawn = _drawnLayer(elements);
+    if (drawn.isEmpty) return const [];
+    final figures = <FigureDescription>[];
+
+    // Exact pass: shape-built diagrams with no pen work in them.
+    final ink = [for (final e in drawn) if (e is FreehandElement) e];
+    final handled = <String>{};
+    for (final region in locateFigures(
+      [for (final e in drawn) if (e is! FreehandElement) e],
+      writingIds: const {},
+    )) {
+      final penInside = ink.any((s) => s.points.any(
+          (p) => region.bounds.contains(Offset(p.x, p.y))));
+      if (penInside) continue;
+      final exact = describeSceneGraph(region);
+      if (exact == null) continue;
+      figures.add(exact);
+      handled.addAll(region.elements.map((e) => e.id));
+    }
+
+    final render = _renderInk;
+    if (analyzer == null || render == null) return figures;
+
+    final rest = [for (final e in drawn) if (!handled.contains(e.id)) e];
+    for (final region in locateFigures(rest,
+        writingIds: writingIds, textLines: inkLines, maxRegions: maxRegions)) {
+      final png = await render(region.elements);
+      if (png == null) continue;
+
+      // The caption is part of the question asked, so part of the key.
+      final keyed = region.nearbyText.isEmpty
+          ? png
+          : Uint8List.fromList([...png, ...utf8.encode(region.nearbyText)]);
+      final cacheKey = _cacheOn
+          ? _cacheKey('drawn', keyed, FigureAnalyzer.cacheVersion)
+          : null;
+      final pinKey = _pinKeyOf(png);
+      var figure = await _pinned(pinKey);
+      final remembered = figure != null || cacheKey == null
+          ? null
+          : await _remembered(cacheKey, vary: vary);
+      if (figure != null) {
+        // A replaced reading: nothing to read.
+      } else if (remembered != null) {
+        figure = remembered.figure;
+        // Remembered from a read that was sparing with the device: an equation
+        // or a table gets its exact content now that someone is looking. Tried
+        // once a session, since "nothing usable came back" is not remembered.
+        if (figure != null &&
+            localDetail &&
+            figure.latex.isEmpty &&
+            figure.table == null &&
+            (figure.kind == FigureKind.equation ||
+                figure.kind == FigureKind.table) &&
+            _detailTried.add(cacheKey!)) {
+          final detailed = await _detailOf(analyzer, figure, png);
+          if (detailed != figure) {
+            figure = detailed;
+            await _remember(cacheKey, CachedRead(text: '', figure: figure));
+          }
+        }
+      } else {
+        figure = await _analyzeFigure(
+          analyzer,
+          png,
+          context: region.nearbyText,
+          reference: region.labelText,
+          localDetail: localDetail,
+        );
+        if (cacheKey != null && figure != null) {
+          await _remember(cacheKey, CachedRead(text: '', figure: figure));
+        }
+      }
+      if (figure != null) {
+        figures.add(figure.copyWith(
+          bounds: region.bounds,
+          nearbyText: region.nearbyText,
+          pinKey: pinKey,
+        ));
+      }
+    }
+    return figures;
+  }
+
+  /// The picture of [figure], which was read on [pageId]: the file it came
+  /// from, or — for something drawn — a fresh render of what sits inside its
+  /// bounds. Null when it cannot be had (nothing recorded where it is, the
+  /// file is gone, the drawing was erased). Never throws.
+  ///
+  /// This is what lets a model look at a figure again at question time instead
+  /// of working from the description alone (see `features/figure_qa.dart`).
+  Future<Uint8List?> figureImage(int pageId, FigureDescription figure) async {
+    try {
+      if (figure.imagePath.isNotEmpty) {
+        return await _loadImageBytes?.call(figure.imagePath);
+      }
+      return await figureImageFrom(await _loadElements(pageId), figure);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// As [figureImage], over elements the caller already holds.
+  Future<Uint8List?> figureImageFrom(
+      List<SceneElement> elements, FigureDescription figure) async {
+    try {
+      if (figure.imagePath.isNotEmpty) {
+        return await _loadImageBytes?.call(figure.imagePath);
+      }
+      final bounds = figure.bounds;
+      final render = _renderInk;
+      if (bounds == null || render == null) return null;
+      final area = bounds.inflate(1);
+      final inside = [
+        for (final e in _drawnLayer(elements))
+          if (ElementBounds.of(e).overlaps(area)) e,
+      ];
+      return inside.isEmpty ? null : await render(inside);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// A deep read of [elements] as if they were a page — for a caller that
+  /// reads a page with something taken off it (the benchmark removes its own
+  /// question boxes).
+  Future<PageContent> extractElements(
+    List<SceneElement> elements, {
+    required String languageCode,
+  }) =>
+      _extractFrom(elements, languageCode, useVision: true);
+
+  /// The largest picture on [pageId] — a photo, an imported PDF page — or null
+  /// when the page has none. Never throws.
+  Future<Uint8List?> largestPicture(int pageId) async {
+    try {
+      return await largestPictureFrom(await _loadElements(pageId));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// As [largestPicture], over elements the caller already holds.
+  Future<Uint8List?> largestPictureFrom(List<SceneElement> elements) async {
+    try {
+      ImageElement? largest;
+      var largestArea = 0.0;
+      for (final e in elements) {
+        if (e is! ImageElement || e.relativeImagePath.isEmpty) continue;
+        final r = _rectOf(e.geometryData);
+        final area = r.width.abs() * r.height.abs();
+        if (largest == null || area > largestArea) {
+          largest = e;
+          largestArea = area;
+        }
+      }
+      return largest == null ? null : await _imageBytesOf(largest);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Everything the student DREW, in z-order: strokes, shapes and frames, plus
@@ -483,9 +834,11 @@ class PageContentExtractor {
   /// failure degrades to "nothing read", which sends the caller to the OCR
   /// fallback rather than losing the page.
   Future<({String verbatimText, FigureDescription? figure})> _analyzeWithText(
-      FigureAnalyzer analyzer, Uint8List bytes) async {
+      FigureAnalyzer analyzer, Uint8List bytes,
+      {Future<String> Function()? referenceOf, bool localDetail = true}) async {
     try {
-      return await analyzer.analyzeWithText(bytes);
+      return await analyzer.analyzeWithText(bytes,
+          referenceOf: referenceOf, localDetail: localDetail);
     } on AiModelNotReadyException {
       rethrow;
     } on AiException {
@@ -494,16 +847,39 @@ class PageContentExtractor {
   }
 
   Future<FigureDescription?> _analyzeFigure(
-      FigureAnalyzer? analyzer, Uint8List bytes) async {
+    FigureAnalyzer? analyzer,
+    Uint8List bytes, {
+    String context = '',
+    String reference = '',
+    Future<String> Function()? referenceOf,
+    bool localDetail = true,
+  }) async {
     if (analyzer == null) return null;
     try {
-      return await analyzer.analyze(bytes);
+      return await analyzer.analyze(bytes,
+          context: context,
+          reference: reference,
+          referenceOf: referenceOf,
+          localDetail: localDetail);
     } on AiModelNotReadyException {
       // Same contract as the OCR path: the caller offers the download rather
       // than silently producing a figure-less read.
       rethrow;
     } on AiException {
       return null;
+    }
+  }
+
+  /// Drawn figures whose LaTeX / table follow-up was already tried this
+  /// session, by cache key.
+  final Set<String> _detailTried = {};
+
+  Future<FigureDescription> _detailOf(
+      FigureAnalyzer analyzer, FigureDescription figure, Uint8List png) async {
+    try {
+      return await analyzer.detailOf(figure, png);
+    } catch (_) {
+      return figure;
     }
   }
 

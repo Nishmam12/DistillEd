@@ -61,6 +61,7 @@ import '../domain/device_state.dart';
 import '../domain/features/explainer.dart';
 import '../domain/features/flashcard_generator.dart';
 import '../domain/features/quiz_generator.dart';
+import '../domain/features/figure_qa.dart';
 import '../domain/features/notes_qa.dart';
 import '../domain/features/researcher.dart';
 import '../domain/features/writing_assistant.dart';
@@ -91,6 +92,7 @@ import '../data/tools/wikipedia_tool.dart';
 import 'ask_notes_notifier.dart';
 import 'study_planner_notifier.dart';
 import 'context_engine_notifier.dart';
+import 'page_figures.dart';
 import 'explain_notifier.dart';
 import 'flashcard_notifier.dart';
 import 'model_download_notifier.dart';
@@ -848,6 +850,11 @@ final pageContextProvider = StateNotifierProvider.autoDispose
                 text: content.combinedTextWithFigures,
               );
           ref.read(writingSuggestionsProvider(key).notifier).review(content);
+        },
+        onFigures: (figures, {required deep}) {
+          if (!alive) return;
+          final shown = ref.read(pageFiguresProvider(key.pageId).notifier);
+          shown.state = carryFigures(shown.state, figures, deep: deep);
         },
         // Learning Memory rides it too: every analyzed page records which concepts
         // the learner was exposed to. Fire-and-forget — a storage hiccup must never

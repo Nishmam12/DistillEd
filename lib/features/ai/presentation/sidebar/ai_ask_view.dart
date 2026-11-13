@@ -20,6 +20,7 @@ import '../../../audio/presentation/recording_notifier.dart';
 import '../../data/embeddings/embedder_spec.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/ai_scope.dart';
+import '../../domain/features/figure_qa.dart';
 import '../../domain/quality/ai_quality_guard.dart';
 import '../../domain/rag/rag_retriever.dart';
 import '../ai_providers.dart';
@@ -227,14 +228,19 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           icon: Icons.check_circle_outline,
           title: message,
         ),
-      AskNotesSearching() => const _Centered(
-          icon: Icons.travel_explore_outlined,
-          title: 'Searching your notes…',
+      AskNotesSearching(:final lookingAtFigure) => _Centered(
+          icon: lookingAtFigure
+              ? Icons.image_search_outlined
+              : Icons.travel_explore_outlined,
+          title: lookingAtFigure
+              ? 'Looking at the figure…'
+              : 'Searching your notes…',
           showSpinner: true,
         ),
-      AskNotesAnswering(:final text, :final sources) => _Answer(
+      AskNotesAnswering(:final text, :final sources, :final figure) => _Answer(
           text: text,
           sources: sources,
+          figure: figure,
           streaming: true,
           onInsertNote: widget.onInsertNote,
           onJumpToSource: widget.onJumpToSource,
@@ -243,12 +249,14 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
       AskNotesAnswered(
         :final text,
         :final sources,
+        :final figure,
         :final tier,
         :final canRetryOnCloud
       ) =>
         _Answer(
           text: text,
           sources: sources,
+          figure: figure,
           streaming: false,
           onInsertNote: widget.onInsertNote,
           onJumpToSource: widget.onJumpToSource,
@@ -296,6 +304,10 @@ class _Hint extends StatelessWidget {
 class _Answer extends StatelessWidget {
   final String text;
   final List<RetrievedChunk> sources;
+
+  /// What was seen on a figure for this question — the passage numbered after
+  /// the last source.
+  final FigureAnswer? figure;
   final bool streaming;
   final ValueChanged<String> onInsertNote;
   final void Function(int pageId)? onJumpToSource;
@@ -314,6 +326,7 @@ class _Answer extends StatelessWidget {
     required this.streaming,
     required this.onInsertNote,
     required this.onJumpToSource,
+    this.figure,
     this.onPlayLecture,
     this.tier = AnswerTier.local,
     this.onVerifyWithCloud,
@@ -370,6 +383,14 @@ class _Answer extends StatelessWidget {
                       text: sources[i].chunk.text,
                       onJumpToSource: onJumpToSource,
                       onPlayLecture: onPlayLecture,
+                    ),
+                  if (figure != null)
+                    SourceCard(
+                      index: sources.length + 1,
+                      pageId: figure!.pageId,
+                      text: 'Looked at the ${figure!.label}: '
+                          '${figure!.text.trim()}',
+                      onJumpToSource: onJumpToSource,
                     ),
                 ],
               ],

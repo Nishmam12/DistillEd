@@ -290,6 +290,9 @@ final bulkRagIndexerProvider = Provider<BulkRagIndexer>((ref) {
         pageId,
         languageCode: ref.read(settingsProvider).recognitionLanguage,
         useVision: true,
+        // Nobody is waiting on a background index of a whole notebook: keep
+        // the on-device model to the least that still reads each page.
+        economy: true,
       );
       // Figures are indexed alongside the words, exactly as the live path does
       // — "what did the graph on slide 12 show" must be able to retrieve.
@@ -407,6 +410,34 @@ final notesQaProvider = Provider<NotesQa>(
   ),
 );
 
+/// Looks at a figure again when a question is asked about it, so the answer
+/// can come from the picture and not only from the description made of it.
+///
+/// On-device first. A figure leaves the device under the same rule as every
+/// other page image ([mayUploadImages]), read at call time.
+final figureQaProvider = Provider<FigureQa>((ref) {
+  final extractor = ref.watch(pageContentExtractorProvider);
+  final cloud = ref.watch(cloudGatewayMidProvider);
+  return FigureQa(
+    // The page's figures as already read: a page that Ask found was indexed
+    // with a deep read, so this is served from the read cache.
+    figuresOf: (pageId) async => (await extractor.extractPage(
+      pageId,
+      languageCode: ref.read(settingsProvider).recognitionLanguage,
+      useVision: true,
+    ))
+        .figures,
+    imageOf: extractor.figureImage,
+    pictureOf: extractor.largestPicture,
+    local: ref.watch(imageTranscriberProvider),
+    cloud: cloud,
+    canUseCloud: () async => mayUploadImages(ref.read(settingsProvider)),
+    preferCloud: () => ref.read(settingsProvider).aiMode.prefersCloud,
+    localModelId: ref.watch(localAiProvider).capabilities.modelId,
+    cloudModelId: cloud.capabilities.modelId,
+  );
+});
+
 /// Drives the sidebar's Ask surface. Session-scoped (not autoDispose) for the
 /// same reason as Explain/Quiz: closing the sidebar must not abort an in-flight
 /// model download, and the answer stays put until dismissed.
@@ -418,6 +449,7 @@ final askNotesNotifierProvider =
         embedderDownloads: ref.watch(embedderDownloadManagerProvider),
 
         guard: ref.watch(aiQualityGuardProvider),
+        figureQa: ref.watch(figureQaProvider),
         // The `/cloud on|off` command and the sidebar switch write the same stored
         // setting, so neither can drift from the other.
         cloudEnabled: () => ref.read(settingsProvider).cloudAiEnabled,

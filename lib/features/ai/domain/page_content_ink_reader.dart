@@ -1,5 +1,29 @@
 part of 'page_content_extractor.dart';
 
+/// What reading a page's handwriting produced.
+class _InkRead {
+  final String text;
+  final double? score;
+
+  /// Every stroke read as text and none of it needed the model.
+  final bool plainText;
+
+  /// The strokes known to be handwriting, by element id; null when that is not
+  /// known (the ink was read whole, so writing cannot be told from drawing).
+  final Set<String>? writingIds;
+
+  /// The lines of handwriting ML Kit read, with where they are.
+  final List<PageTextLine> lines;
+
+  const _InkRead({
+    required this.text,
+    this.score,
+    this.plainText = false,
+    this.writingIds,
+    this.lines = const [],
+  });
+}
+
 /// Handwriting and image-element reading, split out of [PageContentExtractor].
 extension _InkReading on PageContentExtractor {
   /// Reads a page's handwriting.
@@ -15,7 +39,7 @@ extension _InkReading on PageContentExtractor {
   /// vision (rendered ink → transcription) is primary and ML Kit digital-ink the
   /// fallback, used when Gemma isn't available for this read or read the page
   /// poorly. Gemma's best-effort text is kept only when ML Kit turns up nothing.
-  Future<({String text, double? score, bool plainText})> _readInk(
+  Future<_InkRead> _readInk(
     List<SceneElement> inkElements,
     List<SceneElement> allElements,
     String languageCode,
@@ -40,7 +64,7 @@ extension _InkReading on PageContentExtractor {
             ? null
             : await _remembered(cacheKey, vary: vary);
         if (remembered != null) {
-          return (text: remembered.text, score: null, plainText: false);
+          return _InkRead(text: remembered.text);
         }
 
         final result = await vision.read(png, vary: vary);
@@ -48,17 +72,17 @@ extension _InkReading on PageContentExtractor {
           if (cacheKey != null) {
             await _remember(cacheKey, CachedRead(text: result.text));
           }
-          return (text: result.text, score: null, plainText: false);
+          return _InkRead(text: result.text);
         }
         final ml = await _recognition.recognizeElements(allElements, languageCode);
         final mlText = ml.text.trim();
         return mlText.isNotEmpty
-            ? (text: mlText, score: ml.topScore, plainText: false)
-            : (text: result.text, score: null, plainText: false);
+            ? _InkRead(text: mlText, score: ml.topScore)
+            : _InkRead(text: result.text);
       }
     }
     final ml = await _recognition.recognizeElements(allElements, languageCode);
-    return (text: ml.text, score: ml.topScore, plainText: false);
+    return _InkRead(text: ml.text, score: ml.topScore);
   }
 
   /// More separate regions than this and one whole-page read is cheaper than a
@@ -73,7 +97,7 @@ extension _InkReading on PageContentExtractor {
   /// The ML-Kit-first read: one pass over the page's lines, then Gemma for the
   /// lines that need it. Returns null when ML Kit cannot carry the page, which
   /// sends the caller to the whole-page Gemma read.
-  Future<({String text, double? score, bool plainText})?> _readInkMlKitFirst(
+  Future<_InkRead?> _readInkMlKitFirst(
     List<SceneElement> inkElements,
     String languageCode,
     GemmaVisionOcrService vision,
@@ -171,8 +195,28 @@ extension _InkReading on PageContentExtractor {
       }
     }
 
+    // Which ink is writing, for the figure pass: lines ML Kit read and was
+    // trusted on. Lines it read as nothing (a doodle, a sketch) and lines it
+    // could not be trusted on (as likely a diagram as messy writing) are left
+    // for the figure pass to look at.
+    final weakLines = weak.toSet();
+    final writingIds = <String>{};
+    final textLines = <PageTextLine>[];
+    for (var i = 0; i < lines.length; i++) {
+      final text = lines[i].text.trim();
+      if (text.isEmpty) continue;
+      textLines.add((bounds: lines[i].bounds, text: text));
+      if (weakLines.contains(i)) continue;
+      for (final stroke in lines[i].strokes) {
+        final element = elementOf[stroke];
+        if (element != null) writingIds.add(element.id);
+      }
+    }
+
     final scores = [for (final line in kept) ...line.segmentScores];
-    return (
+    return _InkRead(
+      writingIds: writingIds,
+      lines: textLines,
       text: parts.join('\n'),
       score: scores.isEmpty
           ? null

@@ -24,6 +24,7 @@ import '../data/handwriting/handwriting_recognition_service.dart';
 import '../domain/ai_exception.dart';
 import '../domain/context_engine/context_engine.dart';
 import '../domain/context_engine/page_context.dart';
+import '../domain/figure.dart';
 import '../domain/page_content.dart';
 import '../domain/page_content_extractor.dart';
 
@@ -90,6 +91,12 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
   /// own polling loop. Never allowed to break analysis (see [_notifyContent]).
   final void Function(PageContent content)? _onContent;
 
+  /// Fired with the figures each read found, and whether that read looked at
+  /// drawings and pictures at all ([deep]) — a light read cannot say they are
+  /// gone. For the sidebar's "Figures on this page".
+  final void Function(List<FigureDescription> figures, {required bool deep})?
+      _onFigures;
+
   /// Fired with each freshly analyzed [PageContext]. Lets Learning
   /// Memory record concept exposure off this same debounce — again, no second
   /// analysis loop. Never allowed to break analysis (see [_notifyContext]).
@@ -129,6 +136,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
     required this._languageCode,
     this._onContent,
     this._onContext,
+    this._onFigures,
     this.debounce = const Duration(milliseconds: 2500),
     this.readRetryDelay = const Duration(seconds: 2),
   })  : _pageId = pageId,
@@ -185,6 +193,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
         _cache.save(_pageId, signature, PageContext.empty);
         if (mounted) state = const AsyncValue.data(PageContext.empty);
         _notifyContent(PageContent.empty);
+        _notifyFigures(const [], deep: true);
         return;
       }
 
@@ -238,6 +247,7 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
         }
       }
       _visionReadDone = true;
+      _notifyFigures(content.figures, deep: useVision);
       final PageContext context;
       try {
         context =
@@ -289,6 +299,14 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       onContent(content);
     } catch (_) {
       // Deliberately ignored — a misbehaving sibling can't break analysis.
+    }
+  }
+
+  void _notifyFigures(List<FigureDescription> figures, {required bool deep}) {
+    try {
+      _onFigures?.call(figures, deep: deep);
+    } catch (_) {
+      // As [_notifyContent].
     }
   }
 

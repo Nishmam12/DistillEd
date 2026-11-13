@@ -14,6 +14,7 @@ import '../features/notebook/presentation/notebook_book_view_screen.dart';
 import '../features/ai/presentation/flashcards/review_screen.dart';
 import '../features/ai/presentation/knowledge_graph/knowledge_graph_screen.dart';
 import '../features/ai/presentation/study_planner/study_planner_screen.dart';
+import '../features/ai/presentation/dev/figure_benchmark_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -93,6 +94,12 @@ final GoRouter appRouter = GoRouter(
       GoRoute(
         path: '/canvas-demo',
         builder: (context, state) => const SceneEditorScreen(),
+      ),
+    // Dev-only: measures figure understanding on a notebook of test pages.
+    if (kDebugMode)
+      GoRoute(
+        path: '/figure-benchmark',
+        builder: (context, state) => const FigureBenchmarkScreen(),
       ),
   ],
 );

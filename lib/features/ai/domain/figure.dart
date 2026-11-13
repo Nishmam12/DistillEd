@@ -13,7 +13,11 @@
 //     wrote,
 //   * escalation to a stronger model can be decided per-figure.
 
+import 'dart:ui' show Rect;
+
 import 'package:flutter/foundation.dart' show immutable, listEquals;
+
+import 'figure_detail.dart';
 
 /// What kind of visual this is. Drives how [FigureDescription.toPromptBlock]
 /// labels it, and lets features filter (e.g. a quiz generator may want charts
@@ -53,6 +57,9 @@ enum FigureKind {
     );
   }
 }
+
+/// The `modelId` of a figure whose description the student wrote themselves.
+const String kUserFigureModelId = 'user';
 
 /// One labelled data series or one named node/part within a figure.
 @immutable
@@ -119,6 +126,43 @@ class FigureDescription {
   /// invaluable when a bad description needs tracing.
   final String modelId;
 
+  /// Where the figure sits on the page, in scene units; null when unknown. Not
+  /// part of what was read — the same drawing moved elsewhere is the same
+  /// figure — so it is set by the page reader after the read, never cached.
+  /// With it a feature can show "the AI is looking at this" and render the
+  /// figure again to put the picture itself in front of a model.
+  final Rect? bounds;
+
+  /// The picture this figure was read from, relative to app documents, when it
+  /// is a pasted image or an imported page; '' for something drawn on the page
+  /// (which is re-rendered from [bounds] instead). Set like [bounds].
+  final String imagePath;
+
+  /// Writing found beside the figure — a caption, the sentence pointing at it —
+  /// that was given to the model as context. '' when there was none.
+  final String nearbyText;
+
+  /// How much of what the description names was confirmed against text read
+  /// independently of the vision model (typed labels, the PDF's own text,
+  /// handwriting recognition): 0–1, or null when there was nothing to check
+  /// against. A model's own [confidence] is a guess about itself; this is not.
+  final double? grounding;
+
+  /// Where a replacement reading of this figure is kept (see
+  /// `PageContentExtractor.rereadFigure`): '' when it cannot be replaced —
+  /// nothing is stored, or the figure was read exactly from its shapes. Set by
+  /// the page reader, like [bounds].
+  final String pinKey;
+
+  /// An equation (or a derivation, one step per line) written out as LaTeX,
+  /// without delimiters; '' when the figure is not mathematics or it could not
+  /// be transcribed. See `figure_detail.dart`.
+  final String latex;
+
+  /// A table's own rows and columns; null when the figure is not a table or
+  /// its grid could not be read reliably.
+  final FigureTable? table;
+
   const FigureDescription({
     required this.kind,
     required this.summary,
@@ -129,7 +173,43 @@ class FigureDescription {
     this.verbatimText = '',
     this.confidence = 0.0,
     this.modelId = '',
+    this.bounds,
+    this.imagePath = '',
+    this.nearbyText = '',
+    this.grounding,
+    this.pinKey = '',
+    this.latex = '',
+    this.table,
   });
+
+  /// This figure as the student describes it. Their words replace the model's
+  /// summary and the conclusion it drew; the labels read off the figure stay.
+  /// Nothing about it is in doubt afterwards.
+  FigureDescription correctedTo({required String title, required String summary}) =>
+      FigureDescription(
+        kind: kind,
+        title: title.trim(),
+        summary: summary.trim(),
+        axes: axes,
+        series: series,
+        verbatimText: verbatimText,
+        confidence: 1.0,
+        modelId: kUserFigureModelId,
+        bounds: bounds,
+        imagePath: imagePath,
+        nearbyText: nearbyText,
+        pinKey: pinKey,
+        latex: latex,
+        table: table,
+      );
+
+  /// Below this share of confirmed labels a reading is treated as unconfirmed.
+  static const double minGrounding = 0.34;
+
+  /// True when the reading was checked against the page's own text and mostly
+  /// failed: the model named things that are not written there. Kept (it may
+  /// still be roughly right) but flagged, in prompts and in the UI.
+  bool get isUncertain => grounding != null && grounding! < minGrounding;
 
   /// True when this read carries actual meaning rather than a shrug. A model
   /// that answers "a diagram" with no series, no insight and no title has told
@@ -157,6 +237,15 @@ class FigureDescription {
     if (verbatimText.trim().isNotEmpty) {
       lines.add('Labels on the figure: ${verbatimText.trim().replaceAll('\n', ' / ')}');
     }
+    if (latex.isNotEmpty) {
+      lines.add('Written out: '
+          '${latex.split('\n').map((l) => '\$\$$l\$\$').join(' ')}');
+    }
+    if (table != null) lines.add('As a table:\n${table!.toMarkdown()}');
+    if (isUncertain) {
+      lines.add('Note: this reading could not be confirmed against the text on '
+          'the page. Treat its details as approximate and say so if you use them.');
+    }
     return lines.join('\n');
   }
 
@@ -173,6 +262,10 @@ class FigureDescription {
         'verbatimText': verbatimText,
         'confidence': confidence,
         'modelId': modelId,
+        if (nearbyText.isNotEmpty) 'nearbyText': nearbyText,
+        'grounding': ?grounding,
+        if (latex.isNotEmpty) 'latex': latex,
+        if (table != null) 'table': table!.toJson(),
       };
 
   /// Reads a figure back from [toJson]'s output, or null when [json] is not a
@@ -213,10 +306,26 @@ class FigureDescription {
           json['verbatimText'] is String ? json['verbatimText'] as String : '',
       confidence: confidence is num ? confidence.toDouble() : 0.0,
       modelId: json['modelId'] is String ? json['modelId'] as String : '',
+      nearbyText: json['nearbyText'] is String ? json['nearbyText'] as String : '',
+      grounding: json['grounding'] is num
+          ? (json['grounding'] as num).toDouble()
+          : null,
+      latex: json['latex'] is String ? json['latex'] as String : '',
+      table: FigureTable.fromJson(json['table']),
     );
   }
 
-  FigureDescription copyWith({double? confidence, String? modelId}) =>
+  FigureDescription copyWith({
+    double? confidence,
+    String? modelId,
+    Rect? bounds,
+    String? imagePath,
+    String? nearbyText,
+    double? grounding,
+    String? pinKey,
+    String? latex,
+    FigureTable? table,
+  }) =>
       FigureDescription(
         kind: kind,
         title: title,
@@ -227,6 +336,13 @@ class FigureDescription {
         verbatimText: verbatimText,
         confidence: confidence ?? this.confidence,
         modelId: modelId ?? this.modelId,
+        bounds: bounds ?? this.bounds,
+        imagePath: imagePath ?? this.imagePath,
+        nearbyText: nearbyText ?? this.nearbyText,
+        grounding: grounding ?? this.grounding,
+        pinKey: pinKey ?? this.pinKey,
+        latex: latex ?? this.latex,
+        table: table ?? this.table,
       );
 
   @override
@@ -240,11 +356,19 @@ class FigureDescription {
       other.insight == insight &&
       other.verbatimText == verbatimText &&
       other.confidence == confidence &&
-      other.modelId == modelId;
+      other.modelId == modelId &&
+      other.bounds == bounds &&
+      other.imagePath == imagePath &&
+      other.nearbyText == nearbyText &&
+      other.grounding == grounding &&
+      other.pinKey == pinKey &&
+      other.latex == latex &&
+      other.table == table;
 
   @override
   int get hashCode => Object.hash(kind, title, summary, Object.hashAll(axes),
-      Object.hashAll(series), insight, verbatimText, confidence, modelId);
+      Object.hashAll(series), insight, verbatimText, confidence, modelId,
+      bounds, imagePath, nearbyText, grounding, pinKey, latex, table);
 
   @override
   String toString() =>

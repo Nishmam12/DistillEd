@@ -23,7 +23,10 @@ import 'dart:typed_data';
 
 import 'ai_exception.dart';
 import 'figure.dart';
+import 'figure_detail.dart';
+import 'figure_grounding.dart';
 import 'image_transcriber.dart';
+import 'untrusted_text.dart';
 
 /// Decides whether a local read is good enough to keep, or whether the cloud
 /// should be asked instead. Separated from the analyzer so the bar is tunable
@@ -35,15 +38,23 @@ class FigureQualityBar {
   const FigureQualityBar({this.minConfidence = 0.55});
 
   /// True when [figure] is worth keeping without asking a stronger model.
+  ///
+  /// The model's own confidence is only half of it: a reading whose labels were
+  /// checked against the page's text and not found there
+  /// ([FigureDescription.isUncertain]) is not accepted however sure the model
+  /// says it is.
   bool accepts(FigureDescription? figure) =>
-      figure != null && figure.isInformative && figure.confidence >= minConfidence;
+      figure != null &&
+      figure.isInformative &&
+      figure.confidence >= minConfidence &&
+      !figure.isUncertain;
 }
 
 class FigureAnalyzer {
   /// Which generation of prompt and parser wrote a figure. Part of the read
   /// cache's key — bump it when [_prompt] or the parsing changes, so figures
   /// cached under the old one are not served as the new prompt's.
-  static const String cacheVersion = 'fig1';
+  static const String cacheVersion = 'fig2';
 
   /// Output budget for the merged read ([analyzeWithText]). Its `verbatim_text`
   /// field doubles as the page's OCR, so a dense slide needs all of this and
@@ -159,14 +170,22 @@ Read the real values, labels and relationships off the image — precision matte
   /// returns null for it — but the model still transcribed the page on its way
   /// to deciding there was no figure, and throwing that away would leave the
   /// merged read winning nothing on exactly the pages students write most.
+  ///
+  /// [context] and [reference] are as for [analyze].
   Future<({String verbatimText, FigureDescription? figure})> analyzeWithText(
-    Uint8List imageBytes,
-  ) async {
+    Uint8List imageBytes, {
+    String context = '',
+    String reference = '',
+    Future<String> Function()? referenceOf,
+    bool localDetail = true,
+  }) async {
+    _localDetail = localDetail;
+    final check = _Reference(reference, referenceOf);
     final String raw;
     try {
       raw = await _local.transcribeImage(
         imageBytes,
-        prompt: _prompt,
+        prompt: _withContext(_prompt, context),
         temperature: 0.0,
         maxOutputTokens: mergedReadTokens,
       );
@@ -177,27 +196,56 @@ Read the real values, labels and relationships off the image — precision matte
     }
 
     final text = verbatimTextOf(raw);
-    final figure = parseFigureJson(raw, modelId: localModelId);
-    if (_bar.accepts(figure)) return (verbatimText: text, figure: figure);
+    final figure =
+        await check.ground(parseFigureJson(raw, modelId: localModelId));
+    if (_bar.accepts(figure)) {
+      return (verbatimText: text, figure: await _withDetail(figure, imageBytes));
+    }
 
     // The figure half missed the bar. Escalate only that half — the caller
     // judges the transcription separately, and re-reading the image in the
     // cloud to improve a description we may not even keep would spend a
     // network round-trip on nothing.
     if (_cloud != null && await _canEscalate()) {
-      final escalated = await _readCloud(imageBytes);
-      if (escalated != null && escalated.isInformative) {
+      final escalated =
+          await check.ground(await _readCloud(imageBytes, context));
+      if (escalated != null && _prefersEscalated(escalated, figure)) {
         return (
           verbatimText: text.isNotEmpty ? text : escalated.verbatimText.trim(),
-          figure: escalated,
+          figure: await _withDetail(escalated, imageBytes),
         );
       }
     }
 
     return (
       verbatimText: text,
-      figure: (figure != null && figure.isInformative) ? figure : null,
+      figure: (figure != null && figure.isInformative)
+          ? await _withDetail(figure, imageBytes)
+          : null,
     );
+  }
+
+  /// [prompt] with the writing found beside the figure appended as context.
+  /// Fenced: it is the student's (or a PDF's) text, never instructions.
+  static String _withContext(String prompt, String context) {
+    final trimmed = context.trim();
+    if (trimmed.isEmpty) return prompt;
+    final clipped =
+        trimmed.length > 600 ? '${trimmed.substring(0, 600)}…' : trimmed;
+    return '$prompt\n\nWritten next to this figure on the page (it may be its '
+        'caption, or say what the figure is for). Use it to understand the '
+        'figure; do not copy it into "verbatim_text" unless it is also inside '
+        'the image. $kUntrustedDataRule\n${fenceUntrusted(clipped)}';
+  }
+
+
+  /// Whether the stronger model's reading should replace the local one: it says
+  /// something real, and it is not the less confirmed of the two.
+  static bool _prefersEscalated(
+      FigureDescription escalated, FigureDescription? local) {
+    if (!escalated.isInformative) return false;
+    if (local == null || !local.isInformative) return true;
+    return !(escalated.isUncertain && !local.isUncertain);
   }
 
   /// The `verbatim_text` field alone, independent of whether the reply
@@ -216,42 +264,156 @@ Read the real values, labels and relationships off the image — precision matte
   /// Rethrows [AiModelNotReadyException] from the LOCAL model so the caller can
   /// offer the download — the same contract [GemmaVisionOcrService] follows. A
   /// cloud failure is never fatal: it degrades to the local read.
-  Future<FigureDescription?> analyze(Uint8List imageBytes) async {
+  ///
+  /// [context] is writing found beside the figure (a caption), given to the
+  /// model to help it understand what it is looking at. [reference] is text
+  /// read off the same area some other way — typed labels, a PDF's own text,
+  /// handwriting recognition — which the reading is checked against: a
+  /// description naming things that are not there is not accepted as it is.
+  /// [referenceOf] supplies that text only if a figure is actually found, for
+  /// a reference that costs something to get (running OCR on a photo).
+  ///
+  /// [vary] asks the on-device model for a differently sampled reading — what
+  /// "Re-read" needs, since the normal read is deterministic and would only
+  /// repeat itself.
+  Future<FigureDescription?> analyze(
+    Uint8List imageBytes, {
+    String context = '',
+    String reference = '',
+    Future<String> Function()? referenceOf,
+    bool vary = false,
+    bool localDetail = true,
+  }) async {
+    _localDetail = localDetail;
+    final check = _Reference(reference, referenceOf);
     // Cloud-first: the point of the mode is that the on-device model does not
     // run, so this returns without ever calling [_readLocal] when the cloud
     // gives a usable answer. A cloud miss still falls through to local below —
     // degrading to a slow read beats reporting the figure as unreadable.
     if (_cloud != null && _preferCloud() && await _canEscalate()) {
-      final direct = await _readCloud(imageBytes);
-      if (_bar.accepts(direct)) return direct;
+      final direct = await check.ground(await _readCloud(imageBytes, context));
+      if (_bar.accepts(direct)) return _withDetail(direct, imageBytes);
     }
 
-    final local = await _readLocal(imageBytes);
-    if (_bar.accepts(local)) return local;
+    final local =
+        await check.ground(await _readLocal(imageBytes, context, vary: vary));
+    if (_bar.accepts(local)) return _withDetail(local, imageBytes);
 
     // The local model either produced nothing, produced a shrug, or told us it
     // was unsure. That is exactly the case the cloud tier exists for.
     if (_cloud != null && await _canEscalate()) {
-      final escalated = await _readCloud(imageBytes);
-      if (escalated != null && escalated.isInformative) return escalated;
+      final escalated =
+          await check.ground(await _readCloud(imageBytes, context));
+      if (escalated != null && _prefersEscalated(escalated, local)) {
+        return _withDetail(escalated, imageBytes);
+      }
     }
 
     // No cloud available or it did no better. Keep a merely-unconfident local
     // read if it still says something real; drop an uninformative one rather
     // than polluting a summary with "this is a diagram".
-    return (local != null && local.isInformative) ? local : null;
+    return (local != null && local.isInformative)
+        ? _withDetail(local, imageBytes)
+        : null;
   }
 
-  Future<FigureDescription?> _readLocal(Uint8List imageBytes) async {
+  /// True when the stronger model reads figures first right now, so reading
+  /// one costs the device nothing. The page reader uses it to decide how much
+  /// to ask for: generously of the cloud, sparingly of the device.
+  Future<bool> cloudReadsFirst() async =>
+      _cloud != null && _preferCloud() && await _canEscalate();
+
+  /// Whether the read in progress may spend an on-device call on the LaTeX or
+  /// table follow-up (see [_withDetail]). Set at the top of each read; reads
+  /// are sequential (the local model is single-threaded).
+  bool _localDetail = true;
+
+  /// The follow-up alone, for a figure that was read without it — a read that
+  /// was being sparing with the device. Returns [figure] unchanged when it
+  /// needs none or nothing came of it.
+  Future<FigureDescription> detailOf(
+      FigureDescription figure, Uint8List imageBytes) async {
+    _localDetail = true;
+    return (await _withDetail(figure, imageBytes))!;
+  }
+
+  /// Output budgets for the two narrow follow-up reads (see
+  /// `figure_detail.dart`): a few lines of LaTeX; a table of up to
+  /// [FigureTable.maxRows] rows.
+  static const int latexTokens = 384;
+  static const int tableTokens = 1024;
+
+  /// [figure] with its exact content added when it is an equation (LaTeX) or a
+  /// table (rows and columns): one more question put to the same picture, by
+  /// the same model that read it — so a figure the cloud read is never
+  /// followed up on the device, and the other way round.
+  ///
+  /// An extra: a follow-up that fails, or whose reply does not hold up, leaves
+  /// the figure exactly as it was. Other kinds cost nothing here. A read told
+  /// to go easy on the device ([_localDetail] false) skips it when the
+  /// on-device model would be the one asked.
+  Future<FigureDescription?> _withDetail(
+      FigureDescription? figure, Uint8List imageBytes) async {
+    if (figure == null) return null;
+    final isEquation = figure.kind == FigureKind.equation;
+    if (!isEquation && figure.kind != FigureKind.table) return figure;
+
+    if (figure.latex.isNotEmpty || figure.table != null) return figure;
+
+    final onCloud = figure.modelId == cloudModelId && _cloud != null;
+    if (!onCloud && !_localDetail) return figure;
+    final model = onCloud ? _cloud : _local;
+    final String raw;
+    try {
+      raw = await model.transcribeImage(
+        imageBytes,
+        prompt: isEquation ? kLatexPrompt : kTablePrompt,
+        temperature: 0.0,
+        maxOutputTokens: isEquation ? latexTokens : tableTokens,
+      );
+    } catch (_) {
+      return figure;
+    }
+    if (isEquation) {
+      final latex = cleanLatex(raw);
+      return latex.isEmpty ? figure : figure.copyWith(latex: latex);
+    }
+    final table = parseMarkdownTable(raw);
+    return table == null ? figure : figure.copyWith(table: table);
+  }
+
+  /// True when a stronger model is wired at all (whether it may be used is
+  /// the caller's policy).
+  bool get hasCloud => _cloud != null;
+
+  /// The stronger model's reading alone, with no local attempt and no policy
+  /// check — for when the student asks for it by name on one figure. Null when
+  /// there is no such model, it could not be reached, or it found no figure.
+  Future<FigureDescription?> readOnCloud(
+    Uint8List imageBytes, {
+    String context = '',
+    String reference = '',
+    Future<String> Function()? referenceOf,
+  }) async =>
+      _withDetail(
+          await _Reference(reference, referenceOf)
+              .ground(await _readCloud(imageBytes, context)),
+          imageBytes);
+
+  Future<FigureDescription?> _readLocal(Uint8List imageBytes, String context,
+      {bool vary = false}) async {
     final String raw;
     try {
       raw = await _local.transcribeImage(
         imageBytes,
-        prompt: _prompt,
+        prompt: _withContext(_prompt, context),
         // Deterministic: this is an extraction task, and sampling mostly buys
-        // malformed JSON.
-        temperature: 0.0,
+        // malformed JSON. A re-read samples, mildly, with a fresh seed —
+        // otherwise it could only say the same thing again.
+        temperature: vary ? 0.35 : 0.0,
         maxOutputTokens: figureReadTokens,
+        randomSeed:
+            vary ? DateTime.now().microsecondsSinceEpoch & 0x7fffffff : null,
       );
     } on AiModelNotReadyException {
       rethrow;
@@ -261,13 +423,14 @@ Read the real values, labels and relationships off the image — precision matte
     return parseFigureJson(raw, modelId: localModelId);
   }
 
-  Future<FigureDescription?> _readCloud(Uint8List imageBytes) async {
+  Future<FigureDescription?> _readCloud(
+      Uint8List imageBytes, String context) async {
     final cloud = _cloud;
     if (cloud == null) return null;
     try {
       final raw = await cloud.transcribeImage(
         imageBytes,
-        prompt: _cloudPrompt,
+        prompt: _withContext(_cloudPrompt, context),
         temperature: 0.0,
         maxOutputTokens: 1536,
       );
@@ -393,5 +556,30 @@ Read the real values, labels and relationships off the image — precision matte
     if (parsed == null) return 0.5;
     if (parsed > 1.0) return (parsed / 100.0).clamp(0.0, 1.0);
     return parsed.clamp(0.0, 1.0);
+  }
+}
+
+/// The text a reading is checked against, fetched at most once and only when
+/// there is a figure to check.
+class _Reference {
+  _Reference(this._text, this._load);
+
+  String _text;
+  Future<String> Function()? _load;
+
+  /// [figure] with how much of it the reference confirms (see `groundingOf`).
+  Future<FigureDescription?> ground(FigureDescription? figure) async {
+    if (figure == null) return null;
+    final load = _load;
+    if (_text.trim().isEmpty && load != null) {
+      _load = null;
+      try {
+        _text = await load();
+      } catch (_) {
+        // No reference is "nothing to check against", not a failed read.
+      }
+    }
+    final g = groundingOf(figure, _text);
+    return g == null ? figure : figure.copyWith(grounding: g);
   }
 }

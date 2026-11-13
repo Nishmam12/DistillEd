@@ -18,6 +18,7 @@ import '../data/llm/model_download_manager.dart';
 import '../domain/ai_provider.dart';
 import '../domain/ai_scope.dart';
 import '../domain/chat_commands.dart';
+import '../domain/features/figure_qa.dart';
 import '../domain/features/notes_qa.dart';
 import '../domain/quality/ai_quality_guard.dart';
 import '../domain/rag/rag_retriever.dart';
@@ -46,7 +47,12 @@ class AskNotesSearching extends AskNotesState {
   /// answer scoped to the whole notebook look identical otherwise, and the
   /// difference is exactly what a "not found" hinges on.
   final AiScope? scope;
-  const AskNotesSearching(this.question, {this.scope});
+
+  /// True once the passages are found and a figure on those pages is being
+  /// looked at for this question — a vision call, so worth saying.
+  final bool lookingAtFigure;
+  const AskNotesSearching(this.question,
+      {this.scope, this.lookingAtFigure = false});
 }
 
 class AskNotesAnswering extends AskNotesState {
@@ -54,7 +60,12 @@ class AskNotesAnswering extends AskNotesState {
   final String text;
   final List<RetrievedChunk> sources;
   final AiScope? scope;
-  const AskNotesAnswering(this.question, this.text, this.sources, {this.scope});
+
+  /// What was seen on a figure for this question, when one was looked at. It
+  /// is the passage numbered after the last of [sources].
+  final FigureAnswer? figure;
+  const AskNotesAnswering(this.question, this.text, this.sources,
+      {this.scope, this.figure});
 }
 
 class AskNotesAnswered extends AskNotesState {
@@ -62,6 +73,9 @@ class AskNotesAnswered extends AskNotesState {
   final String text;
   final List<RetrievedChunk> sources;
   final AiScope? scope;
+
+  /// As [AskNotesAnswering.figure].
+  final FigureAnswer? figure;
 
   /// Which model produced this, and whether it can be trusted at face value.
   /// The UI must show a cloud badge for [AnswerTier.cloudVerified] and a
@@ -78,6 +92,7 @@ class AskNotesAnswered extends AskNotesState {
     this.text,
     this.sources, {
     this.scope,
+    this.figure,
     this.tier = AnswerTier.local,
     this.canRetryOnCloud = false,
   });
@@ -143,6 +158,10 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
   final Future<void> Function(bool enabled)? _setCloudEnabled;
   final bool Function()? _privacyAsksEachTime;
 
+  /// Looks at a figure when the question is about one. Null answers from the
+  /// passages alone, as before.
+  final FigureQa? _figureQa;
+
   AskNotesNotifier({
     required this._qa,
     required this._llmDownloads,
@@ -151,6 +170,7 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     this._cloudEnabled,
     this._setCloudEnabled,
     this._privacyAsksEachTime,
+    this._figureQa,
   })  : super(const AskNotesIdle());
 
   String? _lastQuestion;
@@ -203,8 +223,12 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
         return;
       }
 
-      state = AskNotesAnswering(trimmed, '', sources, scope: scope);
-      final answer = await _generate(trimmed, sources, scope);
+      final figure = await _lookAtFigure(trimmed, sources, scope);
+      if (!mounted) return;
+
+      state = AskNotesAnswering(trimmed, '', sources,
+          scope: scope, figure: figure);
+      final answer = await _generate(trimmed, sources, scope, figure);
       if (!mounted) return;
 
       final text = answer.text.trim();
@@ -218,6 +242,7 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
           text,
           sources,
           scope: scope,
+          figure: figure,
           tier: answer.tier,
           canRetryOnCloud: answer.canRetryOnCloud,
         );
@@ -263,6 +288,27 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     }
   }
 
+  /// What a vision model sees on the figure this question is about, or null.
+  /// The check for "is there such a figure" is cheap; only an actual look
+  /// changes what the student is shown while they wait.
+  Future<FigureAnswer?> _lookAtFigure(
+    String question,
+    List<RetrievedChunk> sources,
+    AiScope? scope,
+  ) async {
+    final qa = _figureQa;
+    if (qa == null) return null;
+    final passages = [
+      for (final s in sources) (pageId: s.chunk.pageId, text: s.chunk.text),
+    ];
+    if (!FigureQa.mentionsFigure(question) &&
+        !passages.any((p) => p.text.contains('[Figure'))) {
+      return null;
+    }
+    state = AskNotesSearching(question, scope: scope, lookingAtFigure: true);
+    return qa.look(question: question, passages: passages);
+  }
+
   /// One answer, guarded when a guard is wired and plain-local when it isn't.
   ///
   /// Streaming is preserved either way: partial text lands in
@@ -272,26 +318,30 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     String question,
     List<RetrievedChunk> sources,
     AiScope? scope,
+    FigureAnswer? figure,
   ) async {
     void onPartial(String partial) {
       if (mounted) {
-        state = AskNotesAnswering(question, partial, sources, scope: scope);
+        state = AskNotesAnswering(question, partial, sources,
+            scope: scope, figure: figure);
       }
     }
 
     final guard = _guard;
     if (guard != null) {
       return guard.run(
-        prompt: _qa.promptFor(question: question, sources: sources),
+        prompt: _qa.promptFor(
+            question: question, sources: sources, figure: figure),
         systemPrompt: NotesQa.systemPrompt,
         options: NotesQa.answerOptions,
-        quality: NotesQa.qualityContextFor(sources),
+        quality: NotesQa.qualityContextFor(sources, figure: figure),
         onPartial: onPartial,
       );
     }
 
     final buffer = StringBuffer();
-    await for (final chunk in _qa.answer(question: question, sources: sources)) {
+    await for (final chunk in _qa.answer(
+        question: question, sources: sources, figure: figure)) {
       if (!mounted) break;
       buffer.write(chunk);
       onPartial(buffer.toString());
@@ -314,16 +364,19 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     _running = true;
     try {
       final result = await guard.retryOnCloud(
-        prompt:
-            _qa.promptFor(question: current.question, sources: current.sources),
+        prompt: _qa.promptFor(
+            question: current.question,
+            sources: current.sources,
+            figure: current.figure),
         systemPrompt: NotesQa.systemPrompt,
         options: NotesQa.answerOptions,
-        quality: NotesQa.qualityContextFor(current.sources),
+        quality: NotesQa.qualityContextFor(current.sources,
+            figure: current.figure),
         onPartial: (partial) {
           if (mounted) {
             state = AskNotesAnswering(
                 current.question, partial, current.sources,
-                scope: current.scope);
+                scope: current.scope, figure: current.figure);
           }
         },
         localText: current.text,
@@ -335,6 +388,7 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
         text.isEmpty ? current.text : text,
         current.sources,
         scope: current.scope,
+        figure: current.figure,
         tier: result.tier,
       );
     } catch (e) {
