@@ -9,6 +9,7 @@ import '../core/providers/settings_provider.dart';
 import '../features/ai/presentation/ai_providers.dart';
 import '../features/ai/data/embeddings/embedder_spec.dart';
 import '../features/ai/data/rag/embedder_mobile_data_choice.dart';
+import '../features/backup/backup_controller.dart';
 import 'router.dart';
 
 class MargoApp extends ConsumerWidget {
@@ -25,6 +26,7 @@ class MargoApp extends ConsumerWidget {
 
     ref.read(modelLifecycleReleaserProvider);
     ref.read(embedderRolloutResumeProvider); // starts/resumes an embedder switch
+    ref.read(backupLifecycleProvider); // automatic backup on start and resume
     ref.listen(embedderMobileDataPromptProvider, (_, asking) {
       if (!asking) return;
       WidgetsBinding.instance.addPostFrameCallback((_) async {

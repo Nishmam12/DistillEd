@@ -54,6 +54,29 @@ enum AiProcessingMode {
       };
 }
 
+/// How often automatic backup runs. Stored by name.
+enum BackupFrequency {
+  /// When the user leaves a note (and at least daily as a safety net).
+  afterEditing,
+  hourly,
+  daily,
+  weekly;
+
+  Duration get period => switch (this) {
+        BackupFrequency.afterEditing => const Duration(days: 1),
+        BackupFrequency.hourly => const Duration(hours: 1),
+        BackupFrequency.daily => const Duration(days: 1),
+        BackupFrequency.weekly => const Duration(days: 7),
+      };
+
+  String get label => switch (this) {
+        BackupFrequency.afterEditing => 'After each note',
+        BackupFrequency.hourly => 'Hourly',
+        BackupFrequency.daily => 'Daily',
+        BackupFrequency.weekly => 'Weekly',
+      };
+}
+
 /// App theme preference. `system` follows the OS setting (the Android
 /// convention, and the default); `light` / `dark` pin one regardless.
 ///
@@ -119,6 +142,12 @@ class SettingsState {
   /// been shown. Persisted so it is offered once per install.
   final bool stylusTipShown;
 
+  /// Whether notebooks are backed up on their own (to Download/Margo).
+  /// Off by default: it writes into the user's Downloads, which they should
+  /// choose.
+  final bool autoBackup;
+  final BackupFrequency backupFrequency;
+
   /// Width the docked AI panel was last dragged to, in logical pixels.
   /// Clamped to what fits when it is shown.
   final double aiPanelWidth;
@@ -167,6 +196,8 @@ class SettingsState {
     this.fingerDraws = true,
     this.stylusTipShown = false,
     this.aiPanelWidth = 340,
+    this.autoBackup = false,
+    this.backupFrequency = BackupFrequency.afterEditing,
     this.huggingFaceToken = '',
     this.loaded = false,
   });
@@ -196,6 +227,8 @@ class SettingsState {
     bool? fingerDraws,
     bool? stylusTipShown,
     double? aiPanelWidth,
+    bool? autoBackup,
+    BackupFrequency? backupFrequency,
     String? huggingFaceToken,
     bool? loaded,
   }) {
@@ -213,6 +246,8 @@ class SettingsState {
       fingerDraws: fingerDraws ?? this.fingerDraws,
       stylusTipShown: stylusTipShown ?? this.stylusTipShown,
       aiPanelWidth: aiPanelWidth ?? this.aiPanelWidth,
+      autoBackup: autoBackup ?? this.autoBackup,
+      backupFrequency: backupFrequency ?? this.backupFrequency,
       huggingFaceToken: huggingFaceToken ?? this.huggingFaceToken,
       loaded: loaded ?? this.loaded,
     );
@@ -243,6 +278,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kFingerDraws = 'ui.fingerDraws';
   static const _kStylusTipShown = 'ui.stylusTipShown';
   static const _kAiPanelWidth = 'ui.aiPanelWidth';
+  static const _kAutoBackup = 'backup.auto';
+  static const _kBackupFrequency = 'backup.frequency';
   static const _kHuggingFaceToken = 'ai.huggingFaceToken';
 
   /// Export formats the Settings picker offers. A persisted value outside this
@@ -281,6 +318,10 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       fingerDraws: prefs.getBool(_kFingerDraws) ?? true,
       stylusTipShown: prefs.getBool(_kStylusTipShown) ?? false,
       aiPanelWidth: prefs.getDouble(_kAiPanelWidth) ?? 340,
+      autoBackup: prefs.getBool(_kAutoBackup) ?? false,
+      backupFrequency:
+          BackupFrequency.values.asNameMap()[prefs.getString(_kBackupFrequency)] ??
+              BackupFrequency.afterEditing,
     );
     // The keystore is slower than prefs, so everything else lands first; `loaded`
     // waits for the token, because the download UI reads it as "nothing stored".
@@ -408,6 +449,18 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(stylusTipShown: true);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kStylusTipShown, true);
+  }
+
+  Future<void> setAutoBackup(bool value) async {
+    state = state.copyWith(autoBackup: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kAutoBackup, value);
+  }
+
+  Future<void> setBackupFrequency(BackupFrequency value) async {
+    state = state.copyWith(backupFrequency: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kBackupFrequency, value.name);
   }
 
   Future<void> setAiPanelWidth(double value) async {

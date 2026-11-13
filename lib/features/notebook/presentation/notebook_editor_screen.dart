@@ -15,6 +15,8 @@ import '../../../core/icons/app_icon.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/paper_colors.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../data/backup/backup_service.dart' show BackupTrigger;
+import '../../backup/backup_controller.dart';
 import '../../../domain/commands/scene_command.dart';
 import '../../../domain/geometry/element_bounds.dart';
 import '../../../domain/model/scene_element.dart';
@@ -205,6 +207,13 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     }
     // Per-page scene and undo state would otherwise live until the app dies.
     _container.read(pageProvider(widget.notebookId).notifier).release();
+    // Leaving a note is when "back up after each note" runs. The backup waits
+    // for this page's queued writes itself (see AppBackupLibrary.snapshot).
+    if (_container.read(settingsProvider).autoBackup) {
+      unawaited(_container
+          .read(backupControllerProvider.notifier)
+          .trigger(BackupTrigger.leftEditor));
+    }
     super.dispose();
   }
 

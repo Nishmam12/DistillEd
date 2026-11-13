@@ -1,8 +1,13 @@
 // Overflow menu (background, summarize, paste, library, export) for the editor
 // app bar. Drop into AppBar.actions after the primary feature icons.
 
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../data/backup/notebook_archive.dart';
+import '../../../backup/backup_controller.dart';
+import '../../../export/export_share_service.dart';
 
 import '../../../../core/icons/app_icon.dart';
 import '../../../../domain/commands/scene_command.dart';
@@ -78,6 +83,8 @@ class EditorAppBarActions extends ConsumerWidget {
             _export(context, ref, v);
           case 'pdf-notebook':
             _exportNotebook(context, ref);
+          case 'margo':
+            _shareNotebook(context, ref);
         }
       },
       itemBuilder: (_) => [
@@ -136,6 +143,16 @@ class EditorAppBarActions extends ConsumerWidget {
               leading: Icon(Icons.picture_as_pdf_outlined),
               title: Text('Export whole notebook (PDF)'),
               subtitle: Text('Every page, in order'),
+            ),
+          ),
+        if (onChangeBackground != null || onSummarize != null)
+          const PopupMenuItem(
+            value: 'margo',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.ios_share_outlined),
+              title: Text('Share notebook (.margo)'),
+              subtitle: Text('Opens in Margo with everything kept'),
             ),
           ),
       ],
@@ -251,6 +268,23 @@ class EditorAppBarActions extends ConsumerWidget {
       messenger.hideCurrentSnackBar();
       status.dispose();
     }
+  }
+
+  /// Shares the whole notebook as one `.margo` file: what a backup writes, so
+  /// it restores (or opens on someone else's Margo) exactly as it is.
+  Future<void> _shareNotebook(BuildContext context, WidgetRef ref) async {
+    final library = ref.read(backupServiceProvider).library;
+    final snapshot = await library.snapshot(pageKey.notebookId);
+    if (snapshot == null) {
+      if (context.mounted) _toast(context, 'Nothing to share');
+      return;
+    }
+    final bytes = await compute(NotebookArchive.encode, snapshot);
+    await ExportShareService.shareFile(
+      bytes: bytes,
+      filename: '${ExportShareService.safeFilename(snapshot.meta.title)}.margo',
+      mimeType: 'application/octet-stream',
+    );
   }
 
   void _toast(BuildContext context, String msg) =>

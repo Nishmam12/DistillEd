@@ -1,13 +1,22 @@
 package com.margo.margo
 
 import android.app.ActivityManager
+import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.BatteryManager
 import android.os.Build
+import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.os.StatFs
+import android.provider.MediaStore
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.Executors
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -27,6 +36,14 @@ class MainActivity : FlutterActivity() {
     // Starts/stops the microphone foreground service that keeps a lecture
     // recording alive in the background (see RecordingService).
     private val recordingChannel = "com.margo.margo/recording"
+
+    // Copies finished backup files into Download/Margo (MediaStore, no
+    // permission needed on Android 10+) so they outlive the app. Android 8–9
+    // would need a storage permission, so there they stay in the app's own
+    // external folder and the Dart side says so.
+    private val backupChannel = "com.margo.margo/backup"
+    private val backupIo = Executors.newSingleThreadExecutor()
+    private val mainThread = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -65,6 +82,30 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, backupChannel)
+            .setMethodCallHandler { call, result ->
+                // File copies can take a moment: off the main thread.
+                backupIo.execute {
+                    try {
+                        val name = call.argument<String>("name")
+                            ?: throw IllegalArgumentException("name")
+                        val reply: Any? = when (call.method) {
+                            "save" -> saveBackup(
+                                call.argument<String>("sourcePath")
+                                    ?: throw IllegalArgumentException("sourcePath"),
+                                name,
+                                call.argument<String>("mimeType") ?: "application/octet-stream",
+                            )
+                            "delete" -> { deleteBackup(name); null }
+                            else -> { mainThread.post { result.notImplemented() }; return@execute }
+                        }
+                        mainThread.post { result.success(reply) }
+                    } catch (e: Exception) {
+                        mainThread.post { result.error("BACKUP_ERROR", e.message, null) }
+                    }
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, deviceChannel)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -78,6 +119,68 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private val backupRelativePath = Environment.DIRECTORY_DOWNLOADS + "/Margo/"
+
+    /** Where backups go before Android 10: the app's own external folder. */
+    private fun legacyBackupDir(): File =
+        File(getExternalFilesDir(null), "Margo backups").apply { mkdirs() }
+
+    /** The Download/Margo file this app wrote under [name], if any. */
+    @android.annotation.TargetApi(Build.VERSION_CODES.Q)
+    private fun findOwnBackup(name: String): android.net.Uri? {
+        val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        contentResolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns._ID),
+            "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+            arrayOf(backupRelativePath, name),
+            null,
+        )?.use { c ->
+            if (c.moveToFirst()) return ContentUris.withAppendedId(collection, c.getLong(0))
+        }
+        return null
+    }
+
+    /** Copies [sourcePath] to the backup folder as [name]; returns the folder. */
+    private fun saveBackup(sourcePath: String, name: String, mimeType: String): Map<String, Any> {
+        val source = File(sourcePath)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            val target = File(legacyBackupDir(), name)
+            source.copyTo(target, overwrite = true)
+            return mapOf("location" to legacyBackupDir().absolutePath, "appStorage" to true)
+        }
+        val resolver = contentResolver
+        val existing = findOwnBackup(name)
+        val uri = existing ?: resolver.insert(
+            MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+            ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, backupRelativePath)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            },
+        ) ?: throw IOException("Could not create $name in Downloads")
+        (resolver.openOutputStream(uri, "wt") ?: throw IOException("Could not write $name"))
+            .use { out -> source.inputStream().use { it.copyTo(out) } }
+        if (existing == null) {
+            resolver.update(
+                uri,
+                ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) },
+                null,
+                null,
+            )
+        }
+        return mapOf("location" to "Download/Margo", "appStorage" to false)
+    }
+
+    private fun deleteBackup(name: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            File(legacyBackupDir(), name).delete()
+            return
+        }
+        findOwnBackup(name)?.let { contentResolver.delete(it, null, null) }
     }
 
     private fun deviceSnapshot(): Map<String, Any?> {

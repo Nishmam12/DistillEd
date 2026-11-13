@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:margo/core/icons/phosphor_icons_regular.dart';
@@ -30,12 +31,16 @@ import '../../../audio/presentation/speech_model_notifier.dart';
 import '../../../audio/presentation/transcription_providers.dart';
 import '../../../../editor/state/ink_gesture_providers.dart';
 import '../../../../editor/tools/ink_gestures.dart' show kGestureModel, kShapesModel;
+import '../../../../data/backup/backup_service.dart' show BackupTrigger;
+import '../../../backup/backup_controller.dart';
 import '../../../home/data/repositories/note_repository.dart';
+import '../../../home/presentation/home_notifier.dart';
 import '../../../summarize/presentation/summarize_providers.dart';
 
 part 'settings_widgets.dart';
 part 'settings_ai_models.dart';
 part 'settings_maintenance.dart';
+part 'settings_backup.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -104,6 +109,8 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const _SectionHeader('Backup'),
+          const _BackupSection(),
           const _SectionHeader('Pen'),
           _SettingsCard(
             children: [
@@ -260,6 +267,17 @@ class SettingsScreen extends ConsumerWidget {
                     color: c.textSecondary,
                   ),
                   onTap: () => context.push('/canvas-demo'),
+                ),
+              if (settings.devMode)
+                _SettingsRow(
+                  icon: Icons.insert_chart_outlined,
+                  title: 'Figure benchmark (dev)',
+                  subtitle: 'Measure how well the AI reads figures',
+                  trailing: Icon(
+                    PhosphorIconsRegular.caretRight,
+                    color: c.textSecondary,
+                  ),
+                  onTap: () => context.push('/figure-benchmark'),
                 ),
             ],
           ),
