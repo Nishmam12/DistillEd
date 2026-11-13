@@ -13,8 +13,12 @@
 // The TRACK differs by brightness: `surface` in light, `surfaceSubtle` in dark.
 // In light the control sits on a white card and needs to read as slightly
 // raised; in dark a `surface` track would be invisible against the `surface`
-// card behind it, so it steps down to the subtler fill instead. The SELECTED
-// segment does not branch — `accentMuted` over `accent` in both modes.
+// card behind it, so it steps down to the subtler fill instead.
+//
+// The SELECTED segment branches too. Light uses the mockup's sage
+// (`surfaceSubtle`, #C9D6C3) with a `textPrimary` label, since `accent` text on
+// that sage is only ~3.6:1. Dark keeps `accentMuted` under an `accent` label:
+// its track is already `surfaceSubtle`, so a sage-token fill would vanish.
 
 import 'package:flutter/material.dart';
 
@@ -96,10 +100,13 @@ class _Segment<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // Selected and unselected are the same pair in both brightnesses — the
-    // accent and the tokens behind it already differ by mode, so branching here
-    // would double-apply the difference.
-    final foreground = selected ? c.accent : c.textSecondary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selectedFill = isDark ? c.accentMuted : c.surfaceSubtle;
+    final foreground = !selected
+        ? c.textSecondary
+        : isDark
+            ? c.accent
+            : c.textPrimary;
 
     return Semantics(
       button: true,
@@ -117,7 +124,7 @@ class _Segment<T> extends StatelessWidget {
           // Material transparent constant, for two reasons: it keeps this file
           // free of hardcoded colours, and it gives AnimatedContainer a straight
           // alpha fade between the two states instead of a colour-to-null jump.
-          color: selected ? c.accentMuted : c.accentMuted.withValues(alpha: 0),
+          color: selected ? selectedFill : selectedFill.withValues(alpha: 0),
           alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,

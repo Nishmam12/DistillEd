@@ -377,10 +377,10 @@ class _MobileDataRowState extends ConsumerState<_MobileDataRow> {
       icon: AppIcons.cloud,
       title: 'Download model updates on mobile data',
       subtitle: switch (_choice) {
-        MobileDataChoice.allow => 'On — updates download on any network',
-        MobileDataChoice.wifiOnly => 'Off — updates wait for Wi-Fi',
+        MobileDataChoice.allow => 'On - updates download on any network',
+        MobileDataChoice.wifiOnly => 'Off - updates wait for Wi-Fi',
         MobileDataChoice.ask =>
-          'Not set — you are asked when an update needs it',
+          'Not set - you are asked when an update needs it',
       },
       trailing: Switch(value: allow, onChanged: _set),
     );
@@ -531,7 +531,10 @@ class _ThemeModeRow extends StatelessWidget {
                   children: [
                     _ThemeSwatch(color: c.bgPrimary),
                     const SizedBox(width: 5),
-                    _ThemeSwatch(color: c.surfaceSubtle),
+                    // Light matches the mockup (pale sage). In dark,
+                    // surfaceSubtle is within a few shades of the card, so
+                    // the swatch shows the sage accent the caption names.
+                    _ThemeSwatch(color: dark ? c.accent : c.surfaceSubtle),
                   ],
                 ),
               ),
@@ -563,7 +566,13 @@ class _ThemeSwatch extends StatelessWidget {
     return Container(
       width: 42,
       height: 42,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      // The hairline keeps a swatch visible when its colour is close to the
+      // card's, as bgPrimary is in dark.
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: context.colors.border),
+      ),
     );
   }
 }
