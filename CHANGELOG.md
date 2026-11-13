@@ -15,6 +15,16 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+### Changed
+- **Settings redesign** (merged from `SettingsUI-upgrade`): two columns of
+  icon cards on tablets, one column on phones; AI models and the HuggingFace
+  token move to their own **Settings → AI Models** screen. Backup is now its
+  own card, and "Draw with finger" sits in the Pen card.
+
+### Fixed
+- Settings no longer overflows on narrow phones at large text sizes: option
+  chips (handwriting language, export format, backup frequency) wrap onto a
+  second line. "How often" for backup is now a row of chips, not a dropdown.
 
 ## [5.1.0] - 2026-11-13
 ### Added

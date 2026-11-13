@@ -27,21 +27,27 @@ class _BackupSection extends ConsumerWidget {
           onTap: () => notifier.setAutoBackup(!settings.autoBackup),
         ),
         if (settings.autoBackup)
-          _SettingsRow(
-            icon: AppIcons.clock,
-            title: 'How often',
-            trailing: DropdownButton<BackupFrequency>(
-              key: const ValueKey('backupFrequency'),
-              value: settings.backupFrequency,
-              underline: const SizedBox.shrink(),
-              items: [
-                for (final f in BackupFrequency.values)
-                  DropdownMenuItem(value: f, child: Text(f.label)),
-              ],
-              onChanged: (f) {
-                if (f != null) notifier.setBackupFrequency(f);
-              },
-            ),
+          // Label, then the chips below it (like the language row): four options
+          // are wider than a trailing slot leaves on a narrow phone.
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const _SettingsRow(icon: AppIcons.clock, title: 'How often'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppChipGroup<BackupFrequency>(
+                    key: const ValueKey('backupFrequency'),
+                    value: settings.backupFrequency,
+                    options: [
+                      for (final f in BackupFrequency.values) (f, f.label),
+                    ],
+                    onChanged: notifier.setBackupFrequency,
+                  ),
+                ),
+              ),
+            ],
           ),
         const _BackupStatusRow(),
         _SettingsRow(

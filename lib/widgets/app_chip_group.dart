@@ -44,17 +44,17 @@ class AppChipGroup<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    // A Wrap, not a Row: at large text sizes on a narrow phone three chips are
+    // wider than the card, and they should drop to a second line, not overflow.
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
       children: [
         for (final (option, label) in options)
-          Padding(
-            padding: const EdgeInsets.only(left: 6),
-            child: _Chip(
-              label: label,
-              selected: option == value,
-              onTap: () => onChanged(option),
-            ),
+          _Chip(
+            label: label,
+            selected: option == value,
+            onTap: () => onChanged(option),
           ),
       ],
     );

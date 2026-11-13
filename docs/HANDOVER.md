@@ -9,11 +9,12 @@ true at the commit that added this file.
 | Item | State |
 | --- | --- |
 | App | Margo, Flutter, Android only. `pubspec.yaml` version `5.0.0+30`. |
-| Branch | `margo-backup-figures`, cut from `margo-next`, **pushed to `origin` (DistillEd)**. Version `5.1.0+31`. |
+| Branch | `margo-backup-figures`, cut from `margo-next`, pushed to `origin` (DistillEd) at `9437aaf` (version `5.1.0+31`). Since then, **local and not pushed**: merge `9a493fe` of `origin/SettingsUI-upgrade` (Afnan's Settings redesign) plus the narrow-phone overflow fix. |
 | Roadmap | `C:\Users\nabil\.claude\plans\go-through-the-entire-humble-gem.md` (approved 2026-11-11). Order: 0 → A → E1/E2 → D2 → B → C → D → F → G → H. |
 | Done in code | Phase 0, Phase A, Phase E1/E2, Phase D2. |
 | Next | The user's device test, then Phase B. |
 | `flutter analyze` | Clean. |
+| Settings | Redesigned by Afnan (`SettingsUI-upgrade`, merged 2026-11-13): two-column icon cards, AI models and HuggingFace token on `/settings/models`. Backup is its own card; "Draw with finger" is in the Pen card. `settings_backup.dart` uses the new SVG `AppIcons`. Option chips (`AppChipGroup`) now wrap. If Afnan keeps working on the old branch, the Backup card will conflict again. |
 | `flutter test` | 2,907 pass, 44 skipped. `test/core/error_log_test.dart` ("once past 100 KB…") fails in some full runs and passes alone. It is flaky under load and unrelated to this work. |
 | On-device testing | **None since pen phase 1.** Phases 0, A, E and D2 have only ever run in unit and widget tests. |
 
@@ -187,13 +188,16 @@ Nothing below has been confirmed on the tablet.
 6. **Benchmark.** Needs about 40 test pages with `Q:` / `A:` text boxes, and
    the cloud gateway deployed for the cloud column. The gateway is still not
    deployed.
+7. **Settings (new layout).** Open Settings on the tablet (two columns) and
+   on a phone or a narrow window (one column). Check Backup, Pen and the
+   AI Models screen (download a model, add the HuggingFace token) still work,
+   in light and dark. Turn backup on and check the "How often" chips wrap.
 
 ## 5. Remaining roadmap, with the model for each step
 
-**Proposed 2026-11-13, not yet confirmed by the user.** It replaces the
+**Confirmed by the user 2026-11-13 as their working plan.** It replaces the
 earlier assignment (Opus for B, C, E, F, H) to save usage. Project memory
-still holds the earlier one; update `project_margo_polish_roadmap.md` once
-the user agrees.
+(`project_margo_polish_roadmap.md`) now points here.
 
 Rule: Sonnet 5.5 for work contained to a few files with a clear acceptance
 check; Opus 5.5 for work that cuts across the editor or changes stored data;
