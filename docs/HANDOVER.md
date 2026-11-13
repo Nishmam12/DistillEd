@@ -9,7 +9,7 @@ true at the commit that added this file.
 | Item | State |
 | --- | --- |
 | App | Margo, Flutter, Android only. `pubspec.yaml` version `5.0.0+30`. |
-| Branch | `margo-backup-figures`, cut from `margo-next`. **Local only, nothing pushed.** |
+| Branch | `margo-backup-figures`, cut from `margo-next`, **pushed to `origin` (DistillEd)**. Version `5.1.0+31`. |
 | Roadmap | `C:\Users\nabil\.claude\plans\go-through-the-entire-humble-gem.md` (approved 2026-11-11). Order: 0 → A → E1/E2 → D2 → B → C → D → F → G → H. |
 | Done in code | Phase 0, Phase A, Phase E1/E2, Phase D2. |
 | Next | The user's device test, then Phase B. |

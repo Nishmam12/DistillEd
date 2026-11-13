@@ -15,6 +15,19 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+
+## [5.1.0] - 2026-11-13
+### Added
+- **Automatic notebook backup.** Settings → Backup switches on automatic
+  backup to Downloads/Margo, at a chosen frequency, with "Back up now" and a
+  status row. Notebooks are also exported and restored as `.margo` files
+  (**Share notebook (.margo)** in the editor menu). Backups survive an
+  uninstall. The Android side has not yet been compiled on a device.
+- **Garden plan (proposal only).** `docs/GARDEN_PLAN.md` sets out a calm,
+  study-driven garden as a later phase. Nothing is built.
+- **Figure benchmark (developer only).** Settings → Developer → Figure
+  benchmark measures figure understanding on test notebooks.
+
 ### Changed
 - **The AI reads each figure on its own.** A page used to be shown to the AI
   as one picture, so a small diagram on a full page was a blur and two
