@@ -1,10 +1,12 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:margo/core/icons/app_icon.dart';
 import 'package:margo/core/icons/phosphor_icons_regular.dart';
 
 import '../../../../core/providers/settings_provider.dart';
@@ -30,17 +32,20 @@ import '../../../audio/data/edge_ai_speech.dart';
 import '../../../audio/presentation/speech_model_notifier.dart';
 import '../../../audio/presentation/transcription_providers.dart';
 import '../../../../editor/state/ink_gesture_providers.dart';
-import '../../../../editor/tools/ink_gestures.dart' show kGestureModel, kShapesModel;
+import '../../../../editor/tools/ink_gestures.dart'
+    show kGestureModel, kShapesModel;
 import '../../../../data/backup/backup_service.dart' show BackupTrigger;
 import '../../../backup/backup_controller.dart';
 import '../../../home/data/repositories/note_repository.dart';
 import '../../../home/presentation/home_notifier.dart';
+import '../../../home/presentation/widgets/search_popover.dart';
 import '../../../summarize/presentation/summarize_providers.dart';
 
 part 'settings_widgets.dart';
 part 'settings_ai_models.dart';
 part 'settings_maintenance.dart';
 part 'settings_backup.dart';
+part 'ai_models_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -51,255 +56,326 @@ class SettingsScreen extends ConsumerWidget {
     final notifier = ref.read(settingsProvider.notifier);
     final c = context.colors;
 
-    return Scaffold(
-      // SET-01. The app bar reads its colours from the same tokens as the body.
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: c.bgPrimary,
-        foregroundColor: c.accent,
-        surfaceTintColor: c.bgPrimary,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        titleTextStyle: TextStyle(
-          fontFamily: 'ModulusPro',
-          color: c.accent,
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.2,
+    final appearance = _SettingsCard(
+      icon: AppIcons.brush,
+      title: 'Appearance',
+      children: [
+        _ThemeModeRow(
+          value: settings.themeMode,
+          onChanged: notifier.setThemeMode,
         ),
-        // Same behaviour as the automatic back button (`maybePop`), drawn with
-        // the Phosphor arrow so the chrome matches the row glyphs.
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                icon: const Icon(PhosphorIconsRegular.arrowLeft),
-                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                onPressed: () => Navigator.of(context).maybePop(),
-              )
-            : null,
-      ),
-      backgroundColor: c.bgPrimary,
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          const _SectionHeader('Appearance'),
-          _SettingsCard(
-            children: [
-              _ThemeModeRow(
-                value: settings.themeMode,
-                onChanged: notifier.setThemeMode,
-              ),
-            ],
-          ),
-          const _SectionHeader('Notes'),
-          _SettingsCard(
-            children: [
-              // SET-10. Navigation unchanged.
-              _SettingsRow(
-                icon: PhosphorIconsRegular.trash,
-                title: 'Trash',
-                subtitle: 'Restore deleted notes for '
-                    '${NoteRepository.trashRetention.inDays} days',
-                onTap: () => context.push('/trash'),
-                trailing: IconButton(
-                  tooltip: 'Open Trash',
-                  icon: Icon(PhosphorIconsRegular.caretRight,
-                      color: c.textSecondary),
-                  onPressed: () => context.push('/trash'),
-                ),
-              ),
-            ],
-          ),
-          const _SectionHeader('Backup'),
-          const _BackupSection(),
-          const _SectionHeader('Pen'),
-          _SettingsCard(
-            children: [
-              _SettingsRow(
-                icon: Icons.touch_app_outlined,
-                title: 'Draw with finger',
-                subtitle: settings.fingerDraws
-                    ? 'One finger draws. Two fingers scroll and zoom.'
-                    : 'Only the pen draws. One finger scrolls the page.',
-                trailing: _AccentSwitch(
-                  value: settings.fingerDraws,
-                  onChanged: notifier.setFingerDraws,
-                ),
-                onTap: () => notifier.setFingerDraws(!settings.fingerDraws),
-              ),
-              // SET-16. Draw-to-shape: hold the pen at the end of a stroke.
-              _InkGestureRow(
-                icon: PhosphorIconsRegular.shapes,
-                title: 'Snap shapes',
-                subtitle: 'Hold the pen still at the end of a rectangle, circle, '
-                    'triangle or arrow and it snaps to a clean shape. Undo '
-                    'brings your drawing back.',
-                model: kShapesModel,
-                value: settings.snapShapes,
-                setEnabled: notifier.setSnapShapes,
-              ),
-              // SET-17. Scribble-to-erase.
-              _InkGestureRow(
-                icon: PhosphorIconsRegular.eraser,
-                title: 'Scribble to erase',
-                subtitle: 'Scrub back and forth over something to wipe it out. '
-                    'Undo brings it back.',
-                model: kGestureModel,
-                value: settings.scribbleErase,
-                setEnabled: notifier.setScribbleErase,
-              ),
-            ],
-          ),
-          const _SectionHeader('Export Defaults'),
-          _SettingsCard(
-            children: [
-              // SET-11.
-              _SettingsRow(
-                icon: PhosphorIconsRegular.image,
-                title: 'Format',
-                subtitle: 'Default format when exporting notebooks',
-                trailing: AppChipGroup<String>(
-                  value: settings.exportDefault,
-                  options: [
-                    for (final f in SettingsNotifier.exportFormats) (f, f),
+      ],
+    );
+
+    final aiAndHandwriting = _SettingsCard(
+      icon: AppIcons.flashCircle,
+      title: 'AI & Handwriting',
+      children: [
+        // SET-12. Three-way, because "on" never meant "use the cloud", only
+        // "you may fall back to it".
+        _AiModeRow(value: settings.aiMode, onChanged: notifier.setAiMode),
+        // SET-13.
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _SettingsRow(
+              icon: AppIcons.languageCircle,
+              title: 'Handwriting Language',
+              subtitle: 'Language used to read your notes',
+            ),
+            // Below the label: three chips are wider than a trailing slot leaves.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: AppChipGroup<String>(
+                  value: settings.recognitionLanguage,
+                  // 'bn-Latn' is Bangla written in English letters
+                  // ("ami bhalo achi"), with its own ML Kit model.
+                  options: const [
+                    ('en', 'English'),
+                    ('bn', 'বাংলা'),
+                    ('bn-Latn', 'Banglish'),
                   ],
-                  onChanged: notifier.setExportDefault,
+                  onChanged: notifier.setRecognitionLanguage,
                 ),
               ),
+            ),
+          ],
+        ),
+        // SET-15. Lecture transcripts: the switch makes new recordings WAV and
+        // downloads the model; a lecture is transcribed on the device after it
+        // stops.
+        _LectureTranscriptsRow(),
+        // The model downloads and the HuggingFace token live on their own screen.
+        _SettingsRow(
+          icon: AppIcons.flashCircle,
+          title: 'AI Models',
+          subtitle: 'Select which models can be downloaded',
+          onTap: () => context.push('/settings/models'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Manage',
+                style: TextStyle(
+                  fontFamily: 'ModulusPro',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: c.accent,
+                ),
+              ),
+              const SizedBox(width: 6),
+              AppIcon(AppIcons.arrowRight, size: 20, color: c.textSecondary),
             ],
           ),
-          const _SectionHeader('AI'),
-          _SettingsCard(
-            children: [
-              // SET-12. Three-way, because the old switch could not express the
-              // difference students actually asked about: "on" never meant
-              // "use the cloud", only "you may fall back to it".
-              _AiModeRow(
-                value: settings.aiMode,
-                onChanged: notifier.setAiMode,
-              ),
-              // SET-13.
-              Column(
-                children: [
-                  const _SettingsRow(
-                    icon: PhosphorIconsRegular.translate,
-                    title: 'Handwriting Language',
-                    subtitle: 'Language used to read your notes',
-                  ),
-                  // Below the label, like the theme row: three chips are wider
-                  // than the space a trailing slot leaves on a phone.
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: AppChipGroup<String>(
-                        value: settings.recognitionLanguage,
-                        // 'bn-Latn' is Bangla written in English letters
-                        // ("ami bhalo achi") — its own ML Kit model, which
-                        // reads those words far better than the English one.
-                        options: const [
-                          ('en', 'English'),
-                          ('bn', 'বাংলা'),
-                          ('bn-Latn', 'Banglish'),
-                        ],
-                        onChanged: notifier.setRecognitionLanguage,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              // SET-15. Lecture transcripts: the switch makes new recordings
-              // WAV (the format the speech model reads) and downloads the
-              // model; a lecture is transcribed on the device after it stops.
-              _LectureTranscriptsRow(),
-              // SET-14. Presentation only — token storage and verification are
-              // untouched; only the button's colour and the chevron are new.
-              _SettingsRow(
-                icon: PhosphorIconsRegular.key,
-                title: 'HuggingFace Token',
-                subtitle: settings.hasHuggingFaceToken
-                    ? 'Added — gated models can be downloaded'
-                    : 'Needed for gated models like EmbeddingGemma. Your own '
-                        'token, kept on this device.',
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextButton(
-                      onPressed: () => _editHuggingFaceToken(context, ref),
-                      child: Text(
-                        settings.hasHuggingFaceToken ? 'Change' : 'Add',
-                        style: TextStyle(
-                          fontFamily: 'ModulusPro',
-                          fontWeight: FontWeight.w600,
-                          color: c.accent,
-                        ),
-                      ),
-                    ),
-                    Icon(PhosphorIconsRegular.caretRight,
-                        size: 18, color: c.textSecondary),
-                  ],
-                ),
-              ),
-            ],
+        ),
+      ],
+    );
+
+    final pen = _SettingsCard(
+      icon: AppIcons.brush,
+      title: 'Pen',
+      children: [
+        _SettingsRow(
+          icon: AppIcons.brush,
+          title: 'Draw with finger',
+          subtitle: settings.fingerDraws
+              ? 'One finger draws. Two fingers scroll and zoom.'
+              : 'Only the pen draws. One finger scrolls the page.',
+          trailing: _AccentSwitch(
+            value: settings.fingerDraws,
+            onChanged: notifier.setFingerDraws,
           ),
-          const _SectionHeader('AI Models'),
-          const _AiModelsCard(),
-          // Developer tools are debug-only; release builds never show them.
-          if (kDebugMode) const _SectionHeader('Developer'),
-          if (kDebugMode)
-            _SettingsCard(
+          onTap: () => notifier.setFingerDraws(!settings.fingerDraws),
+        ),
+        // SET-16. Draw-to-shape: hold the pen at the end of a stroke.
+        _InkGestureRow(
+          icon: AppIcons.addCircle,
+          title: 'Snap shapes',
+          subtitle:
+              'Hold the pen still at the end of a rectangle, circle, '
+              'triangle or arrow and it snaps to a clean shape. Undo '
+              'brings your drawing back.',
+          model: kShapesModel,
+          value: settings.snapShapes,
+          setEnabled: notifier.setSnapShapes,
+        ),
+        // SET-17. Scribble-to-erase.
+        _InkGestureRow(
+          icon: AppIcons.brush,
+          title: 'Scribble to erase',
+          subtitle:
+              'Scrub back and forth over something to wipe it out. '
+              'Undo brings it back.',
+          model: kGestureModel,
+          value: settings.scribbleErase,
+          setEnabled: notifier.setScribbleErase,
+        ),
+      ],
+    );
+
+    final exportDefaults = _SettingsCard(
+      icon: AppIcons.export,
+      title: 'Export defaults',
+      children: [
+        // SET-11.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _SettingsRow(
-                icon: PhosphorIconsRegular.terminalWindow,
-                title: 'Developer Mode',
-                subtitle: 'Show performance metrics overlay',
-                trailing: _AccentSwitch(
-                  value: settings.devMode,
-                  onChanged: notifier.toggleDevMode,
-                ),
-              ),
-              if (settings.devMode)
-                _SettingsRow(
-                  icon: PhosphorIconsRegular.paintBrush,
-                  title: 'Canvas 2.0 (dev)',
-                  subtitle: 'Preview the rebuilt drawing canvas',
-                  trailing: Icon(
-                    PhosphorIconsRegular.caretRight,
-                    color: c.textSecondary,
-                  ),
-                  onTap: () => context.push('/canvas-demo'),
-                ),
-              if (settings.devMode)
-                _SettingsRow(
-                  icon: Icons.insert_chart_outlined,
-                  title: 'Figure benchmark (dev)',
-                  subtitle: 'Measure how well the AI reads figures',
-                  trailing: Icon(
-                    PhosphorIconsRegular.caretRight,
-                    color: c.textSecondary,
-                  ),
-                  onTap: () => context.push('/figure-benchmark'),
-                ),
-            ],
-          ),
-          const _SectionHeader('About'),
-          _SettingsCard(
-            children: [
-              _SettingsRow(
-                icon: PhosphorIconsRegular.info,
-                title: 'About Margo',
-                trailing: Icon(
-                  PhosphorIconsRegular.caretRight,
+              Text(
+                'Default format when exporting notebooks',
+                style: TextStyle(
+                  fontFamily: 'ModulusPro',
+                  fontSize: 14,
                   color: c.textSecondary,
                 ),
-                onTap: () => context.push('/about'),
               ),
+              const SizedBox(height: 12),
+              AppChipGroup<String>(
+                value: settings.exportDefault,
+                options: [
+                  for (final f in SettingsNotifier.exportFormats) (f, f),
+                ],
+                onChanged: notifier.setExportDefault,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    final notesAndStorage = _SettingsCard(
+      icon: AppIcons.trash,
+      title: 'Notes & Storage',
+      children: [
+        // SET-10. Navigation unchanged.
+        _SettingsRow(
+          icon: AppIcons.trash,
+          title: 'Trash',
+          subtitle:
+              'Restore deleted notes for '
+              '${NoteRepository.trashRetention.inDays} days',
+          onTap: () => context.push('/trash'),
+          trailing: AppIcon(
+            AppIcons.arrowRight,
+            size: 20,
+            color: c.textSecondary,
+          ),
+        ),
+      ],
+    );
+
+    final about = _SettingsCard(
+      icon: AppIcons.infoCircle,
+      title: 'About margo',
+      children: [
+        _SettingsRow(
+          icon: AppIcons.infoCircle,
+          title: 'About Margo',
+          onTap: () => context.push('/about'),
+          trailing: AppIcon(
+            AppIcons.arrowRight,
+            size: 20,
+            color: c.textSecondary,
+          ),
+        ),
+      ],
+    );
+
+    // Developer tools are debug-only; release builds never show them.
+    final developer = _SettingsCard(
+      icon: AppIcons.setting,
+      title: 'Developer',
+      children: [
+        _SettingsRow(
+          icon: AppIcons.setting,
+          title: 'Developer Mode',
+          subtitle: 'Show performance metrics overlay',
+          trailing: _AccentSwitch(
+            value: settings.devMode,
+            onChanged: notifier.toggleDevMode,
+          ),
+        ),
+        if (settings.devMode)
+          _SettingsRow(
+            icon: AppIcons.brush,
+            title: 'Canvas 2.0 (dev)',
+            subtitle: 'Preview the rebuilt drawing canvas',
+            trailing: AppIcon(
+              AppIcons.arrowRight,
+              size: 20,
+              color: c.textSecondary,
+            ),
+            onTap: () => context.push('/canvas-demo'),
+          ),
+        if (settings.devMode)
+          _SettingsRow(
+            icon: AppIcons.setting,
+            title: 'Figure benchmark (dev)',
+            subtitle: 'Measure how well the AI reads figures',
+            trailing: AppIcon(
+              AppIcons.arrowRight,
+              size: 20,
+              color: c.textSecondary,
+            ),
+            onTap: () => context.push('/figure-benchmark'),
+          ),
+      ],
+    );
+
+    // Backup sits under AI on the left: it balances the columns and keeps the
+    // one setting that protects every note near the top.
+    final left = [appearance, aiAndHandwriting, const _BackupSection()];
+    final right = [
+      pen,
+      exportDefaults,
+      notesAndStorage,
+      about,
+      if (kDebugMode) developer,
+    ];
+
+    return Scaffold(
+      appBar: settingsAppBar(
+        context,
+        'Settings',
+        actions: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SearchPopoverButton(
+                onOpenNote: (note) => context.push('/note2/${note.id}'),
+              ),
+              const SizedBox(width: 8),
+              AppIconButton(
+                AppIcons.profile,
+                size: 36,
+                tooltip: 'About',
+                onPressed: () => context.push('/about'),
+              ),
+              const SizedBox(width: 12),
             ],
           ),
         ],
       ),
+      backgroundColor: c.bgPrimary,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 900;
+          final gutter = wide ? 63.0 : 16.0;
+          final cards = wide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 619,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: _spaced(left),
+                      ),
+                    ),
+                    const SizedBox(width: 27),
+                    Expanded(
+                      flex: 508,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: _spaced(right),
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _spaced([...left, ...right]),
+                );
+          return SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(gutter, 8, gutter, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                cards,
+                const SizedBox(height: 24),
+                const SettingsSavedFooter(),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
+
+/// Puts a gap between cards, and none before the first.
+List<Widget> _spaced(List<Widget> cards) => [
+  for (var i = 0; i < cards.length; i++) ...[
+    if (i > 0) const SizedBox(height: 24),
+    cards[i],
+  ],
+];
 
 /// Prompts for the user's own HuggingFace token and stores it. A blank result
 /// clears it; cancelling changes nothing.
@@ -333,8 +409,7 @@ Future<void> _editHuggingFaceToken(BuildContext context, WidgetRef ref) async {
     HfTokenStatus.unknown => null,
   };
   if (message == null) return;
-  ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(message)));
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 /// Opens [url] in a browser, or tells the user where to go if none exists.
@@ -355,4 +430,3 @@ Future<void> _openHuggingFace(BuildContext context, String url) async {
     ),
   );
 }
-

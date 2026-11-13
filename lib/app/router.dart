@@ -85,6 +85,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const SettingsScreen(),
     ),
     GoRoute(
+      path: '/settings/models',
+      builder: (context, state) => const AiModelsScreen(),
+    ),
+    GoRoute(
       path: '/about',
       builder: (context, state) => const AboutScreen(),
     ),

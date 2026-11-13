@@ -12,9 +12,11 @@ class _BackupSection extends ConsumerWidget {
     final c = context.colors;
 
     return _SettingsCard(
+      icon: AppIcons.cloud,
+      title: 'Backup',
       children: [
         _SettingsRow(
-          icon: Icons.backup_outlined,
+          icon: AppIcons.cloud,
           title: 'Back up automatically',
           subtitle: 'Each notebook as a .margo file you can restore, plus a '
               'readable .md copy, in Download/Margo',
@@ -26,7 +28,7 @@ class _BackupSection extends ConsumerWidget {
         ),
         if (settings.autoBackup)
           _SettingsRow(
-            icon: Icons.schedule_outlined,
+            icon: AppIcons.clock,
             title: 'How often',
             trailing: DropdownButton<BackupFrequency>(
               key: const ValueKey('backupFrequency'),
@@ -43,12 +45,16 @@ class _BackupSection extends ConsumerWidget {
           ),
         const _BackupStatusRow(),
         _SettingsRow(
-          icon: Icons.restore_outlined,
+          icon: AppIcons.folder,
           title: 'Restore from a backup…',
           subtitle: 'Pick .margo files. Each comes back as a new notebook; '
               'nothing is overwritten.',
           onTap: () => _restore(context, ref),
-          trailing: Icon(PhosphorIconsRegular.caretRight, color: c.textSecondary),
+          trailing: AppIcon(
+            AppIcons.arrowRight,
+            size: 20,
+            color: c.textSecondary,
+          ),
         ),
       ],
     );
@@ -111,7 +117,7 @@ class _BackupStatusRow extends ConsumerWidget {
     }
 
     return _SettingsRow(
-      icon: error != null ? Icons.error_outline : Icons.cloud_done_outlined,
+      icon: error != null ? AppIcons.infoCircle : AppIcons.saved,
       title: 'Back up now',
       subtitle: subtitle,
       trailing: status.running

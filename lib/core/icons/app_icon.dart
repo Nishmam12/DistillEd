@@ -25,6 +25,18 @@ abstract final class AppIcons {
   static const save = 'icons/save-add';
   static const saved = 'icons/save-added';
 
+  // Settings page.
+  static const arrowRight = 'icons/arrow-right';
+  static const brush = 'icons/brush';
+  static const clock = 'icons/clock';
+  static const cloud = 'icons/cloud';
+  static const export = 'icons/export';
+  static const flashCircle = 'icons/flash-circle';
+  static const infoCircle = 'icons/info-circle';
+  static const key = 'icons/key';
+  static const languageCircle = 'icons/language-circle';
+  static const trash = 'icons/trash';
+
   // Note editor top bar.
   static const home = '$_toolbar/home';
   static const undo = '$_toolbar/undo';
@@ -94,7 +106,9 @@ class AppIconButton extends StatelessWidget {
       onPressed: onPressed,
       padding: EdgeInsets.zero,
       constraints: BoxConstraints.tightFor(width: box, height: box),
-      style: IconButton.styleFrom(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
       icon: AppIcon(name, size: size, color: color),
     );
   }

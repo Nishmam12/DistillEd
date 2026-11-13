@@ -3,7 +3,11 @@ part of 'settings_screen.dart';
 /// Shows the downloaded state of the on-device LLM and the handwriting
 /// language models, with delete actions to reclaim storage.
 class _AiModelsCard extends ConsumerStatefulWidget {
-  const _AiModelsCard();
+  /// Rows shown above the model list, inside the same card (the HuggingFace
+  /// token row on the AI models screen).
+  final List<Widget> leading;
+
+  const _AiModelsCard({this.leading = const []});
 
   @override
   ConsumerState<_AiModelsCard> createState() => _AiModelsCardState();
@@ -24,9 +28,9 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
       await shareRagCorpus(ref);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Couldn't export the corpus: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Couldn't export the corpus: $e")));
     }
   }
 
@@ -34,20 +38,19 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
   Widget build(BuildContext context) {
     final downloads = ref.read(modelDownloadManagerProvider);
     final recognition = ref.read(handwritingRecognitionServiceProvider);
-    final sizeGb =
-        LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024);
+    final sizeGb = LlmModelSpec.active.approxSizeBytes / (1024 * 1024 * 1024);
     // Where the model ran the last time it loaded; null until it has loaded.
     final backend = ref.watch(localBackendProvider);
     // The Whisper row reads whether it is installed only when it is built, so
     // it is rebuilt whenever the speech model changes (a download or a delete).
-    final speechPhase =
-        ref.watch(speechModelProvider.select((s) => s.phase));
+    final speechPhase = ref.watch(speechModelProvider.select((s) => s.phase));
 
     return _SettingsCard(
       children: [
+        ...widget.leading,
         _modelRow(
           key: ValueKey('llm-$_refresh'),
-          icon: PhosphorIconsRegular.brain,
+          icon: AppIcons.flashCircle,
           title: '${LlmModelSpec.active.displayName} (on-device AI)',
           sizeLabel: '${sizeGb.toStringAsFixed(1)} GB',
           isInstalled: downloads.isInstalled,
@@ -71,7 +74,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
         ),
         _modelRow(
           key: ValueKey('en-$_refresh'),
-          icon: PhosphorIconsRegular.pencilSimple,
+          icon: AppIcons.languageCircle,
           title: 'English handwriting model',
           sizeLabel: '~20 MB',
           isInstalled: () => recognition.isModelDownloaded('en'),
@@ -80,7 +83,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
         ),
         _modelRow(
           key: ValueKey('bn-$_refresh'),
-          icon: PhosphorIconsRegular.pencilSimple,
+          icon: AppIcons.languageCircle,
           title: 'Bangla handwriting model',
           sizeLabel: '~20 MB',
           isInstalled: () => recognition.isModelDownloaded('bn'),
@@ -89,7 +92,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
         ),
         _modelRow(
           key: ValueKey('bn-Latn-$_refresh'),
-          icon: PhosphorIconsRegular.pencilSimple,
+          icon: AppIcons.languageCircle,
           title: 'Banglish handwriting model',
           sizeLabel: '~20 MB',
           isInstalled: () => recognition.isModelDownloaded('bn-Latn'),
@@ -98,7 +101,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
         ),
         _modelRow(
           key: ValueKey('speech-$_refresh-${speechPhase.name}'),
-          icon: PhosphorIconsRegular.microphone,
+          icon: AppIcons.mic,
           title: SpeechModelSpec.active.displayName,
           sizeLabel: '~80 MB',
           isInstalled: () => ref
@@ -155,7 +158,8 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
     } on LlmException catch (e) {
       failure = e.message;
     } catch (_) {
-      failure = "Couldn't download $title. Check your connection and try again.";
+      failure =
+          "Couldn't download $title. Check your connection and try again.";
     }
     unawaited(sub?.cancel());
     if (!mounted) return;
@@ -181,7 +185,7 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
 
   Widget _modelRow({
     required Key key,
-    required IconData icon,
+    required String icon,
     required String title,
     required String sizeLabel,
     required Future<bool> Function() isInstalled,
@@ -206,16 +210,17 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
           subtitle =
               '$sizeLabel · Downloaded${detail == null ? '' : ' · $detail'}';
         } else if (downloading) {
-          subtitle =
-              percent == null ? 'Downloading…' : 'Downloading… $percent%';
+          subtitle = percent == null
+              ? 'Downloading…'
+              : 'Downloading… $percent%';
         } else {
-          subtitle = 'Not downloaded — fetched on first use';
+          subtitle = 'Not downloaded - fetched on first use';
         }
         final Widget? trailing;
         if (installed) {
           trailing = IconButton(
-            icon: Icon(PhosphorIconsRegular.trash,
-                color: context.colors.textSecondary),
+            icon: AppIcon(AppIcons.trash,
+                size: 20, color: context.colors.textSecondary),
             tooltip: 'Delete model',
             onPressed: () => _delete(onDelete, confirmDelete, title),
           );
@@ -232,8 +237,10 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
             key: ValueKey('download-$title'),
             onPressed: () =>
                 _downloadModel(title, onDownload, progress: progress),
-            child: Text('Download',
-                style: TextStyle(color: context.colors.accent)),
+            child: Text(
+              'Download',
+              style: TextStyle(color: context.colors.accent),
+            ),
           );
         }
         return _SettingsRow(
@@ -247,15 +254,19 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
   }
 
   Future<void> _delete(
-      Future<void> Function() onDelete, bool confirm, String title) async {
+    Future<void> Function() onDelete,
+    bool confirm,
+    String title,
+  ) async {
     if (confirm) {
       final sure = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Delete model?'),
           content: Text(
-              '$title will be removed from this device. It will need to be '
-              'downloaded again to use AI features offline.'),
+            '$title will be removed from this device. It will need to be '
+            'downloaded again to use AI features offline.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -263,8 +274,10 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text('Delete',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              child: Text(
+                'Delete',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
           ],
         ),
@@ -276,7 +289,8 @@ class _AiModelsCardState extends ConsumerState<_AiModelsCard> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Couldn't delete $title. Try again.")));
+          SnackBar(content: Text("Couldn't delete $title. Try again.")),
+        );
       }
     }
     if (mounted) setState(() => _refresh++);
@@ -434,8 +448,11 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
       await ref.read(embedderDownloadManagerProvider).delete();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Couldn't delete the search model. Try again.")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't delete the search model. Try again."),
+          ),
+        );
       }
       return;
     }
@@ -452,8 +469,8 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
     // The effective token, so a local dev token (debug only) also enables the
     // download — not just a token typed into Settings. An ungated model needs
     // none.
-    final hasToken = !_spec.needsAuth ||
-        ref.watch(huggingFaceTokenProvider).isNotEmpty;
+    final hasToken =
+        !_spec.needsAuth || ref.watch(huggingFaceTokenProvider).isNotEmpty;
     // Settings load from SharedPreferences asynchronously. Until that lands the
     // token reads as '' even when one is stored, so treat "not loaded yet" as
     // unknown rather than as "no token" — otherwise the row briefly tells a
@@ -462,7 +479,7 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
 
     if (_progress != null) {
       return _SettingsRow(
-        icon: PhosphorIconsRegular.magnifyingGlass,
+        icon: AppIcons.search,
         title: '${_spec.displayName} (search)',
         subtitle: 'Downloading… $_progress%',
         trailing: SizedBox(
@@ -511,13 +528,15 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
         }
 
         return _SettingsRow(
-          icon: PhosphorIconsRegular.magnifyingGlass,
+          icon: AppIcons.search,
           title: '${_spec.displayName} (search)',
           subtitle: subtitle,
           trailing: installed
               ? IconButton(
-                  icon: Icon(PhosphorIconsRegular.trash,
-                      color: context.colors.textSecondary),
+                  icon: AppIcon(
+                    AppIcons.trash,
+                    color: context.colors.textSecondary,
+                  ),
                   tooltip: 'Delete model',
                   onPressed: _delete,
                 )
@@ -529,8 +548,10 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
                     // gets a delete.
                     if (partial && !checking)
                       IconButton(
-                        icon: Icon(PhosphorIconsRegular.trash,
-                            color: context.colors.textSecondary),
+                        icon: AppIcon(
+                          AppIcons.trash,
+                          color: context.colors.textSecondary,
+                        ),
                         tooltip: 'Delete partial download',
                         onPressed: _delete,
                       ),
@@ -551,8 +572,9 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
                       key: ValueKey('download-${_spec.displayName} (search)'),
                       // Disabled only once we KNOW there is no token — a
                       // pending settings load must not look like a missing one.
-                      onPressed:
-                          (hasToken && settingsLoaded) ? _download : null,
+                      onPressed: (hasToken && settingsLoaded)
+                          ? _download
+                          : null,
                       child: Text(
                         (_failure != null || partial) ? 'Retry' : 'Download',
                         style: TextStyle(
@@ -560,8 +582,9 @@ class _EmbeddingModelRowState extends ConsumerState<_EmbeddingModelRow>
                           // enabled accent against `textSecondary` at 40%.
                           color: (hasToken && settingsLoaded)
                               ? context.colors.accent
-                              : context.colors.textSecondary
-                                  .withValues(alpha: 0.4),
+                              : context.colors.textSecondary.withValues(
+                                  alpha: 0.4,
+                                ),
                         ),
                       ),
                     ),

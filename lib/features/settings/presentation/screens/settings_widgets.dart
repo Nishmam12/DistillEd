@@ -10,8 +10,9 @@ class _HuggingFaceTokenDialog extends StatefulWidget {
 }
 
 class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
-  late final TextEditingController _controller =
-      TextEditingController(text: widget.initial);
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
 
   /// Hidden by default — it's a credential, and settings get shown to other
   /// people over a shoulder more often than you'd think.
@@ -52,13 +53,17 @@ class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
               children: [
                 TextButton(
                   onPressed: () => _openHuggingFace(
-                      context, 'https://huggingface.co/settings/tokens/new'
-                          '?tokenType=read'),
+                    context,
+                    'https://huggingface.co/settings/tokens/new'
+                    '?tokenType=read',
+                  ),
                   child: const Text('Create a read token'),
                 ),
                 TextButton(
                   onPressed: () => _openHuggingFace(
-                      context, EmbedderSpec.active.modelPageUrl),
+                    context,
+                    EmbedderSpec.active.modelPageUrl,
+                  ),
                   child: const Text('Accept the licence'),
                 ),
               ],
@@ -91,53 +96,101 @@ class _HuggingFaceTokenDialogState extends State<_HuggingFaceTokenDialog> {
         if (widget.initial.isNotEmpty)
           TextButton(
             onPressed: () => Navigator.of(context).pop(''),
-            child: Text('Remove',
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(
+              'Remove',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel',
-              style: TextStyle(color: context.colors.textSecondary)),
+          child: Text(
+            'Cancel',
+            style: TextStyle(color: context.colors.textSecondary),
+          ),
         ),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
           onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: Text('Save',
-              style: TextStyle(color: context.colors.onAccent)),
+          child: Text('Save', style: TextStyle(color: context.colors.onAccent)),
         ),
       ],
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader(this.title);
+/// Shared chrome for the settings screens: the 42px title bar, the saved footer
+/// and the header-less cards are all drawn from here so the two screens match.
+PreferredSizeWidget settingsAppBar(
+  BuildContext context,
+  String title, {
+  List<Widget> actions = const [],
+}) {
+  final c = context.colors;
+  return AppBar(
+    toolbarHeight: 88,
+    titleSpacing: 0,
+    title: Text(title),
+    backgroundColor: c.bgPrimary,
+    foregroundColor: c.textPrimary,
+    surfaceTintColor: c.bgPrimary,
+    elevation: 0,
+    scrolledUnderElevation: 0,
+    titleTextStyle: TextStyle(
+      fontFamily: 'ModulusPro',
+      color: c.textPrimary,
+      fontSize: 42,
+      fontWeight: FontWeight.w600,
+      height: 1.0,
+    ),
+    // Same behaviour as the automatic back button (`maybePop`), drawn with the
+    // Phosphor arrow: it has no exported SVG.
+    leading: Navigator.of(context).canPop()
+        ? IconButton(
+            icon: const Icon(PhosphorIconsRegular.arrowLeft),
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+            onPressed: () => Navigator.of(context).maybePop(),
+          )
+        : null,
+    actions: actions,
+  );
+}
+
+/// "Settings are saved automatically", shown at the foot of both settings
+/// screens. Settings persist on every change, so there is no save button.
+class SettingsSavedFooter extends StatelessWidget {
+  const SettingsSavedFooter({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 20, 8, 8),
-      // SET-02. Section headers are tier-1 accent: there are a handful per
-      // screen and each labels a group, so they do not compete the way a
-      // repeated row title would.
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          fontFamily: 'ModulusPro',
-          color: context.colors.accent,
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
-          letterSpacing: 1.4,
+    final c = context.colors;
+    return Row(
+      children: [
+        // Material's check glyph: Phosphor has no tick-circle in this build and
+        // the exported SVG set does not carry one.
+        Icon(Icons.check_circle_outline, size: 20, color: c.textSecondary),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            'Settings are saved automatically',
+            style: TextStyle(
+              fontFamily: 'ModulusPro',
+              fontSize: 16,
+              color: c.textSecondary,
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
 
 class _SettingsCard extends StatelessWidget {
+  /// Card header. Both null for a header-less card (the AI models list).
+  final String? icon;
+  final String? title;
   final List<Widget> children;
-  const _SettingsCard({required this.children});
+
+  const _SettingsCard({this.icon, this.title, required this.children});
 
   @override
   Widget build(BuildContext context) {
@@ -147,26 +200,18 @@ class _SettingsCard extends StatelessWidget {
     final rows = <Widget>[];
     for (var i = 0; i < children.length; i++) {
       if (i > 0) {
-        // SET-15. Inset to the text column, not full-bleed: 16 padding +
-        // 36 icon tile + 12 gap = 64, so the rule starts under the title and
-        // the icon column reads as one continuous strip.
-        rows.add(Divider(height: 1, indent: 64, color: c.border));
+        // Inset to the text column: 16 padding + 38 icon tile + 12 gap = 66.
+        rows.add(Divider(height: 1, indent: 66, color: c.border));
       }
       rows.add(children[i]);
     }
 
-    // SET-03 / SET-16. Light lifts on a soft shadow with no outline; dark drops
-    // the shadow entirely and draws a 1px hairline instead. A shadow on
-    // near-black is invisible, so carrying it over would leave dark-mode cards
-    // with no edge at all.
-    //
-    // THEME_SPEC.md defines no shadow token, so the tint is derived from
-    // `accent` rather than invented: sage at 6%/4% in light. See the report's
-    // spec-gap note.
+    // Light lifts on a sage-tinted shadow with no outline; dark drops the shadow
+    // (invisible on near-black) and draws a hairline instead.
     return Container(
       decoration: BoxDecoration(
         color: c.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: isDark ? Border.all(color: c.border) : null,
         boxShadow: isDark
             ? null
@@ -184,7 +229,33 @@ class _SettingsCard extends StatelessWidget {
               ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(children: rows),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (icon != null && title != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
+              child: Row(
+                children: [
+                  AppIcon(icon!, size: 28, color: c.accent),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title!,
+                      style: TextStyle(
+                        fontFamily: 'ModulusPro',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: c.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ...rows,
+        ],
+      ),
     );
   }
 }
@@ -193,7 +264,7 @@ class _SettingsCard extends StatelessWidget {
 /// Kit model; a failed download turns it back off, so it never looks on while
 /// doing nothing.
 class _InkGestureRow extends ConsumerWidget {
-  final IconData icon;
+  final String icon;
   final String title;
   final String subtitle;
   final String model;
@@ -257,7 +328,7 @@ class _LectureTranscriptsRow extends ConsumerWidget {
     }
 
     return _SettingsRow(
-      icon: PhosphorIconsRegular.microphone,
+      icon: AppIcons.mic,
       title: 'Transcribe lectures',
       subtitle: lectureTranscriptsSubtitle(on: on, model: model),
       onTap: on && model.phase == SpeechModelPhase.failed ? download : null,
@@ -303,12 +374,13 @@ class _MobileDataRowState extends ConsumerState<_MobileDataRow> {
   Widget build(BuildContext context) {
     final allow = _choice == MobileDataChoice.allow;
     return _SettingsRow(
-      icon: PhosphorIconsRegular.cellSignalFull,
+      icon: AppIcons.cloud,
       title: 'Download model updates on mobile data',
       subtitle: switch (_choice) {
-        MobileDataChoice.allow => 'On — updates download on any network',
-        MobileDataChoice.wifiOnly => 'Off — updates wait for Wi-Fi',
-        MobileDataChoice.ask => 'Not set — you are asked when an update needs it',
+        MobileDataChoice.allow => 'On - updates download on any network',
+        MobileDataChoice.wifiOnly => 'Off - updates wait for Wi-Fi',
+        MobileDataChoice.ask =>
+          'Not set - you are asked when an update needs it',
       },
       trailing: Switch(value: allow, onChanged: _set),
     );
@@ -316,7 +388,8 @@ class _MobileDataRowState extends ConsumerState<_MobileDataRow> {
 }
 
 class _SettingsRow extends StatelessWidget {
-  final IconData icon;
+  /// An [AppIcons] name, drawn in the accent on a 38px circle.
+  final String icon;
   final String title;
   final String? subtitle;
   final Widget? trailing;
@@ -339,33 +412,28 @@ class _SettingsRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            // SET-04. Icon tiles are single-instance chrome — one per row, each
-            // labelling a different setting — so they keep the accent without
-            // the wall-of-gold problem that repeated titles would have.
             Container(
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: c.surfaceSubtle,
-                borderRadius: BorderRadius.circular(12),
+                shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 20, color: c.accent),
+              child: AppIcon(icon, size: 20, color: c.accent),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // SET-05. `textPrimary`, NOT `accent`. In dark this is cream
-                  // (#E6E2DB) over a grey description. The mockup shows gold
-                  // titles here; THEME_SPEC.md § "Color hierarchy" overrides it
-                  // — thirty gold titles in a list signal nothing.
+                  // Row titles take `textPrimary`, never `accent`: a card of
+                  // gold titles signals nothing (THEME_SPEC.md, "Color hierarchy").
                   Text(
                     title,
                     style: TextStyle(
                       fontFamily: 'ModulusPro',
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: c.textPrimary,
                     ),
@@ -375,7 +443,7 @@ class _SettingsRow extends StatelessWidget {
                     Text(
                       subtitle!,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         color: c.textSecondary,
                         height: 1.35,
                       ),
@@ -384,10 +452,7 @@ class _SettingsRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) ...[
-              const SizedBox(width: 12),
-              trailing!,
-            ],
+            if (trailing != null) ...[const SizedBox(width: 12), trailing!],
           ],
         ),
       ),
@@ -424,9 +489,8 @@ class _AccentSwitch extends StatelessWidget {
   }
 }
 
-/// Theme picker. Laid out as a full-width segmented control below the row
-/// rather than as a trailing pill group, because three labelled options plus a
-/// title do not fit across a phone.
+/// Theme picker: the segmented control, then a preview drawn from the live
+/// tokens so the choice shows what it will look like before it is kept.
 class _ThemeModeRow extends StatelessWidget {
   final AppThemeMode value;
   final ValueChanged<AppThemeMode> onChanged;
@@ -435,59 +499,90 @@ class _ThemeModeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // SET-08. The moon is fixed rather than tracking the current mode: it
-        // labels the SETTING ("theme"), and the segmented control below already
-        // shows which mode is active. A glyph that changed with the value said
-        // the same thing twice and read as a state indicator you could not tap.
-        _SettingsRow(
-          icon: PhosphorIconsRegular.moon,
-          title: 'Theme',
-          subtitle: switch (value) {
-            AppThemeMode.system => 'Follow system',
-            AppThemeMode.light => 'Always light',
-            AppThemeMode.dark => 'Always dark',
-          },
-        ),
-        // SET-09. Wired straight to `SettingsNotifier.setThemeMode`, which
-        // updates state and persists to SharedPreferences in one call — so the
-        // app re-themes live and the choice survives a restart.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-          child: AppSegmentedControl<AppThemeMode>(
+    final c = context.colors;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // SET-09. Wired straight to `SettingsNotifier.setThemeMode`, which
+          // updates state and persists in one call.
+          AppSegmentedControl<AppThemeMode>(
             value: value,
             onChanged: onChanged,
             segments: const [
-              AppSegment(
-                value: AppThemeMode.system,
-                label: 'System',
-                icon: PhosphorIconsRegular.gear,
+              AppSegment(value: AppThemeMode.system, label: 'System'),
+              AppSegment(value: AppThemeMode.light, label: 'Light'),
+              AppSegment(value: AppThemeMode.dark, label: 'Dark'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ThemeSwatch(color: c.bgPrimary),
+                    const SizedBox(width: 5),
+                    // Light matches the mockup (pale sage). In dark,
+                    // surfaceSubtle is within a few shades of the card, so
+                    // the swatch shows the sage accent the caption names.
+                    _ThemeSwatch(color: dark ? c.accent : c.surfaceSubtle),
+                  ],
+                ),
               ),
-              AppSegment(
-                value: AppThemeMode.light,
-                label: 'Light',
-                icon: PhosphorIconsRegular.sun,
-              ),
-              AppSegment(
-                value: AppThemeMode.dark,
-                label: 'Dark',
-                icon: PhosphorIconsRegular.moon,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  dark ? 'Dark sage' : 'Warm white with Sage accents',
+                  style: TextStyle(
+                    fontFamily: 'ModulusPro',
+                    fontSize: 14,
+                    color: c.textSecondary,
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-/// Where the AI runs. Mirrors [_ThemeModeRow]: a labelling row, then the
-/// segmented control that actually carries the state.
+class _ThemeSwatch extends StatelessWidget {
+  final Color color;
+  const _ThemeSwatch({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 42,
+      height: 42,
+      // The hairline keeps a swatch visible when its colour is close to the
+      // card's, as bgPrimary is in dark.
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: context.colors.border),
+      ),
+    );
+  }
+}
+
+/// Where the AI runs. A labelling row, then the segmented control that carries
+/// the state.
 ///
 /// The subtitles state the privacy consequence of each mode in the mode's own
 /// terms, because "Cloud AI: on" told the student nothing about whether their
-/// notes were being sent anywhere — the complaint this control exists to fix.
+/// notes were being sent anywhere.
 class _AiModeRow extends StatelessWidget {
   final AiProcessingMode value;
   final ValueChanged<AiProcessingMode> onChanged;
@@ -499,7 +594,7 @@ class _AiModeRow extends StatelessWidget {
     return Column(
       children: [
         _SettingsRow(
-          icon: PhosphorIconsRegular.cloud,
+          icon: AppIcons.cloud,
           title: 'AI processing',
           subtitle: switch (value) {
             AiProcessingMode.onDevice =>
@@ -508,31 +603,19 @@ class _AiModeRow extends StatelessWidget {
               'On-device first; the cloud only when it fails or the note is '
                   'too long.',
             AiProcessingMode.cloudFirst =>
-              'The cloud reads your notes directly — faster, but pages are '
+              'The cloud reads your notes directly. Faster, but pages are '
                   'sent off this device.',
           },
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: AppSegmentedControl<AiProcessingMode>(
             value: value,
             onChanged: onChanged,
             segments: const [
-              AppSegment(
-                value: AiProcessingMode.onDevice,
-                label: 'On-device',
-                icon: PhosphorIconsRegular.deviceMobile,
-              ),
-              AppSegment(
-                value: AiProcessingMode.auto,
-                label: 'Auto',
-                icon: PhosphorIconsRegular.sparkle,
-              ),
-              AppSegment(
-                value: AiProcessingMode.cloudFirst,
-                label: 'Cloud',
-                icon: PhosphorIconsRegular.cloud,
-              ),
+              AppSegment(value: AiProcessingMode.onDevice, label: 'On-device'),
+              AppSegment(value: AiProcessingMode.auto, label: 'Auto'),
+              AppSegment(value: AiProcessingMode.cloudFirst, label: 'Cloud'),
             ],
           ),
         ),
@@ -540,4 +623,3 @@ class _AiModeRow extends StatelessWidget {
     );
   }
 }
-
