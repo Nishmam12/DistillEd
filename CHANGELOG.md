@@ -15,6 +15,8 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+
+## [5.2.0] - 2026-11-14
 ### Changed
 - **Database: one new column, one new element kind** (approved 2026-11-14).
   `SceneElementRecord` gains `tapeRevealed` and `SceneElementKind` gains
