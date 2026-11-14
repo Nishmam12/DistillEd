@@ -15,6 +15,8 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+
+## [5.1.2] - 2026-11-14
 ### Fixed
 - Three-finger redo registers reliably: three fingers get a longer, looser tap
   window than two (500 ms and 26 px, against 300 ms and 12 px).
