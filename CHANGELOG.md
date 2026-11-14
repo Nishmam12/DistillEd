@@ -16,6 +16,13 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 ### Added
+- **Convert handwriting to text in place.** Select ink and tap Convert to
+  text: it is read line by line on the device (ML Kit, no network), shown for
+  checking with doubtful lines marked, then each line becomes a text box where
+  it was written, in its ink colour. Lines left empty stay as handwriting;
+  "Keep the handwriting" leaves the ink under the text. One undo step.
+- **Straighten handwriting.** Levels each line of selected writing that was
+  written on a slant (1.5 to 30 degrees), about its own centre. One undo step.
 - **Lasso select.** With the select tool, pick Lasso (beside Rectangle) and
   draw a loop round things: ink, shapes and text mostly inside it are selected,
   and a loop that only clips an edge takes nothing.

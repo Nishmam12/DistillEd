@@ -17,7 +17,11 @@ import '../../../../domain/model/scene_element.dart';
 import '../../../../domain/services/alignment_service.dart';
 import '../../../../domain/services/selection_editing.dart';
 import '../../../../domain/services/z_order_service.dart';
+import '../../../../core/providers/settings_provider.dart';
+import '../../../ai/data/handwriting/handwriting_recognition_service.dart';
 import '../../../ai/data/ocr/image_text_recognition_service.dart';
+import '../../domain/handwriting_conversion.dart';
+import 'handwriting_convert_sheet.dart';
 import '../../../ai/presentation/ai_providers.dart';
 import '../../../audio/presentation/recording_notifier.dart';
 import '../../../../editor/import/ocr_layout.dart';
@@ -150,6 +154,21 @@ class SelectionBar extends ConsumerWidget {
                     audioOffsetMs: stroke.audioOffsetMs,
                   ),
             ),
+          // Handwriting: typed text where it was written, or levelled.
+          if (_ink(ref).isNotEmpty) ...[
+            IconButton(
+              key: const ValueKey('convertHandwriting'),
+              tooltip: 'Convert to text',
+              icon: const Icon(Icons.text_fields),
+              onPressed: () => _convertHandwriting(context, ref),
+            ),
+            IconButton(
+              key: const ValueKey('levelHandwriting'),
+              tooltip: 'Straighten handwriting',
+              icon: const Icon(Icons.straighten),
+              onPressed: () => _levelHandwriting(context, ref),
+            ),
+          ],
           // Turns an imported page or photo into editable text sitting over it.
           if (_singleImage(ids, all) case final ImageElement im)
             IconButton(
@@ -594,6 +613,69 @@ class SelectionBar extends ConsumerWidget {
   /// so replacing a line with a paragraph would otherwise leave the bounds
   /// reporting a box far smaller than the visible text — which is what
   /// selection, hit-testing and AI note placement all read.
+  /// The handwriting in the selection (eraser strokes are not writing).
+  List<FreehandElement> _ink(WidgetRef ref) => [
+        for (final e in _sel(ref))
+          if (e is FreehandElement && !e.isEraser) e
+      ];
+
+  /// Reads the selected handwriting line by line (ML Kit, on the device),
+  /// shows it for checking, then puts a text box where each line was: one
+  /// undo step.
+  Future<void> _convertHandwriting(BuildContext context, WidgetRef ref) async {
+    final ink = _ink(ref);
+    if (ink.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final recognition = ref.read(handwritingRecognitionServiceProvider);
+    final language = ref.read(settingsProvider).recognitionLanguage;
+    final List<ConversionLine> lines;
+    try {
+      await recognition.ensureModelDownloaded(language);
+      lines = conversionLines(
+          await recognition.recognizeInkLines(ink, language), ink);
+    } on RecognitionException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    }
+    if (!context.mounted) return;
+    if (lines.isEmpty) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text('No handwriting to read here.')));
+      return;
+    }
+    final choice = await showHandwritingConvertSheet(context, lines);
+    if (choice == null || !context.mounted) return;
+
+    final scene = ref.read(sceneControllerProvider(pageKey).notifier);
+    final result = convertLines(lines, choice.texts,
+        keepInk: choice.keepInk,
+        newId: editorNewId,
+        firstZOrder: scene.nextZOrder());
+    if (result.added.isEmpty) return;
+    ref.read(historyProvider(pageKey).notifier).push(result.removed.isEmpty
+        ? AddElementsCommand(result.added)
+        : ReplaceElementsCommand(
+            removed: result.removed, added: result.added));
+    ref
+        .read(selectionProvider.notifier)
+        .selectMany(result.added.map((t) => t.id));
+  }
+
+  /// Turns each slanted line of the selected handwriting level: one undo step.
+  void _levelHandwriting(BuildContext context, WidgetRef ref) {
+    final ink = _ink(ref);
+    final levelled = levelHandwriting(ink);
+    if (levelled.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This writing is already level.')));
+      return;
+    }
+    final ids = {for (final e in levelled) e.id};
+    ref.read(historyProvider(pageKey).notifier).push(UpdateElementsCommand(
+        before: [for (final e in ink) if (ids.contains(e.id)) e],
+        after: levelled));
+  }
+
   /// Opens the colour picker and recolours every ink, shape and text in the
   /// selection: one undo step.
   Future<void> _recolour(BuildContext context, WidgetRef ref) async {
