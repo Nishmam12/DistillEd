@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:margo/core/providers/secret_store.dart';
 import 'package:margo/core/providers/settings_provider.dart';
 import 'package:margo/features/ai/data/embeddings/embedder_download_manager.dart';
 import 'package:margo/features/ai/data/llm/model_download_manager.dart';
@@ -78,14 +79,64 @@ AskNotesNotifier buildNotifier(SettingsNotifier settings) => AskNotesNotifier(
       embedderDownloads: EmbedderDownloadManager(authToken: () => null),
       cloudEnabled: () => settings.state.cloudAiEnabled,
       setCloudEnabled: settings.setCloudAiEnabled,
+      hasCloudKey: () => settings.state.hasCloudKey,
       privacyAsksEachTime: () =>
           settings.state.cloudPrivacy == CloudPrivacy.askEachTime,
     );
 
-Widget wrap(Widget child) => ProviderScope(
+/// Cloud needs a saved provider and key to turn on. These stand in for a real
+/// one; nothing is sent anywhere.
+const _cloudPrefs = <String, Object>{
+  'ai.cloudPresetId': 'openrouter',
+  'ai.cloudBaseUrl': 'https://openrouter.ai/api/v1',
+  'ai.cloudModel': 'test-model',
+};
+
+InMemorySecretStore _storeWithKey() =>
+    InMemorySecretStore()..values['ai.cloudApiKey'] = 'sk-test';
+
+/// Saves a provider and key before the notifier restores, then waits for it.
+Future<SettingsNotifier> settingsWithKey() async {
+  SharedPreferences.setMockInitialValues(_cloudPrefs);
+  final settings = SettingsNotifier(secrets: _storeWithKey());
+  while (!settings.state.loaded) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  return settings;
+}
+
+/// No key saved (the store is empty, not the real keystore).
+Future<SettingsNotifier> settingsWithoutKey() async {
+  final settings = SettingsNotifier(secrets: InMemorySecretStore());
+  while (!settings.state.loaded) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  return settings;
+}
+
+Widget wrap(Widget child, {SecretStore? secrets}) => ProviderScope(
       retry: (_, _) => null,
+      overrides: [
+        secretStoreProvider.overrideWithValue(secrets ?? InMemorySecretStore()),
+      ],
       child: MaterialApp(home: Scaffold(body: child)),
     );
+
+/// The toggle in a scope whose settings are reachable through the returned
+/// ref. [withKey] saves a provider and key first.
+Future<WidgetRef> pumpToggle(WidgetTester tester, {bool withKey = false}) async {
+  if (withKey) SharedPreferences.setMockInitialValues(_cloudPrefs);
+  late WidgetRef captured;
+  await tester.pumpWidget(wrap(
+    Consumer(builder: (context, ref, _) {
+      captured = ref;
+      return const CloudModelToggle();
+    }),
+    secrets: withKey ? _storeWithKey() : null,
+  ));
+  await tester.pumpAndSettle();
+  return captured;
+}
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -107,19 +158,7 @@ void main() {
     });
 
     testWidgets('tapping it turns cloud AI on in settings', (tester) async {
-      late WidgetRef captured;
-      await tester.pumpWidget(ProviderScope(
-        retry: (_, _) => null,
-        child: MaterialApp(
-          home: Scaffold(
-            body: Consumer(builder: (context, ref, _) {
-              captured = ref;
-              return const CloudModelToggle();
-            }),
-          ),
-        ),
-      ));
-      await tester.pumpAndSettle();
+      final captured = await pumpToggle(tester, withKey: true);
 
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
@@ -133,19 +172,7 @@ void main() {
         (tester) async {
       // Turning the opt-in on grants permission for the app to ASK. It must not
       // quietly promote the privacy mode to "send whatever you like".
-      late WidgetRef captured;
-      await tester.pumpWidget(ProviderScope(
-        retry: (_, _) => null,
-        child: MaterialApp(
-          home: Scaffold(
-            body: Consumer(builder: (context, ref, _) {
-              captured = ref;
-              return const CloudModelToggle();
-            }),
-          ),
-        ),
-      ));
-      await tester.pumpAndSettle();
+      final captured = await pumpToggle(tester, withKey: true);
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
 
@@ -153,12 +180,32 @@ void main() {
           CloudPrivacy.askEachTime);
       expect(captured.read(settingsProvider).hasSeenFirstCloudCall, isFalse);
     });
+
+    testWidgets('with no key it stays off, leaves the mode, and points to '
+        'Settings', (tester) async {
+      final captured = await pumpToggle(tester);
+
+      await tester.tap(find.byType(Switch));
+      await tester.pump();
+
+      expect(find.text('Add a cloud AI key in Settings first.'), findsOneWidget);
+      expect(captured.read(settingsProvider).aiMode, AiProcessingMode.onDevice);
+      expect(captured.read(settingsProvider).cloudAiEnabled, isFalse);
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+    });
+
+    testWidgets('with no key the tooltip says a key is needed', (tester) async {
+      await pumpToggle(tester);
+
+      expect(find.byTooltip('Cloud AI needs a key — add one in Settings'),
+          findsOneWidget);
+    });
   });
 
   group('the /cloud command', () {
     test('turns the setting on and confirms instead of asking the model',
         () async {
-      final settings = SettingsNotifier();
+      final settings = await settingsWithKey();
       final notifier = buildNotifier(settings);
 
       await notifier.ask('/cloud on', notebookId: 1);
@@ -169,8 +216,27 @@ void main() {
           cloudCommandConfirmation(enabled: true, privacyAsksEachTime: true));
     });
 
+    test('without a key it says a key is needed, not that cloud is on',
+        () async {
+      final settings = await settingsWithoutKey();
+      final notifier = buildNotifier(settings);
+
+      await notifier.ask('/cloud on', notebookId: 1);
+
+      expect(settings.state.cloudAiEnabled, isFalse);
+      // The refused command wrote nothing, so the mode is still on-device and a
+      // key added later does not switch cloud on by itself.
+      expect(settings.state.aiMode, AiProcessingMode.onDevice);
+      expect((notifier.state as AskNotesNotice).message, cloudNeedsKeyMessage);
+
+      await notifier.ask('/cloud', notebookId: 1);
+      expect((notifier.state as AskNotesNotice).message,
+          cloudStateReport(enabled: false),
+          reason: 'a bare /cloud reports the effective state');
+    });
+
     test('turns the setting off again', () async {
-      final settings = SettingsNotifier();
+      final settings = await settingsWithKey();
       await settings.setCloudAiEnabled(true);
       final notifier = buildNotifier(settings);
 
@@ -180,7 +246,7 @@ void main() {
     });
 
     test('natural phrasing works too', () async {
-      final settings = SettingsNotifier();
+      final settings = await settingsWithKey();
       final notifier = buildNotifier(settings);
 
       await notifier.ask('use the cloud model', notebookId: 1);
@@ -229,19 +295,7 @@ void main() {
       (tester) async {
     // The property the two-entry-point design lives or dies on. They share one
     // stored value, so a change through either is visible through the other.
-    late WidgetRef captured;
-    await tester.pumpWidget(ProviderScope(
-      retry: (_, _) => null,
-      child: MaterialApp(
-        home: Scaffold(
-          body: Consumer(builder: (context, ref, _) {
-            captured = ref;
-            return const CloudModelToggle();
-          }),
-        ),
-      ),
-    ));
-    await tester.pumpAndSettle();
+    final captured = await pumpToggle(tester, withKey: true);
     expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
 
     // Flip it through the COMMAND path, against the same provider container.

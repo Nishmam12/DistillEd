@@ -51,7 +51,7 @@ class CloudFirstTranscriber implements ImageTranscriber {
           randomSeed: randomSeed,
         );
       } on AiException {
-        // Offline, gateway down, or the deployment predates /v1/vision. Read it
+        // Offline, provider down, or the provider rejects the image. Read it
         // on-device rather than telling someone their page is unreadable —
         // slower is a far better failure than blank.
       }

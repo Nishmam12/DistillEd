@@ -38,8 +38,9 @@ import '../data/memory/learning_memory_repository.dart';
 import '../data/ocr/gemma_vision_ocr_service.dart';
 import '../data/ocr/image_text_recognition_service.dart';
 import '../data/ocr/isar_read_cache.dart';
-import '../data/providers/cloud_gateway_provider.dart';
+import '../data/providers/cloud_presets.dart' show cloudProviderName;
 import '../data/providers/local_gemma_provider.dart';
+import '../data/providers/openai_compatible_provider.dart';
 import 'model_memory_observer.dart';
 import '../data/embeddings/embedder_adapter.dart' show embedderInstallerFor;
 import '../data/embeddings/embedder_rollout_models.dart';
@@ -87,7 +88,6 @@ import '../domain/study_planner/note_deadlines.dart';
 import '../domain/study_planner/study_plan.dart';
 import '../domain/tools/calculator_tool.dart';
 import '../domain/tools/tool.dart';
-import '../data/tools/web_search_tool.dart';
 import '../data/tools/wikipedia_tool.dart';
 import 'ask_notes_notifier.dart';
 import 'study_planner_notifier.dart';
@@ -239,7 +239,7 @@ final modelMemoryObserverProvider = Provider<ModelMemoryObserver>((ref) {
 /// nothing when the local provider is not the real one (tests).
 final localModelWarmerProvider = Provider<void Function()>(
   (ref) => () {
-    if (ref.read(settingsProvider).aiMode.prefersCloud) return;
+    if (ref.read(settingsProvider).prefersCloud) return;
     if (ref.read(deviceProfileProvider) == AiProfile.cloudAssisted) return;
     final local = ref.read(localAiProvider);
     if (local is LocalGemmaProvider) unawaited(local.warmUp());
@@ -247,8 +247,8 @@ final localModelWarmerProvider = Provider<void Function()>(
 );
 
 /// Summarize's cloud route, still the no-op stub: it throws, and Summarize
-/// degrades to the on-device model. Deliberately NOT wired to the live gateway
-/// ([cloudGatewayMidProvider]) — Summarize's router checks only the cloud switch,
+/// degrades to the on-device model. Deliberately NOT wired to the live cloud
+/// provider ([cloudAiProvider]) — Summarize's router checks only the cloud switch,
 /// not the per-call `cloudPrivacy` confirmation, so wiring it would send whole
 /// notebooks off the device without asking.
 final cloudLlmClientProvider = Provider<CloudLlmClient>(
@@ -276,20 +276,20 @@ final imageTranscriberProvider = Provider<ImageTranscriber>(
   (ref) => ref.watch(localAiProvider) as ImageTranscriber,
 );
 
-/// The transcriber page reads actually use — on-device, or the cloud gateway
-/// when the user picked [AiProcessingMode.cloudFirst].
+/// The transcriber page reads actually use — on-device, or the cloud AI
+/// provider when the user picked [AiProcessingMode.cloudFirst].
 ///
 /// Separate from [imageTranscriberProvider] (which must stay the raw local
 /// instance for its mutex) so that only the READ path is routed. The mode is
 /// read at call time, so switching it takes effect on the next read.
 final routedImageTranscriberProvider = Provider<ImageTranscriber>((ref) {
-  final cloud = ref.watch(cloudGatewayMidProvider);
+  final cloud = ref.watch(cloudAiProvider);
   return CloudFirstTranscriber(
     local: ref.watch(imageTranscriberProvider),
     cloud: cloud,
     preferCloud: () =>
         mayUploadImages(ref.read(settingsProvider)) &&
-        ref.read(settingsProvider).aiMode.prefersCloud,
+        ref.read(settingsProvider).prefersCloud,
   );
 });
 
@@ -319,14 +319,14 @@ bool mayUploadImages(SettingsState s) =>
 /// rebuilding the extractor.
 final figureAnalyzerProvider = Provider<FigureAnalyzer>((ref) {
   final local = ref.watch(imageTranscriberProvider);
-  final cloud = ref.watch(cloudGatewayMidProvider);
+  final cloud = ref.watch(cloudAiProvider);
   return FigureAnalyzer(
     local: local,
     cloud: cloud,
     canEscalate: () async => mayUploadImages(ref.read(settingsProvider)),
     preferCloud: () =>
         mayUploadImages(ref.read(settingsProvider)) &&
-        ref.read(settingsProvider).aiMode.prefersCloud,
+        ref.read(settingsProvider).prefersCloud,
     localModelId: ref.watch(localAiProvider).capabilities.modelId,
     cloudModelId: cloud.capabilities.modelId,
   );
@@ -385,10 +385,10 @@ final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
     // drops the passes). Neither in cloud-first mode: there the cloud reads the
     // page and the local model's speed is beside the point.
     localIsSlow: () =>
-        !ref.read(settingsProvider).aiMode.prefersCloud &&
+        !ref.read(settingsProvider).prefersCloud &&
         (ref.read(localBackendProvider)?.isSlow ?? false),
     lite: () =>
-        !ref.read(settingsProvider).aiMode.prefersCloud &&
+        !ref.read(settingsProvider).prefersCloud &&
         ref.read(deviceProfileProvider) != AiProfile.full,
     // A read stops its deep pass when the system asks for memory back.
     memoryPressureCount: () =>
@@ -397,8 +397,8 @@ final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
     // Which model answers a read right now: part of the cache key, so switching
     // between on-device and cloud-first reads afresh rather than serving one
     // model's reading as the other's.
-    readModelId: () => ref.read(settingsProvider).aiMode.prefersCloud
-        ? ref.read(cloudGatewayMidProvider).capabilities.modelId
+    readModelId: () => ref.read(settingsProvider).prefersCloud
+        ? ref.read(cloudAiProvider).capabilities.modelId
         : ref.read(localAiProvider).capabilities.modelId,
     // ML Kit's Latin text recognition answers with noise on Bengali script; this
     // keeps that noise out of a page's text. See [isUnreadable].
@@ -450,7 +450,7 @@ final pageContextCacheProvider = Provider<PageContextCache>(
 /// use without asking; `askEachTime` and `localOnly` stay on the device.
 @visibleForTesting
 bool mayAnalyzeInCloud(SettingsState s) =>
-    s.aiMode.prefersCloud &&
+    s.prefersCloud &&
     s.cloudPrivacy == CloudPrivacy.allowCloudForNonSensitive;
 
 /// Page analysis. Runs on the cloud tier directly under
@@ -470,7 +470,7 @@ final contextEngineProvider = Provider<ContextEngine>((ref) {
   final preferCloud = ref.watch(settingsProvider.select(mayAnalyzeInCloud));
   return ContextEngine(
     provider: preferCloud
-        ? ref.watch(cloudGatewayMidProvider)
+        ? ref.watch(cloudAiProvider)
         : ref.watch(localAiProvider),
     // The accuracy fail-safe: an extraction the on-device model returned
     // empty or looping is re-run on the cloud tier when the user's privacy
@@ -484,44 +484,35 @@ final contextEngineProvider = Provider<ContextEngine>((ref) {
   );
 });
 
-/// The Phase 3 cloud gateway's base URL — the Render deployment
-/// (`server/ai-gateway`, built from the repo-root `render.yaml`). Free plan,
-/// so the first request after ~15 min idle pays a cold start. Not
-/// user-configurable yet; for local gateway work, point this at
-/// `http://localhost:8000` (`cd server/ai-gateway && uvicorn app.main:app`), or
-/// build with `--dart-define=GATEWAY_URL=http://localhost:8000`.
-const String cloudGatewayBaseUrl = String.fromEnvironment(
-  'GATEWAY_URL',
-  defaultValue: 'https://margo-ai-gateway.onrender.com',
-);
-
-/// The two cloud tiers the Phase 3 gateway serves, each a thin [AiProvider]
-/// over the same gateway with a different `model_tier`. [cloudGatewayMidProvider]
-/// is typed as the concrete class (not just [AiProvider]) because Research
-/// (Loop 3.4) also needs its [ToolCallingClient]-only `generateWithTools` —
-/// every existing [AiProvider]-typed consumer still works unchanged since
-/// [CloudGatewayProvider] implements that interface too.
-final cloudGatewayMidProvider = Provider<CloudGatewayProvider>(
-  (ref) => CloudGatewayProvider(
-    baseUrl: cloudGatewayBaseUrl,
-    modelTier: 'cloud-mid',
+/// The user's own cloud AI provider (any OpenAI-compatible endpoint), built
+/// from the provider, model and key saved in Settings. Typed as the concrete
+/// class because Research also needs its [ToolCallingClient] `generateWithTools`
+/// and the read path its [ImageTranscriber]. Rebuilt when those settings change.
+final cloudAiProvider = Provider<OpenAiCompatibleProvider>((ref) {
+  final cfg = ref.watch(settingsProvider.select((s) => (
+        presetId: s.cloudPresetId,
+        baseUrl: s.cloudBaseUrl,
+        apiKey: s.cloudApiKey,
+        model: s.cloudModel,
+        contextTokens: s.cloudContextTokens,
+      )));
+  return OpenAiCompatibleProvider(
+    baseUrl: cfg.baseUrl,
+    apiKey: cfg.apiKey,
+    model: cfg.model,
+    presetId: cfg.presetId,
+    contextWindowTokens: cfg.contextTokens > 0 ? cfg.contextTokens : null,
     isCloudAllowed: () => _mayUseCloud(ref),
-  ),
-);
-final cloudGatewayFrontierProvider = Provider<AiProvider>(
-  (ref) => CloudGatewayProvider(
-    baseUrl: cloudGatewayBaseUrl,
-    modelTier: 'cloud-frontier',
-    isCloudAllowed: () => _mayUseCloud(ref),
-  ),
-);
+  );
+});
 
-/// The transport-level opt-in: no request to the gateway leaves the device unless
-/// the mode allows cloud and privacy is not `localOnly`. Callers still ask for
+/// The transport-level opt-in: no request to the cloud AI provider leaves the
+/// device unless cloud AI is enabled (the mode allows it and a key is saved) and
+/// privacy is not `localOnly`. Callers still ask for
 /// their own confirmations; this is the floor under all of them.
 bool _mayUseCloud(Ref ref) {
   final s = ref.read(settingsProvider);
-  return s.aiMode.allowsCloud && s.cloudPrivacy != CloudPrivacy.localOnly;
+  return s.cloudAiEnabled && s.cloudPrivacy != CloudPrivacy.localOnly;
 }
 
 /// Decides local vs. cloud-mid vs. cloud-frontier per request. Additive
@@ -543,8 +534,8 @@ final explainAiProviderProvider = Provider<RoutedAiProvider>((ref) {
     task: TaskType.explain,
     router: ref.watch(intelligentRouterProvider),
     local: ref.watch(localAiProvider),
-    cloudMid: ref.watch(cloudGatewayMidProvider),
-    cloudFrontier: ref.watch(cloudGatewayFrontierProvider),
+    cloudMid: ref.watch(cloudAiProvider),
+    cloudFrontier: ref.watch(cloudAiProvider),
     // Cloud switched off (on-device mode) reads as localOnly, as in Research:
     // no cloud route, so a degraded local model still runs locally.
     privacy: () {
@@ -560,10 +551,8 @@ final explainerProvider = Provider<Explainer>(
   (ref) => Explainer(provider: ref.watch(explainAiProviderProvider)),
 );
 
-/// The Loop 3.4 tool set — Calculator (no network) plus Wikipedia and Web
-/// Search (both network, both cloud-only — see `researcher.dart`'s header).
-/// [WebSearchTool] talks to the gateway's own `/v1/tools/search`, never to
-/// Exa directly, using the same [sessionDeviceKey] identity as the LLM calls.
+/// The Loop 3.4 tool set — Calculator (no network) plus Wikipedia (network,
+/// cloud-only — see `researcher.dart`'s header).
 final toolsProvider = Provider<List<Tool>>(
   (ref) => [
     const CalculatorTool(),
@@ -576,12 +565,6 @@ final toolsProvider = Provider<List<Tool>>(
       ),
       isCloudAllowed: () => _mayUseCloud(ref),
     ),
-    WebSearchTool(
-      baseUrl: cloudGatewayBaseUrl,
-      deviceKey: sessionDeviceKey,
-      dio: gatewayDio(cloudGatewayBaseUrl),
-      isCloudAllowed: () => _mayUseCloud(ref),
-    ),
   ],
 );
 
@@ -590,7 +573,7 @@ final toolsProvider = Provider<List<Tool>>(
 /// (see `researcher.dart`'s header for why on-device is skipped this loop).
 final researcherProvider = Provider<Researcher>(
   (ref) => Researcher(
-    client: ref.watch(cloudGatewayMidProvider),
+    client: ref.watch(cloudAiProvider),
     tools: ref.watch(toolsProvider),
   ),
 );
@@ -612,6 +595,7 @@ final researchNotifierProvider =
             ref.read(settingsProvider).hasSeenFirstCloudCall,
         markFirstCloudCallSeen: () =>
             ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
+        providerName: () => _cloudProviderNameOf(ref),
       );
     });
 
@@ -793,8 +777,15 @@ final explainNotifierProvider =
         markFirstCloudCallSeen: () =>
             ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
         guard: ref.watch(aiQualityGuardProvider),
+        providerName: () => _cloudProviderNameOf(ref),
       );
     });
+
+/// The saved provider's name for the confirm copy, read when it is shown.
+String _cloudProviderNameOf(Ref ref) {
+  final s = ref.read(settingsProvider);
+  return cloudProviderName(presetId: s.cloudPresetId, baseUrl: s.cloudBaseUrl);
+}
 
 /// Live context for one page. autoDispose: analysis runs only while something
 /// (the AI sidebar) watches. The editor's scene state is observed through a

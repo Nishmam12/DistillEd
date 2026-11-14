@@ -8,10 +8,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:margo/core/providers/secret_store.dart';
 import 'package:margo/core/providers/settings_provider.dart';
 import 'package:margo/features/ai/data/llm/gemma_adapter.dart';
 import 'package:margo/features/ai/data/llm/llm_model_spec.dart';
-import 'package:margo/features/ai/data/providers/cloud_gateway_provider.dart';
+import 'package:margo/features/ai/data/providers/openai_compatible_provider.dart';
 import 'package:margo/features/ai/domain/ai_provider.dart';
 import 'package:margo/features/ai/domain/compute_backend.dart';
 import 'package:margo/features/ai/domain/page_content.dart';
@@ -60,8 +61,15 @@ class _Runtime implements LlmRuntime {
   Future<void> releaseModel() async {}
 }
 
-class _FakeCloud extends CloudGatewayProvider {
-  _FakeCloud() : super(baseUrl: 'http://unused', modelTier: 'cloud-mid');
+class _FakeCloud extends OpenAiCompatibleProvider {
+  _FakeCloud()
+      : super(
+          baseUrl: 'https://unused.example/v1',
+          apiKey: 'sk-test',
+          model: 'test-model',
+          presetId: 'openrouter',
+          isCloudAllowed: () => true,
+        );
 
   int calls = 0;
 
@@ -88,13 +96,20 @@ void main() {
 
   test('cloud-first analyses on the cloud without loading the device model',
       () async {
-    SharedPreferences.setMockInitialValues(
-        {'ai.cloudPrivacy': CloudPrivacy.allowCloudForNonSensitive.name});
+    // Cloud-first is only in effect with a saved provider, model and key.
+    SharedPreferences.setMockInitialValues({
+      'ai.cloudPrivacy': CloudPrivacy.allowCloudForNonSensitive.name,
+      'ai.cloudPresetId': 'openrouter',
+      'ai.cloudBaseUrl': 'https://openrouter.ai/api/v1',
+      'ai.cloudModel': 'test-model',
+    });
+    final secrets = InMemorySecretStore()..values['ai.cloudApiKey'] = 'sk-test';
     final runtime = _Runtime();
     final cloud = _FakeCloud();
     final c = ProviderContainer(overrides: [
+      secretStoreProvider.overrideWithValue(secrets),
       llmRuntimeProvider.overrideWithValue(runtime),
-      cloudGatewayMidProvider.overrideWithValue(cloud),
+      cloudAiProvider.overrideWithValue(cloud),
     ]);
     addTearDown(c.dispose);
     // Background analysis has no per-call prompt, so it only goes to the cloud
@@ -121,7 +136,7 @@ void main() {
     final cloud = _FakeCloud();
     final c = ProviderContainer(overrides: [
       llmRuntimeProvider.overrideWithValue(runtime),
-      cloudGatewayMidProvider.overrideWithValue(cloud),
+      cloudAiProvider.overrideWithValue(cloud),
     ]);
     addTearDown(c.dispose);
 

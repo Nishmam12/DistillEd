@@ -1292,7 +1292,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           resolveScope: resolveScope,
           languageCode: settings.recognitionLanguage,
           cloudEnabled: settings.cloudAiEnabled,
-          preferCloud: settings.aiMode.prefersCloud,
+          preferCloud: settings.prefersCloud,
         ));
     showSummarySheet(context);
   }

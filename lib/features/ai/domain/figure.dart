@@ -122,7 +122,7 @@ class FigureDescription {
   final double confidence;
 
   /// Machine id of the model that produced this, e.g. 'gemma-4-e2b-local' or
-  /// 'cloud-gateway-cloud-mid' — surfaced in "which model read this" UI and
+  /// `cloud-openrouter-<model>` — surfaced in "which model read this" UI and
   /// invaluable when a bad description needs tracing.
   final String modelId;
 

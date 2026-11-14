@@ -20,6 +20,9 @@ import '../../../core/providers/settings_provider.dart' show CloudPrivacy;
 import '../domain/ai_provider.dart' show AiException;
 import '../domain/features/researcher.dart';
 
+/// Named in the confirm copy when no provider name is wired.
+const _defaultProviderName = 'your cloud AI provider';
+
 sealed class ResearchState {
   const ResearchState();
 }
@@ -37,7 +40,13 @@ class ResearchComposing extends ResearchState {
 /// every Research request needs this gate, since there is no local route.
 class ResearchConfirmCloud extends ResearchState {
   final bool isFirstEver;
-  const ResearchConfirmCloud({required this.isFirstEver});
+
+  /// Who the question would go to, e.g. "OpenRouter".
+  final String providerName;
+  const ResearchConfirmCloud({
+    required this.isFirstEver,
+    this.providerName = _defaultProviderName,
+  });
 }
 
 class ResearchStreaming extends ResearchState {
@@ -70,14 +79,17 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
   final CloudPrivacy Function() _privacy;
   final bool Function() _hasSeenFirstCloudCall;
   final Future<void> Function() _markFirstCloudCallSeen;
+  final String Function() _providerName;
 
   ResearchNotifier({
     required this._researcher,
     required this._privacy,
     bool Function()? hasSeenFirstCloudCall,
     Future<void> Function()? markFirstCloudCallSeen,
+    String Function()? providerName,
   })  : _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
         _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
+        _providerName = providerName ?? (() => _defaultProviderName),
         super(const ResearchIdle());
 
   String? _lastQuestion;
@@ -105,7 +117,10 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
     }
 
     if (!cloudConfirmed) {
-      state = ResearchConfirmCloud(isFirstEver: !_hasSeenFirstCloudCall());
+      state = ResearchConfirmCloud(
+        isFirstEver: !_hasSeenFirstCloudCall(),
+        providerName: _providerName(),
+      );
       return;
     }
 
@@ -198,8 +213,8 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
   ///
   /// Deliberately does NOT await `subscription.cancel()`. Cancelling a
   /// subscription to an `async*` parked in an `await for` (which both
-  /// [Researcher.research] and the gateway's `generateWithTools` are) doesn't
-  /// complete its cancel future until the inner stream next emits or closes —
+  /// [Researcher.research] and the cloud provider's `generateWithTools` are)
+  /// doesn't complete its cancel future until the inner stream next emits or closes —
   /// so awaiting it would hang the UI during a cold start, the exact moment a
   /// user most wants out. `cancel()` still stops event delivery immediately
   /// (no `onData`/`onDone` fires afterward), so state can move on now; the

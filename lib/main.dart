@@ -4,7 +4,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
-import 'features/ai/data/providers/cloud_gateway_provider.dart' show loadDeviceKey;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -214,8 +213,6 @@ Future<void> _openAndRun() async {
   // One-time, gated, non-destructive migration of legacy page content into the
   // unified store. Never throws (legacy data and the old screens keep working).
   await runLaunchMigration();
-
-  await loadDeviceKey();
 
   final appDocsPath = (await getApplicationDocumentsDirectory()).path;
 

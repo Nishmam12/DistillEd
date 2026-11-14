@@ -11,7 +11,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/features/explainer.dart';
 import '../../domain/quality/ai_quality_guard.dart';
-import '../../domain/routing/intelligent_router.dart' show CloudTier;
 import '../ai_providers.dart';
 import '../explain_notifier.dart';
 import '../widgets/answer_tier_banner.dart';
@@ -330,15 +329,13 @@ class _ConfirmCloudBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(explainNotifierProvider.notifier);
-    final tierLabel =
-        state.tier == CloudTier.frontier ? 'a frontier cloud model' : 'a cloud model';
     final subtitle = state.isFirstEver
         ? 'This passage is long enough that explaining it well needs more '
             'than the on-device model can do — so this one request (and only '
-            'this one) would be sent to $tierLabel to answer. Nothing else '
+            'this one) would be sent to ${state.providerName} to answer. Nothing else '
             'about your notebook leaves the device, and you\'ll see this '
             'prompt every time unless you change it in Settings.'
-        : 'This would be sent to $tierLabel to answer.';
+        : 'This would be sent to ${state.providerName} to answer.';
 
     return Column(
       mainAxisSize: MainAxisSize.min,

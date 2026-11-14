@@ -53,18 +53,24 @@ void main() {
       expect(SettingsState().cloudAiEnabled, isFalse);
     });
 
-    test('cloudAiEnabled is derived from the mode', () {
+    test('cloudAiEnabled is derived from the mode and a saved key', () {
+      SettingsState withKey(AiProcessingMode mode) => SettingsState(
+            aiMode: mode,
+            cloudApiKey: 'test-key',
+            cloudBaseUrl: 'https://openrouter.ai/api/v1',
+            cloudModel: 'some/model',
+          );
+      expect(withKey(AiProcessingMode.onDevice).cloudAiEnabled, isFalse);
+      expect(withKey(AiProcessingMode.auto).cloudAiEnabled, isTrue);
+      expect(withKey(AiProcessingMode.cloudFirst).cloudAiEnabled, isTrue);
+      // A cloud mode with no key has nothing to call.
       expect(
-        SettingsState(aiMode: AiProcessingMode.onDevice).cloudAiEnabled,
+        SettingsState(aiMode: AiProcessingMode.auto).cloudAiEnabled,
         isFalse,
       );
       expect(
-        SettingsState(aiMode: AiProcessingMode.auto).cloudAiEnabled,
-        isTrue,
-      );
-      expect(
         SettingsState(aiMode: AiProcessingMode.cloudFirst).cloudAiEnabled,
-        isTrue,
+        isFalse,
       );
     });
   });

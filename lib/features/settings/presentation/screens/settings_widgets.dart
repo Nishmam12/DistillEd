@@ -587,7 +587,17 @@ class _AiModeRow extends StatelessWidget {
   final AiProcessingMode value;
   final ValueChanged<AiProcessingMode> onChanged;
 
-  const _AiModeRow({required this.value, required this.onChanged});
+  /// A cloud mode does nothing without a key, so the row says so. Waits for
+  /// [loaded]: before the keystore is read, every key looks missing.
+  final bool hasCloudKey;
+  final bool loaded;
+
+  const _AiModeRow({
+    required this.value,
+    required this.onChanged,
+    required this.hasCloudKey,
+    required this.loaded,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -609,13 +619,34 @@ class _AiModeRow extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: AppSegmentedControl<AiProcessingMode>(
-            value: value,
-            onChanged: onChanged,
-            segments: const [
-              AppSegment(value: AiProcessingMode.onDevice, label: 'On-device'),
-              AppSegment(value: AiProcessingMode.auto, label: 'Auto'),
-              AppSegment(value: AiProcessingMode.cloudFirst, label: 'Cloud'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSegmentedControl<AiProcessingMode>(
+                value: value,
+                onChanged: onChanged,
+                segments: const [
+                  AppSegment(
+                    value: AiProcessingMode.onDevice,
+                    label: 'On-device',
+                  ),
+                  AppSegment(value: AiProcessingMode.auto, label: 'Auto'),
+                  AppSegment(
+                    value: AiProcessingMode.cloudFirst,
+                    label: 'Cloud',
+                  ),
+                ],
+              ),
+              if (loaded && value.allowsCloud && !hasCloudKey) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Cloud modes need a key. Add one under Cloud AI provider.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: context.colors.textSecondary,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

@@ -769,6 +769,9 @@ class _SidebarHeader extends StatelessWidget {
 /// ASK; it is not a blanket "send my notes". The tooltip names the active mode,
 /// because a switch that silently widened a privacy setting would be exactly
 /// the kind of thing this codebase is careful not to ship.
+///
+/// With no cloud AI key saved it cannot turn on: tapping it leaves the mode
+/// alone and points to Settings, where the key is added.
 class CloudModelToggle extends ConsumerWidget {
   const CloudModelToggle({super.key});
 
@@ -783,6 +786,8 @@ class CloudModelToggle extends ConsumerWidget {
       // on/off, which is what made "on" look like it should mean "use the
       // cloud" when it really meant "you may fall back to it".
       message: switch (settings.aiMode) {
+        _ when !settings.hasCloudKey =>
+          'Cloud AI needs a key — add one in Settings',
         AiProcessingMode.onDevice =>
           'On-device only — everything runs on your device',
         AiProcessingMode.auto =>
@@ -798,8 +803,16 @@ class CloudModelToggle extends ConsumerWidget {
         excludeSemantics: true,
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: () =>
-              ref.read(settingsProvider.notifier).setCloudAiEnabled(!on),
+          onTap: () {
+            if (!on && !settings.hasCloudKey) {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                const SnackBar(
+                    content: Text('Add a cloud AI key in Settings first.')),
+              );
+              return;
+            }
+            ref.read(settingsProvider.notifier).setCloudAiEnabled(!on);
+          },
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 44),
             child: Padding(

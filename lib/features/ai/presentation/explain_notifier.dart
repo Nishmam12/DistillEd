@@ -25,6 +25,9 @@ import '../domain/features/explainer.dart';
 import '../domain/quality/ai_quality_guard.dart';
 import '../domain/routing/intelligent_router.dart' show CloudRouteDecision, CloudTier;
 
+/// Named in the confirm copy when no provider name is wired.
+const _defaultProviderName = 'your cloud AI provider';
+
 sealed class ExplainState {
   const ExplainState();
 }
@@ -83,7 +86,14 @@ class ExplainDownloadingModel extends ExplainState {
 class ExplainConfirmCloud extends ExplainState {
   final CloudTier tier;
   final bool isFirstEver;
-  const ExplainConfirmCloud({required this.tier, required this.isFirstEver});
+
+  /// Who the request would go to, e.g. "OpenRouter".
+  final String providerName;
+  const ExplainConfirmCloud({
+    required this.tier,
+    required this.isFirstEver,
+    this.providerName = _defaultProviderName,
+  });
 }
 
 class ExplainError extends ExplainState {
@@ -118,6 +128,7 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
   final Future<CloudRouteDecision?> Function(String content)? _evaluateCloudRoute;
   final bool Function() _hasSeenFirstCloudCall;
   final Future<void> Function() _markFirstCloudCallSeen;
+  final String Function() _providerName;
 
   /// The accuracy fail-safe. Optional, so a caller that hasn't wired it keeps
   /// the plain local stream.
@@ -134,8 +145,10 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
     bool Function()? hasSeenFirstCloudCall,
     Future<void> Function()? markFirstCloudCallSeen,
     this._guard,
+    String Function()? providerName,
   })  : _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
         _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
+        _providerName = providerName ?? (() => _defaultProviderName),
         super(const ExplainIdle());
 
   ExplainRequest? _last;
@@ -168,6 +181,7 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
           state = ExplainConfirmCloud(
             tier: decision.tier,
             isFirstEver: !_hasSeenFirstCloudCall(),
+            providerName: _providerName(),
           );
           return;
         }

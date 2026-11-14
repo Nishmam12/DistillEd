@@ -436,7 +436,7 @@ Read the real values, labels and relationships off the image — precision matte
       );
       return parseFigureJson(raw, modelId: cloudModelId);
     } on AiException {
-      // Offline, rate-limited, gateway down — the local read stands.
+      // Offline, rate-limited, provider down — the local read stands.
       return null;
     }
   }

@@ -394,7 +394,7 @@ final ragRetrieverProvider = Provider<RagRetriever>(
 final aiQualityGuardProvider = Provider<AiQualityGuard>((ref) {
   return AiQualityGuard(
     local: ref.watch(localAiProvider),
-    cloud: ref.watch(cloudGatewayMidProvider),
+    cloud: ref.watch(cloudAiProvider),
     cloudEnabled: () => ref.read(settingsProvider).cloudAiEnabled,
     privacy: () => ref.read(settingsProvider).cloudPrivacy,
     isOnline: () => const Reachability().isOnline(),
@@ -417,7 +417,7 @@ final notesQaProvider = Provider<NotesQa>(
 /// other page image ([mayUploadImages]), read at call time.
 final figureQaProvider = Provider<FigureQa>((ref) {
   final extractor = ref.watch(pageContentExtractorProvider);
-  final cloud = ref.watch(cloudGatewayMidProvider);
+  final cloud = ref.watch(cloudAiProvider);
   return FigureQa(
     // The page's figures as already read: a page that Ask found was indexed
     // with a deep read, so this is served from the read cache.
@@ -432,7 +432,7 @@ final figureQaProvider = Provider<FigureQa>((ref) {
     local: ref.watch(imageTranscriberProvider),
     cloud: cloud,
     canUseCloud: () async => mayUploadImages(ref.read(settingsProvider)),
-    preferCloud: () => ref.read(settingsProvider).aiMode.prefersCloud,
+    preferCloud: () => ref.read(settingsProvider).prefersCloud,
     localModelId: ref.watch(localAiProvider).capabilities.modelId,
     cloudModelId: cloud.capabilities.modelId,
   );
@@ -455,6 +455,7 @@ final askNotesNotifierProvider =
         cloudEnabled: () => ref.read(settingsProvider).cloudAiEnabled,
         setCloudEnabled: (enabled) =>
             ref.read(settingsProvider.notifier).setCloudAiEnabled(enabled),
+        hasCloudKey: () => ref.read(settingsProvider).hasCloudKey,
         privacyAsksEachTime: () =>
             ref.read(settingsProvider).cloudPrivacy == CloudPrivacy.askEachTime,
       );

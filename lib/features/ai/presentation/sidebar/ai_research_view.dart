@@ -1,5 +1,5 @@
 // The sidebar's Research surface (Phase 3, Loop 3.4): a free-form question
-// box whose answer may come from Calculator / Wikipedia / Web Search rather
+// box whose answer may come from Calculator / Wikipedia rather
 // than the model's own words — the opposite of "Ask your notes", which
 // refuses to look anywhere but the notes. Query-box shape mirrors
 // `ai_ask_view.dart`; the confirm-cloud gate and cloud badge mirror
@@ -149,9 +149,9 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
       ResearchUnavailable() => const _Centered(
           icon: Icons.cloud_off_outlined,
           title: 'Research needs cloud access',
-          subtitle: 'Research uses tools (calculator, lookups, web search) '
-              'that only work through the cloud tier. Allow cloud use in '
-              'Settings to use this feature.',
+          subtitle: 'Research uses tools (a calculator and Wikipedia) that '
+              'only work through a cloud AI provider. Add a cloud AI key in '
+              'Settings, and allow cloud use there, to use this feature.',
         ),
     };
   }
@@ -165,8 +165,8 @@ class _Hint extends StatelessWidget {
     return const _Centered(
       icon: Icons.lightbulb_outline,
       title: 'Ask anything',
-      subtitle: 'Research can reach beyond your notes — arithmetic, '
-          'encyclopedia lookups, and web search — using the cloud tier.',
+      subtitle: 'Research can reach beyond your notes — arithmetic and '
+          'Wikipedia lookups — using your cloud AI provider.',
     );
   }
 }
@@ -305,13 +305,11 @@ class _ToolUsedChip extends StatelessWidget {
   static const _icons = {
     'calculator': Icons.calculate_outlined,
     'wikipedia': Icons.menu_book_outlined,
-    'web_search': Icons.public,
   };
 
   static const _labels = {
     'calculator': 'Calculator',
     'wikipedia': 'Wikipedia',
-    'web_search': 'Web search',
   };
 
   @override
@@ -381,13 +379,13 @@ class _ConfirmCloudBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(researchNotifierProvider.notifier);
     final subtitle = state.isFirstEver
-        ? 'Research can use tools — a calculator, Wikipedia, and web '
-            'search — that only work through the cloud tier, so this '
-            'question (and only this one) would be sent there to answer. '
+        ? 'Research can use tools — a calculator and Wikipedia — that '
+            'only work through the cloud, so this question (and only this '
+            'one) would be sent to ${state.providerName} to answer. '
             'Nothing else about your notebook leaves the device, and '
             "you'll see this prompt every time unless you change it in "
             'Settings.'
-        : 'This question would be sent to the cloud to answer.';
+        : 'This question would be sent to ${state.providerName} to answer.';
 
     return Column(
       mainAxisSize: MainAxisSize.min,

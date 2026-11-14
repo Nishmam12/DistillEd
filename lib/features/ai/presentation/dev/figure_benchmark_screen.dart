@@ -73,7 +73,7 @@ class _FigureBenchmarkScreenState extends ConsumerState<FigureBenchmarkScreen> {
       // The cloud tier follows the same rule as every other page image.
       cloud: settings.cloudAiEnabled &&
               settings.cloudPrivacy == CloudPrivacy.allowCloudForNonSensitive
-          ? ref.read(cloudGatewayMidProvider)
+          ? ref.read(cloudAiProvider)
           : null,
     );
 
