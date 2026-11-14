@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/settings_provider.dart';
 import '../../domain/commands/scene_command.dart';
+import '../../domain/geometry/element_bounds.dart';
 import '../../domain/geometry/scene_geometry.dart';
 import '../../domain/geometry/scene_hit_test.dart';
 import '../../domain/geometry/selection_bounds.dart';
@@ -37,6 +38,7 @@ import '../render/scene_static_layer.dart';
 import '../render/selection_overlay_layer.dart';
 import '../state/editor_tool_controller.dart';
 import '../state/history_controller.dart';
+import '../state/inline_text_request.dart';
 import '../state/ink_gesture_providers.dart';
 import '../state/scene_controller.dart';
 import '../state/scene_image_cache_provider.dart';
@@ -44,7 +46,8 @@ import '../state/selection_controller.dart';
 import '../state/viewport_controller.dart';
 import '../tools/ink_gestures.dart';
 import '../tools/shape_factory.dart';
-import 'text_input_dialog.dart';
+import 'inline_text_editor.dart';
+import 'text_input_dialog.dart' show SceneTextResult;
 import '../../core/theme/app_colors.dart';
 
 part 'scene_canvas_tools.dart';
@@ -140,6 +143,28 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   // simply track the canvas.
   Size? _pageSize;
 
+  // ---- typing on the page ----
+  /// The text being typed on the page, or null.
+  InlineTextSession? _inline;
+
+  /// A fresh key per session, so each one starts with its own field.
+  GlobalKey<InlineTextEditorState> _inlineKey = GlobalKey();
+
+  /// A pointer went down on the page while typing: its lift commits the text
+  /// (unless it turns into a pinch, which keeps the text open).
+  bool _tapToCommit = false;
+
+  /// How far the page was scrolled up to keep the text above the keyboard;
+  /// given back when the text closes.
+  double _liftedBy = 0;
+
+  /// The editor is going away with the canvas (page switch, editor closed).
+  bool _closing = false;
+
+  /// The last tap on a text with the lasso, for double-tap to edit.
+  String? _lastTextTapId;
+  DateTime? _lastTextTapAt;
+
   ScenePageKey get _key =>
       (notebookId: widget.notebookId, pageId: widget.pageId);
 
@@ -154,6 +179,27 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     _imageCache = ref.read(sceneImageCacheProvider);
     // So the first pencil stroke already has its grain.
     FreehandPath.warmUp();
+  }
+
+  /// Opens [session] (with a fresh field) or, with null, closes the field.
+  /// Here rather than in the tools extension, which may not call [setState].
+  void _setInline(InlineTextSession? session) {
+    setState(() {
+      if (session != null) _inlineKey = GlobalKey();
+      _inline = session;
+    });
+  }
+
+  @override
+  void deactivate() {
+    // Leaving the page with text still open keeps what was typed. The tree is
+    // locked here, so the commit itself is pushed a moment later (see
+    // [_pushInline]); closing the editor commits earlier, as the route pops.
+    if (_inline != null) {
+      _closing = true;
+      _inlineKey.currentState?.commit();
+    }
+    super.deactivate();
   }
 
   @override
@@ -240,6 +286,12 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
 
   void _onDown(PointerEvent event, StrokePoint p) {
     _maybeOfferFingerScroll(event);
+    // Typing on the page: a touch elsewhere on it finishes the text and does
+    // nothing else.
+    if (_inline != null) {
+      _tapToCommit = true;
+      return;
+    }
     _eraserGesture = isEraserGesture(event);
     final tool = _gestureTool();
     // The tool's options panel is only ever meant to be seen briefly after
@@ -279,6 +331,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   }
 
   void _onMove(PointerEvent _, StrokePoint p) {
+    if (_tapToCommit) return;
     final tool = _gestureTool();
     switch (tool.tool) {
       case EditorTool.select:
@@ -310,6 +363,11 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   }
 
   void _onUp(PointerEvent _, StrokePoint p) {
+    if (_tapToCommit) {
+      _tapToCommit = false;
+      _inlineKey.currentState?.commit();
+      return;
+    }
     final tool = _gestureTool();
     _eraserGesture = false;
     switch (tool.tool) {
@@ -324,7 +382,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       case EditorTool.eraser:
         _onEraserUp(tool);
       case EditorTool.text:
-        _createText(_toScene(p));
+        _beginNewText(_toScene(p));
       case EditorTool.laser:
       case EditorTool.hand:
         break;
@@ -332,6 +390,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   }
 
   void _cancel() {
+    // A pinch or pan while typing keeps the text open.
+    _tapToCommit = false;
     _active.clear();
     _eraserGesture = false;
     _preview.value = null;
@@ -432,6 +492,27 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       }
     }
 
+    // Typing: a tool change finishes the text; "Edit text" in the selection
+    // bar opens an existing one here.
+    ref.listen(editorToolProvider.select((t) => t.tool),
+        (_, _) => _inlineKey.currentState?.commit());
+    ref.listen(inlineTextEditRequestProvider(_key), (_, id) {
+      if (id == null) return;
+      Future.microtask(() {
+        if (mounted) {
+          ref.read(inlineTextEditRequestProvider(_key).notifier).state = null;
+        }
+      });
+      final el = ref
+          .read(sceneControllerProvider(_key))
+          .where((e) => e.id == id)
+          .firstOrNull;
+      if (el is TextElement) _beginEdit(el);
+    });
+    final inline = _inline;
+    // Rebuild when the keyboard opens or closes, to keep the text above it.
+    if (inline != null) MediaQuery.viewInsetsOf(context);
+
     return LayoutBuilder(builder: (context, constraints) {
       final canvasSize = constraints.biggest;
       _syncViewportConfig(canvasSize);
@@ -441,7 +522,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
           ? (Offset.zero & (widget.pageSize ?? _pageSize ?? canvasSize))
           : null;
 
-      return ScenePointerListener(
+      final canvas = ScenePointerListener(
         isHandTool: tool.isHand,
         fingerPans: !fingerDraws,
         onMultiFingerTap: _onMultiFingerTap,
@@ -485,7 +566,11 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
                               builder: (_, hidden, _) => CustomPaint(
                                 painter: SceneStaticLayer(
                                   elements: elements,
-                                  hiddenIds: hidden,
+                                  // The text being edited is drawn by its
+                                  // field, not twice.
+                                  hiddenIds: inline?.editing == null
+                                      ? hidden
+                                      : {...hidden, inline!.editing!.id},
                                   imageResolver: _imageCache.get,
                                   imageEpoch: _imageCache.version,
                                 ),
@@ -555,6 +640,30 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
             ],
           ),
         ),
+      );
+      if (inline == null) return canvas;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          canvas,
+          Positioned.fill(
+            // Closing the editor with text open keeps it: committed as the
+            // route pops, while this page's undo history still exists.
+            child: PopScope(
+              onPopInvokedWithResult: (didPop, _) {
+                if (didPop) _inlineKey.currentState?.commit();
+              },
+              child: InlineTextEditor(
+                key: _inlineKey,
+                session: inline,
+                viewport: viewport,
+                onCommit: _commitInline,
+                onCancel: _endInline,
+                onFieldRect: _keepInlineVisible,
+              ),
+            ),
+          ),
+        ],
       );
     });
   }

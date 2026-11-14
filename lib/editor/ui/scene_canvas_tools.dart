@@ -131,6 +131,23 @@ extension _SceneCanvasTools on _SceneCanvasState {
     final hitId = SceneHitTest.topmostAt(scene, all);
     _lockedUnderTap =
         hitId == null ? SceneHitTest.topmostAt(scene, all, includeLocked: true) : null;
+
+    // Double-tap a text to type into it.
+    final hit = hitId == null ? null : all.firstWhere((e) => e.id == hitId);
+    final now = DateTime.now();
+    final lastAt = _lastTextTapAt;
+    if (hit is TextElement &&
+        !hit.isLocked &&
+        _lastTextTapId == hitId &&
+        lastAt != null &&
+        now.difference(lastAt) < const Duration(milliseconds: 450)) {
+      _lastTextTapId = null;
+      _selMode = _SelMode.none;
+      _beginEdit(hit);
+      return;
+    }
+    _lastTextTapId = hit is TextElement ? hitId : null;
+    _lastTextTapAt = now;
     final selCtl = ref.read(selectionProvider.notifier);
 
     if (hitId != null) {
@@ -449,35 +466,143 @@ extension _SceneCanvasTools on _SceneCanvasState {
     ]));
   }
 
-  Future<void> _createText(Offset scene) async {
+  // ---- typing on the page ----------------------------------------------------
+
+  /// The text tool touched the page at [scene]: open a field there.
+  void _beginNewText(Offset scene) {
     final tool = ref.read(editorToolProvider);
-    final result = await showSceneTextDialog(
-      context,
-      title: 'Add text',
-      confirmLabel: 'Add',
-    );
-    if (result == null || result.text.trim().isEmpty) return;
-    if (!mounted) return;
-    final body = result.text.trim();
-    final w = math.max(120.0, body.length * tool.fontSize * 0.6);
-    final text = TextElement(
-      id: _newId(),
-      zOrder: _scene.nextZOrder(),
-      geometryData: [scene.dx, scene.dy, scene.dx + w, scene.dy],
-      text: body,
-      color: tool.color,
+    _openInline(InlineTextSession(
+      origin: scene,
       fontSize: tool.fontSize,
       fontFamily: tool.fontFamily,
+      color: tool.color,
       opacity: tool.opacity,
-      isBold: result.isBold,
-      isItalic: result.isItalic,
-      align: result.align,
+    ));
+  }
+
+  /// Opens the field on an existing text, which is hidden while it is edited.
+  void _beginEdit(TextElement t) {
+    ref.read(selectionProvider.notifier).clear();
+    _openInline(InlineTextSession.edit(t, ElementBounds.of(t)));
+  }
+
+  void _openInline(InlineTextSession session) {
+    // Another text still open is finished first.
+    _inlineKey.currentState?.commit();
+    _setInline(session);
+  }
+
+  /// Closes the field: gives back any scroll used to keep it above the
+  /// keyboard.
+  void _endInline() {
+    _tapToCommit = false;
+    if (_closing) {
+      _inline = null;
+      return;
+    }
+    if (_liftedBy != 0) {
+      ref.read(viewportProvider.notifier).pan(Offset(0, _liftedBy));
+      _liftedBy = 0;
+    }
+    _setInline(null);
+  }
+
+  /// Pushes the text's undo step: at once, or, while the canvas is being taken
+  /// down (the widget tree is locked then and must not be told of changes), a
+  /// moment later on this page's history, which outlives the canvas.
+  void _pushInline(SceneCommand command) {
+    if (!_closing) {
+      _history.push(command);
+      return;
+    }
+    final history = _history;
+    Future.microtask(() => history.push(command));
+  }
+
+  /// The field's text, as one undo step: a new text is added (unless left
+  /// empty), an edited one updated, and one cleared to nothing deleted.
+  void _commitInline(SceneTextResult r, double width) {
+    final s = _inline;
+    if (s == null) return;
+    _endInline();
+    final body = r.text.trim();
+    final editing = s.editing;
+
+    if (editing == null) {
+      if (body.isEmpty) return;
+      final o = s.origin;
+      final text = TextElement(
+        id: _newId(),
+        zOrder: _scene.nextZOrder(),
+        geometryData: [o.dx, o.dy, o.dx + width, o.dy],
+        text: body,
+        color: s.color,
+        fontSize: s.fontSize,
+        fontFamily: s.fontFamily,
+        opacity: s.opacity,
+        isBold: r.isBold,
+        isItalic: r.isItalic,
+        align: r.align,
+      );
+      // Height from the same layout the painter uses, so a multi-line note's
+      // box encloses every line (selection, hit-testing, export crop).
+      final h = SceneElementPainter.layOutText(text, width).height;
+      _pushInline(AddElementsCommand([
+        text.copyWith(geometryData: [o.dx, o.dy, o.dx + width, o.dy + h])
+      ]));
+      return;
+    }
+
+    if (body.isEmpty) {
+      _pushInline(RemoveElementsCommand([editing]));
+      return;
+    }
+    final updated = editing.copyWith(
+      text: body,
+      isBold: r.isBold,
+      isItalic: r.isItalic,
+      align: r.align,
     );
-    // Height from the same layout the painter uses, so a multi-line note's box
-    // encloses every line (selection, hit-testing, export crop).
-    final h = SceneElementPainter.layOutText(text, w).height;
-    _history.push(AddElementsCommand([
-      text.copyWith(geometryData: [scene.dx, scene.dy, scene.dx + w, scene.dy + h])
+    if (updated.text == editing.text &&
+        updated.isBold == editing.isBold &&
+        updated.isItalic == editing.isItalic &&
+        updated.align == editing.align) {
+      return;
+    }
+    final rect = ElementBounds.of(editing);
+    final h = SceneElementPainter.layOutText(updated, rect.width).height;
+    _pushInline(UpdateElementsCommand(before: [
+      editing
+    ], after: [
+      updated.copyWith(geometryData: [
+        rect.left,
+        rect.top,
+        rect.right,
+        rect.top + math.max(h, updated.fontSize),
+      ])
     ]));
+  }
+
+  /// Scrolls the page up if the field (at [field], in canvas coordinates)
+  /// would sit under the keyboard. The editor does not resize for the keyboard,
+  /// so without this the text being typed could be hidden.
+  void _keepInlineVisible(Rect field) {
+    if (_inline == null || !mounted) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final canvasBottom = box.localToGlobal(Offset(0, box.size.height)).dy;
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final covered = math.max(0.0, keyboard - (screenHeight - canvasBottom));
+    final visibleBottom = box.size.height - covered - 16;
+    final over = field.bottom - visibleBottom;
+    if (over <= 1) return;
+    // Never push the top of the text (and its strip) off the top.
+    final lift = math.min(over, math.max(0.0, field.top - 64));
+    if (lift <= 1) return;
+    final vp = ref.read(viewportProvider.notifier);
+    final before = ref.read(viewportProvider).scrollY;
+    vp.pan(Offset(0, -lift));
+    _liftedBy += before - ref.read(viewportProvider).scrollY;
   }
 }

@@ -26,7 +26,7 @@ import '../../../../editor/state/library_controller.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../../../editor/state/scene_image_cache_provider.dart';
 import '../../../../editor/state/selection_controller.dart';
-import '../../../../editor/ui/text_input_dialog.dart';
+import '../../../../editor/state/inline_text_request.dart';
 import '../../../../editor/ui/controls/editor_controls_shared.dart';
 import '../../../../editor/ui/controls/save_to_library_dialog.dart';
 
@@ -90,7 +90,10 @@ class SelectionBar extends ConsumerWidget {
             IconButton(
               tooltip: 'Edit text',
               icon: const Icon(Icons.edit_outlined),
-              onPressed: () => _editText(context, ref, t),
+              // Opens the text for typing on the page itself.
+              onPressed: () => ref
+                  .read(inlineTextEditRequestProvider(pageKey).notifier)
+                  .state = t.id,
             ),
           // Formatting applies to every unlocked text element in the selection,
           // so it still works when text is selected alongside other elements.
@@ -552,45 +555,6 @@ class SelectionBar extends ConsumerWidget {
   /// so replacing a line with a paragraph would otherwise leave the bounds
   /// reporting a box far smaller than the visible text — which is what
   /// selection, hit-testing and AI note placement all read.
-  Future<void> _editText(
-    BuildContext context,
-    WidgetRef ref,
-    TextElement t,
-  ) async {
-    final result = await showSceneTextDialog(
-      context,
-      initial: t.text,
-      initialBold: t.isBold,
-      initialItalic: t.isItalic,
-      initialAlign: t.align,
-      title: 'Edit text',
-      confirmLabel: 'Save',
-    );
-    // Null is cancel. Empty is a deliberate clear, but an empty text element is
-    // invisible and unselectable — a trap — so treat it as "delete the text"
-    // being unavailable here and leave the element alone.
-    if (result == null || result.text.trim().isEmpty) return;
-
-    final updated = t.copyWith(
-      text: result.text.trim(),
-      isBold: result.isBold,
-      isItalic: result.isItalic,
-      align: result.align,
-    );
-    // Nothing changed — don't push an undo step for a no-op save.
-    if (updated.text == t.text &&
-        updated.isBold == t.isBold &&
-        updated.isItalic == t.isItalic &&
-        updated.align == t.align) {
-      return;
-    }
-    if (!context.mounted) return;
-
-    ref
-        .read(historyProvider(pageKey).notifier)
-        .push(UpdateElementsCommand(before: [t], after: [_refit(updated)]));
-  }
-
   Future<void> _saveToLibrary(BuildContext context, WidgetRef ref) async {
     final selected = _sel(ref);
     if (selected.isEmpty) return;

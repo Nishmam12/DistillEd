@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ import 'package:margo/data/persistence/lecture_recording_store.dart';
 import 'package:margo/data/persistence/scene_element_store.dart';
 import 'package:margo/domain/commands/scene_command.dart';
 import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/editor/state/editor_tool_controller.dart';
 import 'package:margo/editor/state/history_controller.dart';
 import 'package:margo/editor/state/page_notifier.dart';
 import 'package:margo/editor/state/scene_controller.dart';
@@ -158,6 +160,27 @@ void main() {
     // Close the panel so nothing it started is left running.
     await tester.tap(find.byTooltip('Close'));
     await tester.pump(const Duration(milliseconds: 300));
+  });
+
+  testWidgets('closing the editor with text still open keeps the text',
+      (tester) async {
+    await pumpHost(tester);
+    await openEditor(tester);
+    final key = keyOfFirstPage();
+    container.read(editorToolProvider.notifier).setTool(EditorTool.text);
+    await tester.pump();
+    final canvas = tester.getRect(find.byType(SceneCanvas));
+    final g = await tester.startGesture(canvas.center,
+        kind: PointerDeviceKind.stylus);
+    await g.up();
+    await tester.pump();
+    await tester.enterText(
+        find.byKey(const ValueKey('inlineTextField')), 'written, then left');
+
+    await close(tester);
+    final saved = await tester.runAsync(() => store.loadForPage(key.pageId));
+    expect(saved!.whereType<TextElement>().map((t) => t.text),
+        ['written, then left']);
   });
 
   testWidgets('a route pushed over the editor keeps its state', (tester) async {

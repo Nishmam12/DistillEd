@@ -235,7 +235,7 @@ Still to fix, in this order:
 | 8 | FIXED, needs device check. Toolbar runs under the AI panel; the Text tool is half hidden. | The tool row does not adapt to the narrowed canvas. | Sonnet 5.5 |
 | 9 | PARTLY FIXED (unlock now visible), needs device check. Imported PDF page sits small in the middle of the sheet and cannot be moved. | Locked on purpose (Phase 0), but the unlock is hidden, and the page is smaller than the sheet. | Sonnet 5.5 (unlock); Opus with Phase C (page size) |
 | 10 | FIXED, needs device check. AI panel should float: draggable and resizable. | New feature. | Opus 5.5 |
-| 11 | Text tool is a modal dialog over everything. | Phase B step 7 (inline text). | Opus 5.5 |
+| 11 | FIXED, needs device check. Text tool is a modal dialog over everything. | Phase B step 7 (inline text). | Opus 5.5 |
 
 Later, by the user's choice: overall design direction (panel title cut to
 "AI insigh…", an unlabelled switch beside it, crowded top bar), diagram

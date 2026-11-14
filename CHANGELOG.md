@@ -29,6 +29,15 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   instead of reloading it for every remaining picture.
 
 ### Added
+- **Type text straight onto the page.** The Text tool opens a field where you
+  tap, at the page's zoom and in the text's own font, size and colour, with a
+  small strip for bold, italic, alignment, ticking checklist items and Done.
+  Touching the page elsewhere, changing tool, switching page or closing the
+  note keeps the text; Escape throws it away. Double-tap a text with the lasso,
+  or use Edit text, to type into it where it is; clearing it deletes it. The
+  page scrolls up to keep the text above the keyboard, and back afterwards.
+  Each add, edit or delete is one undo step. Replaces the Add text / Edit text
+  dialog.
 - **The AI panel floats over the page** on tablets: drag it by its header,
   resize it from the bottom-right corner, and it remembers where it was left.
   The page keeps its full size underneath, and the panel lifts above the

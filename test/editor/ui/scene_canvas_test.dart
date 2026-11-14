@@ -267,29 +267,7 @@ void main() {
     expect(els.first, isA<SceneShapeElement>());
   });
 
-  testWidgets('text tool tap adds a TextElement via the dialog',
-      (tester) async {
-    final container = _container();
-    addTearDown(container.dispose);
-    await _pump(tester, container);
-
-    container.read(editorToolProvider.notifier).setTool(EditorTool.text);
-    await tester.pump();
-
-    final g = await tester.startGesture(const Offset(120, 120),
-        kind: PointerDeviceKind.stylus);
-    await g.up();
-    await tester.pumpAndSettle(); // dialog opens
-
-    await tester.enterText(find.byType(TextField), 'Hello');
-    await tester.tap(find.text('Add'));
-    await tester.pumpAndSettle();
-
-    final els = container.read(sceneControllerProvider(_key));
-    expect(els.length, 1);
-    expect(els.first, isA<TextElement>());
-    expect((els.first as TextElement).text, 'Hello');
-  });
+  // Typing text on the page: see inline_text_test.dart.
 
   testWidgets('select tool: marquee selects, then drag moves', (tester) async {
     final container = _container();
