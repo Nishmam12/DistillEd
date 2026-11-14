@@ -348,9 +348,82 @@ class _PlacementBar extends StatelessWidget {
   }
 }
 
-/// What the PDF import sheet returns: which pages (1-based, inclusive) and
-/// where they go.
-typedef PdfImportOptions = ({int first, int last, bool afterCurrent});
+/// What to do with photos that would put more pictures on a page than the AI
+/// reads there in one go.
+enum PhotoLimitChoice {
+  /// One page per photo (each becomes that page's background).
+  ownPages,
+
+  /// All on the current page anyway.
+  thisPage,
+}
+
+/// Asked when an import would leave a page holding more pictures than the AI
+/// reads in depth in one read ([limit]). Pops a [PhotoLimitChoice], or null
+/// when cancelled.
+///
+/// The first device test put 23 photos on one page; the on-device model read
+/// them for ten minutes and the app was killed. The reading is bounded now,
+/// but a page like that is still one the AI only reads a few pictures of at a
+/// time, so the user is told before it is made.
+class PhotoLimitDialog extends StatelessWidget {
+  /// Photos being imported.
+  final int adding;
+
+  /// Pictures already on the page.
+  final int onPage;
+
+  /// How many pictures one read of a page gives the AI.
+  final int limit;
+
+  const PhotoLimitDialog({
+    super.key,
+    required this.adding,
+    required this.onPage,
+    required this.limit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final total = adding + onPage;
+    return AlertDialog(
+      title: Text('$total pictures on one page'),
+      content: Text(
+        'The AI reads up to $limit pictures on a page at a time. With more, '
+        'the rest are read for their text only until you ask it to read on, '
+        'and the page is slower to work with.\n\n'
+        'Giving each photo a page of its own keeps every one fully readable.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          key: const ValueKey('photoLimitThisPage'),
+          onPressed: () =>
+              Navigator.of(context).pop(PhotoLimitChoice.thisPage),
+          child: const Text('Add to this page'),
+        ),
+        FilledButton(
+          key: const ValueKey('photoLimitOwnPages'),
+          onPressed: () =>
+              Navigator.of(context).pop(PhotoLimitChoice.ownPages),
+          child: const Text('A page each'),
+        ),
+      ],
+    );
+  }
+}
+
+/// What the PDF import sheet returns: which pages (1-based, inclusive), where
+/// they go, and whether their text is read straight away.
+typedef PdfImportOptions = ({
+  int first,
+  int last,
+  bool afterCurrent,
+  bool readText,
+});
 
 /// Asked after a PDF is picked: which pages to bring in, and whether they go
 /// after the page the user is on or at the end of the notebook.
@@ -371,6 +444,7 @@ class PdfImportSheet extends StatefulWidget {
 class _PdfImportSheetState extends State<PdfImportSheet> {
   late RangeValues _range = RangeValues(1, widget.pageCount.toDouble());
   bool _afterCurrent = true;
+  bool _readText = true;
 
   int get _first => _range.start.round();
   int get _last => _range.end.round();
@@ -423,7 +497,21 @@ class _PdfImportSheetState extends State<PdfImportSheet> {
               onSelectionChanged: (v) =>
                   setState(() => _afterCurrent = v.first),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            // The choice the first device test asked for: bring the pages in as
+            // they are, or also read them now.
+            SwitchListTile(
+              key: const ValueKey('pdfReadText'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Read the text now'),
+              subtitle: Text(_readText
+                  ? 'Every page is read after import, for search and the AI.'
+                  : 'Pages are imported as they are. Each is read when you '
+                      'open it with the AI panel.'),
+              value: _readText,
+              onChanged: (v) => setState(() => _readText = v),
+            ),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -438,6 +526,7 @@ class _PdfImportSheetState extends State<PdfImportSheet> {
                     first: _first,
                     last: _last,
                     afterCurrent: _afterCurrent,
+                    readText: _readText,
                   )),
                   child: Text('Import $chosen page${chosen == 1 ? '' : 's'}'),
                 ),

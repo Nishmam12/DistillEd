@@ -21,6 +21,7 @@ import '../../../domain/commands/scene_command.dart';
 import '../../../domain/geometry/element_bounds.dart';
 import '../../../domain/model/scene_element.dart';
 import '../../ai/domain/ai_scope.dart';
+import '../../ai/domain/page_content_extractor.dart' show kLocalImageReads;
 import '../../ai/presentation/ai_providers.dart';
 import '../../ai/presentation/notebook_index_notifier.dart';
 import '../../ai/presentation/sidebar/ai_sidebar.dart';
@@ -694,6 +695,37 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   Future<void> _importPhotos(ScenePageKey key) async {
     final imported = await _import.importPhotos('${widget.notebookId}');
     if (imported.isEmpty || !mounted) return;
+
+    // More pictures than the AI reads on one page in one go: say so first,
+    // and offer a page each.
+    final onPage =
+        ref.read(sceneControllerProvider(key)).whereType<ImageElement>().length;
+    if (imported.length + onPage > kLocalImageReads) {
+      final choice = await showDialog<PhotoLimitChoice>(
+        context: context,
+        builder: (_) => PhotoLimitDialog(
+          adding: imported.length,
+          onPage: onPage,
+          limit: kLocalImageReads,
+        ),
+      );
+      if (!mounted) return;
+      switch (choice) {
+        case null:
+          return;
+        case PhotoLimitChoice.ownPages:
+          final pageIds = <int>[];
+          for (final image in imported) {
+            final id = await _addImageOnNewPage(image);
+            if (!mounted) return;
+            if (id != null) pageIds.add(id);
+          }
+          _indexPages(pageIds, announce: false);
+          return;
+        case PhotoLimitChoice.thisPage:
+          break;
+      }
+    }
     _placeOnPage(key, imported);
   }
 
@@ -781,14 +813,20 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
     await _addImportedPages(pages,
         sourceName: SceneImportService.importSourceNameOf(path),
-        afterCurrent: options.afterCurrent);
+        afterCurrent: options.afterCurrent,
+        readNow: options.readText);
   }
 
   /// Adds one page per image of a multi-page import (a PDF, a scan) — right
   /// after the page the user was on when [afterCurrent], else at the end — and
   /// starts reading the whole document for search.
+  ///
+  /// With [readNow] off the pages are only imported: each is read when it is
+  /// opened with the AI panel, or by "Index all pages".
   Future<void> _addImportedPages(List<ImportedImage> pages,
-      {required String sourceName, bool afterCurrent = true}) async {
+      {required String sourceName,
+      bool afterCurrent = true,
+      bool readNow = true}) async {
     final startedOn =
         ref.read(pageProvider(widget.notebookId)).currentPageIndex;
     // One id for the whole document, stamped on every page it becomes. This is
@@ -824,7 +862,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     // Engine's per-page edit hook, so a page nobody opens is never indexed —
     // which used to make an imported PDF invisible to "Ask your notes" beyond
     // whichever single page happened to be on screen.
-    _indexPages(createdPageIds, announce: false);
+    if (readNow) _indexPages(createdPageIds, announce: false);
   }
 
   /// Kicks off a background bulk index of [pageIds] and reports the outcome.

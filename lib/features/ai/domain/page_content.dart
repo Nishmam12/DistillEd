@@ -71,6 +71,11 @@ class PageContent {
   /// Which parts of the page contributed (or couldn't), with bounds.
   final List<PageContentSource> sources;
 
+  /// Pictures that were read for their text only, because the read had already
+  /// given the vision model as many pictures as one pass allows, or was
+  /// stopped. Their figures are not in [figures]; a further read picks them up.
+  final int picturesReadLightly;
+
   const PageContent({
     required this.recognizedInkText,
     required this.typedText,
@@ -79,6 +84,7 @@ class PageContent {
     this.inkTopScore,
     this.figures = const [],
     this.sources = const [],
+    this.picturesReadLightly = 0,
   });
 
   /// This content with [transcript] as its lecture transcript.
@@ -90,6 +96,7 @@ class PageContent {
         inkTopScore: inkTopScore,
         figures: figures,
         sources: sources,
+        picturesReadLightly: picturesReadLightly,
       );
 
   static const empty = PageContent(recognizedInkText: '', typedText: '');

@@ -17,6 +17,7 @@ import '../../domain/ai_provider.dart';
 import '../../domain/context_engine/page_context.dart';
 import '../../domain/features/explainer.dart';
 import '../../domain/features/writing_assistant.dart';
+import '../../domain/page_read_control.dart';
 import '../ai_providers.dart';
 import 'ai_figures_strip.dart';
 import '../explain_notifier.dart';
@@ -64,7 +65,7 @@ class AiContextView extends ConsumerWidget {
           onExplainGap: (g) => explainGap(g, previous.currentTopic),
           onReread: reread,
         ),
-      AsyncLoading() => const _ReadingState(),
+      AsyncLoading() => _ReadingState(pageKey: pageKey),
       AsyncError() when previous != null && !previous.isEmpty => _ContextBody(
           pageKey: pageKey,
           context: previous,
@@ -98,15 +99,107 @@ String _gapExplainContent(String gap, String topic) {
 }
 
 class _ReadingState extends StatelessWidget {
-  const _ReadingState();
+  final ScenePageKey pageKey;
+  const _ReadingState({required this.pageKey});
 
   @override
   Widget build(BuildContext context) {
-    return const _CenteredMessage(
-      icon: Icons.auto_awesome_outlined,
-      title: 'Reading your page…',
-      subtitle: 'Following along as you write.',
-      showSpinner: true,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _CenteredMessage(
+          icon: Icons.auto_awesome_outlined,
+          title: 'Reading your page…',
+          subtitle: 'Following along as you write.',
+          showSpinner: true,
+        ),
+        _PictureReadProgress(pageKey: pageKey),
+      ],
+    );
+  }
+}
+
+/// "Picture 2 of 4" with a Stop button, while the vision model works through
+/// a page's pictures; nothing otherwise. Reading pictures is the slow part of
+/// a read (tens of seconds each on a tablet), so it is the part that says how
+/// far it has got and can be stopped.
+class _PictureReadProgress extends ConsumerWidget {
+  final ScenePageKey pageKey;
+  const _PictureReadProgress({required this.pageKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(pageContextProvider(pageKey).notifier);
+    return ValueListenableBuilder<PageReadProgress?>(
+      valueListenable: notifier.readProgress,
+      builder: (context, progress, _) {
+        if (progress == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  'Reading picture ${progress.picture} of ${progress.of}',
+                  style: TextStyle(
+                      fontSize: 13, color: context.colors.textSecondary),
+                ),
+              ),
+              const SizedBox(width: 4),
+              TextButton(
+                key: const ValueKey('stopReading'),
+                onPressed: notifier.stopReading,
+                child: Text('Stop',
+                    style: TextStyle(color: context.colors.accent)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Says how many pictures the last read left for later, and offers to go on.
+/// One read gives the vision model only a few pictures, so a page full of
+/// photos never holds the device for minutes.
+class _PicturesLeftNote extends ConsumerWidget {
+  final ScenePageKey pageKey;
+  const _PicturesLeftNote({required this.pageKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(pageContextProvider(pageKey).notifier);
+    return ValueListenableBuilder<int>(
+      valueListenable: notifier.picturesReadLightly,
+      builder: (context, left, _) {
+        if (left == 0) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  left == 1
+                      ? '1 more picture was read for its text only.'
+                      : '$left more pictures were read for their text only.',
+                  style: TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: context.colors.textSecondary),
+                ),
+              ),
+              TextButton(
+                key: const ValueKey('readMorePictures'),
+                onPressed: notifier.readMore,
+                child: Text('Read more',
+                    style: TextStyle(color: context.colors.accent)),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -275,8 +368,10 @@ class _ContextBody extends StatelessWidget {
           // happening" during a multi-second Gemma pass.
           if (refreshing) ...[
             const _RereadingBanner(),
+            _PictureReadProgress(pageKey: pageKey),
             const SizedBox(height: 14),
-          ],
+          ] else
+            _PicturesLeftNote(pageKey: pageKey),
           Row(
             children: [
               Text('CURRENT TOPIC',

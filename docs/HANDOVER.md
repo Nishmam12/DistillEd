@@ -152,6 +152,7 @@ On-device cost rules now in the code:
 | Page opened in the AI panel | At most two drawings read separately (`kLocalFigureRegions`), a look at a PDF page that mentions a figure, LaTeX/table follow-up. |
 | A question about a figure | One look. |
 | Cloud-first mode | None. The cloud reads up to four drawings per page. |
+| Pictures on a page (photos, scans), any mode | At most 4 uncached pictures per read on the device (1 in background indexing, 12 on the cloud). Read pictures are cached and free. A memory-pressure signal ends the deep pass. |
 
 Known limits of D2, none of them bugs:
 
@@ -208,14 +209,26 @@ Fixed already (`43ca580`): pens clashing (switching type kept the previous
 type's size and colour; eraser shared the pen's size), pens too thick,
 confusing pen icons, scribble-erase missing long strokes.
 
+Fixed already, **not yet tried on the device** (findings 1 to 4 below):
+one read gives the on-device vision model at most `kLocalImageReads` (4)
+pictures per page, `kEconomyImageReads` (1) in background indexing,
+`kCloudImageReads` (12) for the cloud; the rest get ML Kit text and are
+counted in `PageContent.picturesReadLightly`. A read's deep pass ends on
+Stop (`PageReadControl`) or when `ModelMemoryObserver.pressureCount` changes.
+The panel shows picture progress, Stop and "Read more"
+(`ContextEngineNotifier.readMore`, which must not vary the read or it would
+skip the cache). Photo import asks past the limit (`PhotoLimitDialog`); PDF
+import has "Read the text now". Finding 3 was partly a misreading: the
+action buttons were never disabled, the screenshot was dimmed by a dialog.
+
 Still to fix, in this order:
 
 | # | Finding | Cause (as far as known) | Model |
 | --- | --- | --- | --- |
-| 1 | **AI reads a page of 23 imported photos for 10+ minutes, then Android kills Margo** (`LOW_MEMORY`, 1.1 GB, in the foreground). | The image loop in `PageContentExtractor._extractFrom` has no per-page limit: 1 to 3 on-device vision calls per image. Likely also a release/reload loop: `ModelMemoryObserver` releases the model on every memory-pressure signal and the next image reloads 2.6 GB. Not confirmed: the log rotated before it could be read. | Fable 5.2 |
-| 2 | Importing many photos onto one page is allowed with no warning. | No cap. Same limit as #1; warn past it, offer "put the rest on new pages". | Fable 5.2, with #1 |
-| 3 | AI panel locked ("Reading your page…", all actions greyed) for the whole read. | Actions wait for the read. Needs progress, Cancel, and actions usable meanwhile. | Fable 5.2, with #1 |
-| 4 | PDF import: user wants a choice between importing pages as they are and extracting the text. | Not offered. | Fable 5.2, with #1 |
+| 1 | FIXED, needs device check. **AI reads a page of 23 imported photos for 10+ minutes, then Android kills Margo** (`LOW_MEMORY`, 1.1 GB, in the foreground). | The image loop in `PageContentExtractor._extractFrom` has no per-page limit: 1 to 3 on-device vision calls per image. Likely also a release/reload loop: `ModelMemoryObserver` releases the model on every memory-pressure signal and the next image reloads 2.6 GB. Not confirmed: the log rotated before it could be read. | Fable 5.2 |
+| 2 | FIXED, needs device check. Importing many photos onto one page is allowed with no warning. | No cap. Same limit as #1; warn past it, offer "put the rest on new pages". | Fable 5.2, with #1 |
+| 3 | FIXED (progress, Stop), needs device check. AI panel locked ("Reading your page…", all actions greyed) for the whole read. | Actions wait for the read. Needs progress, Cancel, and actions usable meanwhile. | Fable 5.2, with #1 |
+| 4 | FIXED, needs device check. PDF import: user wants a choice between importing pages as they are and extracting the text. | Not offered. | Fable 5.2, with #1 |
 | 5 | "Draw with finger" prompt has no clear way to turn it off. | The switch is only in Settings. | Sonnet 5.5 |
 | 6 | Three-finger redo responds rarely. | Not investigated (likely the tap time window). | Sonnet 5.5 |
 | 7 | Straighten fires when not wanted. | Always on, no setting, and the same 600 ms hold as Snap shapes (`ink_gestures.dart`, `scene_canvas_tools.dart` `_commitStroke`). | Sonnet 5.5 |

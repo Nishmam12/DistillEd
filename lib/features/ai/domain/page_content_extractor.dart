@@ -21,6 +21,7 @@
 // persistence details and trivially testable.
 
 import 'dart:convert' show utf8;
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -36,6 +37,7 @@ import 'scene_graph_figure.dart';
 import 'handwriting/ink_trust.dart';
 import 'language/language_detector.dart';
 import 'page_content.dart';
+import 'page_read_control.dart';
 import 'pdf_text_layer.dart';
 import 'pipeline_flags.dart';
 import 'read_cache.dart';
@@ -71,6 +73,22 @@ typedef LectureTranscriptReader = Future<String> Function(int pageId);
 /// located. Each is a full vision call, and a page read must stay cheap on a
 /// tablet. The cloud, when it is the one reading, gets [kMaxFigureRegions].
 const int kLocalFigureRegions = 2;
+
+/// The most pictures on one page that one read gives the ON-DEVICE vision
+/// model. Each is one to three full vision calls, tens of seconds apiece on a
+/// tablet; the first device test read a page of 23 photos for over ten minutes
+/// and was killed for memory. Pictures past this are read for their text only
+/// and picked up by the next read (finished ones are remembered, so they cost
+/// nothing then).
+const int kLocalImageReads = 4;
+
+/// As [kLocalImageReads], for a read nobody is waiting on (background
+/// indexing): the least that still reads an imported page.
+const int kEconomyImageReads = 1;
+
+/// As [kLocalImageReads], when the cloud reads first. It costs the device
+/// nothing, but each picture is still a network round trip.
+const int kCloudImageReads = 12;
 
 class PageContentExtractor {
   final Future<List<SceneElement>> Function(int pageId) _loadElements;
@@ -108,6 +126,10 @@ class PageContentExtractor {
   /// passes to save RAM, but — unlike a slow one — its output is not cut short,
   /// so what it reads is still worth remembering (as a text-only read).
   final bool Function()? _lite;
+
+  /// How many times the system has asked for memory back so far. A change
+  /// during a read ends that read's deep pass (see [_extractFrom]).
+  final int Function()? _memoryPressureCount;
 
   /// Read handwriting with ML Kit first and send Gemma only the lines it cannot
   /// be trusted on — see [kMlKitFirstInk].
@@ -152,6 +174,7 @@ class PageContentExtractor {
     FigureAnalyzer? figureAnalyzer,
     this._localIsSlow,
     this._lite,
+    this._memoryPressureCount,
     this._mlKitFirstInk = kMlKitFirstInk,
     this._readCache,
     this._readModelId,
@@ -313,15 +336,27 @@ class PageContentExtractor {
   /// that is lost for good: it happens when the page is opened in the AI
   /// panel, or when a question is asked about the figure. It changes nothing
   /// when the cloud is doing the reading.
+  ///
+  /// [control] lets the caller stop the deep reading and watch its progress.
+  /// However many pictures the page holds, one read gives the vision model at
+  /// most [kLocalImageReads] of them ([kEconomyImageReads] with [economy],
+  /// [kCloudImageReads] when the cloud reads first); the rest are read for
+  /// their text and counted in [PageContent.picturesReadLightly]. Pictures
+  /// already read are remembered and cost nothing, so reading again moves on
+  /// to the next ones.
   Future<PageContent> extractPage(
     int pageId, {
     required String languageCode,
     bool useVision = false,
     bool varyVision = false,
     bool economy = false,
+    PageReadControl? control,
   }) async {
     final content = await _extractFrom(await _loadElements(pageId), languageCode,
-        useVision: useVision, varyVision: varyVision, economy: economy);
+        useVision: useVision,
+        varyVision: varyVision,
+        economy: economy,
+        control: control);
     // What was SAID on this page, beside what was written. The whole page only —
     // a selection of elements has no recording in it.
     final transcript = await _transcriptOf(pageId);
@@ -373,8 +408,18 @@ class PageContentExtractor {
     required bool useVision,
     bool varyVision = false,
     bool economy = false,
+    PageReadControl? control,
   }) async {
     if (elements.isEmpty) return PageContent.empty;
+
+    // Deep reading ends for the rest of this pass when the caller stops it, or
+    // when the system asks for memory back: the model is released then, and
+    // asking for the next picture would load all of it again, picture after
+    // picture, until the app is killed.
+    final pressureAtStart = _memoryPressureCount?.call() ?? 0;
+    bool deepStopped() =>
+        (control?.stopped ?? false) ||
+        (_memoryPressureCount?.call() ?? 0) != pressureAtStart;
 
     final vision = useVision ? _visionOcr : null;
     // The figure pass is a second VLM call per visual, so it rides the same
@@ -395,6 +440,15 @@ class PageContentExtractor {
     final cloudFirst =
         figureAnalyzer != null && await figureAnalyzer.cloudReadsFirst();
     final thrifty = economy && !cloudFirst;
+    // How many pictures this pass may hand to the vision model.
+    final imageBudget = cloudFirst
+        ? kCloudImageReads
+        : thrifty
+            ? kEconomyImageReads
+            : kLocalImageReads;
+    final pictureCount = elements.whereType<ImageElement>().length;
+    var deepReads = 0;
+    var readLightly = 0;
     final sources = <PageContentSource>[];
     final figures = <FigureDescription>[];
 
@@ -464,7 +518,10 @@ class PageContentExtractor {
         // is checked against the page's own text.
         if (figureAnalyzer != null &&
             !thrifty &&
+            deepReads < imageBudget &&
+            !deepStopped() &&
             pdfTextSuggestsFigure(layer)) {
+          deepReads++;
           final figure = await _figureOfTextPage(e, layer, figureAnalyzer);
           if (figure != null) figures.add(_placed(figure, e));
         }
@@ -507,7 +564,21 @@ class PageContentExtractor {
       if (remembered != null) {
         text = remembered.text;
         figure = remembered.figure;
+      } else if (vision != null &&
+          (deepReads >= imageBudget || deepStopped())) {
+        // Over this pass's budget, or stopped: the picture's text by plain
+        // OCR, no vision model. Not remembered, so a later read still gives it
+        // the full treatment.
+        text = await _readImageTextOrEmpty(e.relativeImagePath);
+        readLightly++;
       } else {
+        if (vision != null) {
+          deepReads++;
+          control?.progress.value = PageReadProgress(
+            picture: deepReads,
+            of: math.min(imageBudget, pictureCount),
+          );
+        }
         // ONE vision call for both halves when both are wanted. Previously this
         // read the same bytes twice — an OCR pass and a figure pass — and each
         // one prefills the vision encoder at ~2300 patches (a tablet page read
@@ -566,7 +637,8 @@ class PageContentExtractor {
       elements,
       writingIds: writingIds,
       inkLines: inkLines,
-      analyzer: figureAnalyzer,
+      // A stopped read does not go on to the drawings either.
+      analyzer: deepStopped() ? null : figureAnalyzer,
       vary: varyVision,
       maxRegions: cloudFirst
           ? kMaxFigureRegions
@@ -583,6 +655,7 @@ class PageContentExtractor {
       recognizedImageText: imageTexts.join('\n\n'),
       figures: figures,
       sources: sources,
+      picturesReadLightly: readLightly,
     );
   }
 

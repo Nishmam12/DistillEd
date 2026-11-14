@@ -39,9 +39,63 @@ void main() {
   testWidgets('by default every page goes after the current page',
       (tester) async {
     final options = await open(tester, pageCount: 12);
-    expect(options, (first: 1, last: 12, afterCurrent: true));
+    expect(options,
+        (first: 1, last: 12, afterCurrent: true, readText: true));
     expect(find.text('Import 12 pages'), findsNothing,
         reason: 'the sheet has closed');
+  });
+
+  testWidgets('"Read the text now" can be switched off: pages as they are',
+      (tester) async {
+    final options = await open(tester, pageCount: 3, interact: () async {
+      await tester.tap(find.byKey(const ValueKey('pdfReadText')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('imported as they are'), findsOneWidget);
+    });
+    expect(options?.readText, isFalse);
+  });
+
+  group('too many photos for one page', () {
+    Future<PhotoLimitChoice?> ask(WidgetTester tester, Key? tap) async {
+      PhotoLimitChoice? result;
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                result = await showDialog<PhotoLimitChoice>(
+                  context: context,
+                  builder: (_) => const PhotoLimitDialog(
+                      adding: 10, onPage: 2, limit: 4),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.text('12 pictures on one page'), findsOneWidget);
+      expect(find.textContaining('up to 4 pictures'), findsOneWidget);
+      await tester.tap(tap == null ? find.text('Cancel') : find.byKey(tap));
+      await tester.pumpAndSettle();
+      return result;
+    }
+
+    testWidgets('a page each', (tester) async {
+      expect(await ask(tester, const ValueKey('photoLimitOwnPages')),
+          PhotoLimitChoice.ownPages);
+    });
+
+    testWidgets('add to this page anyway', (tester) async {
+      expect(await ask(tester, const ValueKey('photoLimitThisPage')),
+          PhotoLimitChoice.thisPage);
+    });
+
+    testWidgets('cancel adds nothing', (tester) async {
+      expect(await ask(tester, null), isNull);
+    });
   });
 
   testWidgets('choosing "At the end" is passed back', (tester) async {

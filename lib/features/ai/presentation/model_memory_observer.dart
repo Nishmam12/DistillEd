@@ -16,13 +16,23 @@ class ModelMemoryObserver with WidgetsBindingObserver {
 
   ModelMemoryObserver({required this._release});
 
+  /// How many times the system has reported memory pressure. A page read that
+  /// sees this change stops asking for the model (see
+  /// `PageContentExtractor`): the model was just let go, and each further
+  /// picture would load it again.
+  int get pressureCount => _pressureCount;
+  int _pressureCount = 0;
+
   /// Starts listening. Safe to call once; pair with [detach].
   void attach() => WidgetsBinding.instance.addObserver(this);
 
   void detach() => WidgetsBinding.instance.removeObserver(this);
 
   @override
-  void didHaveMemoryPressure() => _releaseNow('memory pressure');
+  void didHaveMemoryPressure() {
+    _pressureCount++;
+    _releaseNow('memory pressure');
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

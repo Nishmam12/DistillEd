@@ -15,6 +15,22 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+### Fixed
+- **A page full of photos no longer hangs the AI or gets the app killed.**
+  One read gives the on-device model at most 4 pictures per page (1 in
+  background indexing, 12 when the cloud reads); the rest are read for their
+  text and picked up by **Read more**. The first device test read 23 photos
+  on one page for over ten minutes until Android killed the app for memory.
+- A read stops asking for the model when Android reports memory pressure,
+  instead of reloading it for every remaining picture.
+
+### Added
+- The AI panel shows "Reading picture 2 of 4" with a **Stop** button, and
+  says how many pictures were left for later.
+- Importing photos that would put more than 4 pictures on a page asks first,
+  and offers a page each.
+- PDF import has a **Read the text now** switch: off imports the pages as
+  they are and reads each when it is opened.
 
 ## [5.1.1] - 2026-11-14
 ### Changed

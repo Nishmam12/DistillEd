@@ -27,6 +27,7 @@ import '../domain/context_engine/page_context.dart';
 import '../domain/figure.dart';
 import '../domain/page_content.dart';
 import '../domain/page_content_extractor.dart';
+import '../domain/page_read_control.dart';
 
 /// Session-lifetime cache of the last successful analysis per page, keyed by
 /// the content signature it was computed from.
@@ -121,6 +122,32 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
   bool _rerunWhenDone = false;
   bool _forceNext = false;
 
+  /// The next forced read is "read more", not "read again": it keeps what is
+  /// already read (so those pictures cost nothing) and goes on to the next.
+  bool _moreNext = false;
+
+  /// The read in flight, while there is one.
+  PageReadControl? _control;
+
+  /// Which picture the vision model is on, while a deep read runs; else null.
+  final ValueNotifier<PageReadProgress?> readProgress = ValueNotifier(null);
+
+  /// Pictures the last read gave only a text read, because one read gives the
+  /// vision model a limited number or because it was stopped. [readMore] goes
+  /// on to them.
+  final ValueNotifier<int> picturesReadLightly = ValueNotifier(0);
+
+  /// Ends the deep reading of the read in flight. The picture being read is
+  /// finished (a model call cannot be interrupted); the rest are read for
+  /// their text only, and the page's insights follow at once.
+  void stopReading() => _control?.stop();
+
+  /// Reads the pictures the last read left for later ([picturesReadLightly]).
+  Future<void> readMore() {
+    _moreNext = true;
+    return refresh();
+  }
+
   /// Whether the heavy Gemma-vision read has run for this page yet. The first
   /// readable analysis (sidebar open) and every [refresh] (Re-read) use Gemma
   /// as the primary recogniser; edits in between use the light ML Kit path so a
@@ -176,6 +203,8 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
     }
     final force = _forceNext;
     _forceNext = false;
+    final more = _moreNext;
+    _moreNext = false;
     final signature = sceneContentSignature(_elements);
     if (!force && signature == _lastAttemptedSignature) return;
 
@@ -188,6 +217,11 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
 
     _running = true;
     _lastAttemptedSignature = signature;
+    final control = PageReadControl();
+    _control = control;
+    control.progress.addListener(() {
+      if (mounted) readProgress.value = control.progress.value;
+    });
     try {
       if (!_hasReadableContent(_elements)) {
         _cache.save(_pageId, signature, PageContext.empty);
@@ -219,11 +253,13 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       // "read it again" — sample a fresh reading so the result can actually
       // change, rather than repeating the identical deterministic pass. The
       // first successful read (incl. after a model download) stays deterministic.
-      final varyVision = force && _visionReadDone;
+      // "Read more" is the exception: it must find the pictures already read.
+      final varyVision = force && _visionReadDone && !more;
       Future<PageContent> extract() => _extractor.extractPage(_pageId,
           languageCode: language,
           useVision: useVision,
-          varyVision: varyVision);
+          varyVision: varyVision,
+          control: control);
       // An empty read is only a failure when the model failed to RUN: a page
       // whose reads threw (memory pressure kills or reloads the model) comes
       // back empty exactly like a blank one, and caching that would leave the
@@ -247,6 +283,11 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
         }
       }
       _visionReadDone = true;
+      if (mounted) {
+        // The deep reading is over; what follows is the analysis.
+        readProgress.value = null;
+        if (useVision) picturesReadLightly.value = content.picturesReadLightly;
+      }
       _notifyFigures(content.figures, deep: useVision);
       final PageContext context;
       try {
@@ -282,6 +323,9 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
       }
     } finally {
       _running = false;
+      _control = null;
+      control.dispose();
+      if (mounted) readProgress.value = null;
       if (_rerunWhenDone) {
         _rerunWhenDone = false;
         // Content changed mid-run; the signature check decides if it matters.
@@ -335,6 +379,11 @@ class ContextEngineNotifier extends StateNotifier<AsyncValue<PageContext>> {
   @override
   void dispose() {
     _timer?.cancel();
+    // A read still in flight when the panel closes has nobody waiting on its
+    // pictures: finish it cheaply instead of holding the model for minutes.
+    _control?.stop();
+    readProgress.dispose();
+    picturesReadLightly.dispose();
     super.dispose();
   }
 }

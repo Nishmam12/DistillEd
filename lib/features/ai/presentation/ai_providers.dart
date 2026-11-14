@@ -390,6 +390,9 @@ final pageContentExtractorProvider = Provider<PageContentExtractor>((ref) {
     lite: () =>
         !ref.read(settingsProvider).aiMode.prefersCloud &&
         ref.read(deviceProfileProvider) != AiProfile.full,
+    // A read stops its deep pass when the system asks for memory back.
+    memoryPressureCount: () =>
+        ref.read(modelMemoryObserverProvider).pressureCount,
     readCache: ref.watch(readCacheProvider),
     // Which model answers a read right now: part of the cache key, so switching
     // between on-device and cloud-first reads afresh rather than serving one

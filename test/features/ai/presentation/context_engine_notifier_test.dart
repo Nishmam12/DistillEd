@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -8,6 +10,7 @@ import 'package:margo/features/ai/domain/context_engine/context_engine.dart';
 import 'package:margo/features/ai/domain/context_engine/page_context.dart';
 import 'package:margo/features/ai/domain/page_content.dart';
 import 'package:margo/features/ai/domain/page_content_extractor.dart';
+import 'package:margo/features/ai/domain/page_read_control.dart';
 import 'package:margo/features/ai/presentation/context_engine_notifier.dart';
 
 // ---- Fakes ------------------------------------------------------------------
@@ -70,22 +73,45 @@ class FakeExtractor extends PageContentExtractor {
           recognition: RecordingRecognition(),
         );
 
+  /// How many pictures each read reports as left for later.
+  int picturesLeft = 0;
+
+  /// When set, a read reports this progress and then waits here, so a test can
+  /// act while it is in flight.
+  Completer<void>? hold;
+
+  /// The control handed to the read in flight (or the last one).
+  PageReadControl? lastControl;
+
+  /// Whether the last read had been stopped by the time it finished.
+  bool? lastReadWasStopped;
+
   @override
   Future<PageContent> extractPage(int pageId,
       {required String languageCode,
       bool useVision = false,
       bool varyVision = false,
-      bool economy = false}) async {
+      bool economy = false,
+      PageReadControl? control}) async {
     final index = calls++;
     visionFlags.add(useVision);
     varyFlags.add(varyVision);
+    lastControl = control;
+    final waiting = hold;
+    if (waiting != null) {
+      control?.progress.value = const PageReadProgress(picture: 1, of: 4);
+      await waiting.future;
+    }
+    lastReadWasStopped = control?.stopped;
     if (index < failOnCall.length && failOnCall[index]) {
       _failures++;
       return PageContent.empty;
     }
     if (blankPage) return PageContent.empty;
-    return const PageContent(
-        recognizedInkText: 'recognized note text', typedText: '');
+    return PageContent(
+        recognizedInkText: 'recognized note text',
+        typedText: '',
+        picturesReadLightly: picturesLeft);
   }
 }
 
@@ -207,6 +233,66 @@ void main() {
     expect(recognition.ensureCalls, 0);
     expect(n.state.value?.currentTopic, 'Cached topic');
     n.dispose();
+  });
+
+  group('a page with more pictures than one read takes', () {
+    test('says how many were left, and Read more goes on without re-reading',
+        () async {
+      extractor.picturesLeft = 8;
+      final n = notifier();
+      n.onSceneChanged(ink);
+      await settle();
+      expect(n.picturesReadLightly.value, 8);
+
+      extractor.picturesLeft = 4;
+      await n.readMore();
+      expect(extractor.visionFlags.last, isTrue, reason: 'a deep read');
+      expect(extractor.varyFlags.last, isFalse,
+          reason: 'a varied read skips what is remembered and would start '
+              'over on the same pictures');
+      expect(n.picturesReadLightly.value, 4);
+      n.dispose();
+    });
+
+    test('Re-read still samples afresh', () async {
+      final n = notifier();
+      n.onSceneChanged(ink);
+      await settle();
+      await n.refresh();
+      expect(extractor.varyFlags.last, isTrue);
+      n.dispose();
+    });
+
+    test('progress is shown while pictures are read, and Stop reaches the read',
+        () async {
+      extractor.hold = Completer<void>();
+      final n = notifier();
+      n.onSceneChanged(ink);
+      await settle();
+
+      expect(n.readProgress.value, const PageReadProgress(picture: 1, of: 4));
+      n.stopReading();
+      extractor.hold!.complete();
+      await settle();
+
+      expect(extractor.lastReadWasStopped, isTrue);
+      expect(n.readProgress.value, isNull, reason: 'the read is over');
+      expect(n.state.value?.currentTopic, 'Topic A',
+          reason: 'a stopped read still ends in insights');
+      n.dispose();
+    });
+
+    test('closing the panel stops the deep reading of a read in flight',
+        () async {
+      extractor.hold = Completer<void>();
+      final n = notifier();
+      n.onSceneChanged(ink);
+      await settle();
+      n.dispose();
+      extractor.hold!.complete();
+      await settle();
+      expect(extractor.lastReadWasStopped, isTrue);
+    });
   });
 
   group('a read that failed to run', () {
