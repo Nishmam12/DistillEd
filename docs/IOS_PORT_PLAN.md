@@ -83,12 +83,16 @@ Done when: `flutter pub get` succeeds and `flutter analyze` is clean.
 - The app icon is still Flutter's default: the only Margo artwork in the repo
   is the 192 px Android launcher icon, too small for iOS (needs 1024 px, opaque,
   no transparency). Supply a 1024 px source.
-- `Podfile.lock` does not exist yet; it is produced by the first CI or Mac
-  build and should be committed then.
+- `ios/Podfile.lock` was taken from the first green CI run and should be
+  committed; on the Mac `pod install` will keep it in sync.
 
 ## Phase 2: macOS CI job (Linux, verified in the cloud)
 
-**Status: written, not yet run (needs the branch pushed).** A separate workflow,
+**Status: green (run 43575700965, 2026-11-14): `flutter build ios --debug
+--no-codesign` produces `Runner.app`, so Dart, the Swift channels and every pod
+(ML Kit, LiteRT-LM) compile and link on a clean macOS runner. Compiling is not
+running: nothing has been launched on a device. `ios/Podfile.lock` came from
+this run.** First run failed on a Podfile ordering bug, fixed in db84639. A separate workflow,
 `.github/workflows/ios.yml`, so `ci.yml` and Android CI are untouched. It runs
 on pushes to `iPadOS-build` and by hand. It does:
 
