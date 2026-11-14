@@ -108,6 +108,9 @@ void main() {
     double width = kAiSidebarWidth,
     ValueChanged<double>? onResize,
     VoidCallback? onResizeEnd,
+    bool floating = false,
+    VoidCallback? onToggleFloating,
+    ValueChanged<Offset>? onMove,
   }) {
     return tester.pumpWidget(
       ProviderScope(
@@ -133,12 +136,46 @@ void main() {
               width: width,
               onResize: onResize,
               onResizeEnd: onResizeEnd,
+              floating: floating,
+              onToggleFloating: onToggleFloating,
+              onMove: onMove,
             ),
           ),
         ),
       ),
     );
   }
+
+  group('floating', () {
+    testWidgets('the header button switches between docked and floating',
+        (tester) async {
+      var toggled = 0;
+      await pump(tester, onToggleFloating: () => toggled++);
+      expect(find.byTooltip('Float over the page'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('aiPanelFloatToggle')));
+      expect(toggled, 1);
+
+      await pump(tester, floating: true, onToggleFloating: () => toggled++);
+      expect(find.byTooltip('Dock beside the page'), findsOneWidget);
+    });
+
+    testWidgets('floating, dragging the header moves the card',
+        (tester) async {
+      final moves = <Offset>[];
+      await pump(tester, floating: true, onMove: moves.add);
+      await tester.drag(
+          find.byKey(const ValueKey('aiPanelDragHandle')), const Offset(-50, 30));
+      final total = moves.fold(Offset.zero, (a, b) => a + b);
+      expect(total, const Offset(-50, 30));
+      expect(find.bySemanticsLabel('Resize AI panel'), findsNothing,
+          reason: 'the card has its own corner grip, not the docked edge');
+    });
+
+    testWidgets('docked, there is no drag handle', (tester) async {
+      await pump(tester);
+      expect(find.byKey(const ValueKey('aiPanelDragHandle')), findsNothing);
+    });
+  });
 
   group('resizing the docked panel', () {
     testWidgets('dragging the left edge left asks for a wider panel',

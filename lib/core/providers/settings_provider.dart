@@ -1,3 +1,5 @@
+import 'dart:ui' show Rect;
+
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
@@ -156,6 +158,16 @@ class SettingsState {
   /// Clamped to what fits when it is shown.
   final double aiPanelWidth;
 
+  /// On wide screens the AI panel floats over the page as a card that can be
+  /// moved and resized, instead of docking beside it and narrowing the page.
+  /// On by default (asked for in the first device test).
+  final bool aiPanelFloating;
+
+  /// Where the floating AI panel was last left, in logical pixels within the
+  /// editor's page area. Null until it is first moved. Clamped to fit when
+  /// shown.
+  final Rect? aiPanelFloatRect;
+
   /// Record lectures for transcription: 16 kHz mono WAV (about 2 MB a minute)
   /// instead of compressed AAC (about 0.5 MB), because the speech model reads
   /// nothing else — and transcribe them on the device once they stop. Off by
@@ -201,6 +213,8 @@ class SettingsState {
     this.fingerDraws = true,
     this.stylusTipShown = false,
     this.aiPanelWidth = 340,
+    this.aiPanelFloating = true,
+    this.aiPanelFloatRect,
     this.autoBackup = false,
     this.backupFrequency = BackupFrequency.afterEditing,
     this.huggingFaceToken = '',
@@ -233,6 +247,8 @@ class SettingsState {
     bool? fingerDraws,
     bool? stylusTipShown,
     double? aiPanelWidth,
+    bool? aiPanelFloating,
+    Rect? aiPanelFloatRect,
     bool? autoBackup,
     BackupFrequency? backupFrequency,
     String? huggingFaceToken,
@@ -253,6 +269,8 @@ class SettingsState {
       fingerDraws: fingerDraws ?? this.fingerDraws,
       stylusTipShown: stylusTipShown ?? this.stylusTipShown,
       aiPanelWidth: aiPanelWidth ?? this.aiPanelWidth,
+      aiPanelFloating: aiPanelFloating ?? this.aiPanelFloating,
+      aiPanelFloatRect: aiPanelFloatRect ?? this.aiPanelFloatRect,
       autoBackup: autoBackup ?? this.autoBackup,
       backupFrequency: backupFrequency ?? this.backupFrequency,
       huggingFaceToken: huggingFaceToken ?? this.huggingFaceToken,
@@ -286,6 +304,17 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kFingerDraws = 'ui.fingerDraws';
   static const _kStylusTipShown = 'ui.stylusTipShown';
   static const _kAiPanelWidth = 'ui.aiPanelWidth';
+  static const _kAiPanelFloating = 'ui.aiPanelFloating';
+  static const _kAiPanelFloatRect = 'ui.aiPanelFloatRect';
+
+  /// A rect saved as four numbers (left, top, width, height), or null when
+  /// missing or unreadable.
+  static Rect? _readRect(List<String>? raw) {
+    if (raw == null || raw.length != 4) return null;
+    final v = raw.map(double.tryParse).toList();
+    if (v.any((x) => x == null || !x.isFinite)) return null;
+    return Rect.fromLTWH(v[0]!, v[1]!, v[2]!, v[3]!);
+  }
   static const _kAutoBackup = 'backup.auto';
   static const _kBackupFrequency = 'backup.frequency';
   static const _kHuggingFaceToken = 'ai.huggingFaceToken';
@@ -327,6 +356,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       fingerDraws: prefs.getBool(_kFingerDraws) ?? true,
       stylusTipShown: prefs.getBool(_kStylusTipShown) ?? false,
       aiPanelWidth: prefs.getDouble(_kAiPanelWidth) ?? 340,
+      aiPanelFloating: prefs.getBool(_kAiPanelFloating) ?? true,
+      aiPanelFloatRect: _readRect(prefs.getStringList(_kAiPanelFloatRect)),
       autoBackup: prefs.getBool(_kAutoBackup) ?? false,
       backupFrequency:
           BackupFrequency.values.asNameMap()[prefs.getString(_kBackupFrequency)] ??
@@ -476,6 +507,21 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(backupFrequency: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kBackupFrequency, value.name);
+  }
+
+  Future<void> setAiPanelFloating(bool value) async {
+    state = state.copyWith(aiPanelFloating: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kAiPanelFloating, value);
+  }
+
+  Future<void> setAiPanelFloatRect(Rect value) async {
+    state = state.copyWith(aiPanelFloatRect: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_kAiPanelFloatRect, [
+      for (final v in [value.left, value.top, value.width, value.height])
+        v.toString(),
+    ]);
   }
 
   Future<void> setAiPanelWidth(double value) async {

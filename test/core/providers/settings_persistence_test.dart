@@ -5,7 +5,7 @@
 // Theme mode replaced a `darkMode` bool that persisted fine but drove nothing —
 // see the migration group at the bottom, which covers upgrading from it.
 
-import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter/material.dart' show Rect, ThemeMode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -30,6 +30,32 @@ void main() {
       expect(notifier.state.themeMode, AppThemeMode.system);
       expect(notifier.state.devMode, isFalse);
       expect(notifier.state.exportDefault, 'PNG');
+    });
+  });
+
+  group('floating AI panel', () {
+    test('floats by default, with no remembered place yet', () async {
+      final s = (await _restored()).state;
+      expect(s.aiPanelFloating, isTrue);
+      expect(s.aiPanelFloatRect, isNull);
+    });
+
+    test('docked or floating, and where it was left, survive a relaunch',
+        () async {
+      final first = await _restored();
+      await first.setAiPanelFloating(false);
+      await first.setAiPanelFloatRect(const Rect.fromLTWH(40, 60, 380, 520));
+
+      final again = (await _restored()).state;
+      expect(again.aiPanelFloating, isFalse);
+      expect(again.aiPanelFloatRect, const Rect.fromLTWH(40, 60, 380, 520));
+    });
+
+    test('an unreadable saved place is ignored, not a crash', () async {
+      SharedPreferences.setMockInitialValues({
+        'ui.aiPanelFloatRect': ['x', '1', '2'],
+      });
+      expect((await _restored()).state.aiPanelFloatRect, isNull);
     });
   });
 

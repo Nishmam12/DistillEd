@@ -5,6 +5,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +19,7 @@ import 'package:margo/domain/model/scene_element.dart';
 import 'package:margo/editor/state/history_controller.dart';
 import 'package:margo/editor/state/page_notifier.dart';
 import 'package:margo/editor/state/scene_controller.dart';
+import 'package:margo/editor/ui/scene_canvas.dart';
 import 'package:margo/features/audio/data/transcript_store.dart';
 import 'package:margo/features/audio/presentation/audio_providers.dart';
 import 'package:margo/features/audio/presentation/recording_notifier.dart';
@@ -35,7 +37,13 @@ void main() {
   late Directory docs;
   final navKey = GlobalKey<NavigatorState>();
 
+  // Opening the AI panel starts a page read, whose text recognizer is closed
+  // when the container is disposed. No ML Kit plugin runs in tests.
+  const mlkit = MethodChannel('google_mlkit_text_recognizer');
+
   setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(mlkit, (_) async => null);
     SharedPreferences.setMockInitialValues({});
     docs = Directory.systemTemp.createTempSync('margo_editor_');
     capture = FakeCapture();
@@ -57,6 +65,8 @@ void main() {
 
   tearDown(() {
     container.dispose();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(mlkit, null);
     docs.deleteSync(recursive: true);
   });
 
@@ -124,6 +134,30 @@ void main() {
     expect(container.read(sceneControllerProvider(key)).map((e) => e.id),
         ['s1']);
     expect(container.read(historyProvider(key)).canUndo, isFalse);
+  });
+
+  testWidgets('the AI panel floats over the page without shrinking it, and '
+      'can be docked', (tester) async {
+    await pumpHost(tester);
+    await openEditor(tester);
+    final canvas = find.byType(SceneCanvas);
+    final before = tester.getSize(canvas);
+
+    await tester.tap(find.byTooltip('AI insights'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const ValueKey('floatingAiPanel')), findsOneWidget);
+    expect(tester.getSize(canvas), before, reason: 'the page keeps its size');
+
+    await tester.tap(find.byKey(const ValueKey('aiPanelFloatToggle')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const ValueKey('floatingAiPanel')), findsNothing);
+    expect(container.read(settingsProvider).aiPanelFloating, isFalse);
+    expect(tester.getSize(canvas).width, lessThan(before.width),
+        reason: 'docked, it sits beside the page as before');
+
+    // Close the panel so nothing it started is left running.
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pump(const Duration(milliseconds: 300));
   });
 
   testWidgets('a route pushed over the editor keeps its state', (tester) async {

@@ -8,6 +8,7 @@
 // while an explanation is streaming, plus a Summarize/Explain action footer.
 
 import 'dart:math' as math;
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -60,8 +61,9 @@ const double kAiSidebarBreakpoint = 720;
 /// Summarize and Ask would mean different things by "this PDF".
 enum SummarizeScopeChoice { selection, page, importGroup, notebook }
 
-/// Docked side panel (wide screens). The editor puts this in a [Row] next to
-/// the canvas and controls its visibility.
+/// The AI panel on wide screens. Docked, the editor puts this in a [Row] next
+/// to the canvas; [floating], it is the content of a `FloatingAiPanel` card
+/// over the page, filling it, and is moved by dragging its header.
 class AiSidebar extends StatelessWidget {
   final ScenePageKey pageKey;
   final VoidCallback onClose;
@@ -86,7 +88,23 @@ class AiSidebar extends StatelessWidget {
     this.width = kAiSidebarWidth,
     this.onResize,
     this.onResizeEnd,
+    this.floating = false,
+    this.onToggleFloating,
+    this.onMove,
+    this.onMoveEnd,
   });
+
+  /// Shown as a floating card rather than docked: fills its parent, no edge
+  /// handle, no left border, and the card (not this) keeps clear of the
+  /// keyboard.
+  final bool floating;
+
+  /// Switches between docked and floating. No switch is shown when null.
+  final VoidCallback? onToggleFloating;
+
+  /// Dragging the header while floating moves the card by this much.
+  final ValueChanged<Offset>? onMove;
+  final VoidCallback? onMoveEnd;
 
   /// Current width. Owned by the editor so it survives the panel closing.
   final double width;
@@ -100,6 +118,7 @@ class AiSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (floating) return _floatingPanel(context);
     final panel = _panel(context);
     final resize = onResize;
     if (resize == null) return panel;
@@ -120,6 +139,37 @@ class AiSidebar extends StatelessWidget {
     );
   }
 
+  Widget _floatingPanel(BuildContext context) {
+    return ColoredBox(
+      color: context.colors.surface,
+      child: Column(
+        children: [
+          _SidebarHeader(
+            onClose: onClose,
+            floating: true,
+            onToggleFloating: onToggleFloating,
+            onMove: onMove,
+            onMoveEnd: onMoveEnd,
+          ),
+          Divider(height: 1, color: context.colors.border),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: _SidebarBody(
+                pageKey: pageKey,
+                onInsertNote: onInsertNote,
+                onJumpToSource: onJumpToSource,
+              ),
+            ),
+          ),
+          _SidebarFooter(pageKey: pageKey, onSummarize: onSummarize),
+          // Room for the resize grip in the corner.
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+
   Widget _panel(BuildContext context) {
     return Container(
       width: width,
@@ -134,7 +184,8 @@ class AiSidebar extends StatelessWidget {
         left: false,
         child: Column(
           children: [
-            _SidebarHeader(onClose: onClose),
+            _SidebarHeader(
+                onClose: onClose, onToggleFloating: onToggleFloating),
             Divider(height: 1, color: context.colors.border),
             Expanded(
               child: Padding(
@@ -619,14 +670,30 @@ class _ActionChip extends StatelessWidget {
 
 class _SidebarHeader extends StatelessWidget {
   final VoidCallback onClose;
-  const _SidebarHeader({required this.onClose});
+  final bool floating;
+  final VoidCallback? onToggleFloating;
+  final ValueChanged<Offset>? onMove;
+  final VoidCallback? onMoveEnd;
+
+  const _SidebarHeader({
+    required this.onClose,
+    this.floating = false,
+    this.onToggleFloating,
+    this.onMove,
+    this.onMoveEnd,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 8, 12),
+    final header = Padding(
+      padding: EdgeInsets.fromLTRB(floating ? 8 : 20, 12, 8, 12),
       child: Row(
         children: [
+          if (floating && onMove != null) ...[
+            Icon(Icons.drag_indicator,
+                size: 18, color: context.colors.textSecondary),
+            const SizedBox(width: 4),
+          ],
           Icon(Icons.auto_awesome, size: 18, color: context.colors.accent),
           const SizedBox(width: 8),
           Flexible(
@@ -643,6 +710,19 @@ class _SidebarHeader extends StatelessWidget {
           ),
           const Spacer(),
           const CloudModelToggle(),
+          if (onToggleFloating case final toggle?)
+            IconButton(
+              key: const ValueKey('aiPanelFloatToggle'),
+              tooltip: floating ? 'Dock beside the page' : 'Float over the page',
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              icon: Icon(
+                  floating
+                      ? Icons.vertical_split_outlined
+                      : Icons.picture_in_picture_alt_outlined,
+                  size: 20,
+                  color: context.colors.textSecondary),
+              onPressed: toggle,
+            ),
           IconButton(
             tooltip: 'Close',
             constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
@@ -650,6 +730,21 @@ class _SidebarHeader extends StatelessWidget {
             onPressed: onClose,
           ),
         ],
+      ),
+    );
+    final move = onMove;
+    if (move == null) return header;
+    // The whole header is the handle; its buttons still take their own taps.
+    return MouseRegion(
+      cursor: SystemMouseCursors.move,
+      child: GestureDetector(
+        key: const ValueKey('aiPanelDragHandle'),
+        // Follow the finger from where it went down, not from past the slop.
+        dragStartBehavior: DragStartBehavior.down,
+        behavior: HitTestBehavior.opaque,
+        onPanUpdate: (d) => move(d.delta),
+        onPanEnd: (_) => onMoveEnd?.call(),
+        child: header,
       ),
     );
   }

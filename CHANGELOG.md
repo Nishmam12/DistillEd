@@ -29,6 +29,11 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   instead of reloading it for every remaining picture.
 
 ### Added
+- **The AI panel floats over the page** on tablets: drag it by its header,
+  resize it from the bottom-right corner, and it remembers where it was left.
+  The page keeps its full size underneath, and the panel lifts above the
+  keyboard and goes back when it closes. The header's dock button puts it back
+  beside the page, as before.
 - A **finger-draw switch** in the editor tool row (same setting as Settings >
   Pen), so a pen user can stop a finger drawing without leaving the page.
 - **Straighten lines** is its own setting in Settings > Pen, off by default. It

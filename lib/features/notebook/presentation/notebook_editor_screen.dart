@@ -25,6 +25,7 @@ import '../../ai/domain/page_content_extractor.dart' show kLocalImageReads;
 import '../../ai/presentation/ai_providers.dart';
 import '../../ai/presentation/notebook_index_notifier.dart';
 import '../../ai/presentation/sidebar/ai_sidebar.dart';
+import '../../ai/presentation/sidebar/floating_ai_panel.dart';
 import '../../../domain/model/template_type.dart';
 import '../../import/pdf_service.dart'
     show ImportCancelledException, ImportException;
@@ -454,6 +455,23 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                               ),
                             ),
                           ),
+                        // The AI panel floating over the page (wide screens,
+                        // the default): the page keeps its full size under it.
+                        if (_aiPanelOpen && _aiPanelFloats(context))
+                          Positioned.fill(
+                            child: FloatingAiPanel(
+                              rect: ref.watch(settingsProvider
+                                  .select((s) => s.aiPanelFloatRect)),
+                              onRectChanged: (r) => unawaited(ref
+                                  .read(settingsProvider.notifier)
+                                  .setAiPanelFloatRect(r)),
+                              builder: (context, onMove, onMoveEnd) =>
+                                  _aiSidebar(key,
+                                      floating: true,
+                                      onMove: onMove,
+                                      onMoveEnd: onMoveEnd),
+                            ),
+                          ),
                       ],
                     );
                   }),
@@ -464,26 +482,9 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           // Docked AI panel beside the canvas on wide screens; phones use the
           // bottom sheet from _toggleAiPanel instead.
           if (_aiPanelOpen &&
-              MediaQuery.of(context).size.width >= kAiSidebarBreakpoint)
-            AiSidebar(
-              pageKey: key,
-              width: _aiPanelWidth(context),
-              onResize: (w) => setState(() => _aiPanelDragWidth = w.clamp(
-                  kAiSidebarMinWidth,
-                  aiSidebarMaxWidth(MediaQuery.sizeOf(context).width))),
-              onResizeEnd: () {
-                final w = _aiPanelDragWidth;
-                if (w == null) return;
-                unawaited(ref.read(settingsProvider.notifier).setAiPanelWidth(w));
-                setState(() => _aiPanelDragWidth = null);
-              },
-              onClose: () => setState(() => _aiPanelOpen = false),
-              onSummarize: (choice) => _summarizeScope(key, choice),
-              onInsertNote: (text) => _insertNote(key, text),
-              // Docked beside the canvas: jumping just switches the page behind
-              // the panel, which stays open.
-              onJumpToSource: _jumpToSource,
-            ),
+              MediaQuery.of(context).size.width >= kAiSidebarBreakpoint &&
+              !_aiPanelFloats(context))
+            _aiSidebar(key, floating: false),
         ],
       ),
       bottomNavigationBar: _PageNavBar(
@@ -503,6 +504,45 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           pageCount: pageState.pages.length,
         ),
       ),
+    );
+  }
+
+  /// Wide screens float the AI panel over the page unless the user docked it.
+  bool _aiPanelFloats(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= kAiSidebarBreakpoint &&
+      ref.watch(settingsProvider.select((s) => s.aiPanelFloating));
+
+  /// The wide-screen AI panel, docked beside the page or floating over it.
+  Widget _aiSidebar(ScenePageKey key,
+      {required bool floating,
+      ValueChanged<Offset>? onMove,
+      VoidCallback? onMoveEnd}) {
+    return AiSidebar(
+      pageKey: key,
+      floating: floating,
+      onMove: onMove,
+      onMoveEnd: onMoveEnd,
+      onToggleFloating: () => unawaited(ref
+          .read(settingsProvider.notifier)
+          .setAiPanelFloating(!floating)),
+      width: _aiPanelWidth(context),
+      onResize: floating
+          ? null
+          : (w) => setState(() => _aiPanelDragWidth = w.clamp(
+              kAiSidebarMinWidth,
+              aiSidebarMaxWidth(MediaQuery.sizeOf(context).width))),
+      onResizeEnd: () {
+        final w = _aiPanelDragWidth;
+        if (w == null) return;
+        unawaited(ref.read(settingsProvider.notifier).setAiPanelWidth(w));
+        setState(() => _aiPanelDragWidth = null);
+      },
+      onClose: () => setState(() => _aiPanelOpen = false),
+      onSummarize: (choice) => _summarizeScope(key, choice),
+      onInsertNote: (text) => _insertNote(key, text),
+      // Beside or over the canvas: jumping just switches the page behind the
+      // panel, which stays open.
+      onJumpToSource: _jumpToSource,
     );
   }
 
