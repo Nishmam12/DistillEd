@@ -74,12 +74,36 @@ class PenStyle {
 const int kMaxPenPresets = 5;
 
 /// What a first-time user starts with: one of each kind, in sensible colours.
+///
+/// Thin on purpose: the first device test found the earlier sizes (3, 4, 3,
+/// 18) too heavy for everyday writing.
 const List<PenStyle> kDefaultPenPresets = [
+  PenStyle(kind: PenKind.ballpoint, color: 0xFF1F2933, size: 2, opacity: 1),
+  PenStyle(kind: PenKind.fountain, color: 0xFF1971C2, size: 2.5, opacity: 1),
+  PenStyle(kind: PenKind.pencil, color: 0xFF495057, size: 2, opacity: 1),
+  PenStyle(kind: PenKind.highlighter, color: 0xFFFFD43B, size: 14, opacity: 1),
+];
+
+/// The pen a [kind] starts as when it has never been used: its starter preset.
+PenStyle defaultPenFor(PenKind kind) =>
+    kDefaultPenPresets.firstWhere((p) => p.kind == kind);
+
+/// Pens earlier builds handed out as defaults. A stored pen exactly equal to
+/// one of these was never chosen by the user, so it moves to the new default
+/// for its kind instead of keeping the old, heavier size.
+const List<PenStyle> _kOldDefaultPens = [
   PenStyle(kind: PenKind.ballpoint, color: 0xFF1F2933, size: 3, opacity: 1),
   PenStyle(kind: PenKind.fountain, color: 0xFF1971C2, size: 4, opacity: 1),
   PenStyle(kind: PenKind.pencil, color: 0xFF495057, size: 3, opacity: 1),
   PenStyle(kind: PenKind.highlighter, color: 0xFFFFD43B, size: 18, opacity: 1),
+  // The tool state's own default before saved pens existed.
+  PenStyle(kind: PenKind.ballpoint, color: 0xFF1F2933, size: 4, opacity: 1),
 ];
+
+/// [pen], or the current default for its kind when [pen] is an untouched
+/// default from an earlier build.
+PenStyle withoutOldDefault(PenStyle pen) =>
+    _kOldDefaultPens.contains(pen) ? defaultPenFor(pen.kind) : pen;
 
 /// Where pens are kept between sessions.
 abstract interface class PenPreferences {
@@ -90,6 +114,11 @@ abstract interface class PenPreferences {
   /// is a user who removed every saved pen).
   Future<List<PenStyle>?> loadPresets();
   Future<void> savePresets(List<PenStyle> presets);
+
+  /// The last pen used of each kind, so switching back to a kind brings back
+  /// its own colour and size. Empty when nothing has been saved.
+  Future<Map<PenKind, PenStyle>> loadByKind();
+  Future<void> saveByKind(Map<PenKind, PenStyle> pens);
 
   /// Colours picked with "Custom…", newest first.
   Future<List<int>> loadRecentColors();
@@ -104,6 +133,33 @@ class SharedPrefsPenPreferences implements PenPreferences {
   static const _kCurrent = 'pen.current';
   static const _kPresets = 'pen.presets';
   static const _kRecentColors = 'pen.recentColors';
+  static const _kByKind = 'pen.byKind';
+
+  @override
+  Future<Map<PenKind, PenStyle>> loadByKind() async {
+    try {
+      final raw = (await SharedPreferences.getInstance()).getString(_kByKind);
+      if (raw == null) return const {};
+      final pens = [
+        for (final item in jsonDecode(raw) as List)
+          ?PenStyle.fromJson(item as Map<String, dynamic>),
+      ];
+      return {for (final pen in pens) pen.kind: pen};
+    } catch (e) {
+      debugPrint('[Pens] could not read pens by kind: $e');
+      return const {};
+    }
+  }
+
+  @override
+  Future<void> saveByKind(Map<PenKind, PenStyle> pens) async {
+    try {
+      await (await SharedPreferences.getInstance()).setString(
+          _kByKind, jsonEncode([for (final p in pens.values) p.toJson()]));
+    } catch (e) {
+      debugPrint('[Pens] could not save pens by kind: $e');
+    }
+  }
 
   @override
   Future<List<int>> loadRecentColors() async {
@@ -190,7 +246,7 @@ class PenPresetsNotifier extends StateNotifier<List<PenStyle>> {
   Future<void> _load() async {
     final saved = await _prefs.loadPresets();
     if (!mounted || _edited || saved == null) return;
-    state = saved.take(kMaxPenPresets).toList();
+    state = [for (final p in saved.take(kMaxPenPresets)) withoutOldDefault(p)];
   }
 
   bool get canAdd => state.length < kMaxPenPresets;

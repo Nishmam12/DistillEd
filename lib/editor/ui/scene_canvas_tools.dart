@@ -4,13 +4,13 @@ part of 'scene_canvas.dart';
 extension _SceneCanvasTools on _SceneCanvasState {
   // ---- eraser ---------------------------------------------------------------
 
-  double _eraserRadius(EditorToolState tool) => math.max(8.0, tool.size);
+  double _eraserRadius(EditorToolState tool) => math.max(8.0, tool.eraserSize);
 
   void _onEraserDown(EditorToolState tool, StrokePoint p) {
     if (tool.eraserPixel) {
       // The preview of what will be cut: a grey ghost, not the pen's colour.
       _active.begin(_scenePoint(p),
-          color: 0xFF9AA0A6, size: tool.size, opacity: 0.4);
+          color: 0xFF9AA0A6, size: tool.eraserSize, opacity: 0.4);
       return;
     }
     final scene = _toScene(p);
@@ -51,7 +51,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
       // step — no clear-blend overlay element is committed anymore. The
       // outline is built exactly like the preview so the cut matches it.
       final eraserPath =
-          FreehandPath.build(points, tool.size, isComplete: true);
+          FreehandPath.build(points, tool.eraserSize, isComplete: true);
       if (eraserPath == null) return;
       final result = ScenePixelEraserService.erase(
         eraserPath: eraserPath,

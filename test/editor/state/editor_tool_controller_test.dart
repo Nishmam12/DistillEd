@@ -19,6 +19,20 @@ void main() {
     expect(c.state.opacity, 0.4);
   });
 
+  test('the eraser and shapes have their own width, apart from the pen', () {
+    final c = EditorToolController();
+    final pen = c.state.size;
+    // The first device test: a wide eraser left a fat pen behind.
+    c.setEraserSize(30);
+    c.setShapeSize(8);
+    expect(c.state.size, pen);
+    expect(c.state.eraserSize, 30);
+    expect(c.state.shapeSize, 8);
+    c.setSize(1.5);
+    expect(c.state.eraserSize, 30);
+    expect(c.state.shapeSize, 8);
+  });
+
   test('setColor is the one universal colour — it sets stroke AND fill',
       () {
     final c = EditorToolController();

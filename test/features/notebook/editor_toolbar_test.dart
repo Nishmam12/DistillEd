@@ -47,8 +47,7 @@ void main() {
       await pumpBar(tester, onImport: () {});
 
       expect(find.byIcon(PhosphorIconsRegular.lasso), findsOneWidget);
-      // The pen tool, plus the pencil among the saved pens beside it.
-      expect(find.byIcon(PhosphorIconsRegular.pencilSimple), findsWidgets);
+      expect(find.byKey(const ValueKey('penTool')), findsOneWidget);
       expect(find.byIcon(PhosphorIconsRegular.shapes), findsOneWidget);
       expect(find.byIcon(PhosphorIconsRegular.textT), findsOneWidget);
       expect(find.byIcon(PhosphorIconsRegular.eraser), findsOneWidget);
@@ -260,6 +259,43 @@ void main() {
 
       expect(container.read(penPresetsProvider).last.color, 0xFFE03131);
       expect(container.read(penPresetsProvider).last.kind, PenKind.fountain);
+    });
+
+    testWidgets('the pen button shows the pen being drawn with',
+        (tester) async {
+      final container = await pumpBar(tester);
+      Finder penGlyph(IconData icon) => find.descendant(
+          of: find.byKey(const ValueKey('penTool')),
+          matching: find.byIcon(icon));
+
+      // Not a fixed pencil any more: that read as the Pencil type.
+      expect(penGlyph(Icons.edit_outlined), findsOneWidget);
+      expect(penGlyph(PhosphorIconsRegular.pencilSimple), findsNothing);
+
+      container
+          .read(editorToolProvider.notifier)
+          .setPenKind(PenKind.highlighter);
+      await tester.pump();
+      expect(penGlyph(PhosphorIconsRegular.highlighter), findsOneWidget);
+    });
+
+    testWidgets('sit in their own strip, apart from the tools',
+        (tester) async {
+      await pumpBar(tester);
+      final strip = find.byKey(const ValueKey('penPresets'));
+      expect(strip, findsOneWidget);
+      for (var i = 0; i < kDefaultPenPresets.length; i++) {
+        expect(
+            find.descendant(
+                of: strip, matching: find.byKey(ValueKey('penPreset-$i'))),
+            findsOneWidget);
+      }
+      // A saved pen is not an IconButton: it must not pass for a tool.
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('penPreset-0')),
+              matching: find.byType(IconButton)),
+          findsNothing);
     });
 
     testWidgets('long-press offers Remove', (tester) async {

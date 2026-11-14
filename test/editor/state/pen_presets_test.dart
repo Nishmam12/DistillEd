@@ -31,7 +31,18 @@ class _MemoryPrefs implements PenPreferences {
   Future<List<int>> loadRecentColors() async => recent;
   @override
   Future<void> saveRecentColors(List<int> colors) async => recent = colors;
+
+  Map<PenKind, PenStyle> byKind = {};
+  @override
+  Future<Map<PenKind, PenStyle>> loadByKind() async => byKind;
+  @override
+  Future<void> saveByKind(Map<PenKind, PenStyle> pens) async => byKind = pens;
 }
+
+const _yellowHighlighter = PenStyle(
+    kind: PenKind.highlighter, color: 0xFFFFD43B, size: 18, opacity: 1);
+const _redBallpoint = PenStyle(
+    kind: PenKind.ballpoint, color: 0xFFE03131, size: 1.5, opacity: 1);
 
 void main() {
   group('PenStyle', () {
@@ -166,6 +177,125 @@ void main() {
       expect(ctl.state.penKind, kDefaultPenPresets.last.kind);
       expect(ctl.state.color, kDefaultPenPresets.last.color);
       expect(PenStyle.of(ctl.state), kDefaultPenPresets.last);
+    });
+  });
+
+  group('each pen kind keeps its own pen', () {
+    test('switching kind does not carry the size and colour across', () {
+      final ctl = EditorToolController()..usePen(_yellowHighlighter);
+      ctl.setPenKind(PenKind.ballpoint);
+      // The first device test: a highlighter turned into a fat yellow pen.
+      expect(PenStyle.of(ctl.state), defaultPenFor(PenKind.ballpoint));
+    });
+
+    test('a kind comes back as it was last used', () {
+      final ctl = EditorToolController()..usePen(_redBallpoint);
+      ctl.setPenKind(PenKind.highlighter);
+      ctl.setSize(30);
+      ctl.setPenKind(PenKind.ballpoint);
+      expect(PenStyle.of(ctl.state), _redBallpoint);
+      ctl.setPenKind(PenKind.highlighter);
+      expect(ctl.state.size, 30);
+      expect(ctl.state.color, defaultPenFor(PenKind.highlighter).color);
+    });
+
+    test('picking the kind already in use changes nothing but the tool', () {
+      final ctl = EditorToolController()
+        ..usePen(_redBallpoint)
+        ..setTool(EditorTool.eraser);
+      ctl.setPenKind(PenKind.ballpoint);
+      expect(ctl.state.tool, EditorTool.pen);
+      expect(PenStyle.of(ctl.state), _redBallpoint);
+    });
+
+    test('a saved pen remembers the pen it replaced', () {
+      final ctl = EditorToolController()..usePen(_redBallpoint);
+      ctl.usePen(_yellowHighlighter);
+      ctl.setPenKind(PenKind.ballpoint);
+      expect(PenStyle.of(ctl.state), _redBallpoint);
+    });
+
+    test('is saved, and restored when a note opens', () async {
+      final prefs = _MemoryPrefs();
+      final c = ProviderContainer(
+          overrides: [penPreferencesProvider.overrideWithValue(prefs)]);
+      addTearDown(c.dispose);
+      final sub = c.listen(editorToolProvider, (_, _) {});
+      await Future<void>.delayed(Duration.zero);
+      c.read(editorToolProvider.notifier)
+        ..usePen(_redBallpoint)
+        ..setPenKind(PenKind.pencil);
+      await Future<void>.delayed(Duration.zero);
+      expect(prefs.byKind[PenKind.ballpoint], _redBallpoint);
+      sub.close();
+
+      // A fresh editor: back to the ballpoint finds the red one again.
+      final c2 = ProviderContainer(
+          overrides: [penPreferencesProvider.overrideWithValue(prefs)]);
+      addTearDown(c2.dispose);
+      final sub2 = c2.listen(editorToolProvider, (_, _) {});
+      addTearDown(sub2.close);
+      await Future<void>.delayed(Duration.zero);
+      expect(c2.read(editorToolProvider).penKind, PenKind.pencil);
+      c2.read(editorToolProvider.notifier).setPenKind(PenKind.ballpoint);
+      expect(PenStyle.of(c2.read(editorToolProvider)), _redBallpoint);
+    });
+
+    test('loading the kinds first still lets the last pen be restored', () {
+      final ctl = EditorToolController()
+        ..restorePenMemory({PenKind.ballpoint: _redBallpoint})
+        ..restorePen(_yellowHighlighter);
+      expect(PenStyle.of(ctl.state), _yellowHighlighter);
+      expect(ctl.state.penMemory[PenKind.ballpoint], _redBallpoint);
+    });
+
+    test('a pen used this session outranks the stored one', () {
+      final ctl = EditorToolController()
+        ..usePen(_redBallpoint)
+        ..setPenKind(PenKind.pencil)
+        ..restorePenMemory({
+          PenKind.ballpoint: const PenStyle(
+              kind: PenKind.ballpoint, color: 0xFF000000, size: 9, opacity: 1),
+        });
+      expect(ctl.state.penMemory[PenKind.ballpoint], _redBallpoint);
+    });
+  });
+
+  group('thinner defaults', () {
+    test('every starter pen is thinner than before', () {
+      expect(defaultPenFor(PenKind.ballpoint).size, lessThan(3));
+      expect(defaultPenFor(PenKind.fountain).size, lessThan(4));
+      expect(defaultPenFor(PenKind.pencil).size, lessThan(3));
+      expect(defaultPenFor(PenKind.highlighter).size, lessThan(18));
+      expect(const EditorToolState().size, lessThan(3));
+    });
+
+    test('an untouched old default moves to the new one', () {
+      expect(withoutOldDefault(_yellowHighlighter),
+          defaultPenFor(PenKind.highlighter));
+      // A pen the user chose is left alone.
+      expect(withoutOldDefault(_redBallpoint), _redBallpoint);
+    });
+
+    test('a note last left on an old default opens on the new one', () async {
+      final prefs = _MemoryPrefs(
+          current: const PenStyle(
+              kind: PenKind.ballpoint, color: 0xFF1F2933, size: 3, opacity: 1));
+      final c = ProviderContainer(
+          overrides: [penPreferencesProvider.overrideWithValue(prefs)]);
+      addTearDown(c.dispose);
+      final sub = c.listen(editorToolProvider, (_, _) {});
+      addTearDown(sub.close);
+      await Future<void>.delayed(Duration.zero);
+      expect(PenStyle.of(c.read(editorToolProvider)),
+          defaultPenFor(PenKind.ballpoint));
+    });
+
+    test('saved pens equal to old defaults load as the new ones', () async {
+      final n = PenPresetsNotifier(
+          _MemoryPrefs(presets: const [_yellowHighlighter, _redBallpoint]));
+      await Future<void>.delayed(Duration.zero);
+      expect(n.state, [defaultPenFor(PenKind.highlighter), _redBallpoint]);
     });
   });
 

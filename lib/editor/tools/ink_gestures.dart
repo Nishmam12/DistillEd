@@ -258,9 +258,10 @@ bool looksLikeScribble(List<StrokePoint> points) {
 /// The elements a scribble over [scribble] wipes out: things the student drew or
 /// typed that it mostly covers.
 ///
-/// "Mostly" is 60% of the element's area inside the scribble, so a small scribble
-/// never deletes a big drawing it happens to sit on, and one that merely grazes
-/// something leaves it. Pictures and frames are never victims (scribbling on a
+/// "Mostly" is 60%: of a pen stroke's ink (its length), or of anything else's
+/// area. So a small scribble never deletes a big drawing it happens to sit on,
+/// one that merely grazes something leaves it, and every pen type is treated
+/// alike. Pictures and frames are never victims (scribbling on a
 /// photo annotates it), nor locked elements, nor pixel-eraser strokes, nor the
 /// scribble itself ([excludeId]).
 List<SceneElement> scribbleVictims(
@@ -278,10 +279,38 @@ List<SceneElement> scribbleVictims(
     final bounds = ElementBounds.of(element).inflate(2);
     final overlap = bounds.intersect(scribble);
     if (overlap.isEmpty) continue;
+    if (element is FreehandElement) {
+      // Ink, not its box: an L or a long word has a big, mostly empty box, so
+      // scrubbing all of its ink could still cover too little of the box.
+      final area = scribble.inflate(element.size / 2);
+      if (_inkShareInside(element, area) >= 0.6) victims.add(element);
+      continue;
+    }
     final covered = overlap.width * overlap.height;
     if (covered >= 0.6 * bounds.width * bounds.height) victims.add(element);
   }
   return victims;
+}
+
+/// The share of [stroke]'s length that lies inside [area], judged segment by
+/// segment at each segment's midpoint. A single point counts as all or none.
+double _inkShareInside(FreehandElement stroke, Rect area) {
+  final pts = stroke.points;
+  if (pts.isEmpty) return 0;
+  bool firstInside() => area.contains(Offset(pts.first.x, pts.first.y));
+  var total = 0.0;
+  var inside = 0.0;
+  for (var i = 1; i < pts.length; i++) {
+    final a = pts[i - 1];
+    final b = pts[i];
+    final length = _distance(a, b);
+    total += length;
+    if (area.contains(Offset((a.x + b.x) / 2, (a.y + b.y) / 2))) {
+      inside += length;
+    }
+  }
+  if (total == 0) return firstInside() ? 1 : 0;
+  return inside / total;
 }
 
 /// What a classifier made of one stroke.

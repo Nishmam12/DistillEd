@@ -137,6 +137,23 @@ void main() {
       expect(container.read(editorToolProvider).size, greaterThan(before));
     });
 
+    testWidgets('the eraser slider sizes the eraser, never the pen',
+        (tester) async {
+      final container = await pumpOverlay(tester);
+      container.read(editorToolProvider.notifier).setTool(EditorTool.eraser);
+      await tester.pump();
+      final pen = container.read(editorToolProvider).size;
+      final eraser = container.read(editorToolProvider).eraserSize;
+
+      await tester.drag(
+          find.byKey(const ValueKey('eraserSize')), const Offset(60, 0));
+      await tester.pump();
+
+      expect(
+          container.read(editorToolProvider).eraserSize, greaterThan(eraser));
+      expect(container.read(editorToolProvider).size, pen);
+    });
+
     testWidgets('turning on shape fill does not overflow the panel',
         (tester) async {
       final container = await pumpOverlay(tester);

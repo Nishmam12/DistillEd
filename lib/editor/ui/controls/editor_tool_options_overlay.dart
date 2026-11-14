@@ -94,6 +94,7 @@ class _PanelSlider extends StatelessWidget {
   final String Function(double) label;
 
   const _PanelSlider({
+    super.key,
     required this.icon,
     required this.value,
     required this.min,
@@ -149,6 +150,10 @@ Widget _panelRow(IconData icon, Widget control) {
 String _percentLabel(double v) => '${(v * 100).round()}%';
 String _roundedLabel(double v) => v.round().toString();
 
+/// Pens are thin: 2 and 2.5 must read differently.
+String _penSizeLabel(double v) =>
+    v < 10 ? v.toStringAsFixed(1) : v.round().toString();
+
 /// Pen options: which pen (ballpoint, fountain, pencil, highlighter),
 /// thickness and opacity.
 class _PenPanel extends StatelessWidget {
@@ -180,13 +185,14 @@ class _PenPanel extends StatelessWidget {
           ),
         ),
         _PanelSlider(
+          key: const ValueKey('penSize'),
           icon: Icons.line_weight,
           value: state.size,
           min: 1,
           // A highlighter is meant to cover a line of writing.
           max: state.penKind == PenKind.highlighter ? 40 : 24,
           onChanged: ctl.setSize,
-          label: _roundedLabel,
+          label: _penSizeLabel,
         ),
         _PanelSlider(
           icon: Icons.opacity,
@@ -238,11 +244,12 @@ class _EraserPanel extends StatelessWidget {
           ],
         ),
         _PanelSlider(
+          key: const ValueKey('eraserSize'),
           icon: Icons.line_weight,
-          value: state.size,
+          value: state.eraserSize,
           min: 1,
-          max: 24,
-          onChanged: ctl.setSize,
+          max: 40,
+          onChanged: ctl.setEraserSize,
           label: _roundedLabel,
         ),
       ],
@@ -280,11 +287,12 @@ class _ShapePanel extends StatelessWidget {
           ],
         ),
         _PanelSlider(
+          key: const ValueKey('shapeSize'),
           icon: Icons.line_weight,
-          value: state.size,
+          value: state.shapeSize,
           min: 1,
           max: 24,
-          onChanged: ctl.setSize,
+          onChanged: ctl.setShapeSize,
           label: _roundedLabel,
         ),
         _PanelSlider(

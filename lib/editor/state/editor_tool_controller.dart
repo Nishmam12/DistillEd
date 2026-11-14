@@ -1,8 +1,11 @@
 // Active tool + pen/shape/text style for the unified canvas.
 //
-// `color`/`size`/`opacity` are the stroke colour / width / opacity shared by pen
-// and shapes; the remaining fields style new shapes. Editing the style of an
-// existing selected element comes with selection in Phase 4.
+// `color`/`size`/`opacity` are the PEN's colour / width / opacity. The colour
+// and opacity also style new shapes (one universal colour); shapes and the
+// eraser have their own width ([EditorToolState.shapeSize], [eraserSize]) so
+// a wide eraser never leaves a fat pen behind. Each pen kind remembers its own
+// last pen ([EditorToolState.penMemory]), so switching kind never turns a
+// ballpoint into a yellow 18 px one.
 
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -14,8 +17,18 @@ enum EditorTool { select, pen, shape, text, frame, eraser, laser, hand }
 class EditorToolState {
   final EditorTool tool;
   final int color; // stroke / text colour, ARGB
-  final double size; // stroke width
+  final double size; // pen stroke width
   final double opacity; // 0..1
+
+  /// Outline width for new shapes.
+  final double shapeSize;
+
+  /// Eraser width (pixel eraser) and hit radius floor (stroke eraser).
+  final double eraserSize;
+
+  /// The last pen used of each kind. Read by [EditorToolController.setPenKind]
+  /// and [EditorToolController.usePen].
+  final Map<PenKind, PenStyle> penMemory;
 
   /// Which pen the pen tool draws with.
   final PenKind penKind;
@@ -47,8 +60,11 @@ class EditorToolState {
   const EditorToolState({
     this.tool = EditorTool.pen,
     this.color = 0xFF1F2933,
-    this.size = 4.0,
+    this.size = 2.0,
     this.opacity = 1.0,
+    this.shapeSize = 2.0,
+    this.eraserSize = 12.0,
+    this.penMemory = const {},
     this.penKind = PenKind.ballpoint,
     this.shapeType = ShapeType.rectangle,
     this.hasFill = false,
@@ -72,6 +88,9 @@ class EditorToolState {
     int? color,
     double? size,
     double? opacity,
+    double? shapeSize,
+    double? eraserSize,
+    Map<PenKind, PenStyle>? penMemory,
     PenKind? penKind,
     ShapeType? shapeType,
     bool? hasFill,
@@ -92,6 +111,9 @@ class EditorToolState {
       color: color ?? this.color,
       size: size ?? this.size,
       opacity: opacity ?? this.opacity,
+      shapeSize: shapeSize ?? this.shapeSize,
+      eraserSize: eraserSize ?? this.eraserSize,
+      penMemory: penMemory ?? this.penMemory,
       penKind: penKind ?? this.penKind,
       shapeType: shapeType ?? this.shapeType,
       hasFill: hasFill ?? this.hasFill,
@@ -117,15 +139,43 @@ class EditorToolController extends StateNotifier<EditorToolState> {
   /// changed something: a pen picked in the first moments must not be replaced
   /// by the remembered one when it finishes loading.
   void restorePen(PenStyle pen) {
-    if (!identical(state, const EditorToolState())) return;
-    state = state.copyWith(
-      penKind: pen.kind,
-      color: pen.color,
-      fillColor: pen.color,
-      size: pen.size,
-      opacity: pen.opacity,
-    );
+    if (!_untouched) return;
+    state = _drawingWith(state, pen);
   }
+
+  /// Fills in the remembered pen of each kind, loaded from storage. What the
+  /// user has already used this session wins over what was stored. Loading it
+  /// does not count as the user changing something, whichever of the two
+  /// loads finishes first.
+  void restorePenMemory(Map<PenKind, PenStyle> pens) {
+    if (pens.isEmpty) return;
+    final wasUntouched = _untouched;
+    state = state.copyWith(penMemory: {...pens, ...state.penMemory});
+    if (wasUntouched) _loadedOnly = state;
+  }
+
+  /// The state after nothing but [restorePenMemory] ran, if that happened.
+  EditorToolState? _loadedOnly;
+
+  bool get _untouched =>
+      identical(state, const EditorToolState()) ||
+      identical(state, _loadedOnly);
+
+  /// [s] drawing with [pen]: kind, colour, width, opacity. Shape fill follows
+  /// the colour, as with [setColor].
+  static EditorToolState _drawingWith(EditorToolState s, PenStyle pen) =>
+      s.copyWith(
+        penKind: pen.kind,
+        color: pen.color,
+        fillColor: pen.color,
+        size: pen.size,
+        opacity: pen.opacity,
+      );
+
+  /// [EditorToolState.penMemory] with the pen in use filed under its kind, for
+  /// when the user moves to another kind and back.
+  Map<PenKind, PenStyle> _rememberCurrent() =>
+      {...state.penMemory, state.penKind: PenStyle.of(state)};
 
   /// Selects [tool]. Picking a *different* tool (re)opens its options panel —
   /// each tool gets a brief look at its own settings before the panel closes
@@ -157,24 +207,36 @@ class EditorToolController extends StateNotifier<EditorToolState> {
   /// tool.
   void setColor(int color) =>
       state = state.copyWith(color: color, fillColor: color);
+  /// The PEN's width. Shapes and the eraser have their own: [setShapeSize],
+  /// [setEraserSize].
   void setSize(double size) => state = state.copyWith(size: size);
   void setOpacity(double opacity) => state = state.copyWith(opacity: opacity);
+  void setShapeSize(double size) => state = state.copyWith(shapeSize: size);
+  void setEraserSize(double size) => state = state.copyWith(eraserSize: size);
 
   /// Switches to the pen tool drawing with [pen] (a saved pen, or the one
-  /// remembered from last time). Shape fill follows the colour, as with
-  /// [setColor].
-  void usePen(PenStyle pen) => state = state.copyWith(
-        tool: EditorTool.pen,
-        penKind: pen.kind,
-        color: pen.color,
-        fillColor: pen.color,
-        size: pen.size,
-        opacity: pen.opacity,
+  /// remembered from last time). The pen it replaces is remembered under its
+  /// kind.
+  void usePen(PenStyle pen) => state = _drawingWith(
+        state.copyWith(tool: EditorTool.pen, penMemory: _rememberCurrent()),
+        pen,
       );
 
   /// Picks which pen the pen tool draws with (and makes the pen the tool).
-  void setPenKind(PenKind kind) =>
-      state = state.copyWith(tool: EditorTool.pen, penKind: kind);
+  /// Another kind comes back as it was last used, or as its starter pen; the
+  /// one being left is remembered. Picking the kind already in use changes
+  /// nothing but the tool.
+  void setPenKind(PenKind kind) {
+    if (kind == state.penKind) {
+      state = state.copyWith(tool: EditorTool.pen);
+      return;
+    }
+    final memory = _rememberCurrent();
+    state = _drawingWith(
+      state.copyWith(tool: EditorTool.pen, penMemory: memory),
+      memory[kind] ?? defaultPenFor(kind),
+    );
+  }
 
   void setShapeType(ShapeType t) =>
       state = state.copyWith(tool: EditorTool.shape, shapeType: t);
@@ -210,25 +272,40 @@ class EditorToolController extends StateNotifier<EditorToolState> {
 
 /// The tool state for the open editor. Opens with the pen used last time, and
 /// saves the pen (type, colour, size, opacity) whenever it changes — not on
-/// tool switches, which change nothing worth remembering.
+/// tool switches, which change nothing worth remembering — and the last pen of
+/// each kind whenever that changes.
 final editorToolProvider =
     StateNotifierProvider.autoDispose<EditorToolController, EditorToolState>(
   (ref) {
     final prefs = ref.watch(penPreferencesProvider);
     final controller = EditorToolController();
     var lastPen = PenStyle.of(const EditorToolState());
+    var lastMemory = const EditorToolState().penMemory;
 
-    prefs.loadCurrent().then((pen) {
-      if (pen == null || !controller.mounted) return;
+    prefs.loadCurrent().then((saved) {
+      if (saved == null || !controller.mounted) return;
+      final pen = withoutOldDefault(saved);
       lastPen = pen; // restoring it is not a change worth saving
       controller.restorePen(pen);
+    });
+    prefs.loadByKind().then((pens) {
+      if (!controller.mounted) return;
+      // The listener below saves this once more; harmless, and simpler than
+      // reaching into the controller's state from here.
+      controller.restorePenMemory(
+          {for (final e in pens.entries) e.key: withoutOldDefault(e.value)});
     });
 
     controller.addListener((state) {
       final pen = PenStyle.of(state);
-      if (pen == lastPen) return;
-      lastPen = pen;
-      prefs.saveCurrent(pen);
+      if (pen != lastPen) {
+        lastPen = pen;
+        prefs.saveCurrent(pen);
+      }
+      if (!identical(state.penMemory, lastMemory)) {
+        lastMemory = state.penMemory;
+        prefs.saveByKind(state.penMemory);
+      }
     }, fireImmediately: false);
     return controller;
   },

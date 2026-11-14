@@ -24,7 +24,7 @@ class ShapeFactory {
       shapeType: tool.shapeType,
       geometryData: _geometry(tool.shapeType, start, current),
       color: tool.color,
-      strokeWidth: tool.size,
+      strokeWidth: tool.shapeSize,
       opacity: tool.opacity,
       hasFill: tool.hasFill,
       fillColor: tool.fillColor,
