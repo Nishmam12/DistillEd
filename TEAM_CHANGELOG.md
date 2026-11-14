@@ -28,6 +28,21 @@ Commits: <first>..<last>
 
 ## Push log
 
+### 2026-11-15 · Afnan (RTX 2070 Super) · `margo-device-fixes` · no version bump
+Commits: `65c9235`..(this commit)
+
+**What changed:**
+- **Flashcards and Quiz loading panels** now span the full width of the screen, like the other AI panels. Before, the loading, download and error views shrank to a narrow card in the middle.
+- **Cloud error messages are readable.** A cloud 404 now says "Cloud gateway unreachable", and any other unexpected status says "Cloud request failed (HTTP 500)." instead of a long Dio paragraph. Every cloud feature shares this, so Research, Explain and the rest all show the shorter text.
+- **Known problem, not fixed by this push:** Research (and every cloud feature) fails right now because the Render service `margo-ai-gateway` has no server behind it. Every path, including `/health`, returns 404 with `x-render-routing: no-server`. It needs redeploying from `render.yaml` in the Render dashboard, with `OPENROUTER_API_KEY` and `EXA_API_KEY` entered again. If it comes back at a different address, `cloudGatewayBaseUrl` in `ai_providers.dart` must change to match.
+- **Build note:** Flutter 3.50.0 now requires Gradle 9.3.1 and the project is on 9.1.0, so `flutter build` and `flutter run` stop at a version check. This push doesn't change that. Pass `--android-skip-build-dependency-validation` for now.
+
+**What you need to do:**
+- Nothing for the code: no database change, no new dependency, no `flutter pub get`.
+- Whoever has Render access: redeploy the gateway (see above).
+
+**Tested:** `flutter analyze` shows only the existing `material.dart` deprecation notices. All 1,422 tests under `test/features/ai` pass, including 2 new ones for the 404 and other-status messages. Release build installed on a Pixel 7 Pro: the flashcard loading panel is full width. The cloud error message was not checked on the device.
+
 ### 2026-11-14 · Nabil (RTX 4070 Ti Super) · `margo-device-fixes` · 5.3.0+35
 Commits: `933ebcc`..(this release commit), including the merge of Afnan's `064b454`
 

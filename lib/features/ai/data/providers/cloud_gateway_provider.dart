@@ -364,7 +364,18 @@ class CloudGatewayProvider
               'The cloud service is not configured for this request.',
               cause: e);
         }
-        return AiGenerationException('Cloud request failed: ${e.message}',
+        if (status == 404) {
+          // The gateway itself never answers 404, so this is a host with no
+          // service behind it (a deleted or moved deployment) — the same
+          // "can't reach the gateway" outcome as a dead connection.
+          return AiUnavailableException('Cloud gateway unreachable', cause: e);
+        }
+        // Not `e.message`: Dio's default text is a multi-paragraph essay about
+        // RequestOptions.validateStatus that the sidebar prints verbatim.
+        return AiGenerationException(
+            status == null
+                ? 'Cloud request failed.'
+                : 'Cloud request failed (HTTP $status).',
             cause: e);
     }
   }

@@ -49,6 +49,9 @@ class _QuizSheet extends ConsumerWidget {
     final state = ref.watch(quizNotifierProvider);
     return SafeArea(
       child: Container(
+        // A bottom sheet sizes to its content; without this the loading and
+        // error views (a title and a spinner) shrink to a narrow centred card.
+        width: double.infinity,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.92,
         ),

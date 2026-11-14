@@ -199,6 +199,39 @@ void main() {
     });
   });
 
+  group('CloudGatewayProvider unexpected statuses', () {
+    DioException badResponse(int status) => DioException(
+          requestOptions: RequestOptions(path: '/v1/generate'),
+          response: Response(
+            requestOptions: RequestOptions(path: '/v1/generate'),
+            statusCode: status,
+          ),
+          type: DioExceptionType.badResponse,
+          message: 'This exception was thrown because the response has a '
+              'status code of $status and RequestOptions.validateStatus ...',
+        );
+
+    test('a 404 (no service at the host) reads as unreachable', () async {
+      final provider =
+          _providerWith(_FakeAdapter(throwsError: badResponse(404)));
+      await expectLater(
+        provider.generate(prompt: 'hi').toList(),
+        throwsA(isA<AiUnavailableException>()
+            .having((e) => e.message, 'message', 'Cloud gateway unreachable')),
+      );
+    });
+
+    test('another status shows a short line, never the Dio essay', () async {
+      final provider =
+          _providerWith(_FakeAdapter(throwsError: badResponse(500)));
+      await expectLater(
+        provider.generate(prompt: 'hi').toList(),
+        throwsA(isA<AiGenerationException>().having((e) => e.message,
+            'message', 'Cloud request failed (HTTP 500).')),
+      );
+    });
+  });
+
   group('CloudGatewayProvider capabilities', () {
     test('capabilities report non-local with a tier-specific id', () {
       final provider = _providerWith(_FakeAdapter(sseBody: ''), tier: 'cloud-frontier');
