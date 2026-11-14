@@ -16,6 +16,14 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 
+### Added
+- **Page manager.** A full-screen grid of every page, opened from the grid
+  button in the editor's page bar or the Book view's app bar. Long-press a page
+  and drag it to a new place; "Select" lets you pick several pages to
+  duplicate, move to the start or end, or delete (it asks first, and the last
+  page can't be deleted). Thumbnails use the notebook's real page shape, and
+  tapping one opens it. No database change.
+
 ## [5.3.0] - 2026-11-14
 ### Changed
 - **Database: one new column on Notebook, `pageSize`** (approved 2026-11-14).

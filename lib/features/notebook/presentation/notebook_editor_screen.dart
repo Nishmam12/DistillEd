@@ -570,6 +570,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             : null,
         onAdd: () =>
             ref.read(pageProvider(widget.notebookId).notifier).insertPage(),
+        onGrid: () => context.push('/note2/${widget.notebookId}/pages'),
         onManage: () => showPageActionsSheet(
           context,
           ref,

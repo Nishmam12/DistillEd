@@ -6,18 +6,19 @@ import 'dart:async';
 // the same [SceneStaticLayer] the editor uses, fitted into the page rect.
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../domain/geometry/selection_bounds.dart';
 import '../../../domain/model/scene_element.dart';
 import '../../../editor/state/page_notifier.dart';
 import '../../home/presentation/home_notifier.dart';
 import '../../../editor/render/scene_image_cache.dart';
-import '../../../editor/render/scene_static_layer.dart';
 import '../../../editor/state/scene_controller.dart';
 import '../../../editor/state/scene_image_cache_provider.dart';
 import '../../../editor/ui/controls/page_actions_sheet.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../domain/model/page_size.dart';
+import 'page_thumbnail.dart';
 
 class NotebookBookViewScreen extends ConsumerStatefulWidget {
   final int notebookId;
@@ -34,6 +35,7 @@ class _NotebookBookViewScreenState
   final Map<int, List<SceneElement>> _byPage = {};
   late final SceneImageCache _imageCache;
   Color _paper = const Color(0xFFFFFDF7);
+  double _aspect = 1 / 1.414;
   List<int> _pageIds = const [];
   int _index = 0;
   bool _loading = true;
@@ -73,6 +75,7 @@ class _NotebookBookViewScreenState
       setState(() {
         _pageIds = pages.map((p) => p.id).toList();
         _paper = Color(nb?.backgroundColor ?? 0xFFFFFDF7);
+        _aspect = pageAspectOf(PageSizeKind.fromIndex(nb?.pageSize ?? 0));
         _loading = false;
       });
     }
@@ -114,7 +117,24 @@ class _NotebookBookViewScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Book view')),
+      appBar: AppBar(
+        title: const Text('Book view'),
+        actions: [
+          IconButton(
+            tooltip: 'All pages',
+            icon: const Icon(Icons.grid_view),
+            onPressed: () async {
+              await context.push('/note2/${widget.notebookId}/pages');
+              if (!mounted) return;
+              await _refresh();
+              if (!mounted || _pageIds.isEmpty) return;
+              final i = _index.clamp(0, _pageIds.length - 1);
+              if (_controller.hasClients) _controller.jumpToPage(i);
+              setState(() => _index = i);
+            },
+          ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _pageIds.isEmpty
@@ -130,10 +150,11 @@ class _NotebookBookViewScreenState
                           itemCount: _pageIds.length,
                           itemBuilder: (_, i) => Padding(
                             padding: const EdgeInsets.all(16),
-                            child: _BookPage(
+                            child: PageThumbnail(
                               elements: _byPage[_pageIds[i]] ?? const [],
                               paper: _paper,
                               imageCache: _imageCache,
+                              aspectRatio: _aspect,
                             ),
                           ),
                         ),
@@ -142,10 +163,11 @@ class _NotebookBookViewScreenState
                     _Filmstrip(
                       count: _pageIds.length,
                       current: _index,
-                      builder: (i) => _BookPage(
+                      builder: (i) => PageThumbnail(
                         elements: _byPage[_pageIds[i]] ?? const [],
                         paper: _paper,
                         imageCache: _imageCache,
+                              aspectRatio: _aspect,
                       ),
                       onTap: _jumpTo,
                       onLongPress: _managePage,
@@ -154,75 +176,6 @@ class _NotebookBookViewScreenState
                 ),
     );
   }
-}
-
-class _BookPage extends StatelessWidget {
-  final List<SceneElement> elements;
-  final Color paper;
-  final SceneImageCache imageCache;
-
-  const _BookPage({
-    required this.elements,
-    required this.paper,
-    required this.imageCache,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1 / 1.414, // A4 portrait
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: paper,
-          boxShadow: context.floatShadow,
-        ),
-        child: CustomPaint(
-          painter: _BookPagePainter(
-            elements: elements,
-            imageCache: imageCache,
-          ),
-          size: Size.infinite,
-        ),
-      ),
-    );
-  }
-}
-
-/// Paints a page's elements fitted (scaled + centred) into the available size.
-class _BookPagePainter extends CustomPainter {
-  final List<SceneElement> elements;
-  final SceneImageCache imageCache;
-
-  _BookPagePainter({required this.elements, required this.imageCache});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (elements.isEmpty) return;
-    final bounds = SelectionBounds.union(elements);
-    if (bounds == null || bounds.isEmpty) return;
-
-    const pad = 12.0;
-    final sx = (size.width - pad * 2) / bounds.width;
-    final sy = (size.height - pad * 2) / bounds.height;
-    final scale = sx < sy ? sx : sy;
-    final dx = (size.width - bounds.width * scale) / 2 - bounds.left * scale;
-    final dy = (size.height - bounds.height * scale) / 2 - bounds.top * scale;
-
-    canvas.save();
-    canvas.translate(dx, dy);
-    canvas.scale(scale);
-    SceneStaticLayer(
-      elements: elements,
-      imageResolver: imageCache.get,
-      imageEpoch: imageCache.version,
-    ).paint(canvas, bounds.size);
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_BookPagePainter old) =>
-      !identical(elements, old.elements) ||
-      imageCache.version != old.imageCache.version;
 }
 
 class _Filmstrip extends StatelessWidget {

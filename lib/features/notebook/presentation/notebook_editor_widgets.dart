@@ -267,6 +267,7 @@ class _PageNavBar extends StatelessWidget {
   final VoidCallback? onNext;
   final VoidCallback onAdd;
   final VoidCallback onManage;
+  final VoidCallback onGrid;
 
   const _PageNavBar({
     required this.index,
@@ -275,6 +276,7 @@ class _PageNavBar extends StatelessWidget {
     required this.onNext,
     required this.onAdd,
     required this.onManage,
+    required this.onGrid,
   });
 
   @override
@@ -311,6 +313,12 @@ class _PageNavBar extends StatelessWidget {
               tooltip: 'Add page',
               icon: const Icon(Icons.add),
               onPressed: onAdd,
+            ),
+            IconButton(
+              key: const Key('allPages'),
+              tooltip: 'All pages',
+              icon: const Icon(Icons.grid_view),
+              onPressed: onGrid,
             ),
             IconButton(
               tooltip: 'Page options',

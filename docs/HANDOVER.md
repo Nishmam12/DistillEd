@@ -290,7 +290,7 @@ Fable 5.2 only for figure-pipeline bugs.
 | 8 | B: convert handwriting to text in place, straighten | Opus |
 | 9 | DONE (`TapeElement`, column `tapeRevealed`, approved 2026-11-14). B: tape element (schema change, ask first) | Opus |
 | 10 | DONE (`PageSizeKind`, column `Notebook.pageSize`, `layoutMode` 2, approved 2026-11-14). C: real page sizes, continuous vertical scroll | Opus |
-| 11 | C: page manager grid, drag-reorder, multi-select | Sonnet |
+| 11 | DONE (`PageManagerScreen`, route `/note2/:id/pages`, `PageNotifier.movePages/deletePages/duplicatePages`, shared `PageThumbnail`; no schema change). C: page manager grid, drag-reorder, multi-select | Sonnet |
 | 12 | C: page bookmarks and outline, per-page template | Sonnet |
 | 13 | C: extra templates | Sonnet |
 | 14 | D: PDF word boxes, text selection, highlighter snapping | Opus |

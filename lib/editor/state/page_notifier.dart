@@ -157,6 +157,62 @@ class PageNotifier extends StateNotifier<PageState> {
     state = PageState(currentPageIndex: at, pages: pages);
   }
 
+  /// The order of [ids] after the pages in [moving] (kept in their current
+  /// relative order) are lifted out and dropped so the first of them sits at
+  /// [toIndex] of the result. [toIndex] is clamped to the pages that remain.
+  static List<int> orderAfterMove(
+      List<int> ids, Set<int> moving, int toIndex) {
+    final rest = [for (final id in ids) if (!moving.contains(id)) id];
+    final kept = [for (final id in ids) if (moving.contains(id)) id];
+    final at = toIndex.clamp(0, rest.length);
+    return [...rest.take(at), ...kept, ...rest.skip(at)];
+  }
+
+  /// Moves [pageIds] together so the first of them lands at [toIndex], in one
+  /// write. The page being edited stays the current page.
+  Future<void> movePages(List<int> pageIds, int toIndex) async {
+    if (pageIds.isEmpty) return;
+    final ids = [for (final p in state.pages) p.id];
+    final order = orderAfterMove(ids, pageIds.toSet(), toIndex);
+    if (order.indexed.every((e) => ids[e.$1] == e.$2)) return;
+    final currentId = state.pages[state.currentPageIndex].id;
+    await _repository.reorderPages(_notebookId, order);
+    final pages = await _repository.getPagesForNotebook(_notebookId);
+    final at = pages.indexWhere((p) => p.id == currentId);
+    state = PageState(currentPageIndex: at < 0 ? 0 : at, pages: pages);
+  }
+
+  /// Deletes [pageIds] and their content. Refuses (returns false) when that
+  /// would leave the notebook with no page.
+  Future<bool> deletePages(List<int> pageIds) async {
+    final doomed = pageIds.toSet();
+    final indexes = [
+      for (var i = 0; i < state.pages.length; i++)
+        if (doomed.contains(state.pages[i].id)) i,
+    ];
+    if (indexes.isEmpty || indexes.length >= state.pages.length) return false;
+    // Highest first, so the lower indexes are still valid after each delete.
+    for (final i in indexes.reversed) {
+      await deletePage(i);
+    }
+    return true;
+  }
+
+  /// Copies each of [pageIds] to sit right after its original.
+  Future<void> duplicatePages(List<int> pageIds) async {
+    final wanted = pageIds.toSet();
+    final indexes = [
+      for (var i = 0; i < state.pages.length; i++)
+        if (wanted.contains(state.pages[i].id)) i,
+    ];
+    final currentId = state.pages[state.currentPageIndex].id;
+    for (final i in indexes.reversed) {
+      await duplicatePage(i);
+    }
+    final at = state.pages.indexWhere((p) => p.id == currentId);
+    state = state.copyWith(currentPageIndex: at < 0 ? 0 : at);
+  }
+
   Future<void> reorderPages(int oldIndex, int newIndex) async {
     await _repository.movePage(_notebookId, oldIndex, newIndex);
     final pages = await _repository.getPagesForNotebook(_notebookId);

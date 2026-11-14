@@ -286,4 +286,55 @@ void main() {
       expect(notifier.state.currentPageIndex, 2);
     });
   });
+
+  group('several pages at once', () {
+    Future<List<int>> four() async {
+      await notifier.initialize();
+      for (var i = 0; i < 3; i++) {
+        await notifier.insertPage();
+      }
+      return [for (final p in notifier.state.pages) p.id];
+    }
+
+    List<int> ids() => [for (final p in notifier.state.pages) p.id];
+
+    test('orderAfterMove lands the first moved page at the index', () {
+      expect(PageNotifier.orderAfterMove([1, 2, 3, 4], {2, 3}, 0), [2, 3, 1, 4]);
+      expect(PageNotifier.orderAfterMove([1, 2, 3, 4], {1}, 3), [2, 3, 4, 1]);
+      expect(PageNotifier.orderAfterMove([1, 2, 3, 4], {1}, 99), [2, 3, 4, 1]);
+      expect(PageNotifier.orderAfterMove([1, 2, 3, 4], {4}, 1), [1, 4, 2, 3]);
+    });
+
+    test('movePages reorders and the open page stays open', () async {
+      final a = await four();
+      notifier.switchPage(2); // a[2]
+      await notifier.movePages([a[0], a[1]], 99);
+      expect(ids(), [a[2], a[3], a[0], a[1]]);
+      expect(notifier.state.pages[notifier.state.currentPageIndex].id, a[2]);
+    });
+
+    test('deletePages removes pages and their content', () async {
+      final a = await four();
+      await store.upsertForPage(notebookId, a[1], [_stroke('x')]);
+      expect(await notifier.deletePages([a[1], a[3]]), isTrue);
+      expect(ids(), [a[0], a[2]]);
+      expect(await store.loadForPage(a[1]), isEmpty);
+    });
+
+    test('deletePages refuses to empty the notebook', () async {
+      final a = await four();
+      expect(await notifier.deletePages(a), isFalse);
+      expect(ids(), a);
+    });
+
+    test('duplicatePages puts each copy right after its original', () async {
+      final a = await four();
+      await store.upsertForPage(notebookId, a[0], [_stroke('s')]);
+      await notifier.duplicatePages([a[0], a[2]]);
+      final now = ids();
+      expect(now.length, 6);
+      expect([now[0], now[2], now[3]], [a[0], a[1], a[2]]);
+      expect(await store.loadForPage(now[1]), hasLength(1));
+    });
+  });
 }
