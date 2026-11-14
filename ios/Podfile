@@ -32,13 +32,6 @@ end
 
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
-# Lets ML Kit's arm64 slice run on Apple Silicon simulators (opt-in helper that
-# ships with google_mlkit_commons; see that package's README, iOS section).
-require File.expand_path(
-  File.join('.symlinks', 'plugins', 'google_mlkit_commons', 'ios', 'scripts', 'apple_silicon_simulator'),
-  __dir__,
-)
-
 flutter_ios_podfile_setup
 
 target 'Runner' do
@@ -63,5 +56,13 @@ post_install do |installer|
     end
   end
 
+  # Lets ML Kit's arm64 slice run on Apple Silicon simulators (opt-in helper
+  # that ships with google_mlkit_commons; see its README, iOS section). Required
+  # here, not at the top: ios/.symlinks/plugins only exists once
+  # flutter_install_all_ios_pods has run.
+  require File.expand_path(
+    File.join('.symlinks', 'plugins', 'google_mlkit_commons', 'ios', 'scripts', 'apple_silicon_simulator'),
+    __dir__,
+  )
   mlkit_apple_silicon_simulator_patch(installer)
 end
