@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/providers/settings_provider.dart';
+import '../../data/backup/app_documents_backup_target.dart';
 import '../../data/backup/backup_library.dart';
 import '../../data/backup/backup_service.dart';
 import '../../data/backup/downloads_backup_target.dart';
@@ -117,8 +118,13 @@ class BackupController extends StateNotifier<BackupStatus> {
   Future<RestoreReport> restore(List<String> paths) => _service().restore(paths);
 }
 
-final _backupTargetProvider =
-    Provider<DownloadsBackupTarget>((ref) => DownloadsBackupTarget());
+/// iOS has no shared Downloads folder, so there the backups stay in the app's
+/// own Documents; every other platform keeps the Download/Margo channel.
+final _backupTargetProvider = Provider<BackupTarget>((ref) =>
+    defaultTargetPlatform == TargetPlatform.iOS
+        ? AppDocumentsBackupTarget(
+            () async => (await getApplicationDocumentsDirectory()).path)
+        : DownloadsBackupTarget());
 
 final backupServiceProvider = Provider<BackupService>((ref) => BackupService(
       library: AppBackupLibrary(
@@ -139,7 +145,10 @@ final backupControllerProvider =
   return BackupController(
     service: () => ref.read(backupServiceProvider),
     settings: () => ref.read(settingsProvider),
-    inAppStorage: () => target.savedToAppStorage,
+    inAppStorage: () => switch (target) {
+      DownloadsBackupTarget(:final savedToAppStorage) => savedToAppStorage,
+      _ => true,
+    },
   );
 });
 

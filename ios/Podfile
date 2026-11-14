@@ -1,0 +1,67 @@
+# Margo iOS Podfile.
+#
+# CocoaPods is still required: the Google ML Kit plugins (handwriting, OCR,
+# entity extraction, language ID) ship as pods only, and flutter_edge_ai wants
+# its pods linked statically. Plugins that support Swift Package Manager keep
+# using it; Flutter mixes the two.
+
+# 16.0: ML Kit needs 15.5, the LiteRT-LM runtime 15.0, background_downloader 14.0.
+platform :ios, '16.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+# Lets ML Kit's arm64 slice run on Apple Silicon simulators (opt-in helper that
+# ships with google_mlkit_commons; see that package's README, iOS section).
+require File.expand_path(
+  File.join('.symlinks', 'plugins', 'google_mlkit_commons', 'ios', 'scripts', 'apple_silicon_simulator'),
+  __dir__,
+)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  # Static linkage is required by flutter_edge_ai (README, iOS section).
+  use_frameworks! :linkage => :static
+  use_modular_headers!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    # Flutter.podspec still declares an old minimum, which conflicts with
+    # plugins that need 14+ ("requires minimum platform version 14.0 ... but
+    # this target supports 13.0"). Pin every pod to the app's own minimum.
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
+    end
+  end
+
+  mlkit_apple_silicon_simulator_patch(installer)
+end

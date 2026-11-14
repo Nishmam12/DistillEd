@@ -1,5 +1,5 @@
-// Free-disk-space query backed by a small StatFs MethodChannel in
-// MainActivity.kt (Android-only app).
+// Free-disk-space query backed by a small platform channel (StatFs in
+// MainActivity.kt, volume capacity in ios/Runner/AppDelegate.swift).
 
 import 'package:flutter/services.dart';
 

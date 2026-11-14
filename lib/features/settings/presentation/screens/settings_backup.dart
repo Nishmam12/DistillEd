@@ -118,7 +118,7 @@ class _BackupStatusRow extends ConsumerWidget {
     } else {
       final where = saved.location ?? 'Download/Margo';
       subtitle = 'Last backed up ${_ago(when)} · $where'
-          '${status.inAppStorage ? '\nOn this Android version backups stay in '
+          '${status.inAppStorage ? '\nOn this device backups stay in '
               'Margo\'s own folder and are removed if the app is uninstalled.' : ''}';
     }
 

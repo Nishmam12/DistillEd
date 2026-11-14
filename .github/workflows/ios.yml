@@ -1,0 +1,36 @@
+name: iOS
+
+# Compiles the iOS app on a macOS runner so build and link errors show up
+# without a Mac at hand. Kept out of ci.yml on purpose: Android CI is unchanged.
+# Nothing is signed or uploaded; see docs/IOS_PORT_PLAN.md.
+
+on:
+  push:
+    branches: [iPadOS-build]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: 3.50.0
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Debug, device (arm64) build, no signing: proves Dart, Swift and every
+      # pod compile and link. The ML Kit and LiteRT-LM static linking is the
+      # likeliest thing to fail here.
+      - run: flutter build ios --debug --no-codesign
+      # The first successful run produces ios/Podfile.lock; commit it.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ios-podfile-lock
+          path: ios/Podfile.lock
+          if-no-files-found: warn

@@ -1,7 +1,8 @@
 // The device's RAM, thermal state and battery, over a small MethodChannel in
-// MainActivity.kt (Android-only app) — the same pattern as `DeviceStorage`.
+// MainActivity.kt and ios/Runner/AppDelegate.swift — the same pattern as
+// `DeviceStorage`.
 //
-// Everywhere else (iOS, desktop, tests) nothing registers the channel, and the
+// Everywhere else (desktop, tests) nothing registers the channel, and the
 // answer is the neutral snapshot: nothing is degraded or paused on the strength
 // of a reading that could not be made.
 
