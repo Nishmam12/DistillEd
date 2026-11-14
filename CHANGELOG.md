@@ -15,7 +15,17 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+
+## [5.1.1] - 2026-11-14
 ### Changed
+- **Pens are one clear system.** Each pen type (ballpoint, fountain, pencil,
+  highlighter) keeps its own colour and size: switching type brings it back
+  as it was last used instead of carrying the previous type's size and colour
+  across. The pen button shows the type in use with a dot of its colour;
+  saved pens are colour dots in their own strip.
+- **Thinner pens.** New defaults: ballpoint 2, fountain 2.5, pencil 2,
+  highlighter 14. Pens left on the old defaults move to the new ones.
+- The eraser and shapes have their own size, separate from the pen.
 - **Settings redesign** (merged from `SettingsUI-upgrade`): two columns of
   icon cards on tablets, one column on phones; AI models and the HuggingFace
   token move to their own **Settings → AI Models** screen. Backup is now its
@@ -25,6 +35,9 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 - Settings no longer overflows on narrow phones at large text sizes: option
   chips (handwriting language, export format, backup frequency) wrap onto a
   second line. "How often" for backup is now a row of chips, not a dropdown.
+- Scribble-to-erase now erases long and L-shaped strokes whose ink it covers;
+  it used to judge a stroke by its bounding box.
+- A wide eraser no longer leaves the pen thick afterwards.
 
 ## [5.1.0] - 2026-11-13
 ### Added

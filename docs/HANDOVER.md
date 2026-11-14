@@ -1,22 +1,22 @@
 # Margo polish roadmap: handover
 
-Written 2026-11-13 for the next chat session picking this work up. Read this
+Written 2026-11-13, updated 2026-11-14 after the first device test. Read this
 first, then `CLAUDE.md`, then the roadmap file named below. Everything here was
-true at the commit that added this file.
+true at the commit that last changed this file.
 
 ## 1. Where things stand
 
 | Item | State |
 | --- | --- |
-| App | Margo, Flutter, Android only. `pubspec.yaml` version `5.0.0+30`. |
-| Branch | `margo-backup-figures`, cut from `margo-next`, pushed to `origin` (DistillEd) at `9437aaf` (version `5.1.0+31`). Since then, **local and not pushed**: merge `9a493fe` of `origin/SettingsUI-upgrade` (Afnan's Settings redesign) plus the narrow-phone overflow fix. |
+| App | Margo, Flutter, Android only. `pubspec.yaml` version `5.1.1+32`. |
+| Branch | **`margo-device-fixes`** (pushed to `origin`, DistillEd), cut from `margo-backup-figures` (`9437aaf`, `5.1.0+31`). Adds: merge `9a493fe` of `origin/SettingsUI-upgrade` (Afnan's Settings redesign), the Settings overflow fix `5cc9e11`, and the pen rework `43ca580`. |
 | Roadmap | `C:\Users\nabil\.claude\plans\go-through-the-entire-humble-gem.md` (approved 2026-11-11). Order: 0 → A → E1/E2 → D2 → B → C → D → F → G → H. |
 | Done in code | Phase 0, Phase A, Phase E1/E2, Phase D2. |
-| Next | The user's device test, then Phase B. |
+| Next | Fix the device-test findings in section 4a, in the order and on the models listed there. Then Phase B. |
 | `flutter analyze` | Clean. |
 | Settings | Redesigned by Afnan (`SettingsUI-upgrade`, merged 2026-11-13): two-column icon cards, AI models and HuggingFace token on `/settings/models`. Backup is its own card; "Draw with finger" is in the Pen card. `settings_backup.dart` uses the new SVG `AppIcons`. Option chips (`AppChipGroup`) now wrap. If Afnan keeps working on the old branch, the Backup card will conflict again. |
-| `flutter test` | 2,907 pass, 44 skipped. `test/core/error_log_test.dart` ("once past 100 KB…") fails in some full runs and passes alone. It is flaky under load and unrelated to this work. |
-| On-device testing | **None since pen phase 1.** Phases 0, A, E and D2 have only ever run in unit and widget tests. |
+| `flutter test` | 2,929 pass, 44 skipped. `test/core/error_log_test.dart` ("once past 100 KB…") fails in some full runs and passes alone. It is flaky under load and unrelated to this work. |
+| On-device testing | First device test 2026-11-14 on a Xiaomi tablet (`2410CRP4CG`, Android 16, 7.6 GB RAM), profile build. Results in section 4a. |
 
 Commits on top of `01cc65d`:
 
@@ -192,6 +192,41 @@ Nothing below has been confirmed on the tablet.
    on a phone or a narrow window (one column). Check Backup, Pen and the
    AI Models screen (download a model, add the HuggingFace token) still work,
    in light and dark. Turn backup on and check the "How often" chips wrap.
+
+## 4a. First device test results (2026-11-14)
+
+Worked:
+
+- First Android build, including the never-compiled backup channel.
+- Pen latency feels natural; palm rejection works; two-finger tap undo.
+- The canvas no longer moves when the keyboard opens.
+- Backup: with it on, `Download/Margo` gets a `.margo` and a `.md` per
+  notebook (checked through MediaStore). The folder appears only after the
+  first run (leaving a note, or the chosen frequency).
+
+Fixed already (`43ca580`): pens clashing (switching type kept the previous
+type's size and colour; eraser shared the pen's size), pens too thick,
+confusing pen icons, scribble-erase missing long strokes.
+
+Still to fix, in this order:
+
+| # | Finding | Cause (as far as known) | Model |
+| --- | --- | --- | --- |
+| 1 | **AI reads a page of 23 imported photos for 10+ minutes, then Android kills Margo** (`LOW_MEMORY`, 1.1 GB, in the foreground). | The image loop in `PageContentExtractor._extractFrom` has no per-page limit: 1 to 3 on-device vision calls per image. Likely also a release/reload loop: `ModelMemoryObserver` releases the model on every memory-pressure signal and the next image reloads 2.6 GB. Not confirmed: the log rotated before it could be read. | Fable 5.2 |
+| 2 | Importing many photos onto one page is allowed with no warning. | No cap. Same limit as #1; warn past it, offer "put the rest on new pages". | Fable 5.2, with #1 |
+| 3 | AI panel locked ("Reading your page…", all actions greyed) for the whole read. | Actions wait for the read. Needs progress, Cancel, and actions usable meanwhile. | Fable 5.2, with #1 |
+| 4 | PDF import: user wants a choice between importing pages as they are and extracting the text. | Not offered. | Fable 5.2, with #1 |
+| 5 | "Draw with finger" prompt has no clear way to turn it off. | The switch is only in Settings. | Sonnet 5.5 |
+| 6 | Three-finger redo responds rarely. | Not investigated (likely the tap time window). | Sonnet 5.5 |
+| 7 | Straighten fires when not wanted. | Always on, no setting, and the same 600 ms hold as Snap shapes (`ink_gestures.dart`, `scene_canvas_tools.dart` `_commitStroke`). | Sonnet 5.5 |
+| 8 | Toolbar runs under the AI panel; the Text tool is half hidden. | The tool row does not adapt to the narrowed canvas. | Sonnet 5.5 |
+| 9 | Imported PDF page sits small in the middle of the sheet and cannot be moved. | Locked on purpose (Phase 0), but the unlock is hidden, and the page is smaller than the sheet. | Sonnet 5.5 (unlock); Opus with Phase C (page size) |
+| 10 | AI panel should float: draggable and resizable. | New feature. | Opus 5.5 |
+| 11 | Text tool is a modal dialog over everything. | Phase B step 7 (inline text). | Opus 5.5 |
+
+Later, by the user's choice: overall design direction (panel title cut to
+"AI insigh…", an unlabelled switch beside it, crowded top bar), diagram
+detection quality.
 
 ## 5. Remaining roadmap, with the model for each step
 
