@@ -15,6 +15,8 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+
+## [5.3.0] - 2026-11-14
 ### Changed
 - **Database: one new column on Notebook, `pageSize`** (approved 2026-11-14).
   0 means "fit screen", which every existing notebook keeps; new notebooks

@@ -28,6 +28,27 @@ Commits: <first>..<last>
 
 ## Push log
 
+### 2026-11-14 · Nabil (RTX 4070 Ti Super) · `margo-device-fixes` · 5.3.0+35
+Commits: `933ebcc`..(this release commit), including the merge of Afnan's `064b454`
+
+**What changed:**
+- **Real page sizes:** A4, Letter and 16:10, each portrait or landscape, or **Fit screen**.
+  - Fit screen is the old screen-shaped page, and existing notebooks keep it. New notebooks start at A4 portrait.
+  - Choose the size in the page sheet, under Layout.
+  - A page is now the same shape on every device, and imported PDF pages fill it.
+- **Continuous layout:** pages stacked top to bottom and scrolled like a document.
+  - The page in the middle of the window is the one you write on.
+  - Touching the page above or below switches to it.
+- **This team changelog**, and the rule in `CLAUDE.md` that every push adds an entry to it.
+
+**What you need to do:**
+- **Database change.** There's a new `Notebook.pageSize` column, and continuous adds `layoutMode` value 2. **Update to 5.3.0+35** to use page sizes or the continuous layout.
+- On an older build nothing is lost: the notebook shows at Fit screen, and continuous shows as the infinite canvas.
+- Run `flutter pub get`, since this push includes Afnan's `pubspec.lock` update.
+- **When you push next:** your Claude will add your entry here (see `CLAUDE.md`).
+
+**Tested:** `flutter analyze` clean, 3,030 tests passing. Not on a device yet: check that an existing notebook still opens.
+
 ### 2026-11-14 · Afnan (RTX 2070 Super) · `margo-device-fixes` · no version bump
 Commits: `064b454`
 
@@ -208,6 +229,6 @@ This is a summary of everything Nabil (`Nishmam12`) has pushed to DistillEd up t
   - revision tape
 - See the push log above for these releases in detail.
 
-**Committed but not pushed yet** (on Nabil's machine, `margo-device-fixes`):
-- `933ebcc`: **real page sizes** (A4, Letter, 16:10, or Fit screen) and a **continuous layout**, with pages stacked and scrolled like a document.
-- This is another database change: a new `Notebook.pageSize` column. Older builds ignore it.
+**5.3.0** (pushed 2026-11-14):
+- **Real page sizes** (A4, Letter, 16:10, or Fit screen) and a **continuous layout**, with pages stacked and scrolled like a document.
+- This team changelog.
