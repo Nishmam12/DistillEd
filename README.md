@@ -25,14 +25,9 @@ tool/check_16kb_alignment.sh build/app/outputs/flutter-apk/app-debug.apk
 Release signing reads `android/key.properties` (gitignored):
 `storeFile`, `storePassword`, `keyAlias`, `keyPassword`.
 
-The cloud gateway URL and certificate pin are build-time settings:
-`--dart-define=GATEWAY_URL=http://localhost:8000`,
-`--dart-define=GATEWAY_CERT_SHA256=<hex>[,<hex>]`.
-
 R8 shrinking is off on purpose (see `android/app/build.gradle.kts`): turning it on
 needs keep rules for the on-device ML libraries and a run on a real device.
 
 ## Docs
 
-`docs/ARCHITECTURE.md`, `docs/AI_PIPELINE_PLAN.md`, and
-`server/ai-gateway/README.md` for the cloud gateway.
+`docs/ARCHITECTURE.md` and `docs/AI_PIPELINE_PLAN.md`.

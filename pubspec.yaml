@@ -88,7 +88,7 @@ dependencies:
   crypto: ^3.0.7
   shared_preferences: ^2.5.5
 
-  # ── Cloud Gateway client (Phase 3) — chosen over package:http for native
+  # ── HTTP client for cloud AI providers — chosen over package:http for native
   #    streamed-response + CancelToken support (mid-stream interruption).
   dio: ^5.7.0
 

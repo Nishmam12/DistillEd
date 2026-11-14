@@ -15,7 +15,7 @@ Status: open. Items below are for follow-up. None met the 8/10 confidence bar fo
 | # | Item | Location | Severity | Confidence | Status |
 |---|------|----------|----------|------------|--------|
 | 1 | Page delete can remove app-private files through unvalidated image paths | `lib/data/persistence/content_purge.dart:110-111` | Medium | 6/10 | Fixed 2026-10-24 (`StoragePaths.isSafeRelativePath`) |
-| 2 | Gateway has no caller authentication | `server/ai-gateway/app/main.py`, `server/ai-gateway/README.md:65-66` | Accepted risk, outside criteria | n/a | Open, pre-launch |
+| 2 | Gateway has no caller authentication | the cloud gateway (since removed) | Accepted risk, outside criteria | n/a | resolved 2026-11-15: gateway removed |
 | 3 | Release build can silently use the debug signing key | `android/app/build.gradle.kts:62-71` | Shipping blocker | n/a | Open, pre-launch |
 
 ---
@@ -54,26 +54,7 @@ The fix is small. It is worth doing even though the item is below the reporting 
 
 ---
 
-## 2. Gateway has no caller authentication
-
-**Location:** `server/ai-gateway/app/guards.py` (`IpThrottleMiddleware`, added in `server/ai-gateway/app/main.py`); `server/ai-gateway/app/routers/generate.py` (only the client-chosen `X-Device-Key` header is required); `server/ai-gateway/README.md` (the "Not done" note on attestation).
-
-**Category:** authentication_bypass (accepted design gap)
-
-**Description:** The README documents this: "Not done: real attestation (Firebase App Check / Play Integrity). Until then anyone can mint device keys; the global caps are the backstop." Anyone who extracts the gateway URL from the APK can call `/v1/generate`, `/v1/vision` and `/v1/tools/search` and spend the provider budget.
-
-**Why it is not reported as a finding:** the impact is bounded by the global caps. Under the review criteria this is resource abuse and rate limiting, which are excluded.
-
-**Why it matters before shipping:** once the global caps are hit, cloud features stop for every user, and the operator's provider spend is exposed.
-
-**Recommendation:**
-
-- Add Play Integrity or Firebase App Check to the gateway before launch.
-- Set spend alerts and hard limits on each provider account.
-
----
-
-## 3. Release build can silently use the debug signing key
+## 2. Release build can silently use the debug signing key
 
 **Location:** `android/app/build.gradle.kts:62-71`.
 
@@ -119,9 +100,7 @@ Still open, needs a decision or secrets outside the repo:
 
 - Release signing (item 3): no `android/key.properties` on this machine, and CI never builds a release. Play upload is blocked until the keystore exists.
 - Launcher icon is still the default Flutter logo. Needs final artwork.
-- Gateway durability: the free Render plan resets the rate-limit counters and global kill switch on every restart (`render.yaml`). Use a paid disk, or set provider-side spend limits as the real backstop.
-- Gateway caller authentication (item 2): still the accepted gap; attestation is not implemented.
-- Certificate pin: release builds run unpinned unless `GATEWAY_CERT_SHA256` is supplied.
+- Gateway durability, gateway caller authentication (item 2) and the gateway certificate pin: no longer apply. The gateway was removed 2026-11-15; cloud features now call the provider directly with the user's own key.
 - Migration gives up on unreadable pages after three launches. The loss is now recorded in the error log, but the user is not yet told in the UI.
 
 ## Not in scope

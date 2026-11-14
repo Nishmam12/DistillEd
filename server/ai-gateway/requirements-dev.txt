@@ -1,5 +1,0 @@
--r requirements.txt
-# Exact versions the test suite and audit were run with.
-pytest==9.1.1
-pytest-asyncio==1.4.0
-pip-audit==2.10.1

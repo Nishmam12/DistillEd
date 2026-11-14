@@ -50,13 +50,10 @@ app.*.map.json
 # HuggingFace token fallback (see huggingFaceTokenProvider). Never commit a real
 # token there.
 
-# Python (server/ai-gateway/ — the Phase 3 FastAPI gateway)
+# Python
 __pycache__/
 *.pyc
 .venv/
-server/ai-gateway/.env
-server/ai-gateway/*.sqlite3
-server/ai-gateway/.pytest_cache/
 graphify-out/
 
 # Release signing and secrets (any depth)
