@@ -36,6 +36,7 @@ class FakeNoteRepository implements NoteRepository {
     String title, {
     int templateIndex = 0,
     int? backgroundColor,
+    int? pageSize,
   }) async =>
       _seed(title);
 
@@ -104,6 +105,9 @@ class FakeNoteRepository implements NoteRepository {
 
   @override
   Future<void> updateLayoutMode(int id, int layoutMode) async {}
+
+  @override
+  Future<void> updatePageSize(int id, int pageSize) async {}
 
   // ---- organisation ---------------------------------------------------------
 

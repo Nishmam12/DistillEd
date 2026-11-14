@@ -37,6 +37,9 @@ class NotebookMeta {
   final int backgroundColor;
   final int templateIndex;
   final int layoutMode;
+
+  /// [PageSizeKind] index. 0 (fit screen) for a backup from before page sizes.
+  final int pageSize;
   final List<String> tags;
   final DateTime createdAt;
 
@@ -45,6 +48,7 @@ class NotebookMeta {
     required this.backgroundColor,
     required this.templateIndex,
     required this.layoutMode,
+    this.pageSize = 0,
     required this.tags,
     required this.createdAt,
   });
@@ -187,6 +191,7 @@ class NotebookArchive {
           backgroundColor: (nb['backgroundColor'] as num? ?? 0xFFFFFFFF).toInt(),
           templateIndex: (nb['templateIndex'] as num? ?? 0).toInt(),
           layoutMode: (nb['layoutMode'] as num? ?? 0).toInt(),
+          pageSize: (nb['pageSize'] as num? ?? 0).toInt(),
           tags: [for (final t in nb['tags'] as List? ?? const []) '$t'],
           createdAt: DateTime.tryParse(nb['createdAt'] as String? ?? '') ??
               DateTime.now(),
@@ -249,6 +254,7 @@ class NotebookArchive {
           'backgroundColor': s.meta.backgroundColor,
           'templateIndex': s.meta.templateIndex,
           'layoutMode': s.meta.layoutMode,
+          'pageSize': s.meta.pageSize,
           'tags': s.meta.tags,
           'createdAt': s.meta.createdAt.toIso8601String(),
         },

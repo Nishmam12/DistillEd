@@ -85,11 +85,21 @@ class ViewportController extends StateNotifier<ViewportState> {
   // re-fit may shrink the page on their behalf).
   static const double autoFitMinZoom = 0.5;
 
+  /// Space between pages in the continuous layout, in scene units.
+  static const double pageGap = 32;
+
   ViewportController() : super(const ViewportState());
 
   // Current layout constraints. In infinite mode [_pageMode] is false and pan
   // is unconstrained; in page mode the page rect / viewport size drive clamping.
   bool _pageMode = false;
+
+  /// Continuous layout: pages stacked top to bottom. The scene is still the
+  /// current page's; the pages either side sit [pageGap] beyond its top and
+  /// bottom edges, and may be scrolled to when [_pageAbove] / [_pageBelow].
+  bool _continuous = false;
+  bool _pageAbove = false;
+  bool _pageBelow = false;
   Size _pageSize = Size.zero;
   Size _viewportSize = Size.zero;
   double _minZoom = infiniteMinZoom;
@@ -103,6 +113,11 @@ class ViewportController extends StateNotifier<ViewportState> {
   /// find what's currently on screen in scene coordinates.
   Size get viewportSize => _viewportSize;
 
+  bool get continuous => _continuous;
+
+  /// The page size last configured (the page in scene units).
+  Size get pageSize => _pageSize;
+
   /// Sets the active layout mode and the page / viewport geometry used for
   /// clamping, then re-applies constraints to the current state. Called by the
   /// canvas whenever the mode or its size changes.
@@ -110,8 +125,11 @@ class ViewportController extends StateNotifier<ViewportState> {
     required bool pageMode,
     required Size pageSize,
     required Size viewportSize,
+    bool continuous = false,
   }) {
+    continuous = continuous && pageMode;
     final changed = _pageMode != pageMode ||
+        _continuous != continuous ||
         _pageSize != pageSize ||
         _viewportSize != viewportSize;
     if (!changed) return;
@@ -120,6 +138,7 @@ class ViewportController extends StateNotifier<ViewportState> {
     // the window was resized): keep the same writing on screen. On the
     // infinite canvas the "page" is just the canvas size, so it is ignored.
     final onlyResized = _pageMode == pageMode &&
+        _continuous == continuous &&
         (!pageMode || _pageSize == pageSize) &&
         !_viewportSize.isEmpty &&
         !viewportSize.isEmpty;
@@ -135,6 +154,7 @@ class ViewportController extends StateNotifier<ViewportState> {
     final wasWhole = state.zoom <= fitZoom + 1e-6;
 
     _pageMode = pageMode;
+    _continuous = continuous;
     _pageSize = pageSize;
     _viewportSize = viewportSize;
     _minZoom = pageMode ? pageMinZoom : infiniteMinZoom;
@@ -163,8 +183,45 @@ class ViewportController extends StateNotifier<ViewportState> {
   /// bounded there, so there is nothing to fit.
   double get fitZoom {
     if (!_pageMode || _pageSize.isEmpty || _viewportSize.isEmpty) return 1.0;
+    // Continuous: the page's width fills the window, and it is read by
+    // scrolling down, like a document.
+    if (_continuous) return _viewportSize.width / _pageSize.width;
     return math.min(_viewportSize.width / _pageSize.width,
         _viewportSize.height / _pageSize.height);
+  }
+
+  /// Continuous layout: whether there is a page above and below the current
+  /// one to scroll to. Only re-applies the bounds; the view does not move
+  /// unless it is now out of them.
+  void setNeighbours({required bool above, required bool below}) {
+    if (_pageAbove == above && _pageBelow == below) return;
+    _pageAbove = above;
+    _pageBelow = below;
+    state = _constrain(state);
+  }
+
+  /// Continuous layout: the current page became the next one ([direction]
+  /// 1) or the previous one (-1). Shifts the view by exactly one page and
+  /// gap, so the same writing stays where it was on screen while the scene
+  /// changes to the new page's.
+  void shiftPage(int direction, {required bool above, required bool below}) {
+    _restorePoint = null;
+    _pageAbove = above;
+    _pageBelow = below;
+    final step = (_pageSize.height + pageGap) * state.zoom;
+    state = _constrain(
+        state.copyWith(scrollY: state.scrollY + direction * step));
+  }
+
+  /// Continuous layout: which page the middle of the window is on, relative
+  /// to the current one: -1 above, 1 below, 0 the current page. Over the gap
+  /// it counts as the nearer page, so pages switch half way across it.
+  int pageAtMiddle() {
+    if (!_continuous || _pageSize.isEmpty || _viewportSize.isEmpty) return 0;
+    final y = (_viewportSize.height / 2 - state.scrollY) / state.zoom;
+    if (_pageBelow && y > _pageSize.height + pageGap / 2) return 1;
+    if (_pageAbove && y < -pageGap / 2) return -1;
+    return 0;
   }
 
   /// The view to put back when the canvas returns to the size it had before it
@@ -248,14 +305,20 @@ class ViewportController extends StateNotifier<ViewportState> {
     if (!_pageMode || _pageSize.isEmpty || _viewportSize.isEmpty) return s;
 
     final pageW = _pageSize.width * s.zoom;
-    final pageH = _pageSize.height * s.zoom;
 
     final double sx = pageW <= _viewportSize.width
         ? (_viewportSize.width - pageW) / 2
         : s.scrollX.clamp(_viewportSize.width - pageW, 0.0);
-    final double sy = pageH <= _viewportSize.height
-        ? (_viewportSize.height - pageH) / 2
-        : s.scrollY.clamp(_viewportSize.height - pageH, 0.0);
+    // Continuous: the scrollable column runs from the top of the page above
+    // to the bottom of the page below, where there are such pages.
+    final top = _continuous && _pageAbove ? -(_pageSize.height + pageGap) : 0.0;
+    final bottom = _continuous && _pageBelow
+        ? 2 * _pageSize.height + pageGap
+        : _pageSize.height;
+    final columnH = (bottom - top) * s.zoom;
+    final double sy = columnH <= _viewportSize.height
+        ? (_viewportSize.height - columnH) / 2 - top * s.zoom
+        : s.scrollY.clamp(_viewportSize.height - bottom * s.zoom, -top * s.zoom);
 
     return s.copyWith(scrollX: sx, scrollY: sy);
   }

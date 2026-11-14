@@ -26,6 +26,7 @@ import '../../ai/presentation/ai_providers.dart';
 import '../../ai/presentation/notebook_index_notifier.dart';
 import '../../ai/presentation/sidebar/ai_sidebar.dart';
 import '../../ai/presentation/sidebar/floating_ai_panel.dart';
+import '../../../domain/model/page_size.dart';
 import '../../../domain/model/template_type.dart';
 import '../../import/pdf_service.dart'
     show ImportCancelledException, ImportException;
@@ -58,6 +59,7 @@ import 'controls/editor_bottom_bar.dart';
 import '../../../editor/ui/controls/editor_tool_options_overlay.dart';
 import '../../../editor/ui/controls/page_actions_sheet.dart';
 import '../../../editor/ui/controls/undo_redo_buttons.dart';
+import '../../../editor/ui/neighbour_pages_layer.dart';
 import '../../../editor/ui/scene_canvas.dart';
 import '../../../editor/ui/universal_color_palette.dart';
 import '../../../editor/ui/zoom_pill.dart';
@@ -170,10 +172,20 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     EditorTool previousTool,
   })? _placing;
 
-  /// The page's size in page mode, taken from the first layout of the canvas
-  /// area and held for the rest of the session. See the [LayoutBuilder] in
+  /// The canvas area's size at its first layout, held for the rest of the
+  /// session: the page of a "fit screen" notebook. See the [LayoutBuilder] in
   /// [build] for why it cannot live in the canvas.
-  Size? _pageSheet;
+  Size? _screenSheet;
+
+  /// The page's size in the page layouts: the notebook's paper size, or for a
+  /// "fit screen" notebook the screen-shaped sheet latched above.
+  Size? get _pageSheet => _pageKind.size ?? _screenSheet;
+
+  PageSizeKind get _pageKind =>
+      PageSizeKind.fromIndex(_notebook?.pageSize ?? 0);
+
+  /// Continuous layout: a page step is on its way (see [_stepPage]).
+  bool _pageStepPending = false;
 
   /// The docked AI panel's width while its edge is being dragged; null when
   /// not dragging, and the saved width is used.
@@ -247,7 +259,33 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
         : TemplateType.blank;
   }
 
-  bool get _pageMode => (_notebook?.layoutMode ?? 0) == 1;
+  /// 0 infinite, 1 single page, 2 continuous (see [Notebook.layoutMode]).
+  int get _layoutMode => _notebook?.layoutMode ?? 0;
+
+  /// Bounded pages: single page and continuous.
+  bool get _pageMode => _layoutMode == 1 || _layoutMode == 2;
+
+  bool get _continuous => _layoutMode == 2;
+
+  /// Continuous layout: make the page above (-1) or below (1) the current
+  /// one, shifting the view by one page so nothing on screen moves. Done a
+  /// moment later, never in the middle of a viewport or pointer update.
+  void _stepPage(int direction) {
+    if (_pageStepPending) return;
+    _pageStepPending = true;
+    Future.microtask(() {
+      _pageStepPending = false;
+      if (!mounted || !_continuous) return;
+      final state = ref.read(pageProvider(widget.notebookId));
+      final count = state.pages.length;
+      final next = state.currentPageIndex + direction;
+      if (next < 0 || next >= count) return;
+      _switchTo(next);
+      ref
+          .read(viewportProvider.notifier)
+          .shiftPage(direction, above: next > 0, below: next < count - 1);
+    });
+  }
 
   /// Loads a page's elements from the store once per session.
   void _ensureLoaded(ScenePageKey key) {
@@ -300,6 +338,28 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     final page = pageState.pages[index];
     final key = (notebookId: widget.notebookId, pageId: page.id);
     _ensureLoaded(key);
+
+    // Continuous layout: the pages either side are drawn too, and the page
+    // in the middle of the window is the one being written on.
+    final above = _continuous && index > 0 ? pageState.pages[index - 1] : null;
+    final below = _continuous && index < pageState.pages.length - 1
+        ? pageState.pages[index + 1]
+        : null;
+    for (final p in [?above, ?below]) {
+      _ensureLoaded((notebookId: widget.notebookId, pageId: p.id));
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref
+            .read(viewportProvider.notifier)
+            .setNeighbours(above: above != null, below: below != null);
+      }
+    });
+    ref.listen(viewportProvider, (_, _) {
+      if (!_continuous) return;
+      final d = ref.read(viewportProvider.notifier).pageAtMiddle();
+      if (d != 0) _stepPage(d);
+    });
 
     return Scaffold(
       // The keyboard must not resize the canvas: it would shrink the page on
@@ -390,8 +450,9 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                     // would leave the new page a narrow sliver. This state
                     // outlives both.
                     if (!constraints.biggest.isEmpty) {
-                      _pageSheet ??= constraints.biggest;
+                      _screenSheet ??= constraints.biggest;
                     }
+                    final sheet = _pageSheet;
                     return Stack(
                       children: [
                         Positioned.fill(
@@ -402,13 +463,26 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                             backgroundColor: _paperColor,
                             templateType: _template,
                             pageMode: _pageMode,
-                            pageSize: _pageSheet,
+                            pageSize: sheet,
+                            continuous: _continuous,
+                            onNeighbourTouched: _stepPage,
                             stampStroke: (t) => ref
                                 .read(recordingSessionProvider(
                                     widget.notebookId))
                                 .stampFor(t ?? ref.read(engineClockProvider)()),
                           ),
                         ),
+                        if (_continuous && sheet != null)
+                          Positioned.fill(
+                            child: NeighbourPagesLayer(
+                              notebookId: widget.notebookId,
+                              abovePageId: above?.id,
+                              belowPageId: below?.id,
+                              sheet: sheet,
+                              paperColor: _paperColor,
+                              template: _template,
+                            ),
+                          ),
                         // Zoom level and the universal colour palette, both
                         // top-right under the toolbar; tap the pill to reset
                         // the view, tap the swatch to open the colour grid.
@@ -1184,20 +1258,30 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       builder: (_) => _BackgroundSheet(
         template: _template,
         paperColor: _paperColor,
-        pageMode: _pageMode,
+        layoutMode: _layoutMode,
+        pageSize: _pageKind,
         onTemplate: _setTemplate,
         onColor: _setPaperColor,
-        onPageMode: _setLayoutMode,
+        onLayoutMode: _setLayoutMode,
+        onPageSize: _setPageSize,
       ),
     );
   }
 
-  void _setLayoutMode(bool pageMode) {
+  void _setLayoutMode(int mode) {
     final nb = _notebook;
     if (nb == null) return;
-    final mode = pageMode ? 1 : 0;
     setState(() => nb.layoutMode = mode);
     unawaited(_save((r) => r.updateLayoutMode(widget.notebookId, mode)));
+  }
+
+  /// The paper the pages are laid out on. Writing stays where it is; only the
+  /// page around it changes.
+  void _setPageSize(PageSizeKind kind) {
+    final nb = _notebook;
+    if (nb == null) return;
+    setState(() => nb.pageSize = kind.index);
+    unawaited(_save((r) => r.updatePageSize(widget.notebookId, kind.index)));
   }
 
   void _setTemplate(TemplateType type) {

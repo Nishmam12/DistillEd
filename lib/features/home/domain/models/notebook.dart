@@ -2,6 +2,8 @@
 
 import 'package:isar_community/isar.dart';
 
+import '../../../../domain/model/page_size.dart';
+
 part 'notebook.g.dart';
 
 @collection
@@ -24,8 +26,16 @@ class Notebook {
   int templateIndex = 0;
 
   /// Canvas layout mode: 0 = infinite whiteboard (free pan/zoom),
-  /// 1 = single page (bounded, zoom limited to 50–300%). Defaults to infinite.
+  /// 1 = single page (bounded, zoom limited to 50–300%), 2 = continuous
+  /// (pages stacked top to bottom, scrolled through). Defaults to infinite.
+  /// Append only: an older build treats anything but 1 as infinite.
   int layoutMode = 0;
+
+  /// Index into [PageSizeKind.values]: the paper the pages are laid out on in
+  /// the page layouts. 0 = fit screen, which is what every notebook made
+  /// before real sizes keeps; new notebooks start at A4 (set on creation).
+  /// Added 2026-11-14; an older build ignores it.
+  int pageSize = 0;
 
   /// Pinned notes lead the home list under every sort order.
   @Index()

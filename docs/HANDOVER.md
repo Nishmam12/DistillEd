@@ -194,6 +194,25 @@ Nothing below has been confirmed on the tablet.
    AI Models screen (download a model, add the HuggingFace token) still work,
    in light and dark. Turn backup on and check the "How often" chips wrap.
 
+### Schema change: page size (2026-11-14)
+
+Approved by the user: one new column, `Notebook.pageSize` (`PageSizeKind`
+index, append only). 0 = fit screen, the default every existing row reads, so
+old notebooks keep the screen-shaped sheet latched in the editor
+(`_screenSheet`); `createNotebook` gives new notebooks A4 portrait
+(`PageSizeKind.newNotebookDefault`). Backups carry `pageSize` (missing = 0, so
+an old backup restores as fit screen, not A4). `layoutMode` 2 = continuous: an
+older build checks `== 1`, so it shows the notebook as infinite.
+
+Continuous layout: the scene is still the current page's. The viewport lets
+the view scroll one page plus `ViewportController.pageGap` above and below when
+there are pages there (`setNeighbours`), the editor watches `pageAtMiddle()`
+and steps the page with `shiftPage`, which moves the view by exactly one page
+so nothing on screen jumps. `NeighbourPagesLayer` draws the pages either side
+read-only. A touch on a neighbour only switches to it
+(`SceneCanvas.onNeighbourTouched`). Writing that starts on the current page
+and runs past its edge is clipped, as in single page.
+
 ### Schema change: revision tape (2026-11-14)
 
 Approved by the user: `SceneElementKind.tape` appended (index 5) and one new
@@ -244,7 +263,7 @@ Still to fix, in this order:
 | 6 | FIXED, needs device check. Three-finger redo responds rarely. | Not investigated (likely the tap time window). | Sonnet 5.5 |
 | 7 | FIXED, needs device check. Straighten fires when not wanted. | Always on, no setting, and the same 600 ms hold as Snap shapes (`ink_gestures.dart`, `scene_canvas_tools.dart` `_commitStroke`). | Sonnet 5.5 |
 | 8 | FIXED, needs device check. Toolbar runs under the AI panel; the Text tool is half hidden. | The tool row does not adapt to the narrowed canvas. | Sonnet 5.5 |
-| 9 | PARTLY FIXED (unlock now visible), needs device check. Imported PDF page sits small in the middle of the sheet and cannot be moved. | Locked on purpose (Phase 0), but the unlock is hidden, and the page is smaller than the sheet. | Sonnet 5.5 (unlock); Opus with Phase C (page size) |
+| 9 | FIXED (unlock visible; real page sizes in step 10), needs device check. Imported PDF page sits small in the middle of the sheet and cannot be moved. | Locked on purpose (Phase 0), but the unlock is hidden, and the page is smaller than the sheet. | Sonnet 5.5 (unlock); Opus with Phase C (page size) |
 | 10 | FIXED, needs device check. AI panel should float: draggable and resizable. | New feature. | Opus 5.5 |
 | 11 | FIXED, needs device check. Text tool is a modal dialog over everything. | Phase B step 7 (inline text). | Opus 5.5 |
 
@@ -270,7 +289,7 @@ Fable 5.2 only for figure-pipeline bugs.
 | 7 | B: inline on-canvas text editing | Opus |
 | 8 | B: convert handwriting to text in place, straighten | Opus |
 | 9 | DONE (`TapeElement`, column `tapeRevealed`, approved 2026-11-14). B: tape element (schema change, ask first) | Opus |
-| 10 | C: real page sizes, continuous vertical scroll | Opus |
+| 10 | DONE (`PageSizeKind`, column `Notebook.pageSize`, `layoutMode` 2, approved 2026-11-14). C: real page sizes, continuous vertical scroll | Opus |
 | 11 | C: page manager grid, drag-reorder, multi-select | Sonnet |
 | 12 | C: page bookmarks and outline, per-page template | Sonnet |
 | 13 | C: extra templates | Sonnet |

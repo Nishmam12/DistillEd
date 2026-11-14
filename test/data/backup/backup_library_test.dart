@@ -37,13 +37,14 @@ class _Notes implements NoteRepository {
 
   @override
   Future<Notebook> createNotebook(String title,
-      {int templateIndex = 0, int? backgroundColor}) async {
+      {int templateIndex = 0, int? backgroundColor, int? pageSize}) async {
     final n = Notebook()
       ..id = db._nextNotebook++
       ..title = title
       ..createdAt = DateTime(2026)
       ..modifiedAt = DateTime(2026)
-      ..templateIndex = templateIndex;
+      ..templateIndex = templateIndex
+      ..pageSize = pageSize ?? 1;
     if (backgroundColor != null) n.backgroundColor = backgroundColor;
     db.notebooks[n.id] = n;
     db.newPage(n.id);
@@ -58,6 +59,9 @@ class _Notes implements NoteRepository {
   @override
   Future<void> updateLayoutMode(int id, int layoutMode) async =>
       db.notebooks[id]!.layoutMode = layoutMode;
+  @override
+  Future<void> updatePageSize(int id, int pageSize) async =>
+      db.notebooks[id]!.pageSize = pageSize;
   @override
   Future<void> setTags(int id, List<String> tags) async =>
       db.notebooks[id]!.tags = tags;
@@ -165,6 +169,15 @@ void main() {
     expect(await library.notebookIds(), isNot(contains(id)));
   });
 
+  test('a notebook backed up at fit screen restores at fit screen, not A4',
+      () async {
+    final id = await seed();
+    db.notebooks[id]!.pageSize = 0;
+    final bytes = NotebookArchive.encode((await library.snapshot(id))!);
+    final newId = await library.add(NotebookArchive.decode(bytes));
+    expect(db.notebooks[newId]!.pageSize, 0);
+  });
+
   test('restoring adds a copy with its own pages and files', () async {
     final id = await seed();
     final bytes = NotebookArchive.encode((await library.snapshot(id))!);
@@ -175,6 +188,8 @@ void main() {
     final nb = db.notebooks[newId]!;
     expect(nb.title, 'Chemistry');
     expect(nb.templateIndex, 3);
+    expect(nb.pageSize, db.notebooks[id]!.pageSize,
+        reason: 'the paper size is restored as backed up');
     expect(nb.tags, ['exam']);
 
     final pages = await _Pages(db).getPagesForNotebook(newId);

@@ -67,6 +67,7 @@ class AppBackupLibrary implements BackupLibrary {
         backgroundColor: notebook.backgroundColor,
         templateIndex: notebook.templateIndex,
         layoutMode: notebook.layoutMode,
+        pageSize: notebook.pageSize,
         tags: notebook.tags,
         createdAt: notebook.createdAt,
       ),
@@ -93,6 +94,9 @@ class AppBackupLibrary implements BackupLibrary {
       snapshot.meta.title,
       templateIndex: snapshot.meta.templateIndex,
       backgroundColor: snapshot.meta.backgroundColor,
+      // As backed up: a backup from before page sizes restores as fit screen,
+      // the size its pages were made on, not today's A4 default.
+      pageSize: snapshot.meta.pageSize,
     );
     final id = created.id;
     if (snapshot.meta.layoutMode != 0) {

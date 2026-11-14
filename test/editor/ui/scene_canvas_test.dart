@@ -57,6 +57,52 @@ void main() {
         greaterThanOrEqualTo(3));
   });
 
+  testWidgets('continuous: a touch on the page below switches to it, '
+      'and draws nothing', (tester) async {
+    final container = _container();
+    addTearDown(container.dispose);
+    final touched = <int>[];
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        home: Scaffold(
+          body: SceneCanvas(
+            notebookId: 0,
+            pageId: 0,
+            pageMode: true,
+            continuous: true,
+            pageSize: const Size(400, 200),
+            onNeighbourTouched: touched.add,
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+    container
+        .read(viewportProvider.notifier)
+        .setNeighbours(above: false, below: true);
+    await tester.pump();
+
+    // Just below the page's bottom edge: the gap before the next page.
+    final at = container.read(viewportProvider).toViewport(const Offset(100, 210));
+    final g = await tester.startGesture(at, kind: PointerDeviceKind.stylus);
+    await g.moveBy(const Offset(30, 0));
+    await g.up();
+    await tester.pump();
+
+    expect(touched, [1]);
+    expect(container.read(sceneControllerProvider(_key)), isEmpty);
+
+    // On the page itself, the pen writes as usual.
+    final on = container.read(viewportProvider).toViewport(const Offset(100, 100));
+    final h = await tester.startGesture(on, kind: PointerDeviceKind.stylus);
+    await h.moveBy(const Offset(30, 0));
+    await h.up();
+    await tester.pump();
+    expect(container.read(sceneControllerProvider(_key)), hasLength(1));
+    expect(touched, [1]);
+  });
+
   testWidgets('a stroke is saved with the pen type it was drawn with',
       (tester) async {
     final container = _container();

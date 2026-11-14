@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:isar_community/isar.dart';
 
 import '../../../../data/persistence/content_purge.dart';
+import '../../../../domain/model/page_size.dart';
 import '../../../../data/persistence/page_text_record.dart';
 import '../../../../data/persistence/scene_element_record.dart';
 import '../../domain/models/folder.dart';
@@ -26,13 +27,15 @@ class NoteRepository {
     String title, {
     int templateIndex = 0,
     int? backgroundColor,
+    int? pageSize,
   }) async {
     final notebook = Notebook()
       ..title = title
       ..createdAt = DateTime.now()
       ..modifiedAt = DateTime.now()
       ..pageCount = 1
-      ..templateIndex = templateIndex;
+      ..templateIndex = templateIndex
+      ..pageSize = pageSize ?? PageSizeKind.newNotebookDefault.index;
     if (backgroundColor != null) notebook.backgroundColor = backgroundColor;
 
     // One transaction: a crash between the two writes would leave a notebook
@@ -202,7 +205,19 @@ class NoteRepository {
     });
   }
 
-  /// Updates the canvas layout mode (0 = infinite, 1 = single page).
+  /// Updates the paper size of the page layouts ([PageSizeKind] index).
+  Future<void> updatePageSize(int id, int pageSize) async {
+    await _isar.writeTxn(() async {
+      final notebook = await _isar.notebooks.get(id);
+      if (notebook == null) return;
+      notebook.pageSize = pageSize;
+      notebook.modifiedAt = DateTime.now();
+      await _isar.notebooks.put(notebook);
+    });
+  }
+
+  /// Updates the canvas layout mode (0 = infinite, 1 = single page,
+  /// 2 = continuous).
   Future<void> updateLayoutMode(int id, int layoutMode) async {
     await _isar.writeTxn(() async {
       final notebook = await _isar.notebooks.get(id);

@@ -21,6 +21,9 @@ import 'package:margo/editor/state/editor_tool_controller.dart';
 import 'package:margo/editor/state/history_controller.dart';
 import 'package:margo/editor/state/page_notifier.dart';
 import 'package:margo/editor/state/scene_controller.dart';
+import 'package:margo/domain/model/page_size.dart';
+import 'package:margo/editor/state/viewport_controller.dart';
+import 'package:margo/editor/ui/neighbour_pages_layer.dart';
 import 'package:margo/editor/ui/scene_canvas.dart';
 import 'package:margo/features/audio/data/transcript_store.dart';
 import 'package:margo/features/audio/presentation/audio_providers.dart';
@@ -36,6 +39,7 @@ void main() {
   late ProviderContainer container;
   late FakeCapture capture;
   late InMemorySceneElementStore store;
+  late FakeNoteRepository notes;
   late Directory docs;
   final navKey = GlobalKey<NavigatorState>();
 
@@ -50,7 +54,7 @@ void main() {
     docs = Directory.systemTemp.createTempSync('margo_editor_');
     capture = FakeCapture();
     store = InMemorySceneElementStore();
-    final notes = FakeNoteRepository();
+    notes = FakeNoteRepository();
     await notes.createNotebook('Lecture');
     container = ProviderContainer(retry: (_, _) => null, overrides: [
       appDocsPathProvider.overrideWithValue(docs.path),
@@ -181,6 +185,55 @@ void main() {
     final saved = await tester.runAsync(() => store.loadForPage(key.pageId));
     expect(saved!.whereType<TextElement>().map((t) => t.text),
         ['written, then left']);
+  });
+
+  group('continuous layout on A4', () {
+    Future<void> openTwoPages(WidgetTester tester) async {
+      notes.notebooks.first
+        ..layoutMode = 2
+        ..pageSize = PageSizeKind.a4Portrait.index;
+      await pumpHost(tester);
+      await openEditor(tester);
+      await container.read(pageProvider(1).notifier).insertPage();
+      container.read(pageProvider(1).notifier).switchPage(0);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the page is A4 and the next page shows below it',
+        (tester) async {
+      await openTwoPages(tester);
+      final canvas = tester.widget<SceneCanvas>(find.byType(SceneCanvas));
+      expect(canvas.pageSize, PageSizeKind.a4Portrait.size);
+      expect(canvas.continuous, isTrue);
+      final pages = container.read(pageProvider(1)).pages;
+      final layer =
+          tester.widget<NeighbourPagesLayer>(find.byType(NeighbourPagesLayer));
+      expect(layer.abovePageId, isNull);
+      expect(layer.belowPageId, pages[1].id);
+    });
+
+    testWidgets('scrolling the next page into the middle makes it current, '
+        'without the view jumping', (tester) async {
+      await openTwoPages(tester);
+      final vp = container.read(viewportProvider.notifier);
+      final z = container.read(viewportProvider).zoom;
+      const sheet = Size(794, 1123);
+      // A point near the top of page 2, in page 1's scene, before the step.
+      final onNext =
+          Offset(100, sheet.height + ViewportController.pageGap + 40);
+      vp.pan(Offset(0, -(sheet.height * z)));
+      final before = container.read(viewportProvider).toViewport(onNext);
+      await tester.pumpAndSettle();
+
+      expect(container.read(pageProvider(1)).currentPageIndex, 1);
+      final after =
+          container.read(viewportProvider).toViewport(const Offset(100, 40));
+      expect((after - before).distance, lessThan(0.5));
+      final layer =
+          tester.widget<NeighbourPagesLayer>(find.byType(NeighbourPagesLayer));
+      expect(layer.abovePageId, container.read(pageProvider(1)).pages[0].id);
+      expect(layer.belowPageId, isNull);
+    });
   });
 
   testWidgets('a route pushed over the editor keeps its state', (tester) async {

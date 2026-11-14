@@ -15,6 +15,7 @@ NotebookSnapshot sample({int sourceId = 12, String text = 'Mitosis has four phas
         backgroundColor: 0xFFFFFDF7,
         templateIndex: 2,
         layoutMode: 1,
+        pageSize: 3,
         tags: const ['exam', 'cells'],
         createdAt: DateTime.utc(2026, 9, 1),
       ),
@@ -54,6 +55,29 @@ NotebookSnapshot sample({int sourceId = 12, String text = 'Mitosis has four phas
     );
 
 void main() {
+  group('page size', () {
+    test('a backup from before page sizes reads as fit screen', () {
+      // Re-encode the sample without the key, as an older build wrote it.
+      final archive = ZipDecoder().decodeBytes(NotebookArchive.encode(sample()));
+      final out = Archive();
+      for (final f in archive.files) {
+        if (f.name.endsWith('.json')) {
+          final m = jsonDecode(utf8.decode(f.content as List<int>))
+              as Map<String, dynamic>;
+          final nb = m['notebook'];
+          if (nb is Map<String, dynamic>) nb.remove('pageSize');
+          final bytes = utf8.encode(jsonEncode(m));
+          out.addFile(ArchiveFile(f.name, bytes.length, bytes));
+        } else {
+          out.addFile(f);
+        }
+      }
+      final back = NotebookArchive.decode(
+          Uint8List.fromList(ZipEncoder().encode(out)));
+      expect(back.meta.pageSize, 0);
+    });
+  });
+
   group('encode / decode', () {
     test('everything survives the round trip', () {
       final back = NotebookArchive.decode(NotebookArchive.encode(sample()));
@@ -62,6 +86,7 @@ void main() {
       expect(back.meta.title, 'Biology');
       expect(back.meta.templateIndex, 2);
       expect(back.meta.layoutMode, 1);
+      expect(back.meta.pageSize, 3);
       expect(back.meta.backgroundColor, 0xFFFFFDF7);
       expect(back.meta.tags, ['exam', 'cells']);
       expect(back.pages, hasLength(2));

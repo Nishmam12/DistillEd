@@ -15,6 +15,25 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+### Changed
+- **Database: one new column on Notebook, `pageSize`** (approved 2026-11-14).
+  0 means "fit screen", which every existing notebook keeps; new notebooks
+  start at A4. Isar adds the column on its own; an older build ignores it and
+  lays the notebook out at fit screen. Nothing is lost either way.
+- `layoutMode` gains the value 2 (continuous). An older build shows such a
+  notebook as the infinite canvas.
+
+### Added
+- **Real page sizes.** A4, Letter and 16:10, portrait or landscape, or Fit
+  screen (today's screen-shaped page), chosen under Layout in the page sheet.
+  A page is the same shape on every device, and imported PDF pages now fill it
+  instead of sitting small in the middle. Changing the size leaves the writing
+  where it is.
+- **Continuous layout.** Pages stacked top to bottom, the page width filling
+  the window, scrolled through like a document. The page in the middle of the
+  window is the one being written on, and the view does not jump when it
+  changes; touching the page above or below makes it current. Page size and
+  layout are saved in backups.
 
 ## [5.2.0] - 2026-11-14
 ### Changed

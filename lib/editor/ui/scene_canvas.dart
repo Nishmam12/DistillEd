@@ -83,6 +83,14 @@ class SceneCanvas extends ConsumerStatefulWidget {
   final ({int recordingId, int audioOffsetMs})? Function(int? firstPointMs)?
       stampStroke;
 
+  /// Continuous layout (with [pageMode]): the pages either side show above
+  /// and below this one. Writing happens on this page only.
+  final bool continuous;
+
+  /// Continuous layout: a touch landed on the page above (-1) or below (1).
+  /// The owner makes that page the current one; the touch does nothing else.
+  final ValueChanged<int>? onNeighbourTouched;
+
   const SceneCanvas({
     super.key,
     required this.notebookId,
@@ -92,6 +100,8 @@ class SceneCanvas extends ConsumerStatefulWidget {
     this.pageMode = false,
     this.pageSize,
     this.stampStroke,
+    this.continuous = false,
+    this.onNeighbourTouched,
   });
 
   @override
@@ -168,6 +178,14 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
 
   /// The editor is going away with the canvas (page switch, editor closed).
   bool _closing = false;
+
+  /// What the viewport was last configured with, beyond size and mode.
+  Size? _configuredSheet;
+  bool _configuredContinuous = false;
+
+  /// Continuous layout: a touch on a neighbouring page, which only switches
+  /// to it; its moves and lift are ignored.
+  bool _neighbourTouch = false;
 
   /// The last tap on a text with the lasso, for double-tap to edit.
   String? _lastTextTapId;
@@ -301,6 +319,17 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       _tapToCommit = true;
       return;
     }
+    // Continuous layout: a touch on the page above or below makes that page
+    // the one being written on.
+    if (widget.continuous && widget.pageMode) {
+      final y = _toScene(p).dy;
+      final h = ref.read(viewportProvider.notifier).pageSize.height;
+      if (h > 0 && (y < 0 || y > h)) {
+        _neighbourTouch = true;
+        widget.onNeighbourTouched?.call(y < 0 ? -1 : 1);
+        return;
+      }
+    }
     _eraserGesture = isEraserGesture(event);
     final tool = _gestureTool();
     // The tool's options panel is only ever meant to be seen briefly after
@@ -343,7 +372,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   }
 
   void _onMove(PointerEvent _, StrokePoint p) {
-    if (_tapToCommit) return;
+    if (_tapToCommit || _neighbourTouch) return;
     final tool = _gestureTool();
     switch (tool.tool) {
       case EditorTool.select:
@@ -379,6 +408,10 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   }
 
   void _onUp(PointerEvent _, StrokePoint p) {
+    if (_neighbourTouch) {
+      _neighbourTouch = false;
+      return;
+    }
     if (_tapToCommit) {
       _tapToCommit = false;
       _inlineKey.currentState?.commit();
@@ -410,6 +443,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   void _cancel() {
     // A pinch or pan while typing keeps the text open.
     _tapToCommit = false;
+    _neighbourTouch = false;
     _active.clear();
     _eraserGesture = false;
     _preview.value = null;
@@ -449,12 +483,17 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   /// zoom and keep the whole page visible.
   void _syncViewportConfig(Size size) {
     if (size.isEmpty) return;
-    if (_configuredSize == size && _configuredPageMode == widget.pageMode) {
+    if (_configuredSize == size &&
+        _configuredPageMode == widget.pageMode &&
+        _configuredSheet == widget.pageSize &&
+        _configuredContinuous == widget.continuous) {
       return;
     }
     if (_configuredPageMode != widget.pageMode) _pageSize = null;
     _configuredSize = size;
     _configuredPageMode = widget.pageMode;
+    _configuredSheet = widget.pageSize;
+    _configuredContinuous = widget.continuous;
 
     final page =
         widget.pageMode ? (widget.pageSize ?? (_pageSize ??= size)) : size;
@@ -464,6 +503,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
             pageMode: widget.pageMode,
             pageSize: page,
             viewportSize: size,
+            continuous: widget.continuous,
           );
     });
   }

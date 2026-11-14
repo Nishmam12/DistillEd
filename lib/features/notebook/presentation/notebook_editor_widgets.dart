@@ -6,18 +6,24 @@ part of 'notebook_editor_screen.dart';
 class _BackgroundSheet extends StatefulWidget {
   final TemplateType template;
   final Color paperColor;
-  final bool pageMode;
+
+  /// 0 infinite, 1 single page, 2 continuous.
+  final int layoutMode;
+  final PageSizeKind pageSize;
   final ValueChanged<TemplateType> onTemplate;
   final ValueChanged<Color> onColor;
-  final ValueChanged<bool> onPageMode;
+  final ValueChanged<int> onLayoutMode;
+  final ValueChanged<PageSizeKind> onPageSize;
 
   const _BackgroundSheet({
     required this.template,
     required this.paperColor,
-    required this.pageMode,
+    required this.layoutMode,
+    required this.pageSize,
     required this.onTemplate,
     required this.onColor,
-    required this.onPageMode,
+    required this.onLayoutMode,
+    required this.onPageSize,
   });
 
   @override
@@ -33,7 +39,8 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
 
   late TemplateType _template = widget.template;
   late Color _color = widget.paperColor;
-  late bool _pageMode = widget.pageMode;
+  late int _layoutMode = widget.layoutMode;
+  late PageSizeKind _pageSize = widget.pageSize;
 
   @override
   Widget build(BuildContext context) {
@@ -47,26 +54,54 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
           children: [
             Text('Layout', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
-            SegmentedButton<bool>(
+            SegmentedButton<int>(
+              key: const ValueKey('layoutMode'),
               showSelectedIcon: false,
               segments: const [
                 ButtonSegment(
-                  value: false,
+                  value: 0,
                   icon: Icon(Icons.all_out),
                   label: Text('Infinite'),
                 ),
                 ButtonSegment(
-                  value: true,
+                  value: 1,
                   icon: Icon(Icons.insert_drive_file_outlined),
                   label: Text('Single page'),
                 ),
+                ButtonSegment(
+                  value: 2,
+                  icon: Icon(Icons.view_day_outlined),
+                  label: Text('Continuous'),
+                ),
               ],
-              selected: {_pageMode},
+              selected: {_layoutMode},
               onSelectionChanged: (s) {
-                setState(() => _pageMode = s.first);
-                widget.onPageMode(s.first);
+                setState(() => _layoutMode = s.first);
+                widget.onLayoutMode(s.first);
               },
             ),
+            // The paper, for the two page layouts.
+            if (_layoutMode != 0) ...[
+              const SizedBox(height: 16),
+              Text('Page size', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final k in PageSizeKind.values)
+                    ChoiceChip(
+                      key: ValueKey('pageSize_${k.name}'),
+                      label: Text(k.label),
+                      selected: _pageSize == k,
+                      onSelected: (_) {
+                        setState(() => _pageSize = k);
+                        widget.onPageSize(k);
+                      },
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 20),
             Text('Paper template', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
