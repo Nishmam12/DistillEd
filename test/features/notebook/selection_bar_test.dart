@@ -51,4 +51,36 @@ void main() {
     expect(a.geometryData.first, 200, reason: 'the move must survive');
     expect(a.zOrder, greaterThan(b.zOrder));
   });
+
+  testWidgets('a locked page offers "Unlock to move", and it unlocks',
+      (tester) async {
+    final container = ProviderContainer(retry: (_, _) => null, overrides: [
+      sceneElementStoreProvider.overrideWithValue(InMemorySceneElementStore()),
+    ]);
+    addTearDown(container.dispose);
+    final scene = container.read(sceneControllerProvider(key).notifier);
+    await scene.addMany([
+      const ImageElement(
+        id: 'pdf',
+        zOrder: 0,
+        geometryData: [0, 0, 400, 600],
+        relativeImagePath: 'p.png',
+        isLocked: true,
+      ),
+    ]);
+    container.read(selectionProvider.notifier).selectMany(['pdf']);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const MaterialApp(
+          home: Scaffold(body: SelectionBar(pageKey: key))),
+    ));
+
+    await tester.tap(find.byKey(const ValueKey('unlockSelection')));
+    await tester.pump(const Duration(seconds: 5));
+
+    expect(
+        container.read(sceneControllerProvider(key)).single.isLocked, isFalse);
+    expect(find.byKey(const ValueKey('unlockSelection')), findsNothing);
+  });
 }

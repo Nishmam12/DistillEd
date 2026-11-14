@@ -266,6 +266,16 @@ extension _SceneCanvasTools on _SceneCanvasState {
       } else if (rect != null) {
         final all = ref.read(sceneControllerProvider(_key));
         final ids = SceneHitTest.within(rect, all);
+        // A drag that began on a locked page and caught nothing: the person
+        // was most likely trying to move the page. Say how.
+        if (ids.isEmpty && lockedUnderTap != null) {
+          ScaffoldMessenger.maybeOf(context)
+            ?..hideCurrentSnackBar()
+            ..showSnackBar(const SnackBar(
+              content: Text(
+                  'This page is locked in place. Tap it, then tap Unlock to move it.'),
+            ));
+        }
         final expanded = <String>{};
         for (final id in ids) {
           expanded.addAll(_groupIds(id, all));
@@ -329,8 +339,9 @@ extension _SceneCanvasTools on _SceneCanvasState {
     // undo brings back the line as drawn. Needs no model, and a straightened
     // line is not then offered to the shape model as well.
     final up = upMs ?? points.last.t ?? 0;
-    final straight = straightenedLine(points, up,
-        zoom: ref.read(viewportProvider).zoom);
+    final straight = ref.read(settingsProvider).straightenLines
+        ? straightenedLine(points, up, zoom: ref.read(viewportProvider).zoom)
+        : null;
     if (straight != null) {
       _history.push(ReplaceElementsCommand(
         removed: [stroke],

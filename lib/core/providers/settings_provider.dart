@@ -133,6 +133,10 @@ class SettingsState {
   /// wrongly deletes work, even though it can be undone.
   final bool scribbleErase;
 
+  /// Hold at the end of a line and it straightens. Its own switch, off by
+  /// default: it used to be always on and fired when it was not wanted.
+  final bool straightenLines;
+
   /// Whether one finger draws on the page. On by default, as it always was.
   /// Off, a finger scrolls the page and only a pen draws — what most people
   /// writing with a stylus want, and what stops a resting finger leaving ink.
@@ -193,6 +197,7 @@ class SettingsState {
     this.transcribeLectures = false,
     this.snapShapes = false,
     this.scribbleErase = false,
+    this.straightenLines = false,
     this.fingerDraws = true,
     this.stylusTipShown = false,
     this.aiPanelWidth = 340,
@@ -224,6 +229,7 @@ class SettingsState {
     bool? transcribeLectures,
     bool? snapShapes,
     bool? scribbleErase,
+    bool? straightenLines,
     bool? fingerDraws,
     bool? stylusTipShown,
     double? aiPanelWidth,
@@ -243,6 +249,7 @@ class SettingsState {
       transcribeLectures: transcribeLectures ?? this.transcribeLectures,
       snapShapes: snapShapes ?? this.snapShapes,
       scribbleErase: scribbleErase ?? this.scribbleErase,
+      straightenLines: straightenLines ?? this.straightenLines,
       fingerDraws: fingerDraws ?? this.fingerDraws,
       stylusTipShown: stylusTipShown ?? this.stylusTipShown,
       aiPanelWidth: aiPanelWidth ?? this.aiPanelWidth,
@@ -275,6 +282,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kTranscribeLectures = 'ai.transcribeLectures';
   static const _kSnapShapes = 'ui.snapShapes';
   static const _kScribbleErase = 'ui.scribbleErase';
+  static const _kStraightenLines = 'ui.straightenLines';
   static const _kFingerDraws = 'ui.fingerDraws';
   static const _kStylusTipShown = 'ui.stylusTipShown';
   static const _kAiPanelWidth = 'ui.aiPanelWidth';
@@ -315,6 +323,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       transcribeLectures: prefs.getBool(_kTranscribeLectures) ?? false,
       snapShapes: prefs.getBool(_kSnapShapes) ?? false,
       scribbleErase: prefs.getBool(_kScribbleErase) ?? false,
+      straightenLines: prefs.getBool(_kStraightenLines) ?? false,
       fingerDraws: prefs.getBool(_kFingerDraws) ?? true,
       stylusTipShown: prefs.getBool(_kStylusTipShown) ?? false,
       aiPanelWidth: prefs.getDouble(_kAiPanelWidth) ?? 340,
@@ -430,6 +439,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(snapShapes: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kSnapShapes, value);
+  }
+
+  Future<void> setStraightenLines(bool value) async {
+    state = state.copyWith(straightenLines: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kStraightenLines, value);
   }
 
   Future<void> setScribbleErase(bool value) async {

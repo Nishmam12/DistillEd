@@ -107,8 +107,15 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
   /// Longest a tap may last, first finger down to last finger up.
   static const Duration _tapMaxDuration = Duration(milliseconds: 300);
 
+  /// Three fingers never land or lift in the same instant, and three
+  /// fingertips drift more than two: the first device test found three-finger
+  /// redo almost never registered inside the two-finger limits.
+  static const Duration _threeFingerTapMaxDuration =
+      Duration(milliseconds: 500);
+
   /// How far a finger may drift and still be tapping, in logical pixels.
   static const double _tapSlop = 12;
+  static const double _threeFingerTapSlop = 26;
 
   Duration? _tapStart;
   int _tapFingers = 0;
@@ -128,7 +135,9 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
     final start = _tapStart;
     _tapStart = null;
     if (start == null || _tapSpoiled || _tapFingers < 2) return;
-    if (event.timeStamp - start > _tapMaxDuration) return;
+    final limit =
+        _tapFingers >= 3 ? _threeFingerTapMaxDuration : _tapMaxDuration;
+    if (event.timeStamp - start > limit) return;
     widget.onMultiFingerTap?.call(_tapFingers.clamp(2, 3));
   }
   Duration? _lastStylusActivity;
@@ -250,7 +259,8 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
 
         final newPos = event.localPosition;
         final tapAt = _tapDownAt[event.pointer];
-        if (tapAt != null && (newPos - tapAt).distance > _tapSlop) {
+        final slop = _activePointers.length >= 3 ? _threeFingerTapSlop : _tapSlop;
+        if (tapAt != null && (newPos - tapAt).distance > slop) {
           _tapSpoiled = true;
         }
 

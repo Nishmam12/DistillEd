@@ -163,6 +163,24 @@ class SelectionBar extends ConsumerWidget {
               // nothing else can re-select a locked element except tapping it.
               final allLocked =
                   before.isNotEmpty && before.every((e) => e.isLocked);
+              // A locked import (a PDF page) says what is wrong and how to
+              // fix it, rather than hiding the way out behind an icon.
+              if (allLocked) {
+                return TextButton.icon(
+                  key: const ValueKey('unlockSelection'),
+                  icon: const Icon(Icons.lock_open_outlined),
+                  label: const Text('Unlock to move'),
+                  onPressed: () => history.push(
+                    UpdateElementsCommand(
+                      before: before,
+                      after: [
+                        for (final e in before)
+                          SelectionEditing.withLocked(e, false),
+                      ],
+                    ),
+                  ),
+                );
+              }
               return IconButton(
                 tooltip: allLocked ? 'Unlock' : 'Lock',
                 icon: Icon(

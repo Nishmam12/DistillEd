@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:margo/core/icons/phosphor_icons_regular.dart';
 
+import '../../../../core/providers/settings_provider.dart';
 import '../../../../editor/ui/editor_constants.dart';
 import '../../../../domain/model/scene_element.dart';
 import '../../../../editor/state/editor_tool_controller.dart';
@@ -16,7 +17,12 @@ import '../../../../editor/state/scene_controller.dart';
 import '../../../../editor/state/selection_controller.dart';
 import 'selection_bar.dart';
 
-class EditorBottomBar extends ConsumerWidget {
+/// Below this width the tool row packs its buttons closer and shows a
+/// scrollbar, so no tool is left half off the edge without a sign that the row
+/// scrolls (the AI panel narrows the editor to about this).
+const double kToolRowCompactWidth = 640;
+
+class EditorBottomBar extends ConsumerStatefulWidget {
   final ScenePageKey pageKey;
 
   /// Opens the import sheet (photo / camera / PDF). When null — as in the dev
@@ -31,10 +37,28 @@ class EditorBottomBar extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EditorBottomBar> createState() => _EditorBottomBarState();
+}
+
+class _EditorBottomBarState extends ConsumerState<EditorBottomBar> {
+  final ScrollController _scroll = ScrollController();
+
+  ScenePageKey get pageKey => widget.pageKey;
+  VoidCallback? get onImport => widget.onImport;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final tool = ref.watch(editorToolProvider);
     final selectedIds = ref.watch(selectionProvider);
     final toolCtl = ref.read(editorToolProvider.notifier);
+    final fingerDraws =
+        ref.watch(settingsProvider.select((s) => s.fingerDraws));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
@@ -45,7 +69,24 @@ class EditorBottomBar extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: SingleChildScrollView(
+                child: LayoutBuilder(builder: (context, box) {
+                  final compact = box.maxWidth < kToolRowCompactWidth;
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      iconButtonTheme: IconButtonThemeData(
+                        style: IconButton.styleFrom(
+                          visualDensity: compact
+                              ? VisualDensity.compact
+                              : VisualDensity.standard,
+                        ),
+                      ),
+                    ),
+                    child: Scrollbar(
+                      key: const ValueKey('toolRowScrollbar'),
+                      controller: _scroll,
+                      thumbVisibility: compact,
+                      child: SingleChildScrollView(
+                  controller: _scroll,
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
@@ -69,6 +110,26 @@ class EditorBottomBar extends ConsumerWidget {
                         // Saved pens ride beside the pen they set up.
                         if (t == EditorTool.pen) _PenPresetsRow(state: tool),
                       ],
+                      // One clear switch for "does a finger draw?". The same
+                      // setting as Settings > Pen, so the two always agree.
+                      IconButton(
+                        key: const ValueKey('fingerDrawToggle'),
+                        tooltip: fingerDraws
+                            ? 'Finger draws. Tap so only the pen draws'
+                            : 'Only the pen draws. Tap to draw with a finger',
+                        isSelected: fingerDraws,
+                        icon: Icon(fingerDraws
+                            ? Icons.touch_app
+                            : Icons.touch_app_outlined),
+                        style: IconButton.styleFrom(
+                          backgroundColor: fingerDraws
+                              ? Theme.of(context).colorScheme.primaryContainer
+                              : null,
+                        ),
+                        onPressed: () => ref
+                            .read(settingsProvider.notifier)
+                            .setFingerDraws(!fingerDraws),
+                      ),
                       // Image import is an action, not a selectable tool, so
                       // it sits at the very end of the row.
                       if (onImport != null)
@@ -80,6 +141,9 @@ class EditorBottomBar extends ConsumerWidget {
                     ],
                   ),
                 ),
+                    ),
+                  );
+                }),
               ),
             ],
           ),

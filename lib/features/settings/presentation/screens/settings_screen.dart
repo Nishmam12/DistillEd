@@ -149,6 +149,17 @@ class SettingsScreen extends ConsumerWidget {
           ),
           onTap: () => notifier.setFingerDraws(!settings.fingerDraws),
         ),
+        _SettingsRow(
+          icon: AppIcons.brush,
+          title: 'Straighten lines',
+          subtitle: 'Hold the pen still at the end of a line and it '
+              'straightens. Undo brings your line back.',
+          trailing: _AccentSwitch(
+            value: settings.straightenLines,
+            onChanged: notifier.setStraightenLines,
+          ),
+          onTap: () => notifier.setStraightenLines(!settings.straightenLines),
+        ),
         // SET-16. Draw-to-shape: hold the pen at the end of a stroke.
         _InkGestureRow(
           icon: AppIcons.addCircle,

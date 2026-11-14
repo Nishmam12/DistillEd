@@ -208,6 +208,23 @@ void main() {
       expect(fingerTaps, [3]);
     });
 
+    testWidgets('three fingers get a longer, looser window than two',
+        (tester) async {
+      await pump(tester);
+      await tapWith(tester, 3,
+          hold: const Duration(milliseconds: 450),
+          move: const Offset(20, 0));
+      expect(fingerTaps, [3]);
+      await tapWith(tester, 2, hold: const Duration(milliseconds: 450));
+      expect(fingerTaps, [3], reason: 'two fingers keep the strict limit');
+    });
+
+    testWidgets('three fingers held too long are not a tap', (tester) async {
+      await pump(tester);
+      await tapWith(tester, 3, hold: const Duration(milliseconds: 600));
+      expect(fingerTaps, isEmpty);
+    });
+
     testWidgets('a pinch is not a tap', (tester) async {
       await pump(tester);
       await tapWith(tester, 2, move: const Offset(40, 0));

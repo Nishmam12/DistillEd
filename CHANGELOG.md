@@ -16,6 +16,10 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 ### Fixed
+- Three-finger redo registers reliably: three fingers get a longer, looser tap
+  window than two (500 ms and 26 px, against 300 ms and 12 px).
+- The tool row shows a scrollbar and packs tighter when the AI panel narrows
+  the editor, so no tool is left half off the edge.
 - **A page full of photos no longer hangs the AI or gets the app killed.**
   One read gives the on-device model at most 4 pictures per page (1 in
   background indexing, 12 when the cloud reads); the rest are read for their
@@ -25,6 +29,12 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   instead of reloading it for every remaining picture.
 
 ### Added
+- A **finger-draw switch** in the editor tool row (same setting as Settings >
+  Pen), so a pen user can stop a finger drawing without leaving the page.
+- **Straighten lines** is its own setting in Settings > Pen, off by default. It
+  used to be always on and fired when it was not wanted.
+- A locked PDF page now shows **Unlock to move** when selected, and dragging it
+  with the lasso says how to move it.
 - The AI panel shows "Reading picture 2 of 4" with a **Stop** button, and
   says how many pictures were left for later.
 - Importing photos that would put more than 4 pictures on a page asks first,

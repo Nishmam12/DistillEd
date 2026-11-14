@@ -229,11 +229,11 @@ Still to fix, in this order:
 | 2 | FIXED, needs device check. Importing many photos onto one page is allowed with no warning. | No cap. Same limit as #1; warn past it, offer "put the rest on new pages". | Fable 5.2, with #1 |
 | 3 | FIXED (progress, Stop), needs device check. AI panel locked ("Reading your page…", all actions greyed) for the whole read. | Actions wait for the read. Needs progress, Cancel, and actions usable meanwhile. | Fable 5.2, with #1 |
 | 4 | FIXED, needs device check. PDF import: user wants a choice between importing pages as they are and extracting the text. | Not offered. | Fable 5.2, with #1 |
-| 5 | "Draw with finger" prompt has no clear way to turn it off. | The switch is only in Settings. | Sonnet 5.5 |
-| 6 | Three-finger redo responds rarely. | Not investigated (likely the tap time window). | Sonnet 5.5 |
-| 7 | Straighten fires when not wanted. | Always on, no setting, and the same 600 ms hold as Snap shapes (`ink_gestures.dart`, `scene_canvas_tools.dart` `_commitStroke`). | Sonnet 5.5 |
-| 8 | Toolbar runs under the AI panel; the Text tool is half hidden. | The tool row does not adapt to the narrowed canvas. | Sonnet 5.5 |
-| 9 | Imported PDF page sits small in the middle of the sheet and cannot be moved. | Locked on purpose (Phase 0), but the unlock is hidden, and the page is smaller than the sheet. | Sonnet 5.5 (unlock); Opus with Phase C (page size) |
+| 5 | FIXED, needs device check. "Draw with finger" prompt has no clear way to turn it off. | The switch is only in Settings. | Sonnet 5.5 |
+| 6 | FIXED, needs device check. Three-finger redo responds rarely. | Not investigated (likely the tap time window). | Sonnet 5.5 |
+| 7 | FIXED, needs device check. Straighten fires when not wanted. | Always on, no setting, and the same 600 ms hold as Snap shapes (`ink_gestures.dart`, `scene_canvas_tools.dart` `_commitStroke`). | Sonnet 5.5 |
+| 8 | FIXED, needs device check. Toolbar runs under the AI panel; the Text tool is half hidden. | The tool row does not adapt to the narrowed canvas. | Sonnet 5.5 |
+| 9 | PARTLY FIXED (unlock now visible), needs device check. Imported PDF page sits small in the middle of the sheet and cannot be moved. | Locked on purpose (Phase 0), but the unlock is hidden, and the page is smaller than the sheet. | Sonnet 5.5 (unlock); Opus with Phase C (page size) |
 | 10 | AI panel should float: draggable and resizable. | New feature. | Opus 5.5 |
 | 11 | Text tool is a modal dialog over everything. | Phase B step 7 (inline text). | Opus 5.5 |
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:margo/core/icons/phosphor_icons_regular.dart';
+import 'package:margo/core/providers/settings_provider.dart';
 import 'package:margo/data/persistence/scene_element_store.dart';
 import 'package:margo/domain/commands/scene_command.dart';
 import 'package:margo/domain/model/scene_element.dart';
@@ -54,6 +55,39 @@ void main() {
       // The laser has its own glyph; the highlighter one is a pen type now.
       expect(find.byIcon(Icons.flare), findsOneWidget);
       expect(find.byIcon(PhosphorIconsRegular.image), findsOneWidget);
+    });
+
+    testWidgets('narrowed by the AI panel, the row packs tighter and every tool '
+        'stays reachable', (tester) async {
+      tester.view.physicalSize = const Size(420, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpBar(tester, onImport: () {});
+      await tester.pumpAndSettle();
+
+      final scrollbar = tester.widget<Scrollbar>(
+          find.byKey(const ValueKey('toolRowScrollbar')));
+      expect(scrollbar.thumbVisibility, isTrue,
+          reason: 'a visible sign that the row scrolls');
+      // The Text tool is not left half off the edge once scrolled to.
+      await tester.scrollUntilVisible(
+          find.byIcon(PhosphorIconsRegular.image), 100,
+          scrollable: find.descendant(
+              of: find.byKey(const ValueKey('toolRowScrollbar')),
+              matching: find.byType(Scrollable)));
+      expect(find.byIcon(PhosphorIconsRegular.image), findsOneWidget);
+    });
+
+    testWidgets('the finger-draw switch flips the setting', (tester) async {
+      final container = await pumpBar(tester);
+      await tester.pumpAndSettle();
+      expect(container.read(settingsProvider).fingerDraws, isTrue);
+      await tester.tap(find.byKey(const ValueKey('fingerDrawToggle')));
+      await tester.pump();
+      expect(container.read(settingsProvider).fingerDraws, isFalse);
+      await tester.tap(find.byKey(const ValueKey('fingerDrawToggle')));
+      await tester.pump();
+      expect(container.read(settingsProvider).fingerDraws, isTrue);
     });
 
     testWidgets('the import button is omitted when no import handler is given',

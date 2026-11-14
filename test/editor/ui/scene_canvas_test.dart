@@ -6,6 +6,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:margo/core/providers/settings_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:margo/data/persistence/scene_element_store.dart';
 import 'package:margo/domain/model/scene_element.dart';
@@ -74,10 +76,39 @@ void main() {
     expect(stroke.penKind, PenKind.highlighter);
   });
 
-  testWidgets('holding the pen at the end of a line straightens it',
+  Future<void> holdLine(WidgetTester tester) async {
+    final g = await tester.startGesture(const Offset(100, 100),
+        kind: PointerDeviceKind.stylus);
+    for (var i = 1; i <= 10; i++) {
+      await g.moveTo(Offset(100 + i * 20.0, 100 + (i.isEven ? 3 : -3)),
+          timeStamp: Duration(milliseconds: i * 20));
+    }
+    await g.moveTo(const Offset(300, 100),
+        timeStamp: const Duration(milliseconds: 220));
+    await g.moveTo(const Offset(300, 101),
+        timeStamp: const Duration(milliseconds: 900));
+    await g.up(timeStamp: const Duration(milliseconds: 950));
+    await tester.pump();
+  }
+
+  testWidgets('straighten is off by default: a held line stays as drawn',
       (tester) async {
+    SharedPreferences.setMockInitialValues({});
     final container = _container();
     addTearDown(container.dispose);
+    await _pump(tester, container);
+    await holdLine(tester);
+    final line =
+        container.read(sceneControllerProvider(_key)).single as FreehandElement;
+    expect(line.points.any((p) => (p.y - 100).abs() > 2), isTrue);
+  });
+
+  testWidgets('holding the pen at the end of a line straightens it',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final container = _container();
+    addTearDown(container.dispose);
+    await container.read(settingsProvider.notifier).setStraightenLines(true);
     await _pump(tester, container);
 
     final g = await tester.startGesture(const Offset(100, 100),
@@ -105,6 +136,34 @@ void main() {
     final drawn =
         container.read(sceneControllerProvider(_key)).single as FreehandElement;
     expect(drawn.points.any((p) => (p.y - 100).abs() > 2), isTrue);
+  });
+
+  testWidgets('dragging a locked page with the lasso says how to move it',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final container = _container();
+    addTearDown(container.dispose);
+    await container.read(sceneControllerProvider(_key).notifier).addMany([
+      const ImageElement(
+        id: 'pdf',
+        zOrder: 0,
+        geometryData: [0, 0, 700, 500],
+        relativeImagePath: 'p.png',
+        isLocked: true,
+      ),
+    ]);
+    await _pump(tester, container);
+    container.read(editorToolProvider.notifier).setTool(EditorTool.select);
+    await tester.pump();
+
+    final g = await tester.startGesture(const Offset(300, 300),
+        kind: PointerDeviceKind.stylus);
+    await g.moveBy(const Offset(60, 40));
+    await g.moveBy(const Offset(60, 40));
+    await g.up();
+    await tester.pump();
+
+    expect(find.textContaining('Unlock to move it'), findsOneWidget);
   });
 
   testWidgets('a two-finger tap undoes, a three-finger tap redoes',
