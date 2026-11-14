@@ -95,6 +95,10 @@ class SceneElementRecord {
   // --- image only ---
   String relativeImagePath = '';
   String sourceDescription = '';
+
+  /// Tape lifted to peek underneath (kind == tape only). Added with tape; a
+  /// build from before it ignores the column.
+  bool tapeRevealed = false;
 }
 
 /// Single-row collection gating one-time data migrations.

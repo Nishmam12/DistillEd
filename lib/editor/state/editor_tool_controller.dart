@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/model/scene_element.dart';
 import 'pen_presets.dart';
 
-enum EditorTool { select, pen, shape, text, frame, eraser, laser, hand }
+enum EditorTool { select, pen, shape, text, frame, eraser, laser, hand, tape }
 
 class EditorToolState {
   final EditorTool tool;
@@ -25,6 +25,9 @@ class EditorToolState {
 
   /// Eraser width (pixel eraser) and hit radius floor (stroke eraser).
   final double eraserSize;
+
+  /// Colour of new revision tape.
+  final int tapeColor;
 
   /// The last pen used of each kind. Read by [EditorToolController.setPenKind]
   /// and [EditorToolController.usePen].
@@ -67,6 +70,7 @@ class EditorToolState {
     this.opacity = 1.0,
     this.shapeSize = 2.0,
     this.eraserSize = 12.0,
+    this.tapeColor = kDefaultTapeColor,
     this.penMemory = const {},
     this.penKind = PenKind.ballpoint,
     this.shapeType = ShapeType.rectangle,
@@ -94,6 +98,7 @@ class EditorToolState {
     double? opacity,
     double? shapeSize,
     double? eraserSize,
+    int? tapeColor,
     Map<PenKind, PenStyle>? penMemory,
     PenKind? penKind,
     ShapeType? shapeType,
@@ -118,6 +123,7 @@ class EditorToolState {
       opacity: opacity ?? this.opacity,
       shapeSize: shapeSize ?? this.shapeSize,
       eraserSize: eraserSize ?? this.eraserSize,
+      tapeColor: tapeColor ?? this.tapeColor,
       penMemory: penMemory ?? this.penMemory,
       penKind: penKind ?? this.penKind,
       shapeType: shapeType ?? this.shapeType,
@@ -219,6 +225,7 @@ class EditorToolController extends StateNotifier<EditorToolState> {
   void setOpacity(double opacity) => state = state.copyWith(opacity: opacity);
   void setShapeSize(double size) => state = state.copyWith(shapeSize: size);
   void setEraserSize(double size) => state = state.copyWith(eraserSize: size);
+  void setTapeColor(int argb) => state = state.copyWith(tapeColor: argb);
 
   /// Switches to the pen tool drawing with [pen] (a saved pen, or the one
   /// remembered from last time). The pen it replaces is remembered under its

@@ -43,6 +43,7 @@ class EditorToolOptionsOverlay extends ConsumerWidget {
       EditorTool.shape => _ShapePanel(state: state, ctl: ctl),
       EditorTool.text => _TextPanel(state: state, ctl: ctl),
       EditorTool.select => _SelectPanel(state: state, ctl: ctl),
+      EditorTool.tape => _TapePanel(state: state, ctl: ctl),
       _ => null,
     };
     if (content == null) return const SizedBox.shrink();
@@ -211,6 +212,53 @@ class _PenPanel extends StatelessWidget {
 /// Eraser options: explicit pixel/stroke mode chips and thickness. Mode used
 /// to also be toggled by re-tapping the active eraser icon; that shortcut is
 /// gone now that this panel gives it an explicit control.
+/// Revision tape: its colour, and how it is used.
+class _TapePanel extends StatelessWidget {
+  final EditorToolState state;
+  final EditorToolController ctl;
+  const _TapePanel({required this.state, required this.ctl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 10,
+            children: [
+              for (final c in kTapeColors)
+                GestureDetector(
+                  key: ValueKey('tapeColor_$c'),
+                  onTap: () => ctl.setTapeColor(c),
+                  child: Container(
+                    width: 30,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: Color(c),
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(
+                        width: state.tapeColor == c ? 2.5 : 1,
+                        color: state.tapeColor == c
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.black26,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('Drag over notes to cover them. Tap tape to peek.',
+              style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+}
+
 /// How the select tool picks things: drag a rectangle, or draw a loop round
 /// them.
 class _SelectPanel extends StatelessWidget {

@@ -329,6 +329,13 @@ class SceneExporter {
             'fill="none" stroke="#8A93A6"/>');
         b.writeln('<text x="${_n(r.left)}" y="${_n(r.top - 4)}" '
             'font-size="12" fill="#5A6472">${_esc(e.name)}</text>');
+      case TapeElement():
+        // As on the page: laid down it hides, lifted it is a faint tint.
+        final r = _rect(e.geometryData);
+        final opacity = e.revealed ? 0.14 * e.opacity : _alpha(e.color, e.opacity);
+        b.writeln('<rect x="${_n(r.left)}" y="${_n(r.top)}" '
+            'width="${_n(r.width)}" height="${_n(r.height)}" rx="3" '
+            'fill="${_hex(e.color)}" fill-opacity="${_n(opacity)}"/>');
     }
     if (g != null) b.writeln('</g>');
   }

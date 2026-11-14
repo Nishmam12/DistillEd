@@ -199,5 +199,39 @@ void main() {
       expect(back.name, 'Diagram');
       expect(back.geometryData, [10, 20, 110, 220]);
     });
+
+    test('tape keeps its place, colour and whether it is lifted', () {
+      for (final revealed in [false, true]) {
+        final t = TapeElement(
+          id: 'tp',
+          zOrder: 4,
+          geometryData: const [5, 6, 205, 30],
+          color: 0xFF8FB8DE,
+          revealed: revealed,
+          isLocked: true,
+        );
+        final record =
+            SceneElementRecordMapper.toRecord(t, notebookId: 1, pageId: 1);
+        expect(record.kind, SceneElementKind.tape);
+        expect(record.tapeRevealed, revealed);
+
+        final back =
+            SceneElementRecordMapper.fromRecord(record) as TapeElement;
+        expect(back.geometryData, [5, 6, 205, 30]);
+        expect(back.color, 0xFF8FB8DE);
+        expect(back.revealed, revealed);
+        expect(back.isLocked, isTrue);
+      }
+    });
+
+    test('a row from before tape has the column unset, read as covered', () {
+      // What a record written by an older build looks like for every other
+      // kind: the new column at its default.
+      final r = SceneElementRecordMapper.toRecord(
+          const FrameElement(id: 'f', zOrder: 0, geometryData: [0, 0, 1, 1]),
+          notebookId: 1,
+          pageId: 1);
+      expect(r.tapeRevealed, isFalse);
+    });
   });
 }

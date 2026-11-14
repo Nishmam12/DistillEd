@@ -194,6 +194,17 @@ Nothing below has been confirmed on the tablet.
    AI Models screen (download a model, add the HuggingFace token) still work,
    in light and dark. Turn backup on and check the "How often" chips wrap.
 
+### Schema change: revision tape (2026-11-14)
+
+Approved by the user: `SceneElementKind.tape` appended (index 5) and one new
+column, `SceneElementRecord.tapeRevealed`. Isar adds the column itself. An
+older build reads a tape row as an empty freehand stroke (the generated
+`kindValueEnumMap` falls back to `freehand`), and re-saving that page loses
+the tape; the backup codec falls back the same way. So teammates must update
+past this build. Peek is stored, but is not an undo step (`updateMany`, no
+history). Device check still to do: opening an existing database with the new
+column (the real-Isar tests are skipped on Windows).
+
 ## 4a. First device test results (2026-11-14)
 
 Worked:
@@ -258,7 +269,7 @@ Fable 5.2 only for figure-pipeline bugs.
 | 6 | B: true lasso, recolour and thickness, copy as image | Sonnet |
 | 7 | B: inline on-canvas text editing | Opus |
 | 8 | B: convert handwriting to text in place, straighten | Opus |
-| 9 | B: tape element (schema change, ask first) | Opus |
+| 9 | DONE (`TapeElement`, column `tapeRevealed`, approved 2026-11-14). B: tape element (schema change, ask first) | Opus |
 | 10 | C: real page sizes, continuous vertical scroll | Opus |
 | 11 | C: page manager grid, drag-reorder, multi-select | Sonnet |
 | 12 | C: page bookmarks and outline, per-page template | Sonnet |

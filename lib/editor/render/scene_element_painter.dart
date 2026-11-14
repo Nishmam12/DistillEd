@@ -42,7 +42,47 @@ class SceneElementPainter {
         _image(canvas, element, imageResolver?.call(element.relativeImagePath));
       case FrameElement():
         _frame(canvas, element);
+      case TapeElement():
+        _tape(canvas, element);
     }
+  }
+
+  // ---- tape -----------------------------------------------------------------
+
+  /// Laid down: an opaque strip with a faint diagonal weave and torn-looking
+  /// short ends, hiding what is under it. Lifted: only a tint and a dashed
+  /// outline, so what is under it shows and the strip can be found again.
+  static void _tape(Canvas canvas, TapeElement t) {
+    final rect = _rectFromLTRB(t.geometryData);
+    if (rect.isEmpty) return;
+    final rr = RRect.fromRectAndRadius(rect, const Radius.circular(3));
+    final base = Color(t.color);
+    if (t.revealed) {
+      canvas.drawRRect(
+          rr, Paint()..color = base.withValues(alpha: 0.14 * t.opacity));
+      final dash = Paint()
+        ..color = base.withValues(alpha: 0.9 * t.opacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      final path = Path()..addRRect(rr);
+      for (final metric in path.computeMetrics()) {
+        for (var d = 0.0; d < metric.length; d += 10) {
+          canvas.drawPath(metric.extractPath(d, d + 5), dash);
+        }
+      }
+      return;
+    }
+    canvas.drawRRect(rr, Paint()..color = base.withValues(alpha: t.opacity));
+    canvas.save();
+    canvas.clipRRect(rr);
+    final weave = Paint()
+      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.12 * t.opacity)
+      ..strokeWidth = 1;
+    for (var x = rect.left - rect.height; x < rect.right; x += 7) {
+      canvas.drawLine(Offset(x, rect.bottom), Offset(x + rect.height, rect.top),
+          weave);
+    }
+    canvas.restore();
   }
 
   // ---- frame ----------------------------------------------------------------

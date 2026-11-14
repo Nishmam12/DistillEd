@@ -10,7 +10,7 @@ List<String> _names(List<Enum> values) => [for (final v in values) v.name];
 void main() {
   test('stored enums keep their order', () {
     expect(_names(SceneElementKind.values),
-        ['freehand', 'shape', 'text', 'image', 'frame']);
+        ['freehand', 'shape', 'text', 'image', 'frame', 'tape']);
     expect(_names(ShapeType.values), [
       'line', 'arrow', 'circle', 'rectangle', 'triangle', 'polygon', 'textBox',
       'svgImage', 'diamond', //

@@ -453,6 +453,69 @@ extension _SceneCanvasTools on _SceneCanvasState {
         strokeStyle: StrokeStyle.dashed,
       );
 
+  // ---- revision tape -----------------------------------------------------------
+
+  /// The strip a tape drag from [a] to [b] lays: the dragged box, but never
+  /// thinner than [kTapeMinThickness], so a quick stroke along a line of
+  /// writing covers it.
+  Rect _tapeRect(Offset a, Offset b) {
+    var r = Rect.fromPoints(a, b);
+    if (r.height < kTapeMinThickness) {
+      r = Rect.fromCenter(
+          center: r.center, width: r.width, height: kTapeMinThickness);
+    }
+    if (r.width < kTapeMinThickness) {
+      r = Rect.fromCenter(
+          center: r.center, width: kTapeMinThickness, height: r.height);
+    }
+    return r;
+  }
+
+  SceneShapeElement _tapePreview(EditorToolState tool, Offset a, Offset b) {
+    final r = _tapeRect(a, b);
+    return SceneShapeElement(
+      id: '_preview',
+      zOrder: 0,
+      shapeType: ShapeType.rectangle,
+      geometryData: [r.left, r.top, r.right, r.bottom],
+      color: tool.tapeColor,
+      strokeWidth: 1,
+      hasFill: true,
+      fillColor: tool.tapeColor,
+      fillStyle: FillStyle.solid,
+    );
+  }
+
+  /// A tap on tape lifts it or lays it back (remembered with the page, but not
+  /// an undo step: peeking is reading, not editing). A drag lays new tape, as
+  /// one undo step.
+  void _commitTape(EditorToolState tool, Offset end) {
+    final start = _shapeStart;
+    _shapeStart = null;
+    _preview.value = null;
+    if (start == null) return;
+    final zoom = ref.read(viewportProvider).zoom;
+    final isTap = (end - start).distance * zoom <= kTapSlopPx;
+    if (isTap) {
+      final all = ref.read(sceneControllerProvider(_key));
+      final hitId = SceneHitTest.topmostAt(start, all.whereType<TapeElement>().toList());
+      if (hitId == null) return;
+      final tape = all.firstWhere((e) => e.id == hitId) as TapeElement;
+      _scene.updateMany([tape.copyWith(revealed: !tape.revealed)]);
+      unawaited(HapticFeedback.selectionClick());
+      return;
+    }
+    final r = _tapeRect(start, end);
+    _history.push(AddElementsCommand([
+      TapeElement(
+        id: _newId(),
+        zOrder: _scene.nextZOrder(),
+        geometryData: [r.left, r.top, r.right, r.bottom],
+        color: tool.tapeColor,
+      )
+    ]));
+  }
+
   void _commitFrame(Offset end) {
     final start = _shapeStart;
     _shapeStart = null;

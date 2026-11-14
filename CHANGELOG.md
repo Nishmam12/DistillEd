@@ -15,7 +15,23 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+### Changed
+- **Database: one new column, one new element kind** (approved 2026-11-14).
+  `SceneElementRecord` gains `tapeRevealed` and `SceneElementKind` gains
+  `tape` (appended, index 5). Isar adds the column on its own; no migration.
+  **Everyone should update to this build:** an older build reads tape as an
+  empty pen stroke, shows nothing there, and if it saves that page the tape is
+  lost for good. Restoring a backup on an older build does the same.
+
 ### Added
+- **Revision tape.** A Tape tool in the tool row: drag over notes to cover
+  them with an opaque strip (five colours; a quick stroke along a line still
+  lays a usable strip). Tap tape to peek underneath and tap again to cover it;
+  Peek / Cover in the selection bar does the same for selected tape. Whether
+  tape is lifted is remembered with the page; peeking is not an undo step.
+  Tape moves, resizes, recolours, deletes and undoes like anything else, is
+  saved in backups, and exports as it is shown. The AI still reads what is
+  under it.
 - **Convert handwriting to text in place.** Select ink and tap Convert to
   text: it is read line by line on the device (ML Kit, no network), shown for
   checking with doubtful lines marked, then each line becomes a text box where

@@ -41,6 +41,8 @@ class SelectionEditing {
         return e.copyWith(id: id);
       case FrameElement():
         return e.copyWith(id: id);
+      case TapeElement():
+        return e.copyWith(id: id);
     }
   }
 
@@ -56,12 +58,17 @@ class SelectionEditing {
         return e.copyWith(groupId: groupId);
       case FrameElement():
         return e.copyWith(groupId: groupId);
+      case TapeElement():
+        return e.copyWith(groupId: groupId);
     }
   }
 
   /// Whether [e] has a stroke or text colour to change (not an image or frame).
   static bool hasColor(SceneElement e) =>
-      e is FreehandElement || e is SceneShapeElement || e is TextElement;
+      e is FreehandElement ||
+      e is SceneShapeElement ||
+      e is TextElement ||
+      e is TapeElement;
 
   /// Whether [e] has a line thickness to change (ink and shapes).
   static bool hasThickness(SceneElement e) =>
@@ -72,6 +79,7 @@ class SelectionEditing {
         FreehandElement() => e.copyWith(color: argb),
         SceneShapeElement() => e.copyWith(color: argb),
         TextElement() => e.copyWith(color: argb),
+        TapeElement() => e.copyWith(color: argb),
         _ => e,
       };
 
@@ -100,6 +108,8 @@ class SelectionEditing {
       case ImageElement():
         return e.copyWith(isLocked: locked);
       case FrameElement():
+        return e.copyWith(isLocked: locked);
+      case TapeElement():
         return e.copyWith(isLocked: locked);
     }
   }

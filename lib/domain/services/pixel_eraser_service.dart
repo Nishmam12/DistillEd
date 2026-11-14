@@ -94,6 +94,7 @@ class ScenePixelEraserService {
         case TextElement():
         case ImageElement():
         case FrameElement():
+        case TapeElement():
           break; // not splittable geometry
       }
     }

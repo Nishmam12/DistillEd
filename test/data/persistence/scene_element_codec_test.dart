@@ -160,6 +160,36 @@ void main() {
         reason: 'a pen this build does not know draws as a plain pen');
   });
 
+  test('tape survives the backup JSON, lifted or not', () {
+    for (final revealed in [false, true]) {
+      final t = TapeElement(
+        id: 't',
+        zOrder: 2,
+        geometryData: const [0, 0, 100, 24],
+        color: 0xFFE8A0A0,
+        revealed: revealed,
+      );
+      final back = SceneElementCodec.decode(
+              jsonDecode(jsonEncode(SceneElementCodec.encode(t)))
+                  as Map<String, dynamic>)
+          as TapeElement;
+      expect(back.revealed, revealed);
+      expect(back.color, 0xFFE8A0A0);
+      expect(back.geometryData, [0, 0, 100, 24]);
+    }
+  });
+
+  test('tape JSON missing colour and lifted reads as default, covered', () {
+    final back = SceneElementCodec.decode({
+      'id': 't',
+      'kind': 'tape',
+      'zOrder': 0,
+      'geometryData': [0, 0, 10, 10],
+    }) as TapeElement;
+    expect(back.color, kDefaultTapeColor);
+    expect(back.revealed, isFalse);
+  });
+
   test('decode tolerates missing optional fields with defaults', () {
     final el = SceneElementCodec.decode({
       'id': 'x',

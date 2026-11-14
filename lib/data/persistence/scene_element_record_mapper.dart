@@ -77,6 +77,10 @@ class SceneElementRecordMapper {
       case FrameElement():
         r.geometryData = List<double>.from(element.geometryData);
         r.text = element.name; // frame name reuses the text slot
+      case TapeElement():
+        r.geometryData = List<double>.from(element.geometryData);
+        r.color = element.color;
+        r.tapeRevealed = element.revealed;
     }
     return r;
   }
@@ -177,6 +181,18 @@ class SceneElementRecordMapper {
           groupId: r.groupId,
           geometryData: List<double>.from(r.geometryData),
           name: r.text,
+        );
+      case SceneElementKind.tape:
+        return TapeElement(
+          id: r.elementId,
+          zOrder: r.zOrder,
+          rotation: r.rotation,
+          opacity: r.opacity,
+          isLocked: r.isLocked,
+          groupId: r.groupId,
+          geometryData: List<double>.from(r.geometryData),
+          color: r.color,
+          revealed: r.tapeRevealed,
         );
     }
   }

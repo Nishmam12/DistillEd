@@ -28,6 +28,8 @@ class ElementBounds {
         return _rectFromLTRB(element.geometryData);
       case FrameElement():
         return _rectFromLTRB(element.geometryData);
+      case TapeElement():
+        return _rectFromLTRB(element.geometryData);
     }
   }
 

@@ -39,6 +39,8 @@ class ZOrderService {
         return e.copyWith(zOrder: z);
       case FrameElement():
         return e.copyWith(zOrder: z);
+      case TapeElement():
+        return e.copyWith(zOrder: z);
     }
   }
 }

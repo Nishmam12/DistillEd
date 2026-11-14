@@ -24,7 +24,8 @@ export 'element_style.dart';
 /// Discriminates the [SceneElement] subtype for flat persistence.
 ///
 /// Append-only — the index is stored by Isar (`@enumerated`). Never reorder.
-enum SceneElementKind { freehand, shape, text, image, frame }
+// Append only: Isar stores the index.
+enum SceneElementKind { freehand, shape, text, image, frame, tape }
 
 /// Base type for everything drawable on a page. Immutable; mutate via copyWith.
 sealed class SceneElement {
@@ -431,3 +432,66 @@ final class FrameElement extends SceneElement {
     );
   }
 }
+
+/// Revision tape: an opaque strip laid over notes to hide them, which a tap
+/// lifts to peek underneath and lays back down. Whether it is lifted is kept
+/// with the page ([revealed]).
+final class TapeElement extends SceneElement {
+  /// Bounding box [left, top, right, bottom].
+  final List<double> geometryData;
+
+  /// The tape's colour, ARGB.
+  final int color;
+
+  /// Lifted to show what is underneath. Covered by default.
+  final bool revealed;
+
+  const TapeElement({
+    required super.id,
+    required super.zOrder,
+    required this.geometryData,
+    this.color = kDefaultTapeColor,
+    this.revealed = false,
+    super.rotation,
+    super.opacity,
+    super.isLocked,
+    super.groupId,
+  });
+
+  @override
+  SceneElementKind get kind => SceneElementKind.tape;
+
+  Rect get boundsRect => Rect.fromLTRB(
+        geometryData[0],
+        geometryData[1],
+        geometryData[2],
+        geometryData[3],
+      );
+
+  TapeElement copyWith({
+    String? id,
+    int? zOrder,
+    double? rotation,
+    double? opacity,
+    bool? isLocked,
+    String? groupId,
+    List<double>? geometryData,
+    int? color,
+    bool? revealed,
+  }) {
+    return TapeElement(
+      id: id ?? this.id,
+      zOrder: zOrder ?? this.zOrder,
+      rotation: rotation ?? this.rotation,
+      opacity: opacity ?? this.opacity,
+      isLocked: isLocked ?? this.isLocked,
+      groupId: groupId ?? this.groupId,
+      geometryData: geometryData ?? List<double>.from(this.geometryData),
+      color: color ?? this.color,
+      revealed: revealed ?? this.revealed,
+    );
+  }
+}
+
+/// A warm masking-tape yellow.
+const int kDefaultTapeColor = 0xFFF2C14E;

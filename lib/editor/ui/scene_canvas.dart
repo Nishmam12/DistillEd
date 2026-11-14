@@ -57,6 +57,10 @@ const int _kLaserFadeMs = 700;
 
 enum _SelMode { none, move, resize, rotate, marquee }
 
+/// Thinnest tape laid, in scene units: a quick stroke along a line of writing
+/// still covers it.
+const double kTapeMinThickness = 24;
+
 class SceneCanvas extends ConsumerStatefulWidget {
   final int notebookId;
   final int pageId;
@@ -325,6 +329,9 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       case EditorTool.frame:
         _shapeStart = _toScene(p);
         _preview.value = _framePreview(_shapeStart!, _shapeStart!);
+      case EditorTool.tape:
+        _shapeStart = _toScene(p);
+        _preview.value = null;
       case EditorTool.eraser:
         _onEraserDown(tool, p);
       case EditorTool.laser:
@@ -357,6 +364,10 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
         if (_shapeStart != null) {
           _preview.value = _framePreview(_shapeStart!, _toScene(p));
         }
+      case EditorTool.tape:
+        if (_shapeStart != null) {
+          _preview.value = _tapePreview(tool, _shapeStart!, _toScene(p));
+        }
       case EditorTool.eraser:
         _onEraserMove(tool, p);
       case EditorTool.laser:
@@ -384,6 +395,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
         _commitShape(tool, _toScene(p));
       case EditorTool.frame:
         _commitFrame(_toScene(p));
+      case EditorTool.tape:
+        _commitTape(tool, _toScene(p));
       case EditorTool.eraser:
         _onEraserUp(tool);
       case EditorTool.text:

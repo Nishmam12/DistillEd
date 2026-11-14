@@ -168,14 +168,19 @@ const SceneElementRecordSchema = CollectionSchema(
       name: r'strokeWidth',
       type: IsarType.double,
     ),
-    r'text': PropertySchema(id: 38, name: r'text', type: IsarType.string),
+    r'tapeRevealed': PropertySchema(
+      id: 38,
+      name: r'tapeRevealed',
+      type: IsarType.bool,
+    ),
+    r'text': PropertySchema(id: 39, name: r'text', type: IsarType.string),
     r'textAlign': PropertySchema(
-      id: 39,
+      id: 40,
       name: r'textAlign',
       type: IsarType.byte,
       enumMap: _SceneElementRecordtextAlignEnumValueMap,
     ),
-    r'zOrder': PropertySchema(id: 40, name: r'zOrder', type: IsarType.long),
+    r'zOrder': PropertySchema(id: 41, name: r'zOrder', type: IsarType.long),
   },
 
   estimateSize: _sceneElementRecordEstimateSize,
@@ -286,9 +291,10 @@ void _sceneElementRecordSerialize(
   writer.writeString(offsets[35], object.startBindingId);
   writer.writeByte(offsets[36], object.strokeStyle.index);
   writer.writeDouble(offsets[37], object.strokeWidth);
-  writer.writeString(offsets[38], object.text);
-  writer.writeByte(offsets[39], object.textAlign.index);
-  writer.writeLong(offsets[40], object.zOrder);
+  writer.writeBool(offsets[38], object.tapeRevealed);
+  writer.writeString(offsets[39], object.text);
+  writer.writeByte(offsets[40], object.textAlign.index);
+  writer.writeLong(offsets[41], object.zOrder);
 }
 
 SceneElementRecord _sceneElementRecordDeserialize(
@@ -365,13 +371,14 @@ SceneElementRecord _sceneElementRecordDeserialize(
       )] ??
       StrokeStyle.solid;
   object.strokeWidth = reader.readDouble(offsets[37]);
-  object.text = reader.readString(offsets[38]);
+  object.tapeRevealed = reader.readBool(offsets[38]);
+  object.text = reader.readString(offsets[39]);
   object.textAlign =
       _SceneElementRecordtextAlignValueEnumMap[reader.readByteOrNull(
-        offsets[39],
+        offsets[40],
       )] ??
       TextAlignKind.left;
-  object.zOrder = reader.readLong(offsets[40]);
+  object.zOrder = reader.readLong(offsets[41]);
   return object;
 }
 
@@ -490,14 +497,16 @@ P _sceneElementRecordDeserializeProp<P>(
     case 37:
       return (reader.readDouble(offset)) as P;
     case 38:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 39:
+      return (reader.readString(offset)) as P;
+    case 40:
       return (_SceneElementRecordtextAlignValueEnumMap[reader.readByteOrNull(
                 offset,
               )] ??
               TextAlignKind.left)
           as P;
-    case 40:
+    case 41:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -537,6 +546,7 @@ const _SceneElementRecordkindEnumValueMap = {
   'text': 2,
   'image': 3,
   'frame': 4,
+  'tape': 5,
 };
 const _SceneElementRecordkindValueEnumMap = {
   0: SceneElementKind.freehand,
@@ -544,6 +554,7 @@ const _SceneElementRecordkindValueEnumMap = {
   2: SceneElementKind.text,
   3: SceneElementKind.image,
   4: SceneElementKind.frame,
+  5: SceneElementKind.tape,
 };
 const _SceneElementRecordpenKindEnumValueMap = {
   'ballpoint': 0,
@@ -3829,6 +3840,15 @@ extension SceneElementRecordQueryFilter
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  tapeRevealedEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'tapeRevealed', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
   textEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -4565,6 +4585,20 @@ extension SceneElementRecordQuerySortBy
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  sortByTapeRevealed() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'tapeRevealed', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  sortByTapeRevealedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'tapeRevealed', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
   sortByText() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'text', Sort.asc);
@@ -5100,6 +5134,20 @@ extension SceneElementRecordQuerySortThenBy
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  thenByTapeRevealed() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'tapeRevealed', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  thenByTapeRevealedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'tapeRevealed', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
   thenByText() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'text', Sort.asc);
@@ -5420,6 +5468,13 @@ extension SceneElementRecordQueryWhereDistinct
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
+  distinctByTapeRevealed() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'tapeRevealed');
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
   distinctByText({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'text', caseSensitive: caseSensitive);
@@ -5699,6 +5754,13 @@ extension SceneElementRecordQueryProperty
   strokeWidthProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'strokeWidth');
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, bool, QQueryOperations>
+  tapeRevealedProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'tapeRevealed');
     });
   }
 

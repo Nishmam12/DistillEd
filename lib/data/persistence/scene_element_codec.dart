@@ -90,6 +90,12 @@ class SceneElementCodec {
           'geometryData': e.geometryData,
           'name': e.name,
         });
+      case TapeElement():
+        base.addAll({
+          'geometryData': e.geometryData,
+          'color': e.color,
+          'revealed': e.revealed,
+        });
     }
     return base;
   }
@@ -192,6 +198,18 @@ class SceneElementCodec {
           groupId: groupId,
           geometryData: geometry,
           name: m['name'] as String? ?? 'Frame',
+        );
+      case SceneElementKind.tape:
+        return TapeElement(
+          id: id,
+          zOrder: zOrder,
+          rotation: rotation,
+          opacity: opacity,
+          isLocked: isLocked,
+          groupId: groupId,
+          geometryData: geometry,
+          color: (m['color'] as num?)?.toInt() ?? kDefaultTapeColor,
+          revealed: m['revealed'] as bool? ?? false,
         );
     }
   }

@@ -16,8 +16,19 @@ const List<(EditorTool, IconData)> kEditorTools = [
   (EditorTool.shape, PhosphorIconsRegular.shapes),
   (EditorTool.eraser, PhosphorIconsRegular.eraser),
   (EditorTool.text, PhosphorIconsRegular.textT),
+  // Revision tape: lay a strip over notes, tap it to peek.
+  (EditorTool.tape, Icons.sticky_note_2_outlined),
   // Not the highlighter glyph: that is a pen type now (see [kPenKinds]).
   (EditorTool.laser, Icons.flare),
+];
+
+/// Tape colours offered in the tape panel.
+const List<int> kTapeColors = [
+  kDefaultTapeColor, // masking yellow
+  0xFF8FB8DE, // blue
+  0xFFE8A0A0, // pink
+  0xFF9CCB9A, // green
+  0xFF9E9E9E, // grey
 ];
 
 /// The pen types offered in the pen panel, in order, with their icon and name.

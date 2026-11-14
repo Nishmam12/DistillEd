@@ -154,6 +154,26 @@ class SelectionBar extends ConsumerWidget {
                     audioOffsetMs: stroke.audioOffsetMs,
                   ),
             ),
+          // Revision tape: lift it all to peek, or lay it all back down. A
+          // mix lifts first, like the lock button resolves a mix.
+          if (_sel(ref).whereType<TapeElement>().toList() case final tapes
+              when tapes.isNotEmpty)
+            Builder(builder: (context) {
+              final allLifted = tapes.every((t) => t.revealed);
+              return IconButton(
+                key: const ValueKey('peekTape'),
+                tooltip: allLifted ? 'Cover' : 'Peek',
+                icon: Icon(allLifted
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined),
+                // Peeking is reading, not editing: remembered, not undone.
+                onPressed: () => ref
+                    .read(sceneControllerProvider(pageKey).notifier)
+                    .updateMany([
+                  for (final t in tapes) t.copyWith(revealed: !allLifted)
+                ]),
+              );
+            }),
           // Handwriting: typed text where it was written, or levelled.
           if (_ink(ref).isNotEmpty) ...[
             IconButton(

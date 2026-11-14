@@ -131,6 +131,8 @@ class SceneTransformer {
         return e.copyWith(geometryData: _mapPairs(e.geometryData, f));
       case FrameElement():
         return e.copyWith(geometryData: _mapPairs(e.geometryData, f));
+      case TapeElement():
+        return e.copyWith(geometryData: _mapPairs(e.geometryData, f));
     }
   }
 
@@ -155,6 +157,8 @@ class SceneTransformer {
       case ImageElement():
         return e.copyWith(rotation: rot);
       case FrameElement():
+        return e.copyWith(rotation: rot);
+      case TapeElement():
         return e.copyWith(rotation: rot);
     }
   }
