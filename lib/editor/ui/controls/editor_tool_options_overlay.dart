@@ -42,6 +42,7 @@ class EditorToolOptionsOverlay extends ConsumerWidget {
       EditorTool.eraser => _EraserPanel(state: state, ctl: ctl),
       EditorTool.shape => _ShapePanel(state: state, ctl: ctl),
       EditorTool.text => _TextPanel(state: state, ctl: ctl),
+      EditorTool.select => _SelectPanel(state: state, ctl: ctl),
       _ => null,
     };
     if (content == null) return const SizedBox.shrink();
@@ -210,6 +211,43 @@ class _PenPanel extends StatelessWidget {
 /// Eraser options: explicit pixel/stroke mode chips and thickness. Mode used
 /// to also be toggled by re-tapping the active eraser icon; that shortcut is
 /// gone now that this panel gives it an explicit control.
+/// How the select tool picks things: drag a rectangle, or draw a loop round
+/// them.
+class _SelectPanel extends StatelessWidget {
+  final EditorToolState state;
+  final EditorToolController ctl;
+  const _SelectPanel({required this.state, required this.ctl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          ChoiceChip(
+            key: const ValueKey('selectRectangle'),
+            showCheckmark: false,
+            avatar: const Icon(Icons.crop_square, size: 18),
+            label: const Text('Rectangle'),
+            selected: !state.selectLasso,
+            onSelected: (_) => ctl.setSelectLasso(false),
+          ),
+          ChoiceChip(
+            key: const ValueKey('selectLasso'),
+            showCheckmark: false,
+            avatar: const Icon(Icons.gesture, size: 18),
+            label: const Text('Lasso'),
+            selected: state.selectLasso,
+            onSelected: (_) => ctl.setSelectLasso(true),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EraserPanel extends StatelessWidget {
   final EditorToolState state;
   final EditorToolController ctl;

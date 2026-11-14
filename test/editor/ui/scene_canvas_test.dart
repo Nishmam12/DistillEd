@@ -269,6 +269,69 @@ void main() {
 
   // Typing text on the page: see inline_text_test.dart.
 
+  testWidgets('select tool: a lasso loop selects what it encloses',
+      (tester) async {
+    final container = _container();
+    addTearDown(container.dispose);
+    final scene = container.read(sceneControllerProvider(_key).notifier);
+    SceneShapeElement rect(String id, double x, double y) => SceneShapeElement(
+          id: id,
+          zOrder: 0,
+          shapeType: ShapeType.rectangle,
+          geometryData: [x, y, x + 40, y + 40],
+          color: 0xFF000000,
+          strokeWidth: 2,
+        );
+    await scene.addMany([rect('in', 100, 100), rect('out', 400, 400)]);
+    await _pump(tester, container);
+    container.read(editorToolProvider.notifier)
+      ..setTool(EditorTool.select)
+      ..setSelectLasso(true);
+    await tester.pump();
+
+    // A loop round the first, well clear of the second.
+    final g = await tester.startGesture(const Offset(70, 70),
+        kind: PointerDeviceKind.stylus);
+    for (final p in const [
+      Offset(190, 70),
+      Offset(190, 190),
+      Offset(70, 190),
+      Offset(70, 80),
+    ]) {
+      await g.moveTo(p);
+    }
+    await tester.pump();
+    await g.up();
+    await tester.pump();
+
+    expect(container.read(selectionProvider), {'in'});
+  });
+
+  testWidgets('select tool: with the lasso off a drag is still a rectangle',
+      (tester) async {
+    final container = _container();
+    addTearDown(container.dispose);
+    await container.read(sceneControllerProvider(_key).notifier).addMany([
+      const SceneShapeElement(
+        id: 'a',
+        zOrder: 0,
+        shapeType: ShapeType.rectangle,
+        geometryData: [100, 100, 140, 140],
+        color: 0xFF000000,
+        strokeWidth: 2,
+      ),
+    ]);
+    await _pump(tester, container);
+    container.read(editorToolProvider.notifier).setTool(EditorTool.select);
+    await tester.pump();
+    final g = await tester.startGesture(const Offset(70, 70),
+        kind: PointerDeviceKind.stylus);
+    await g.moveTo(const Offset(190, 190));
+    await g.up();
+    await tester.pump();
+    expect(container.read(selectionProvider), {'a'});
+  });
+
   testWidgets('select tool: marquee selects, then drag moves', (tester) async {
     final container = _container();
     addTearDown(container.dispose);

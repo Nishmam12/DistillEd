@@ -44,6 +44,68 @@ class SceneHitTest {
     return hits;
   }
 
+  /// Ids of the elements a free-form lasso [loop] (scene coordinates, closed
+  /// back to its start) has caught: those with at least [share] of their body
+  /// inside it. A stroke counts by its own points, anything else by the corners
+  /// and centre of its box, so a loop round a shape takes it and a loop that
+  /// only clips an edge does not.
+  static List<String> withinPolygon(
+    List<Offset> loop,
+    List<SceneElement> elements, {
+    bool includeLocked = false,
+    double share = 0.6,
+  }) {
+    if (loop.length < 3) return const [];
+    final bounds = _polygonBounds(loop);
+    final hits = <String>[];
+    for (final e in elements) {
+      if (e.isLocked && !includeLocked) continue;
+      final box = SceneGeometry.worldAabb(e);
+      if (!GeometryUtils.rectsIntersect(box, bounds)) continue;
+      final samples = <Offset>[
+        if (e is FreehandElement && e.points.isNotEmpty)
+          for (final p in e.points)
+            GeometryUtils.rotatePoint(
+                Offset(p.x, p.y), SceneGeometry.center(e), e.rotation)
+        else ...[
+          box.topLeft,
+          box.topRight,
+          box.bottomLeft,
+          box.bottomRight,
+          box.center,
+        ],
+      ];
+      final inside = samples.where((p) => pointInPolygon(p, loop)).length;
+      if (inside / samples.length >= share) hits.add(e.id);
+    }
+    return hits;
+  }
+
+  /// Even-odd point-in-polygon test; the polygon is closed implicitly.
+  static bool pointInPolygon(Offset p, List<Offset> polygon) {
+    var inside = false;
+    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      final a = polygon[i];
+      final b = polygon[j];
+      if ((a.dy > p.dy) != (b.dy > p.dy) &&
+          p.dx < (b.dx - a.dx) * (p.dy - a.dy) / (b.dy - a.dy) + a.dx) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  static Rect _polygonBounds(List<Offset> pts) {
+    var l = pts.first.dx, r = l, t = pts.first.dy, b = t;
+    for (final p in pts) {
+      if (p.dx < l) l = p.dx;
+      if (p.dx > r) r = p.dx;
+      if (p.dy < t) t = p.dy;
+      if (p.dy > b) b = p.dy;
+    }
+    return Rect.fromLTRB(l, t, r, b);
+  }
+
   /// Whether [p] (scene coordinates) touches [e]'s actual body within
   /// [tolerance]: strokes and lines by distance to the polyline, unfilled
   /// shapes by their outline only, frames by their border and name label only

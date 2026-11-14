@@ -15,6 +15,16 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   in-app is whatever commit you're on.
 
 ## [Unreleased]
+### Added
+- **Lasso select.** With the select tool, pick Lasso (beside Rectangle) and
+  draw a loop round things: ink, shapes and text mostly inside it are selected,
+  and a loop that only clips an edge takes nothing.
+- **Colour and thickness of a selection.** The selection bar recolours ink,
+  shapes and text and sets the line thickness of ink and shapes (Fine to Very
+  thick); each is one undo step.
+- **Copy as image.** Renders the selection to a PNG with a transparent
+  background and opens the share sheet, whose Copy, Save and Send put it where
+  it is wanted.
 
 ## [5.1.2] - 2026-11-14
 ### Fixed

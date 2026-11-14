@@ -51,6 +51,9 @@ class EditorToolState {
   // Eraser: pixel (clears ink) vs element (removes whole elements).
   final bool eraserPixel;
 
+  // Select tool: drag a free-form loop round things instead of a rectangle.
+  final bool selectLasso;
+
   // Whether the active tool's floating options panel is showing. Distinct
   // from which tool is active: the panel opens (briefly) when a tool is
   // picked and closes the instant the user starts drawing — see
@@ -78,6 +81,7 @@ class EditorToolState {
     this.fontSize = 20.0,
     this.fontFamily = 'Roboto',
     this.eraserPixel = false,
+    this.selectLasso = false,
     this.panelOpen = true,
   });
 
@@ -104,6 +108,7 @@ class EditorToolState {
     double? fontSize,
     String? fontFamily,
     bool? eraserPixel,
+    bool? selectLasso,
     bool? panelOpen,
   }) {
     return EditorToolState(
@@ -127,6 +132,7 @@ class EditorToolState {
       fontSize: fontSize ?? this.fontSize,
       fontFamily: fontFamily ?? this.fontFamily,
       eraserPixel: eraserPixel ?? this.eraserPixel,
+      selectLasso: selectLasso ?? this.selectLasso,
       panelOpen: panelOpen ?? this.panelOpen,
     );
   }
@@ -268,6 +274,7 @@ class EditorToolController extends StateNotifier<EditorToolState> {
   void setFontSize(double s) => state = state.copyWith(fontSize: s);
   void setFontFamily(String f) => state = state.copyWith(fontFamily: f);
   void setEraserPixel(bool v) => state = state.copyWith(eraserPixel: v);
+  void setSelectLasso(bool v) => state = state.copyWith(selectLasso: v);
 }
 
 /// The tool state for the open editor. Opens with the pen used last time, and

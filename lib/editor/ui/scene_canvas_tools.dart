@@ -178,6 +178,9 @@ extension _SceneCanvasTools on _SceneCanvasState {
     _selMode = _SelMode.marquee;
     _gestureStartScene = scene;
     _marquee.value = Rect.fromPoints(scene, scene);
+    // A lasso is a marquee that remembers its path: the box still tells a tap
+    // from a drag.
+    _lasso.value = ref.read(editorToolProvider).selectLasso ? [scene] : null;
   }
 
   void _beginGesture(
@@ -223,6 +226,8 @@ extension _SceneCanvasTools on _SceneCanvasState {
         _applyRotate(scene);
       case _SelMode.marquee:
         _marquee.value = Rect.fromPoints(_gestureStartScene, scene);
+        final loop = _lasso.value;
+        if (loop != null) _lasso.value = [...loop, scene];
       case _SelMode.none:
         break;
     }
@@ -273,7 +278,9 @@ extension _SceneCanvasTools on _SceneCanvasState {
     _lockedUnderTap = null;
     if (_selMode == _SelMode.marquee) {
       final rect = _marquee.value;
+      final loop = _lasso.value;
       _marquee.value = null;
+      _lasso.value = null;
       final zoom = ref.read(viewportProvider).zoom;
       final isTap = rect != null &&
           rect.width * zoom <= kTapSlopPx &&
@@ -282,7 +289,9 @@ extension _SceneCanvasTools on _SceneCanvasState {
         ref.read(selectionProvider.notifier).selectMany({lockedUnderTap});
       } else if (rect != null) {
         final all = ref.read(sceneControllerProvider(_key));
-        final ids = SceneHitTest.within(rect, all);
+        final ids = loop != null
+            ? SceneHitTest.withinPolygon(loop, all)
+            : SceneHitTest.within(rect, all);
         // A drag that began on a locked page and caught nothing: the person
         // was most likely trying to move the page. Say how.
         if (ids.isEmpty && lockedUnderTap != null) {

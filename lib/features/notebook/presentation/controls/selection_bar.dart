@@ -2,10 +2,13 @@
 // elements are selected (delete, duplicate, copy, edit/extract text, save to
 // library, group/lock, reorder, align/distribute).
 
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../domain/commands/scene_command.dart';
 import '../../../../domain/geometry/element_bounds.dart';
@@ -19,6 +22,8 @@ import '../../../ai/presentation/ai_providers.dart';
 import '../../../audio/presentation/recording_notifier.dart';
 import '../../../../editor/import/ocr_layout.dart';
 import '../../../../editor/render/scene_element_painter.dart';
+import '../../../../editor/render/scene_exporter.dart';
+import '../../../../editor/ui/custom_color_dialog.dart';
 import '../../../../editor/render/scene_image_cache.dart';
 import '../../../../editor/state/clipboard_service.dart';
 import '../../../../editor/state/history_controller.dart';
@@ -29,6 +34,15 @@ import '../../../../editor/state/selection_controller.dart';
 import '../../../../editor/state/inline_text_request.dart';
 import '../../../../editor/ui/controls/editor_controls_shared.dart';
 import '../../../../editor/ui/controls/save_to_library_dialog.dart';
+
+/// Line widths offered by the selection bar's Thickness menu, in scene units.
+const List<(String, double)> kThicknessChoices = [
+  ('Fine', 1.0),
+  ('Thin', 2.0),
+  ('Medium', 4.0),
+  ('Thick', 8.0),
+  ('Very thick', 14.0),
+];
 
 class SelectionBar extends ConsumerWidget {
   final ScenePageKey pageKey;
@@ -84,6 +98,31 @@ class SelectionBar extends ConsumerWidget {
             icon: const Icon(Icons.content_copy),
             onPressed: () => ClipboardService.copy(_sel(ref)),
           ),
+          IconButton(
+            key: const ValueKey('copyAsImage'),
+            tooltip: 'Copy as image',
+            icon: const Icon(Icons.image_outlined),
+            onPressed: () => _copyAsImage(context, ref),
+          ),
+          // Colour and thickness of what is selected: ink, shapes and text.
+          if (_sel(ref).any(SelectionEditing.hasColor))
+            IconButton(
+              key: const ValueKey('recolourSelection'),
+              tooltip: 'Colour',
+              icon: const Icon(Icons.palette_outlined),
+              onPressed: () => _recolour(context, ref),
+            ),
+          if (_sel(ref).any(SelectionEditing.hasThickness))
+            PopupMenuButton<double>(
+              key: const ValueKey('thicknessSelection'),
+              tooltip: 'Thickness',
+              icon: const Icon(Icons.line_weight),
+              onSelected: (w) => _setThickness(ref, w),
+              itemBuilder: (_) => [
+                for (final (label, w) in kThicknessChoices)
+                  PopupMenuItem<double>(value: w, child: Text(label)),
+              ],
+            ),
           // Only offered for a single text element: editing is inherently about
           // one element's words, and a locked one is not up for changing.
           if (_editableText(ids, all) case final TextElement t)
@@ -555,6 +594,55 @@ class SelectionBar extends ConsumerWidget {
   /// so replacing a line with a paragraph would otherwise leave the bounds
   /// reporting a box far smaller than the visible text — which is what
   /// selection, hit-testing and AI note placement all read.
+  /// Opens the colour picker and recolours every ink, shape and text in the
+  /// selection: one undo step.
+  Future<void> _recolour(BuildContext context, WidgetRef ref) async {
+    final targets = _sel(ref).where(SelectionEditing.hasColor).toList();
+    if (targets.isEmpty) return;
+    final start = switch (targets.first) {
+      FreehandElement(:final color) => color,
+      SceneShapeElement(:final color) => color,
+      TextElement(:final color) => color,
+      _ => 0xFF000000,
+    };
+    final picked = await showCustomColorDialog(context, start);
+    if (picked == null || !context.mounted) return;
+    ref.read(historyProvider(pageKey).notifier).push(UpdateElementsCommand(
+        before: targets,
+        after: [for (final e in targets) SelectionEditing.withColor(e, picked)]));
+  }
+
+  /// Gives every ink and shape in the selection the line width [width]: one
+  /// undo step. Text and images are left as they are.
+  void _setThickness(WidgetRef ref, double width) {
+    final targets = _sel(ref).where(SelectionEditing.hasThickness).toList();
+    if (targets.isEmpty) return;
+    ref.read(historyProvider(pageKey).notifier).push(UpdateElementsCommand(
+        before: targets,
+        after: [
+          for (final e in targets) SelectionEditing.withThickness(e, width)
+        ]));
+  }
+
+  /// Renders the selection to a PNG and hands it to the share sheet, whose
+  /// Copy, Save and Send actions put it wherever it is wanted. (Flutter's
+  /// clipboard carries text only, and a plugin for image clipboards would be a
+  /// new dependency.)
+  Future<void> _copyAsImage(BuildContext context, WidgetRef ref) async {
+    final selected = _sel(ref);
+    if (selected.isEmpty) return;
+    final cache = ref.read(sceneImageCacheProvider);
+    final png = await SceneExporter.toPng(selected,
+        imageResolver: cache.get, background: Colors.transparent);
+    if (png == null || !context.mounted) return;
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/margo_selection.png');
+    await file.writeAsBytes(png, flush: true);
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile(file.path, mimeType: 'image/png')],
+    ));
+  }
+
   Future<void> _saveToLibrary(BuildContext context, WidgetRef ref) async {
     final selected = _sel(ref);
     if (selected.isEmpty) return;

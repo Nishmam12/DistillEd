@@ -59,6 +59,36 @@ class SelectionEditing {
     }
   }
 
+  /// Whether [e] has a stroke or text colour to change (not an image or frame).
+  static bool hasColor(SceneElement e) =>
+      e is FreehandElement || e is SceneShapeElement || e is TextElement;
+
+  /// Whether [e] has a line thickness to change (ink and shapes).
+  static bool hasThickness(SceneElement e) =>
+      e is FreehandElement || e is SceneShapeElement;
+
+  /// [e] in [argb]: the ink, line or text colour. Others are returned as is.
+  static SceneElement withColor(SceneElement e, int argb) => switch (e) {
+        FreehandElement() => e.copyWith(color: argb),
+        SceneShapeElement() => e.copyWith(color: argb),
+        TextElement() => e.copyWith(color: argb),
+        _ => e,
+      };
+
+  /// [e] with its line [width]: a stroke's size or a shape's line width.
+  static SceneElement withThickness(SceneElement e, double width) => switch (e) {
+        FreehandElement() => e.copyWith(size: width),
+        SceneShapeElement() => e.copyWith(strokeWidth: width),
+        _ => e,
+      };
+
+  /// The line thickness of [e], or null when it has none.
+  static double? thicknessOf(SceneElement e) => switch (e) {
+        FreehandElement() => e.size,
+        SceneShapeElement() => e.strokeWidth,
+        _ => null,
+      };
+
   static SceneElement withLocked(SceneElement e, bool locked) {
     switch (e) {
       case FreehandElement():

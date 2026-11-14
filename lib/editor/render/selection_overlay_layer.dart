@@ -16,6 +16,9 @@ class SelectionOverlayLayer extends CustomPainter {
   final List<Offset> handleScreen;
   final Offset? rotateScreen;
   final Rect? marqueeScreen;
+
+  /// The free-form lasso loop being drawn, in screen space.
+  final List<Offset> lassoScreen;
   final List<(Offset, Offset)> guides;
   final Color accent;
 
@@ -27,6 +30,7 @@ class SelectionOverlayLayer extends CustomPainter {
     this.handleScreen = const [],
     this.rotateScreen,
     this.marqueeScreen,
+    this.lassoScreen = const [],
     this.guides = const [],
     required this.accent,
     required this.surface,
@@ -54,6 +58,32 @@ class SelectionOverlayLayer extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1,
       );
+    }
+
+    // Lasso: the loop so far, dashed back to where it began.
+    if (lassoScreen.length > 1) {
+      final path = Path()..moveTo(lassoScreen.first.dx, lassoScreen.first.dy);
+      for (final p in lassoScreen.skip(1)) {
+        path.lineTo(p.dx, p.dy);
+      }
+      canvas.drawPath(
+          Path.from(path)..close(),
+          Paint()..color = accent.withValues(alpha: 0.10));
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = accent
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..strokeJoin = StrokeJoin.round
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawLine(
+          lassoScreen.last,
+          lassoScreen.first,
+          Paint()
+            ..color = accent.withValues(alpha: 0.5)
+            ..strokeWidth = 1);
     }
 
     // Selection box + handles.
@@ -99,6 +129,7 @@ class SelectionOverlayLayer extends CustomPainter {
       boxScreen != old.boxScreen ||
       rotateScreen != old.rotateScreen ||
       marqueeScreen != old.marqueeScreen ||
+      !identical(lassoScreen, old.lassoScreen) ||
       accent != old.accent ||
       surface != old.surface ||
       !identical(handleScreen, old.handleScreen) ||

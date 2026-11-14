@@ -99,6 +99,10 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   final ActiveStroke _active = ActiveStroke();
   final ValueNotifier<SceneShapeElement?> _preview = ValueNotifier(null);
   final ValueNotifier<Rect?> _marquee = ValueNotifier(null);
+
+  /// The free-form lasso loop being drawn (scene points), or null when the
+  /// select tool is dragging a rectangle.
+  final ValueNotifier<List<Offset>?> _lasso = ValueNotifier(null);
   final ValueNotifier<List<(Offset, Offset)>> _guides = ValueNotifier(const []);
   final ValueNotifier<Set<String>> _eraserPending = ValueNotifier(const {});
   final ValueNotifier<List<LaserPoint>> _laser = ValueNotifier(const []);
@@ -208,6 +212,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     _active.dispose();
     _preview.dispose();
     _marquee.dispose();
+    _lasso.dispose();
     _guides.dispose();
     _eraserPending.dispose();
     _laser.dispose();
@@ -614,24 +619,31 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
                   child: ValueListenableBuilder<Rect?>(
                     valueListenable: _marquee,
                     builder: (_, marqueeScene, _) =>
-                        ValueListenableBuilder<List<(Offset, Offset)>>(
-                      valueListenable: _guides,
-                      builder: (_, guidesScene, _) => CustomPaint(
-                        painter: SelectionOverlayLayer(
-                          accent: context.colors.accent,
-                          surface: context.colors.surface,
-                          boxScreen: boxScreen,
-                          handleScreen: handleScreen,
-                          rotateScreen: rotateScreen,
-                          marqueeScreen: marqueeScene == null
-                              ? null
-                              : viewport.toViewportRect(marqueeScene),
-                          guides: [
-                            for (final (a, b) in guidesScene)
-                              (viewport.toViewport(a), viewport.toViewport(b))
-                          ],
+                        ValueListenableBuilder<List<Offset>?>(
+                      valueListenable: _lasso,
+                      builder: (_, loop, _) =>
+                          ValueListenableBuilder<List<(Offset, Offset)>>(
+                        valueListenable: _guides,
+                        builder: (_, guidesScene, _) => CustomPaint(
+                          painter: SelectionOverlayLayer(
+                            accent: context.colors.accent,
+                            surface: context.colors.surface,
+                            boxScreen: boxScreen,
+                            handleScreen: handleScreen,
+                            rotateScreen: rotateScreen,
+                            marqueeScreen: marqueeScene == null || loop != null
+                                ? null
+                                : viewport.toViewportRect(marqueeScene),
+                            lassoScreen: loop == null
+                                ? const []
+                                : [for (final p in loop) viewport.toViewport(p)],
+                            guides: [
+                              for (final (a, b) in guidesScene)
+                                (viewport.toViewport(a), viewport.toViewport(b))
+                            ],
+                          ),
+                          size: Size.infinite,
                         ),
-                        size: Size.infinite,
                       ),
                     ),
                   ),
