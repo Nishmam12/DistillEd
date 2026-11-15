@@ -143,6 +143,11 @@ class SettingsState {
   /// words. On by default.
   final bool snapHighlighter;
 
+  /// A notebook exported as PDF has its handwriting read on the device and
+  /// laid invisibly over it, so it can be searched. Remembered from the last
+  /// export; on by default.
+  final bool exportHandwriting;
+
   /// Whether one finger draws on the page. On by default, as it always was.
   /// Off, a finger scrolls the page and only a pen draws — what most people
   /// writing with a stylus want, and what stops a resting finger leaving ink.
@@ -215,6 +220,7 @@ class SettingsState {
     this.scribbleErase = false,
     this.straightenLines = false,
     this.snapHighlighter = true,
+    this.exportHandwriting = true,
     this.fingerDraws = true,
     this.stylusTipShown = false,
     this.aiPanelWidth = 340,
@@ -250,6 +256,7 @@ class SettingsState {
     bool? scribbleErase,
     bool? straightenLines,
     bool? snapHighlighter,
+    bool? exportHandwriting,
     bool? fingerDraws,
     bool? stylusTipShown,
     double? aiPanelWidth,
@@ -273,6 +280,7 @@ class SettingsState {
       scribbleErase: scribbleErase ?? this.scribbleErase,
       straightenLines: straightenLines ?? this.straightenLines,
       snapHighlighter: snapHighlighter ?? this.snapHighlighter,
+      exportHandwriting: exportHandwriting ?? this.exportHandwriting,
       fingerDraws: fingerDraws ?? this.fingerDraws,
       stylusTipShown: stylusTipShown ?? this.stylusTipShown,
       aiPanelWidth: aiPanelWidth ?? this.aiPanelWidth,
@@ -309,6 +317,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kScribbleErase = 'ui.scribbleErase';
   static const _kStraightenLines = 'ui.straightenLines';
   static const _kSnapHighlighter = 'ui.snapHighlighter';
+  static const _kExportHandwriting = 'export.searchableHandwriting';
   static const _kFingerDraws = 'ui.fingerDraws';
   static const _kStylusTipShown = 'ui.stylusTipShown';
   static const _kAiPanelWidth = 'ui.aiPanelWidth';
@@ -362,6 +371,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       scribbleErase: prefs.getBool(_kScribbleErase) ?? false,
       straightenLines: prefs.getBool(_kStraightenLines) ?? false,
       snapHighlighter: prefs.getBool(_kSnapHighlighter) ?? true,
+      exportHandwriting: prefs.getBool(_kExportHandwriting) ?? true,
       fingerDraws: prefs.getBool(_kFingerDraws) ?? true,
       stylusTipShown: prefs.getBool(_kStylusTipShown) ?? false,
       aiPanelWidth: prefs.getDouble(_kAiPanelWidth) ?? 340,
@@ -479,6 +489,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(snapShapes: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kSnapShapes, value);
+  }
+
+  Future<void> setExportHandwriting(bool value) async {
+    state = state.copyWith(exportHandwriting: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kExportHandwriting, value);
   }
 
   Future<void> setSnapHighlighter(bool value) async {

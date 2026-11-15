@@ -1,6 +1,9 @@
 // Overflow menu (background, summarize, paste, library, export) for the editor
 // app bar. Drop into AppBar.actions after the primary feature icons.
 
+import 'dart:async' show unawaited;
+import 'dart:typed_data' show Uint8List;
+
 import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +19,12 @@ import '../../../../domain/services/library_service.dart';
 import '../../../../domain/services/z_order_service.dart';
 import '../../../../domain/model/scene_element.dart';
 import '../../../export/scene_export_service.dart';
+import '../../../export/pdf_export_sheet.dart';
+import '../../../export/vector_pdf_export.dart';
+import '../../../import/page_words_service.dart';
+import '../../../ai/presentation/ai_providers.dart'
+    show handwritingRecognitionServiceProvider;
+import '../../../../core/providers/settings_provider.dart';
 import '../../../home/presentation/home_notifier.dart';
 import '../../../../editor/state/clipboard_service.dart';
 import '../../../../editor/state/history_controller.dart';
@@ -212,7 +221,12 @@ class EditorAppBarActions extends ConsumerWidget {
     final ok = switch (fmt) {
       'png' => await SceneExportService.sharePng(els, imageCache: cache),
       'svg' => await SceneExportService.shareSvg(els, imageCache: cache),
-      'pdf' => await SceneExportService.sharePdf(els, imageCache: cache),
+      'pdf' => await SceneExportService.sharePdf(els,
+          imageCache: cache,
+          vector: VectorPdfExport(
+            docsDir: ref.read(appDocsPathProvider),
+            words: ref.read(pageWordsServiceProvider),
+          )),
       _ => false,
     };
     if (!ok && context.mounted) _toast(context, 'Nothing to export');
@@ -244,6 +258,15 @@ class EditorAppBarActions extends ConsumerWidget {
     final notebook = await ref.read(noteRepositoryProvider).getNotebook(notebookId);
     if (!context.mounted) return;
 
+    final settings = ref.read(settingsProvider);
+    final handwriting = await showPdfExportSheet(context,
+        handwriting: settings.exportHandwriting, pageCount: pages.length);
+    if (handwriting == null || !context.mounted) return;
+    if (handwriting != settings.exportHandwriting) {
+      unawaited(
+          ref.read(settingsProvider.notifier).setExportHandwriting(handwriting));
+    }
+
     final messenger = ScaffoldMessenger.of(context);
     final status = ValueNotifier<String>('Exporting ${pages.length} pages…');
     messenger.showSnackBar(SnackBar(
@@ -254,16 +277,74 @@ class EditorAppBarActions extends ConsumerWidget {
       ),
     ));
     try {
-      final ok = await SceneExportService.shareNotebookPdf(
-        scenes,
-        title: notebook?.title ?? 'notebook',
-        background: Color(notebook?.backgroundColor ?? 0xFFFFFFFF),
-        imageCache: ref.read(sceneImageCacheProvider),
-        onProgress: (done, total) =>
-            status.value = 'Exporting page ${done.clamp(1, total)} of $total…',
-      );
+      // Handwriting is read with the reader the AI uses. Without its model
+      // (offline, first use) the export still goes ahead, just without it.
+      HandwritingReader? reader;
+      var handwritingSkipped = false;
+      if (handwriting) {
+        final recognition = ref.read(handwritingRecognitionServiceProvider);
+        final language = settings.recognitionLanguage;
+        try {
+          if (!await recognition.isModelDownloaded(language)) {
+            status.value = 'Getting the handwriting reader…';
+          }
+          await recognition.ensureModelDownloaded(language);
+          reader = (elements) async => [
+                for (final l
+                    in await recognition.recognizeInkLines(elements, language))
+                  (text: l.text, bounds: l.bounds),
+              ];
+        } catch (_) {
+          handwritingSkipped = true;
+        }
+      }
+
+      Uint8List? pdf;
+      var flattened = false;
+      try {
+        pdf = await VectorPdfExport(
+          docsDir: ref.read(appDocsPathProvider),
+          words: ref.read(pageWordsServiceProvider),
+        ).notebook(
+          pages: pages,
+          scenes: scenes,
+          notebook: notebook,
+          readHandwriting: reader,
+          onStatus: (s) => status.value = s,
+        );
+      } catch (e) {
+        // The searchable PDF could not be made: fall back to pictures of the
+        // pages, so the export still works.
+        debugPrint('[Export] vector PDF failed, exporting pictures: $e');
+        flattened = true;
+        final ok = await SceneExportService.shareNotebookPdf(
+          scenes,
+          title: notebook?.title ?? 'notebook',
+          background: Color(notebook?.backgroundColor ?? 0xFFFFFFFF),
+          imageCache: ref.read(sceneImageCacheProvider),
+          onProgress: (done, total) => status.value =
+              'Exporting page ${done.clamp(1, total)} of $total…',
+        );
+        messenger.hideCurrentSnackBar();
+        if (!context.mounted) return;
+        _toast(
+            context,
+            ok
+                ? 'Exported as pictures: the searchable PDF could not be made.'
+                : 'Nothing to export');
+        return;
+      }
       messenger.hideCurrentSnackBar();
-      if (!ok && context.mounted) _toast(context, 'Nothing to export');
+      if (pdf == null) {
+        if (context.mounted) _toast(context, 'Nothing to export');
+        return;
+      }
+      await ExportShareService.sharePdf(pdf, notebook?.title ?? 'notebook');
+      if (handwritingSkipped && !flattened && context.mounted) {
+        _toast(context,
+            "Handwriting isn't searchable in this PDF: the handwriting reader "
+            "isn't on this device yet.");
+      }
     } finally {
       messenger.hideCurrentSnackBar();
       status.dispose();

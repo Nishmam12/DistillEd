@@ -56,6 +56,8 @@ class _Words implements PageWordsService {
   PageWords? cached(String relativeImagePath) => _words;
   @override
   Future<PageWords> wordsFor(String relativeImagePath) async => _words;
+  @override
+  Future<PageWords> storedWordsFor(String relativeImagePath) async => _words;
 }
 
 Future<ProviderContainer> _scene(WidgetTester tester) async {

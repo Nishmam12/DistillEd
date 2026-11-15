@@ -44,6 +44,25 @@ class PageWordsService {
     });
   }
 
+  /// The words already kept for the picture, without ever reading the picture:
+  /// for an export, which must not run OCR over a whole notebook. Empty when
+  /// there is no sidecar yet.
+  Future<PageWords> storedWordsFor(String relativeImagePath) async {
+    final hit = _cache[relativeImagePath];
+    if (hit != null) return hit;
+    if (!StoragePaths.isSafeRelativePath(relativeImagePath)) {
+      return PageWords.empty;
+    }
+    final sidecar =
+        File(StoragePaths.pdfWordsSidecar('$docsDir/$relativeImagePath'));
+    try {
+      if (!await sidecar.exists()) return PageWords.empty;
+      return PageWords.decode(await sidecar.readAsString());
+    } catch (_) {
+      return PageWords.empty;
+    }
+  }
+
   Future<PageWords> _load(String rel) async {
     if (!StoragePaths.isSafeRelativePath(rel)) return PageWords.empty;
     final image = '$docsDir/$rel';

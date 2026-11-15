@@ -16,6 +16,27 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 
+### Changed
+- **PDF export is now a real vector PDF with searchable text.** Ink, shapes and
+  the paper pattern are drawn as vector lines, so the PDF stays sharp at any
+  zoom and is much smaller than pictures of the pages. Typed text is real text
+  you can search and copy. The words of imported PDF pages and photos (where
+  Margo has kept them, see 5.4.0) are laid invisibly over the page, so they can
+  be searched too. Pictures are embedded from their original files.
+- Exporting a notebook first asks whether to **include searchable
+  handwriting**: the writing is read on this device and laid invisibly over
+  each line, so a search finds handwritten words. On by default and
+  remembered; turn it off for a quicker export.
+- A notebook laid out on real paper exports at that size (A4 is 595 x 842 pt).
+- Sharing a selection as PDF is vector too.
+- Known limits: the pencil's grain and the hand-drawn look of shapes are drawn
+  clean; Bangla typed text is embedded as a sharp picture of the text box
+  (the PDF fonts cannot join Bangla letters) with its text searchable over it.
+  If the vector PDF cannot be made, the export falls back to pictures of the
+  pages and says so.
+- Fonts embedded in PDFs: Noto Sans and Noto Sans Bengali (SIL Open Font
+  Licence), only the letters each PDF uses. No new package, no database change.
+
 ## [5.4.0] - 2026-11-15
 ### Added
 - **Page manager.** A full-screen grid of every page, opened from the grid

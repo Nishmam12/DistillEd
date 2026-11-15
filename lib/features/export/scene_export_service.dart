@@ -13,6 +13,7 @@ import '../../domain/model/scene_element.dart';
 import '../../editor/render/scene_exporter.dart';
 import '../../editor/render/scene_image_cache.dart';
 import 'export_share_service.dart';
+import 'vector_pdf_export.dart';
 
 class SceneExportService {
   SceneExportService._();
@@ -47,12 +48,26 @@ class SceneExportService {
     return true;
   }
 
+  /// With [vector] the PDF is drawn as vectors with searchable text; if that
+  /// fails, or without it, the elements are drawn as one picture.
   static Future<bool> sharePdf(
     List<SceneElement> elements, {
     String title = 'Margo',
     Color background = Colors.white,
     SceneImageCache? imageCache,
+    VectorPdfExport? vector,
   }) async {
+    if (vector != null) {
+      try {
+        final pdf = await vector.selection(elements,
+            background: background.toARGB32());
+        if (pdf == null) return false;
+        await ExportShareService.sharePdf(pdf, title);
+        return true;
+      } catch (e) {
+        debugPrint('[Export] vector PDF failed, exporting a picture: $e');
+      }
+    }
     final pdf = await SceneExporter.toPdf(
       elements,
       background: background,
