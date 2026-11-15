@@ -28,6 +28,37 @@ Commits: <first>..<last>
 
 ## Push log
 
+### 2026-11-15 · Afnan (RTX 2070 Super) · `margo-device-fixes` · no version bump
+Commits: `b990117`..(this commit)
+
+**What changed:**
+- **Android build tools raised so Flutter 3.50.0 builds again.** Flutter now refuses to build below Gradle 9.3.1 and Android Gradle Plugin (AGP) 9.1.1, and the project was on 9.1.0 and 9.0.1.
+  - Gradle wrapper: 9.1.0 to 9.3.1, in `android/gradle/wrapper/gradle-wrapper.properties`.
+  - AGP: 9.0.1 to 9.1.1, in `android/settings.gradle.kts`.
+- **Not done:** Flutter warns it will soon drop support for Gradle 9.3.1 and wants 9.5.0 or newer. The build still passes today.
+
+**What you need to do:**
+- Update, then build as usual. The first build downloads Gradle 9.3.1 and AGP 9.1.1, so it takes longer and needs a network connection.
+- You no longer need `--android-skip-build-dependency-validation`.
+- No database change, no `flutter pub get`.
+
+**Tested:** `flutter build apk --release` succeeds without the bypass flag (219 MB all-architecture APK). The new build was not installed on a device after this change; the Pixel 7 Pro install earlier was built with the old Gradle and the bypass flag. CI was not run.
+
+### 2026-11-15 · Afnan (RTX 2070 Super) · `margo-device-fixes` · no version bump
+Commits: `65c9235`..`b990117`
+
+**What changed:**
+- **Flashcards and Quiz loading panels** now span the full width of the screen, like the other AI panels. Before, the loading, download and error views shrank to a narrow card in the middle.
+- **Cloud error messages are readable.** A cloud 404 now says "Cloud gateway unreachable", and any other unexpected status says "Cloud request failed (HTTP 500)." instead of a long Dio paragraph. Every cloud feature shares this, so Research, Explain and the rest all show the shorter text.
+- **Known problem, not fixed by this push:** Research (and every cloud feature) fails right now because the Render service `margo-ai-gateway` has no server behind it. Every path, including `/health`, returns 404 with `x-render-routing: no-server`. It needs redeploying from `render.yaml` in the Render dashboard, with `OPENROUTER_API_KEY` and `EXA_API_KEY` entered again. If it comes back at a different address, `cloudGatewayBaseUrl` in `ai_providers.dart` must change to match.
+- **Build note:** Flutter 3.50.0 requires Gradle 9.3.1 and the project was on 9.1.0, so `flutter build` and `flutter run` stopped at a version check. This push doesn't change that; the next entry (2026-11-15, Gradle and AGP bump) does.
+
+**What you need to do:**
+- Nothing for the code: no database change, no new dependency, no `flutter pub get`.
+- Whoever has Render access: redeploy the gateway (see above).
+
+**Tested:** `flutter analyze` shows only the existing `material.dart` deprecation notices. All 1,422 tests under `test/features/ai` pass, including 2 new ones for the 404 and other-status messages. Release build installed on a Pixel 7 Pro: the flashcard loading panel is full width. The cloud error message was not checked on the device.
+
 ### 2026-11-14 · Nabil (RTX 4070 Ti Super) · `margo-device-fixes` · 5.3.0+35
 Commits: `933ebcc`..(this release commit), including the merge of Afnan's `064b454`
 
