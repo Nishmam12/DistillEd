@@ -50,6 +50,23 @@ class FreehandPath {
     return _buildPath(outline);
   }
 
+  /// The outline points of a stroke, before they are smoothed into a [Path]:
+  /// what [build] draws, for a writer that is not a Flutter canvas (the PDF
+  /// export). Pure Dart, so it also runs off the UI isolate. Empty when there
+  /// is nothing to draw.
+  static List<Offset> outline(
+    List<StrokePoint> points,
+    double size, {
+    PenKind kind = PenKind.ballpoint,
+  }) {
+    if (points.isEmpty) return const [];
+    return getStroke(
+      [for (final p in points) PointVector(p.x, p.y, p.pressure)],
+      options: _options(kind, size,
+          simulate: points.first.simulatePressure, isComplete: true),
+    );
+  }
+
   static StrokeOptions _options(
     PenKind kind,
     double size, {

@@ -1,4 +1,10 @@
-// Paints vector template patterns (ruled, dotted, grid, engineering) onto the canvas.
+// Paints vector template patterns (ruled, dotted, grid, engineering, Cornell,
+// music, isometric, checklist).
+//
+// The patterns are described once, as lines, dots and boxes sent to a
+// [TemplateSink]. The canvas draws them through [TemplatePainter.paint]; the
+// PDF export sends the same calls to its own sink, so the paper in an exported
+// PDF is exactly the paper on screen, as vector lines.
 
 import 'dart:ui' as ui;
 
@@ -7,7 +13,55 @@ import 'package:flutter/material.dart';
 import '../../domain/model/template_type.dart';
 import 'template_config.dart';
 
+/// Where a template's lines, dots and boxes go.
+abstract class TemplateSink {
+  void line(Offset a, Offset b, Color color, double width);
+
+  /// Round dots of [radius], all the same colour.
+  void dots(List<Offset> centres, Color color, double radius);
+
+  /// The outline of a rounded box.
+  void roundRect(Rect rect, double radius, Color color, double width);
+}
+
+/// Draws a template onto a Flutter [Canvas], reusing one [Paint] per style.
+class CanvasTemplateSink implements TemplateSink {
+  CanvasTemplateSink(this.canvas);
+
+  final Canvas canvas;
+  final Map<(Color, double, bool), Paint> _paints = {};
+
+  Paint _paint(Color color, double width, {bool round = false}) =>
+      _paints.putIfAbsent(
+        (color, width, round),
+        () => Paint()
+          ..color = color
+          ..strokeWidth = width
+          ..style = PaintingStyle.stroke
+          ..strokeCap = round ? StrokeCap.round : StrokeCap.butt,
+      );
+
+  @override
+  void line(Offset a, Offset b, Color color, double width) =>
+      canvas.drawLine(a, b, _paint(color, width));
+
+  @override
+  void dots(List<Offset> centres, Color color, double radius) =>
+      canvas.drawPoints(
+          ui.PointMode.points, centres, _paint(color, radius * 2, round: true));
+
+  @override
+  void roundRect(Rect rect, double radius, Color color, double width) =>
+      canvas.drawRRect(RRect.fromRectAndRadius(rect, Radius.circular(radius)),
+          _paint(color, width));
+}
+
 class TemplatePainter {
+  /// Below this on-screen spacing (logical px) the pattern is too dense to read
+  /// and is skipped — both a visual win (no grey mush when zoomed far out) and
+  /// a guard against drawing hundreds of thousands of dots per frame.
+  static const double _minOnScreenSpacing = 4.0;
+
   /// Paints the template pattern for the given type onto the canvas.
   ///
   /// By default the pattern is tiled across `0..size` (screen space). When
@@ -15,11 +69,6 @@ class TemplatePainter {
   /// callers that have applied a pan/zoom transform pass the visible *scene*
   /// rect so the pattern stays anchored to scene coordinates (and therefore
   /// pans and scales together with the drawn content).
-  /// Below this on-screen spacing (logical px) the pattern is too dense to read
-  /// and is skipped — both a visual win (no grey mush when zoomed far out) and
-  /// a guard against drawing hundreds of thousands of dots per frame.
-  static const double _minOnScreenSpacing = 4.0;
-
   static void paint(
     Canvas canvas,
     Size size,
@@ -28,73 +77,78 @@ class TemplatePainter {
     Rect? region,
     double zoom = 1.0,
     bool bounded = false,
+  }) =>
+      emit(
+        CanvasTemplateSink(canvas),
+        type,
+        backgroundColor,
+        region: region ?? (Offset.zero & size),
+        zoom: region == null ? 1.0 : zoom,
+        bounded: bounded,
+      );
+
+  /// Sends the pattern for [type] across [region] to [sink]. [zoom] is the
+  /// on-screen scale, for skipping a pattern too dense to read; [bounded]
+  /// says [region] is a real page (so Cornell can use its edges).
+  static void emit(
+    TemplateSink sink,
+    TemplateType type,
+    Color backgroundColor, {
+    required Rect region,
+    double zoom = 1.0,
+    bool bounded = false,
   }) {
     if (type == TemplateType.blank) return;
 
     final config = TemplateConfig.forBackground(type, backgroundColor);
-    final r = region ?? (Offset.zero & size);
-
-    // Cull only when tiling a transformed (scene-space) region; plain
-    // screen-space callers always render at their native density.
-    final scale = region == null ? 1.0 : zoom;
     final spacing = type == TemplateType.dotted || type == TemplateType.isometric
         ? config.dotSpacing
         : config.lineSpacing;
-    if (spacing * scale < _minOnScreenSpacing) return;
+    if (spacing * zoom < _minOnScreenSpacing) return;
 
+    final r = region;
     switch (type) {
       case TemplateType.blank:
         return;
       case TemplateType.ruled:
-        _paintRuled(canvas, r, config);
+        _ruled(sink, r, config);
       case TemplateType.dotted:
-        _paintDotted(canvas, r, config);
+        _dotted(sink, r, config);
       case TemplateType.grid:
-        _paintGrid(canvas, r, config);
+        _grid(sink, r, config);
       case TemplateType.engineeringGrid:
-        _paintEngineeringGrid(canvas, r, config);
+        _engineeringGrid(sink, r, config);
       case TemplateType.cornell:
         // The cue column and summary band need the page's real edges; on an
         // endless canvas it is a ruled page with a margin.
-        bounded ? _paintCornell(canvas, r, config) : _paintRuled(canvas, r, config);
+        bounded ? _cornell(sink, r, config) : _ruled(sink, r, config);
       case TemplateType.music:
-        _paintMusic(canvas, r, config);
+        _music(sink, r, config);
       case TemplateType.isometric:
-        _paintIsometric(canvas, r, config);
+        _isometric(sink, r, config);
       case TemplateType.checklist:
-        _paintChecklist(canvas, r, config);
+        _checklist(sink, r, config);
     }
   }
 
   /// Cornell notes: a cue column on the left, a summary band at the bottom and
   /// ruled lines in the notes area between them.
-  static void _paintCornell(Canvas canvas, Rect page, TemplateConfig config) {
-    final line = Paint()
-      ..color = config.lineColor
-      ..strokeWidth = config.lineWidth
-      ..style = PaintingStyle.stroke;
-    final divider = Paint()
-      ..color = config.majorLineColor
-      ..strokeWidth = config.majorLineWidth
-      ..style = PaintingStyle.stroke;
-
+  static void _cornell(TemplateSink sink, Rect page, TemplateConfig config) {
     final cueX = page.left + page.width * 0.28;
     final summaryY = page.bottom - page.height * 0.18;
 
     for (final t in _ticks(page.top, summaryY, config.lineSpacing)) {
-      canvas.drawLine(Offset(cueX, t.value), Offset(page.right, t.value), line);
+      sink.line(Offset(cueX, t.value), Offset(page.right, t.value),
+          config.lineColor, config.lineWidth);
     }
-    canvas.drawLine(Offset(cueX, page.top), Offset(cueX, summaryY), divider);
-    canvas.drawLine(
-        Offset(page.left, summaryY), Offset(page.right, summaryY), divider);
+    sink.line(Offset(cueX, page.top), Offset(cueX, summaryY),
+        config.majorLineColor, config.majorLineWidth);
+    sink.line(Offset(page.left, summaryY), Offset(page.right, summaryY),
+        config.majorLineColor, config.majorLineWidth);
   }
 
   /// Staves of five lines, a gap between each.
-  static void _paintMusic(Canvas canvas, Rect region, TemplateConfig config) {
-    final paint = Paint()
-      ..color = config.lineColor
-      ..strokeWidth = config.lineWidth
-      ..style = PaintingStyle.stroke;
+  static void _music(TemplateSink sink, Rect region, TemplateConfig config) {
     final gap = config.lineSpacing;
     final staff = gap * 4;
     final period = staff + gap * 5;
@@ -103,55 +157,36 @@ class TemplatePainter {
       for (var i = 0; i < 5; i++) {
         final y = top + i * gap;
         if (y < region.top || y > region.bottom) continue;
-        canvas.drawLine(Offset(region.left, y), Offset(region.right, y), paint);
+        sink.line(Offset(region.left, y), Offset(region.right, y),
+            config.lineColor, config.lineWidth);
       }
     }
   }
 
   /// Dots on a triangular lattice, the grid for isometric drawing.
-  static void _paintIsometric(
-      Canvas canvas, Rect region, TemplateConfig config) {
-    final dotPaint = Paint()
-      ..color = config.lineColor
-      ..strokeWidth = config.dotRadius * 2
-      ..strokeCap = StrokeCap.round;
+  static void _isometric(TemplateSink sink, Rect region, TemplateConfig config) {
     final s = config.dotSpacing;
     final rowHeight = s * 0.8660254037844386; // sqrt(3) / 2
     final dots = <Offset>[];
     for (final row in _ticks(region.top, region.bottom, rowHeight)) {
       final shift = row.index.isOdd ? s / 2 : 0.0;
-      for (final x
-          in _ticks(region.left - shift, region.right - shift, s)) {
+      for (final x in _ticks(region.left - shift, region.right - shift, s)) {
         dots.add(Offset(x.value + shift, row.value));
       }
     }
-    canvas.drawPoints(ui.PointMode.points, dots, dotPaint);
+    sink.dots(dots, config.lineColor, config.dotRadius);
   }
 
   /// Ruled lines with an empty tick box at the start of each one.
-  static void _paintChecklist(
-      Canvas canvas, Rect region, TemplateConfig config) {
-    final line = Paint()
-      ..color = config.lineColor
-      ..strokeWidth = config.lineWidth
-      ..style = PaintingStyle.stroke;
-    final box = Paint()
-      ..color = config.majorLineColor
-      ..strokeWidth = config.majorLineWidth
-      ..style = PaintingStyle.stroke;
+  static void _checklist(TemplateSink sink, Rect region, TemplateConfig config) {
     final s = config.lineSpacing;
     const side = 14.0;
     const left = 24.0;
     for (final t in _ticks(region.top, region.bottom, s)) {
-      canvas.drawLine(
-          Offset(region.left, t.value), Offset(region.right, t.value), line);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(left, t.value - (s + side) / 2, side, side),
-          const Radius.circular(3),
-        ),
-        box,
-      );
+      sink.line(Offset(region.left, t.value), Offset(region.right, t.value),
+          config.lineColor, config.lineWidth);
+      sink.roundRect(Rect.fromLTWH(left, t.value - (s + side) / 2, side, side),
+          3, config.majorLineColor, config.majorLineWidth);
     }
   }
 
@@ -172,112 +207,56 @@ class TemplatePainter {
     }
   }
 
-  /// Paints horizontal ruled lines with an optional left margin line.
-  static void _paintRuled(Canvas canvas, Rect region, TemplateConfig config) {
-    final linePaint = Paint()
-      ..color = config.lineColor
-      ..strokeWidth = config.lineWidth
-      ..style = PaintingStyle.stroke;
-
-    final marginPaint = Paint()
-      ..color = config.marginLineColor
-      ..strokeWidth = config.lineWidth * 1.5
-      ..style = PaintingStyle.stroke;
-
-    // Horizontal lines
+  /// Horizontal ruled lines and a left margin line.
+  static void _ruled(TemplateSink sink, Rect region, TemplateConfig config) {
     for (final t in _ticks(region.top, region.bottom, config.lineSpacing)) {
-      canvas.drawLine(
-        Offset(region.left, t.value),
-        Offset(region.right, t.value),
-        linePaint,
-      );
+      sink.line(Offset(region.left, t.value), Offset(region.right, t.value),
+          config.lineColor, config.lineWidth);
     }
-
-    // Left margin line
-    canvas.drawLine(
+    sink.line(
       Offset(config.marginOffset, region.top),
       Offset(config.marginOffset, region.bottom),
-      marginPaint,
+      config.marginLineColor,
+      config.lineWidth * 1.5,
     );
   }
 
-  /// Paints evenly spaced dots across the canvas.
-  static void _paintDotted(Canvas canvas, Rect region, TemplateConfig config) {
-    // One batched call of round-capped points instead of a drawCircle per dot.
-    final dotPaint = Paint()
-      ..color = config.lineColor
-      ..strokeWidth = config.dotRadius * 2
-      ..strokeCap = StrokeCap.round;
-
-    final dots = <Offset>[
+  /// Evenly spaced dots.
+  static void _dotted(TemplateSink sink, Rect region, TemplateConfig config) {
+    sink.dots([
       for (final tx in _ticks(region.left, region.right, config.dotSpacing))
         for (final ty in _ticks(region.top, region.bottom, config.dotSpacing))
           Offset(tx.value, ty.value),
-    ];
-    canvas.drawPoints(ui.PointMode.points, dots, dotPaint);
+    ], config.lineColor, config.dotRadius);
   }
 
-  /// Paints a uniform grid of horizontal and vertical lines.
-  static void _paintGrid(Canvas canvas, Rect region, TemplateConfig config) {
-    final linePaint = Paint()
-      ..color = config.lineColor
-      ..strokeWidth = config.lineWidth
-      ..style = PaintingStyle.stroke;
-
-    // Vertical lines
+  /// A uniform grid of horizontal and vertical lines.
+  static void _grid(TemplateSink sink, Rect region, TemplateConfig config) {
     for (final t in _ticks(region.left, region.right, config.lineSpacing)) {
-      canvas.drawLine(
-        Offset(t.value, region.top),
-        Offset(t.value, region.bottom),
-        linePaint,
-      );
+      sink.line(Offset(t.value, region.top), Offset(t.value, region.bottom),
+          config.lineColor, config.lineWidth);
     }
-
-    // Horizontal lines
     for (final t in _ticks(region.top, region.bottom, config.lineSpacing)) {
-      canvas.drawLine(
-        Offset(region.left, t.value),
-        Offset(region.right, t.value),
-        linePaint,
-      );
+      sink.line(Offset(region.left, t.value), Offset(region.right, t.value),
+          config.lineColor, config.lineWidth);
     }
   }
 
-  /// Paints an engineering grid with minor and major lines.
-  static void _paintEngineeringGrid(
-    Canvas canvas,
-    Rect region,
-    TemplateConfig config,
-  ) {
-    final minorPaint = Paint()
-      ..color = config.lineColor
-      ..strokeWidth = config.lineWidth
-      ..style = PaintingStyle.stroke;
+  /// An engineering grid with minor and major lines.
+  static void _engineeringGrid(
+      TemplateSink sink, Rect region, TemplateConfig config) {
+    void line(Offset a, Offset b, int index) =>
+        index % config.majorLineInterval == 0
+            ? sink.line(a, b, config.majorLineColor, config.majorLineWidth)
+            : sink.line(a, b, config.lineColor, config.lineWidth);
 
-    final majorPaint = Paint()
-      ..color = config.majorLineColor
-      ..strokeWidth = config.majorLineWidth
-      ..style = PaintingStyle.stroke;
-
-    Paint paintFor(int index) =>
-        index % config.majorLineInterval == 0 ? majorPaint : minorPaint;
-
-    // Vertical lines
     for (final t in _ticks(region.left, region.right, config.lineSpacing)) {
-      canvas.drawLine(
-        Offset(t.value, region.top),
-        Offset(t.value, region.bottom),
-        paintFor(t.index),
-      );
+      line(Offset(t.value, region.top), Offset(t.value, region.bottom),
+          t.index);
     }
-
-    // Horizontal lines
     for (final t in _ticks(region.top, region.bottom, config.lineSpacing)) {
-      canvas.drawLine(
-        Offset(region.left, t.value),
-        Offset(region.right, t.value),
-        paintFor(t.index),
-      );
+      line(Offset(region.left, t.value), Offset(region.right, t.value),
+          t.index);
     }
   }
 }

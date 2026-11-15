@@ -185,6 +185,9 @@ flutter:
   assets:
     - assets/icons/
     - assets/licenses/
+    # Fonts embedded in exported PDFs so typed text stays real, searchable
+    # text (Noto, SIL OFL 1.1; licence in assets/licenses/NotoSans-OFL.txt).
+    - assets/fonts/pdf/
     - assets/Margo_Note_Toolbar/Icons/
 
   fonts:
