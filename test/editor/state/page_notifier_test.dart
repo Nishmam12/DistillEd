@@ -10,6 +10,7 @@ import 'package:isar_community/isar.dart';
 
 import 'package:margo/data/persistence/scene_element_store.dart';
 import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/domain/model/template_type.dart';
 import 'package:margo/editor/state/page_notifier.dart';
 import 'package:margo/features/home/data/repositories/page_repository.dart';
 import 'package:margo/features/home/domain/models/note_page.dart';
@@ -36,6 +37,21 @@ class FakePageRepository implements PageRepository {
         p.importGroupId = importGroupId;
         p.importSourceName = importSourceName;
       }
+    }
+  }
+
+  @override
+  Future<void> setPageInfo(
+    int pageId, {
+    bool? bookmarked,
+    String? title,
+    int? templateOverride,
+  }) async {
+    for (final p in pages) {
+      if (p.id != pageId) continue;
+      if (bookmarked != null) p.bookmarked = bookmarked;
+      if (title != null) p.title = title.trim();
+      if (templateOverride != null) p.templateOverride = templateOverride;
     }
   }
 
@@ -335,6 +351,55 @@ void main() {
       expect(now.length, 6);
       expect([now[0], now[2], now[3]], [a[0], a[1], a[2]]);
       expect(await store.loadForPage(now[1]), hasLength(1));
+    });
+  });
+
+  group('bookmark, name and template', () {
+    test('setBookmarked and renamePage update the page', () async {
+      await notifier.initialize();
+      final id = notifier.state.pages.first.id;
+      await notifier.setBookmarked(id, true);
+      await notifier.renamePage(id, '  Chapter 1 ');
+      expect(notifier.state.pages.first.bookmarked, isTrue);
+      expect(notifier.state.pages.first.title, 'Chapter 1');
+    });
+
+    test('toggleBookmarks marks a mixed set, then clears it', () async {
+      await notifier.initialize();
+      await notifier.insertPage();
+      final a = notifier.state.pages[0].id;
+      final b = notifier.state.pages[1].id;
+      await notifier.setBookmarked(a, true);
+      await notifier.toggleBookmarks([a, b]);
+      expect(notifier.state.pages.every((p) => p.bookmarked), isTrue);
+      await notifier.toggleBookmarks([a, b]);
+      expect(notifier.state.pages.any((p) => p.bookmarked), isFalse);
+    });
+
+    test('a page template overrides the notebook and can be cleared',
+        () async {
+      await notifier.initialize();
+      final page = notifier.state.pages.first;
+      expect(templateForPage(page, TemplateType.ruled), TemplateType.ruled);
+      await notifier.setPageTemplate(page.id, TemplateType.grid.index);
+      expect(templateForPage(notifier.state.pages.first, TemplateType.ruled),
+          TemplateType.grid);
+      await notifier.setPageTemplate(page.id, kNotebookTemplate);
+      expect(templateForPage(notifier.state.pages.first, TemplateType.ruled),
+          TemplateType.ruled);
+    });
+
+    test('a duplicate keeps the bookmark, name and template', () async {
+      await notifier.initialize();
+      final id = notifier.state.pages.first.id;
+      await notifier.setBookmarked(id, true);
+      await notifier.renamePage(id, 'Proofs');
+      await notifier.setPageTemplate(id, 2);
+      await notifier.duplicatePage(0);
+      final copy = notifier.state.pages[1];
+      expect(copy.bookmarked, isTrue);
+      expect(copy.title, 'Proofs');
+      expect(copy.templateOverride, 2);
     });
   });
 }

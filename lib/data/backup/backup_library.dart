@@ -57,6 +57,9 @@ class AppBackupLibrary implements BackupLibrary {
         text: await texts.forPage(page.id),
         importGroupId: page.importGroupId,
         importSourceName: page.importSourceName,
+        bookmarked: page.bookmarked,
+        title: page.title,
+        templateOverride: page.templateOverride,
       ));
     }
 
@@ -125,6 +128,16 @@ class AppBackupLibrary implements BackupLibrary {
           pageId,
           importGroupId: page.importGroupId!,
           importSourceName: page.importSourceName ?? '',
+        );
+      }
+      if (page.bookmarked ||
+          page.title.isNotEmpty ||
+          page.templateOverride >= 0) {
+        await pages.setPageInfo(
+          pageId,
+          bookmarked: page.bookmarked,
+          title: page.title,
+          templateOverride: page.templateOverride,
         );
       }
       await elements.replaceForPage(id, pageId, [

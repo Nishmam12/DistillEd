@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../data/persistence/library_repository.dart';
+import '../../domain/model/template_type.dart';
 import '../../data/persistence/scene_element_store.dart';
 import '../../domain/model/element_id.dart';
 import '../../domain/services/selection_editing.dart';
@@ -13,6 +14,18 @@ import '../../shared/isar/isar_service.dart';
 import 'history_controller.dart';
 import 'library_controller.dart';
 import 'scene_controller.dart';
+
+/// [NotePage.templateOverride] for a page that follows its notebook's template.
+const int kNotebookTemplate = -1;
+
+/// The paper [page] is drawn on: its own template if it has one, otherwise
+/// the notebook's.
+TemplateType templateForPage(NotePage page, TemplateType notebookTemplate) {
+  final i = page.templateOverride;
+  return i >= 0 && i < TemplateType.values.length
+      ? TemplateType.values[i]
+      : notebookTemplate;
+}
 
 class PageState {
   final int currentPageIndex;
@@ -116,11 +129,22 @@ class PageNotifier extends StateNotifier<PageState> {
     await SceneController.flushPage(state.pages[index].id);
     final sourceElements = await _store.loadForPage(state.pages[index].id);
 
+    final source = state.pages[index];
     final created = await _repository.createPage(_notebookId);
     final pages = await _repository.getPagesForNotebook(_notebookId);
 
     // Move the newly created page to immediately after the duplicated page
     await _repository.movePage(_notebookId, pages.length - 1, index + 1);
+    if (source.bookmarked ||
+        source.title.isNotEmpty ||
+        source.templateOverride != kNotebookTemplate) {
+      await _repository.setPageInfo(
+        created.id,
+        bookmarked: source.bookmarked,
+        title: source.title,
+        templateOverride: source.templateOverride,
+      );
+    }
 
     if (sourceElements.isNotEmpty) {
       await _store.upsertForPage(
@@ -212,6 +236,47 @@ class PageNotifier extends StateNotifier<PageState> {
     final at = state.pages.indexWhere((p) => p.id == currentId);
     state = state.copyWith(currentPageIndex: at < 0 ? 0 : at);
   }
+
+  Future<void> _setInfo(
+    int pageId, {
+    bool? bookmarked,
+    String? title,
+    int? templateOverride,
+  }) async {
+    await _repository.setPageInfo(
+      pageId,
+      bookmarked: bookmarked,
+      title: title,
+      templateOverride: templateOverride,
+    );
+    final pages = await _repository.getPagesForNotebook(_notebookId);
+    state = state.copyWith(pages: pages);
+  }
+
+  Future<void> setBookmarked(int pageId, bool on) =>
+      _setInfo(pageId, bookmarked: on);
+
+  /// Bookmarks every page in [pageIds] if any of them is not bookmarked yet,
+  /// otherwise clears them all (one tap toggles a mixed selection on).
+  Future<void> toggleBookmarks(List<int> pageIds) async {
+    final wanted = pageIds.toSet();
+    final chosen = state.pages.where((p) => wanted.contains(p.id)).toList();
+    if (chosen.isEmpty) return;
+    final on = chosen.any((p) => !p.bookmarked);
+    for (final p in chosen) {
+      await _repository.setPageInfo(p.id, bookmarked: on);
+    }
+    final pages = await _repository.getPagesForNotebook(_notebookId);
+    state = state.copyWith(pages: pages);
+  }
+
+  Future<void> renamePage(int pageId, String title) =>
+      _setInfo(pageId, title: title);
+
+  /// Gives one page its own template, or [kNotebookTemplate] to follow the
+  /// notebook again.
+  Future<void> setPageTemplate(int pageId, int templateIndex) =>
+      _setInfo(pageId, templateOverride: templateIndex);
 
   Future<void> reorderPages(int oldIndex, int newIndex) async {
     await _repository.movePage(_notebookId, oldIndex, newIndex);

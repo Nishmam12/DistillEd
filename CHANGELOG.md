@@ -16,6 +16,22 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 
+### Changed
+- **Database: three new columns on NotePage** (approved 2026-11-15):
+  `bookmarked` (false), `title` (empty) and `templateOverride` (-1 = follow
+  the notebook). Existing pages read as the defaults; an older build ignores
+  the columns. Backups carry them, and an older backup restores as the defaults.
+
+### Added
+- **Bookmarks and page names.** Bookmark or name a page from its menu (or
+  bookmark several in the page manager). The page manager shows a bookmark
+  badge and the name, and can show bookmarked pages only.
+- **Outline.** A list of the bookmarked or named pages; tap one to open it.
+  Opened from the page bar or the page manager.
+- **A paper template for one page.** In the page sheet, "This page only" gives
+  the current page its own template; "Whole notebook" changes the notebook's
+  and puts the page back to following it. Duplicating a page keeps all three.
+
 ### Added
 - **Page manager.** A full-screen grid of every page, opened from the grid
   button in the editor's page bar or the Book view's app bar. Long-press a page

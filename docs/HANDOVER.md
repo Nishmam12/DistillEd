@@ -194,6 +194,17 @@ Nothing below has been confirmed on the tablet.
    AI Models screen (download a model, add the HuggingFace token) still work,
    in light and dark. Turn backup on and check the "How often" chips wrap.
 
+### Schema change: page bookmarks (2026-11-15)
+
+Approved by the user: three columns on `NotePage`: `bookmarked` (bool),
+`title` (string), `templateOverride` (int, -1 = follow the notebook, else a
+`TemplateType` index, append only). Existing rows read as the defaults. Set
+through `PageRepository.setPageInfo` / `PageNotifier.setBookmarked`,
+`toggleBookmarks`, `renamePage`, `setPageTemplate`; `templateForPage` resolves
+the paper. Backups carry the fields (omitted when default, so an old backup
+restores as defaults). Still needs a device check: an existing notebook opens
+with the new columns.
+
 ### Schema change: page size (2026-11-14)
 
 Approved by the user: one new column, `Notebook.pageSize` (`PageSizeKind`
@@ -291,7 +302,7 @@ Fable 5.2 only for figure-pipeline bugs.
 | 9 | DONE (`TapeElement`, column `tapeRevealed`, approved 2026-11-14). B: tape element (schema change, ask first) | Opus |
 | 10 | DONE (`PageSizeKind`, column `Notebook.pageSize`, `layoutMode` 2, approved 2026-11-14). C: real page sizes, continuous vertical scroll | Opus |
 | 11 | DONE (`PageManagerScreen`, route `/note2/:id/pages`, `PageNotifier.movePages/deletePages/duplicatePages`, shared `PageThumbnail`; no schema change). C: page manager grid, drag-reorder, multi-select | Sonnet |
-| 12 | C: page bookmarks and outline, per-page template | Sonnet |
+| 12 | DONE (`NotePage.bookmarked/title/templateOverride`, approved 2026-11-15; `PageOutlineScreen`, route `/note2/:id/outline`). C: page bookmarks and outline, per-page template | Sonnet |
 | 13 | C: extra templates | Sonnet |
 | 14 | D: PDF word boxes, text selection, highlighter snapping | Opus |
 | 15 | D: vector PDF export with searchable text | Opus |

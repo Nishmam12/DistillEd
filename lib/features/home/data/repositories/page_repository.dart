@@ -226,6 +226,25 @@ class PageRepository {
     });
   }
 
+  /// Updates whichever of the page's bookmark, title and own template are
+  /// given, leaving the rest as they are.
+  Future<void> setPageInfo(
+    int pageId, {
+    bool? bookmarked,
+    String? title,
+    int? templateOverride,
+  }) async {
+    await _isar.writeTxn(() async {
+      final page = await _isar.notePages.get(pageId);
+      if (page == null) return;
+      if (bookmarked != null) page.bookmarked = bookmarked;
+      if (title != null) page.title = title.trim();
+      if (templateOverride != null) page.templateOverride = templateOverride;
+      page.modifiedAt = DateTime.now();
+      await _isar.notePages.put(page);
+    });
+  }
+
   /// Returns all pages for [notebookId] sorted by pageIndex ascending.
   Future<List<NotePage>> getPagesForNotebook(int notebookId) async {
     return _isar.notePages

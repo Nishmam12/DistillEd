@@ -54,6 +54,34 @@ void main() {
   List<int> order() =>
       [for (final p in container.read(pageProvider(1)).pages) p.id];
 
+  testWidgets('bookmarks show a badge and the filter keeps only them',
+      (tester) async {
+    final a = await pump(tester);
+    await container.read(pageProvider(1).notifier).setBookmarked(a[2], true);
+    await container.read(pageProvider(1).notifier).renamePage(a[2], 'Proofs');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('pageBookmark_2')), findsOneWidget);
+    expect(find.text('3 · Proofs'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('pageManagerFilter')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('pageCell_2')), findsOneWidget);
+    expect(find.byKey(const Key('pageCell_0')), findsNothing);
+  });
+
+  testWidgets('the bookmark button in select mode toggles the selection',
+      (tester) async {
+    final a = await pump(tester);
+    await tester.tap(find.byKey(const Key('pageManagerSelect')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('pageCell_1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('pageManagerBookmark')));
+    await tester.pumpAndSettle();
+    final pages = container.read(pageProvider(1)).pages;
+    expect(pages.where((p) => p.bookmarked).map((p) => p.id), [a[1]]);
+  });
+
   testWidgets('shows every page', (tester) async {
     await pump(tester);
     expect(find.text('Pages (4)'), findsOneWidget);

@@ -78,6 +78,33 @@ void main() {
     });
   });
 
+  group('page bookmark, name and template', () {
+    test('round trip, and an older backup reads as the defaults', () {
+      final s = sample();
+      final marked = NotebookSnapshot(
+        sourceId: s.sourceId,
+        meta: s.meta,
+        media: s.media,
+        pages: [
+          PageSnapshot(
+            elements: s.pages[0].elements,
+            bookmarked: true,
+            title: 'Mitosis',
+            templateOverride: 3,
+          ),
+          s.pages[1],
+        ],
+      );
+      final back = NotebookArchive.decode(NotebookArchive.encode(marked));
+      expect(back.pages[0].bookmarked, isTrue);
+      expect(back.pages[0].title, 'Mitosis');
+      expect(back.pages[0].templateOverride, 3);
+      expect(back.pages[1].bookmarked, isFalse);
+      expect(back.pages[1].title, '');
+      expect(back.pages[1].templateOverride, -1);
+    });
+  });
+
   group('encode / decode', () {
     test('everything survives the round trip', () {
       final back = NotebookArchive.decode(NotebookArchive.encode(sample()));

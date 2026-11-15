@@ -36,6 +36,18 @@ class NotePage {
   /// say "Whole PDF (lecture.pdf)" without re-reading the image metadata.
   String? importSourceName;
 
+  /// Marked by the user so the page is easy to find again (outline, page
+  /// manager filter). Existing pages read as false.
+  bool bookmarked = false;
+
+  /// A name the user gave the page, shown in the outline and page manager.
+  /// Empty means untitled.
+  String title = '';
+
+  /// The paper of this page only, as a `TemplateType` index (append only), or
+  /// -1 to use the notebook's template, which every existing page does.
+  int templateOverride = -1;
+
   late DateTime createdAt;
 
   // Phase 4: Imported PDF backgrounds and free images

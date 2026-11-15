@@ -252,11 +252,20 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
   Color get _paperColor => Color(_notebook?.backgroundColor ?? 0xFFFFFDF7);
 
-  TemplateType get _template {
+  /// The notebook's own paper.
+  TemplateType get _notebookTemplate {
     final i = _notebook?.templateIndex ?? 0;
     return (i >= 0 && i < TemplateType.values.length)
         ? TemplateType.values[i]
         : TemplateType.blank;
+  }
+
+  /// The paper of the page being written on: its own, or the notebook's.
+  TemplateType get _template {
+    final state = ref.read(pageProvider(widget.notebookId));
+    if (state.pages.isEmpty) return _notebookTemplate;
+    final i = state.currentPageIndex.clamp(0, state.pages.length - 1);
+    return templateForPage(state.pages[i], _notebookTemplate);
   }
 
   /// 0 infinite, 1 single page, 2 continuous (see [Notebook.layoutMode]).
@@ -481,6 +490,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                               sheet: sheet,
                               paperColor: _paperColor,
                               template: _template,
+                              aboveTemplate: above == null
+                                  ? null
+                                  : templateForPage(above, _notebookTemplate),
+                              belowTemplate: below == null
+                                  ? null
+                                  : templateForPage(below, _notebookTemplate),
                             ),
                           ),
                         // Zoom level and the universal colour palette, both
@@ -571,6 +586,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
         onAdd: () =>
             ref.read(pageProvider(widget.notebookId).notifier).insertPage(),
         onGrid: () => context.push('/note2/${widget.notebookId}/pages'),
+        onOutline: () =>
+            context.push('/note2/${widget.notebookId}/outline'),
         onManage: () => showPageActionsSheet(
           context,
           ref,
@@ -1258,6 +1275,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       showDragHandle: true,
       builder: (_) => _BackgroundSheet(
         template: _template,
+        notebookTemplate: _notebookTemplate,
+        pageOnly: _pageHasOwnTemplate,
         paperColor: _paperColor,
         layoutMode: _layoutMode,
         pageSize: _pageKind,
@@ -1285,9 +1304,31 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     unawaited(_save((r) => r.updatePageSize(widget.notebookId, kind.index)));
   }
 
-  void _setTemplate(TemplateType type) {
+  bool get _pageHasOwnTemplate {
+    final state = ref.read(pageProvider(widget.notebookId));
+    if (state.pages.isEmpty) return false;
+    final i = state.currentPageIndex.clamp(0, state.pages.length - 1);
+    return state.pages[i].templateOverride >= 0;
+  }
+
+  /// [pageOnly] gives the current page its own paper; otherwise the notebook's
+  /// paper changes and the page goes back to following it.
+  void _setTemplate(TemplateType type, bool pageOnly) {
     final nb = _notebook;
     if (nb == null) return;
+    final notifier = ref.read(pageProvider(widget.notebookId).notifier);
+    final state = ref.read(pageProvider(widget.notebookId));
+    final page = state.pages.isEmpty
+        ? null
+        : state.pages[
+            state.currentPageIndex.clamp(0, state.pages.length - 1)];
+    if (pageOnly) {
+      if (page != null) unawaited(notifier.setPageTemplate(page.id, type.index));
+      return;
+    }
+    if (page != null && page.templateOverride >= 0) {
+      unawaited(notifier.setPageTemplate(page.id, kNotebookTemplate));
+    }
     setState(() => nb.templateIndex = type.index);
     unawaited(
         _save((r) => r.updateTemplateIndex(widget.notebookId, type.index)));

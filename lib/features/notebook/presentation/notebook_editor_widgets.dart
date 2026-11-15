@@ -4,19 +4,26 @@ part of 'notebook_editor_screen.dart';
 /// live (the parent persists them and rebuilds the canvas) so the sheet can
 /// stay open while the user tries combinations.
 class _BackgroundSheet extends StatefulWidget {
+  /// The paper showing now (the page's own, or the notebook's).
   final TemplateType template;
+  final TemplateType notebookTemplate;
+
+  /// The current page has a template of its own.
+  final bool pageOnly;
   final Color paperColor;
 
   /// 0 infinite, 1 single page, 2 continuous.
   final int layoutMode;
   final PageSizeKind pageSize;
-  final ValueChanged<TemplateType> onTemplate;
+  final void Function(TemplateType type, bool pageOnly) onTemplate;
   final ValueChanged<Color> onColor;
   final ValueChanged<int> onLayoutMode;
   final ValueChanged<PageSizeKind> onPageSize;
 
   const _BackgroundSheet({
     required this.template,
+    required this.notebookTemplate,
+    required this.pageOnly,
     required this.paperColor,
     required this.layoutMode,
     required this.pageSize,
@@ -38,6 +45,7 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
   ];
 
   late TemplateType _template = widget.template;
+  late bool _pageOnly = widget.pageOnly;
   late Color _color = widget.paperColor;
   late int _layoutMode = widget.layoutMode;
   late PageSizeKind _pageSize = widget.pageSize;
@@ -105,6 +113,25 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
             const SizedBox(height: 20),
             Text('Paper template', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
+            SegmentedButton<bool>(
+              key: const ValueKey('templateScope'),
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: false, label: Text('Whole notebook')),
+                ButtonSegment(value: true, label: Text('This page only')),
+              ],
+              selected: {_pageOnly},
+              onSelectionChanged: (s) {
+                final pageOnly = s.first;
+                setState(() {
+                  _pageOnly = pageOnly;
+                  // Back to the notebook's paper, or keep what shows now.
+                  if (!pageOnly) _template = widget.notebookTemplate;
+                });
+                widget.onTemplate(_template, pageOnly);
+              },
+            ),
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -116,7 +143,7 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
                     selected: _template == t,
                     onSelected: (_) {
                       setState(() => _template = t);
-                      widget.onTemplate(t);
+                      widget.onTemplate(t, _pageOnly);
                     },
                   ),
               ],
@@ -268,6 +295,7 @@ class _PageNavBar extends StatelessWidget {
   final VoidCallback onAdd;
   final VoidCallback onManage;
   final VoidCallback onGrid;
+  final VoidCallback onOutline;
 
   const _PageNavBar({
     required this.index,
@@ -277,6 +305,7 @@ class _PageNavBar extends StatelessWidget {
     required this.onAdd,
     required this.onManage,
     required this.onGrid,
+    required this.onOutline,
   });
 
   @override
@@ -313,6 +342,12 @@ class _PageNavBar extends StatelessWidget {
               tooltip: 'Add page',
               icon: const Icon(Icons.add),
               onPressed: onAdd,
+            ),
+            IconButton(
+              key: const Key('pageOutline'),
+              tooltip: 'Outline',
+              icon: const Icon(Icons.bookmarks_outlined),
+              onPressed: onOutline,
             ),
             IconButton(
               key: const Key('allPages'),

@@ -10,7 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/page_notifier.dart';
 
 /// Actions the sheet can return. `null` means the user dismissed it.
-enum PageAction { duplicate, moveLeft, moveRight, delete }
+enum PageAction { duplicate, bookmark, rename, moveLeft, moveRight, delete }
 
 /// The menu body. Split out from [showPageActionsSheet] so the option guards
 /// can be widget-tested without a live notebook behind them; it only pops a
@@ -18,11 +18,13 @@ enum PageAction { duplicate, moveLeft, moveRight, delete }
 class PageActionsSheet extends StatelessWidget {
   final int pageIndex;
   final int pageCount;
+  final bool bookmarked;
 
   const PageActionsSheet({
     super.key,
     required this.pageIndex,
     required this.pageCount,
+    this.bookmarked = false,
   });
 
   bool get _canMoveLeft => pageIndex > 0;
@@ -34,7 +36,8 @@ class PageActionsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Column(
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
@@ -53,6 +56,16 @@ class PageActionsSheet extends StatelessWidget {
             leading: const Icon(Icons.copy_all_outlined),
             title: const Text('Duplicate'),
             onTap: () => Navigator.pop(context, PageAction.duplicate),
+          ),
+          ListTile(
+            leading: Icon(bookmarked ? Icons.bookmark : Icons.bookmark_border),
+            title: Text(bookmarked ? 'Remove bookmark' : 'Bookmark'),
+            onTap: () => Navigator.pop(context, PageAction.bookmark),
+          ),
+          ListTile(
+            leading: const Icon(Icons.drive_file_rename_outline),
+            title: const Text('Rename'),
+            onTap: () => Navigator.pop(context, PageAction.rename),
           ),
           ListTile(
             leading: const Icon(Icons.arrow_back),
@@ -86,8 +99,37 @@ class PageActionsSheet extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
+}
+
+/// Asks for a page's name. Returns null when cancelled; an empty string clears
+/// the name.
+Future<String?> showRenamePageDialog(BuildContext context, String current) {
+  final controller = TextEditingController(text: current);
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Name this page'),
+      content: TextField(
+        key: const Key('pageNameField'),
+        controller: controller,
+        autofocus: true,
+        maxLength: 60,
+        decoration: const InputDecoration(hintText: 'e.g. Chapter 2 summary'),
+        onSubmitted: (v) => Navigator.pop(ctx, v),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        TextButton(
+            key: const Key('pageNameSave'),
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('Save')),
+      ],
+    ),
+  );
 }
 
 /// Shows the page menu for [pageIndex] and performs the chosen action.
@@ -107,6 +149,12 @@ Future<void> showPageActionsSheet(
     builder: (_) => PageActionsSheet(
       pageIndex: pageIndex,
       pageCount: pageCount,
+      bookmarked: ref
+              .read(pageProvider(notebookId))
+              .pages
+              .elementAtOrNull(pageIndex)
+              ?.bookmarked ??
+          false,
     ),
   );
 
@@ -116,6 +164,14 @@ Future<void> showPageActionsSheet(
   switch (action) {
     case PageAction.duplicate:
       await notifier.duplicatePage(pageIndex);
+    case PageAction.bookmark:
+      final page = ref.read(pageProvider(notebookId)).pages[pageIndex];
+      await notifier.setBookmarked(page.id, !page.bookmarked);
+    case PageAction.rename:
+      final page = ref.read(pageProvider(notebookId)).pages[pageIndex];
+      if (!context.mounted) return;
+      final name = await showRenamePageDialog(context, page.title);
+      if (name != null) await notifier.renamePage(page.id, name);
     case PageAction.moveLeft:
       await notifier.reorderPages(pageIndex, pageIndex - 1);
     case PageAction.moveRight:

@@ -17,49 +17,63 @@ const NotePageSchema = CollectionSchema(
   name: r'NotePage',
   id: 6257063127094562748,
   properties: {
-    r'createdAt': PropertySchema(
+    r'bookmarked': PropertySchema(
       id: 0,
+      name: r'bookmarked',
+      type: IsarType.bool,
+    ),
+    r'createdAt': PropertySchema(
+      id: 1,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'importGroupId': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'importGroupId',
       type: IsarType.string,
     ),
     r'importSourceName': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'importSourceName',
       type: IsarType.string,
     ),
     r'importedContents': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'importedContents',
       type: IsarType.objectList,
+
       target: r'ImportedContent',
     ),
     r'modifiedAt': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'modifiedAt',
       type: IsarType.dateTime,
     ),
     r'notebookId': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'notebookId',
       type: IsarType.long,
     ),
     r'pageIndex': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'pageIndex',
       type: IsarType.long,
     ),
     r'shapes': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'shapes',
       type: IsarType.objectList,
+
       target: r'ShapeElement',
-    )
+    ),
+    r'templateOverride': PropertySchema(
+      id: 9,
+      name: r'templateOverride',
+      type: IsarType.long,
+    ),
+    r'title': PropertySchema(id: 10, name: r'title', type: IsarType.string),
   },
+
   estimateSize: _notePageEstimateSize,
   serialize: _notePageSerialize,
   deserialize: _notePageDeserialize,
@@ -76,7 +90,7 @@ const NotePageSchema = CollectionSchema(
           name: r'notebookId',
           type: IndexType.value,
           caseSensitive: false,
-        )
+        ),
       ],
     ),
     r'importGroupId': IndexSchema(
@@ -89,15 +103,16 @@ const NotePageSchema = CollectionSchema(
           name: r'importGroupId',
           type: IndexType.hash,
           caseSensitive: true,
-        )
+        ),
       ],
-    )
+    ),
   },
   links: {},
   embeddedSchemas: {
     r'ImportedContent': ImportedContentSchema,
-    r'ShapeElement': ShapeElementSchema
+    r'ShapeElement': ShapeElementSchema,
   },
+
   getId: _notePageGetId,
   getLinks: _notePageGetLinks,
   attach: _notePageAttach,
@@ -127,8 +142,11 @@ int _notePageEstimateSize(
     final offsets = allOffsets[ImportedContent]!;
     for (var i = 0; i < object.importedContents.length; i++) {
       final value = object.importedContents[i];
-      bytesCount +=
-          ImportedContentSchema.estimateSize(value, offsets, allOffsets);
+      bytesCount += ImportedContentSchema.estimateSize(
+        value,
+        offsets,
+        allOffsets,
+      );
     }
   }
   bytesCount += 3 + object.shapes.length * 3;
@@ -139,6 +157,7 @@ int _notePageEstimateSize(
       bytesCount += ShapeElementSchema.estimateSize(value, offsets, allOffsets);
     }
   }
+  bytesCount += 3 + object.title.length * 3;
   return bytesCount;
 }
 
@@ -148,24 +167,27 @@ void _notePageSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeDateTime(offsets[0], object.createdAt);
-  writer.writeString(offsets[1], object.importGroupId);
-  writer.writeString(offsets[2], object.importSourceName);
+  writer.writeBool(offsets[0], object.bookmarked);
+  writer.writeDateTime(offsets[1], object.createdAt);
+  writer.writeString(offsets[2], object.importGroupId);
+  writer.writeString(offsets[3], object.importSourceName);
   writer.writeObjectList<ImportedContent>(
-    offsets[3],
+    offsets[4],
     allOffsets,
     ImportedContentSchema.serialize,
     object.importedContents,
   );
-  writer.writeDateTime(offsets[4], object.modifiedAt);
-  writer.writeLong(offsets[5], object.notebookId);
-  writer.writeLong(offsets[6], object.pageIndex);
+  writer.writeDateTime(offsets[5], object.modifiedAt);
+  writer.writeLong(offsets[6], object.notebookId);
+  writer.writeLong(offsets[7], object.pageIndex);
   writer.writeObjectList<ShapeElement>(
-    offsets[7],
+    offsets[8],
     allOffsets,
     ShapeElementSchema.serialize,
     object.shapes,
   );
+  writer.writeLong(offsets[9], object.templateOverride);
+  writer.writeString(offsets[10], object.title);
 }
 
 NotePage _notePageDeserialize(
@@ -175,27 +197,32 @@ NotePage _notePageDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = NotePage();
-  object.createdAt = reader.readDateTime(offsets[0]);
+  object.bookmarked = reader.readBool(offsets[0]);
+  object.createdAt = reader.readDateTime(offsets[1]);
   object.id = id;
-  object.importGroupId = reader.readStringOrNull(offsets[1]);
-  object.importSourceName = reader.readStringOrNull(offsets[2]);
-  object.importedContents = reader.readObjectList<ImportedContent>(
-        offsets[3],
+  object.importGroupId = reader.readStringOrNull(offsets[2]);
+  object.importSourceName = reader.readStringOrNull(offsets[3]);
+  object.importedContents =
+      reader.readObjectList<ImportedContent>(
+        offsets[4],
         ImportedContentSchema.deserialize,
         allOffsets,
         ImportedContent(),
       ) ??
       [];
-  object.modifiedAt = reader.readDateTime(offsets[4]);
-  object.notebookId = reader.readLong(offsets[5]);
-  object.pageIndex = reader.readLong(offsets[6]);
-  object.shapes = reader.readObjectList<ShapeElement>(
-        offsets[7],
+  object.modifiedAt = reader.readDateTime(offsets[5]);
+  object.notebookId = reader.readLong(offsets[6]);
+  object.pageIndex = reader.readLong(offsets[7]);
+  object.shapes =
+      reader.readObjectList<ShapeElement>(
+        offsets[8],
         ShapeElementSchema.deserialize,
         allOffsets,
         ShapeElement(),
       ) ??
       [];
+  object.templateOverride = reader.readLong(offsets[9]);
+  object.title = reader.readString(offsets[10]);
   return object;
 }
 
@@ -207,33 +234,41 @@ P _notePageDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 1:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 2:
       return (reader.readStringOrNull(offset)) as P;
     case 3:
-      return (reader.readObjectList<ImportedContent>(
-            offset,
-            ImportedContentSchema.deserialize,
-            allOffsets,
-            ImportedContent(),
-          ) ??
-          []) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 4:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readObjectList<ImportedContent>(
+                offset,
+                ImportedContentSchema.deserialize,
+                allOffsets,
+                ImportedContent(),
+              ) ??
+              [])
+          as P;
     case 5:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 6:
       return (reader.readLong(offset)) as P;
     case 7:
+      return (reader.readLong(offset)) as P;
+    case 8:
       return (reader.readObjectList<ShapeElement>(
-            offset,
-            ShapeElementSchema.deserialize,
-            allOffsets,
-            ShapeElement(),
-          ) ??
-          []) as P;
+                offset,
+                ShapeElementSchema.deserialize,
+                allOffsets,
+                ShapeElement(),
+              ) ??
+              [])
+          as P;
+    case 9:
+      return (reader.readLong(offset)) as P;
+    case 10:
+      return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -270,10 +305,7 @@ extension NotePageQueryWhereSort on QueryBuilder<NotePage, NotePage, QWhere> {
 extension NotePageQueryWhere on QueryBuilder<NotePage, NotePage, QWhereClause> {
   QueryBuilder<NotePage, NotePage, QAfterWhereClause> idEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: id,
-        upper: id,
-      ));
+      return query.addWhereClause(IdWhereClause.between(lower: id, upper: id));
     });
   }
 
@@ -299,8 +331,10 @@ extension NotePageQueryWhere on QueryBuilder<NotePage, NotePage, QWhereClause> {
     });
   }
 
-  QueryBuilder<NotePage, NotePage, QAfterWhereClause> idGreaterThan(Id id,
-      {bool include = false}) {
+  QueryBuilder<NotePage, NotePage, QAfterWhereClause> idGreaterThan(
+    Id id, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: id, includeLower: include),
@@ -308,8 +342,10 @@ extension NotePageQueryWhere on QueryBuilder<NotePage, NotePage, QWhereClause> {
     });
   }
 
-  QueryBuilder<NotePage, NotePage, QAfterWhereClause> idLessThan(Id id,
-      {bool include = false}) {
+  QueryBuilder<NotePage, NotePage, QAfterWhereClause> idLessThan(
+    Id id, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: id, includeUpper: include),
@@ -324,56 +360,67 @@ extension NotePageQueryWhere on QueryBuilder<NotePage, NotePage, QWhereClause> {
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.between(
-        lower: lowerId,
-        includeLower: includeLower,
-        upper: upperId,
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IdWhereClause.between(
+          lower: lowerId,
+          includeLower: includeLower,
+          upper: upperId,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterWhereClause> notebookIdEqualTo(
-      int notebookId) {
+    int notebookId,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'notebookId',
-        value: [notebookId],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'notebookId', value: [notebookId]),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterWhereClause> notebookIdNotEqualTo(
-      int notebookId) {
+    int notebookId,
+  ) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'notebookId',
-              lower: [],
-              upper: [notebookId],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'notebookId',
-              lower: [notebookId],
-              includeLower: false,
-              upper: [],
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'notebookId',
+                lower: [],
+                upper: [notebookId],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'notebookId',
+                lower: [notebookId],
+                includeLower: false,
+                upper: [],
+              ),
+            );
       } else {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'notebookId',
-              lower: [notebookId],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'notebookId',
-              lower: [],
-              upper: [notebookId],
-              includeUpper: false,
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'notebookId',
+                lower: [notebookId],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'notebookId',
+                lower: [],
+                upper: [notebookId],
+                includeUpper: false,
+              ),
+            );
       }
     });
   }
@@ -383,12 +430,14 @@ extension NotePageQueryWhere on QueryBuilder<NotePage, NotePage, QWhereClause> {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'notebookId',
-        lower: [notebookId],
-        includeLower: include,
-        upper: [],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'notebookId',
+          lower: [notebookId],
+          includeLower: include,
+          upper: [],
+        ),
+      );
     });
   }
 
@@ -397,12 +446,14 @@ extension NotePageQueryWhere on QueryBuilder<NotePage, NotePage, QWhereClause> {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'notebookId',
-        lower: [],
-        upper: [notebookId],
-        includeUpper: include,
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'notebookId',
+          lower: [],
+          upper: [notebookId],
+          includeUpper: include,
+        ),
+      );
     });
   }
 
@@ -413,77 +464,92 @@ extension NotePageQueryWhere on QueryBuilder<NotePage, NotePage, QWhereClause> {
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'notebookId',
-        lower: [lowerNotebookId],
-        includeLower: includeLower,
-        upper: [upperNotebookId],
-        includeUpper: includeUpper,
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'notebookId',
+          lower: [lowerNotebookId],
+          includeLower: includeLower,
+          upper: [upperNotebookId],
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterWhereClause> importGroupIdIsNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'importGroupId',
-        value: [null],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'importGroupId', value: [null]),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterWhereClause> importGroupIdIsNotNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.between(
-        indexName: r'importGroupId',
-        lower: [null],
-        includeLower: false,
-        upper: [],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.between(
+          indexName: r'importGroupId',
+          lower: [null],
+          includeLower: false,
+          upper: [],
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterWhereClause> importGroupIdEqualTo(
-      String? importGroupId) {
+    String? importGroupId,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'importGroupId',
-        value: [importGroupId],
-      ));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(
+          indexName: r'importGroupId',
+          value: [importGroupId],
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterWhereClause> importGroupIdNotEqualTo(
-      String? importGroupId) {
+    String? importGroupId,
+  ) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'importGroupId',
-              lower: [],
-              upper: [importGroupId],
-              includeUpper: false,
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'importGroupId',
-              lower: [importGroupId],
-              includeLower: false,
-              upper: [],
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'importGroupId',
+                lower: [],
+                upper: [importGroupId],
+                includeUpper: false,
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'importGroupId',
+                lower: [importGroupId],
+                includeLower: false,
+                upper: [],
+              ),
+            );
       } else {
         return query
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'importGroupId',
-              lower: [importGroupId],
-              includeLower: false,
-              upper: [],
-            ))
-            .addWhereClause(IndexWhereClause.between(
-              indexName: r'importGroupId',
-              lower: [],
-              upper: [importGroupId],
-              includeUpper: false,
-            ));
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'importGroupId',
+                lower: [importGroupId],
+                includeLower: false,
+                upper: [],
+              ),
+            )
+            .addWhereClause(
+              IndexWhereClause.between(
+                indexName: r'importGroupId',
+                lower: [],
+                upper: [importGroupId],
+                includeUpper: false,
+              ),
+            );
       }
     });
   }
@@ -491,13 +557,23 @@ extension NotePageQueryWhere on QueryBuilder<NotePage, NotePage, QWhereClause> {
 
 extension NotePageQueryFilter
     on QueryBuilder<NotePage, NotePage, QFilterCondition> {
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> createdAtEqualTo(
-      DateTime value) {
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> bookmarkedEqualTo(
+    bool value,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'createdAt',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'bookmarked', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> createdAtEqualTo(
+    DateTime value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'createdAt', value: value),
+      );
     });
   }
 
@@ -506,11 +582,13 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'createdAt',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'createdAt',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -519,11 +597,13 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'createdAt',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'createdAt',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -534,22 +614,23 @@ extension NotePageQueryFilter
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'createdAt',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'createdAt',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'id', value: value),
+      );
     });
   }
 
@@ -558,11 +639,13 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -571,11 +654,13 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'id',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -586,31 +671,33 @@ extension NotePageQueryFilter
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'id',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'id',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importGroupIdIsNull() {
+  importGroupIdIsNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'importGroupId',
-      ));
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'importGroupId'),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importGroupIdIsNotNull() {
+  importGroupIdIsNotNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'importGroupId',
-      ));
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'importGroupId'),
+      );
     });
   }
 
@@ -619,27 +706,31 @@ extension NotePageQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'importGroupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'importGroupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importGroupIdGreaterThan(
+  importGroupIdGreaterThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'importGroupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'importGroupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
@@ -649,12 +740,14 @@ extension NotePageQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'importGroupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'importGroupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
@@ -666,28 +759,29 @@ extension NotePageQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'importGroupId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'importGroupId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importGroupIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  importGroupIdStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'importGroupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'importGroupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
@@ -696,124 +790,133 @@ extension NotePageQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'importGroupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'importGroupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition> importGroupIdContains(
-      String value,
-      {bool caseSensitive = true}) {
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'importGroupId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'importGroupId',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition> importGroupIdMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'importGroupId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importGroupIdIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'importGroupId',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importGroupIdIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'importGroupId',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'importSourceName',
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'importSourceName',
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameEqualTo(
-    String? value, {
+    String pattern, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'importSourceName',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'importGroupId',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameGreaterThan(
-    String? value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
+  importGroupIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'importSourceName',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'importGroupId', value: ''),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameLessThan(
+  importGroupIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'importGroupId', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importSourceNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'importSourceName'),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importSourceNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'importSourceName'),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importSourceNameEqualTo(String? value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'importSourceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importSourceNameGreaterThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'importSourceName',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'importSourceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameBetween(
+  importSourceNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'importSourceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importSourceNameBetween(
     String? lower,
     String? upper, {
     bool includeLower = true,
@@ -821,147 +924,119 @@ extension NotePageQueryFilter
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'importSourceName',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'importSourceName',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'importSourceName',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'importSourceName',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'importSourceName',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'importSourceName',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importSourceNameIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'importSourceName',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importedContentsLengthEqualTo(int length) {
-    return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'importedContents',
-        length,
-        true,
-        length,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'importSourceName',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importedContentsIsEmpty() {
+  importSourceNameStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'importedContents',
-        0,
-        true,
-        0,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'importSourceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importedContentsIsNotEmpty() {
+  importSourceNameEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'importedContents',
-        0,
-        false,
-        999999,
-        true,
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'importSourceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importedContentsLengthLessThan(
-    int length, {
-    bool include = false,
-  }) {
+  importSourceNameContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'importedContents',
-        0,
-        true,
-        length,
-        include,
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'importSourceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importedContentsLengthGreaterThan(
-    int length, {
-    bool include = false,
-  }) {
+  importSourceNameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'importSourceName',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importSourceNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'importSourceName', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importSourceNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'importSourceName', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importedContentsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'importedContents', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importedContentsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'importedContents', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importedContentsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'importedContents', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importedContentsLengthLessThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'importedContents', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  importedContentsLengthGreaterThan(int length, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'importedContents',
@@ -974,7 +1049,7 @@ extension NotePageQueryFilter
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importedContentsLengthBetween(
+  importedContentsLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -992,12 +1067,12 @@ extension NotePageQueryFilter
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition> modifiedAtEqualTo(
-      DateTime value) {
+    DateTime value,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'modifiedAt',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'modifiedAt', value: value),
+      );
     });
   }
 
@@ -1006,11 +1081,13 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'modifiedAt',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'modifiedAt',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -1019,11 +1096,13 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'modifiedAt',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'modifiedAt',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -1034,23 +1113,25 @@ extension NotePageQueryFilter
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'modifiedAt',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'modifiedAt',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition> notebookIdEqualTo(
-      int value) {
+    int value,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'notebookId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'notebookId', value: value),
+      );
     });
   }
 
@@ -1059,11 +1140,13 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'notebookId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'notebookId',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -1072,11 +1155,13 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'notebookId',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'notebookId',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -1087,23 +1172,25 @@ extension NotePageQueryFilter
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'notebookId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'notebookId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition> pageIndexEqualTo(
-      int value) {
+    int value,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'pageIndex',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'pageIndex', value: value),
+      );
     });
   }
 
@@ -1112,11 +1199,13 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'pageIndex',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'pageIndex',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -1125,11 +1214,13 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'pageIndex',
-        value: value,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'pageIndex',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -1140,50 +1231,35 @@ extension NotePageQueryFilter
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'pageIndex',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'pageIndex',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition> shapesLengthEqualTo(
-      int length) {
+    int length,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'shapes',
-        length,
-        true,
-        length,
-        true,
-      );
+      return query.listLength(r'shapes', length, true, length, true);
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition> shapesIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'shapes',
-        0,
-        true,
-        0,
-        true,
-      );
+      return query.listLength(r'shapes', 0, true, 0, true);
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition> shapesIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'shapes',
-        0,
-        false,
-        999999,
-        true,
-      );
+      return query.listLength(r'shapes', 0, false, 999999, true);
     });
   }
 
@@ -1192,29 +1268,14 @@ extension NotePageQueryFilter
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'shapes',
-        0,
-        true,
-        length,
-        include,
-      );
+      return query.listLength(r'shapes', 0, true, length, include);
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      shapesLengthGreaterThan(
-    int length, {
-    bool include = false,
-  }) {
+  shapesLengthGreaterThan(int length, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'shapes',
-        length,
-        include,
-        999999,
-        true,
-      );
+      return query.listLength(r'shapes', length, include, 999999, true);
     });
   }
 
@@ -1234,19 +1295,221 @@ extension NotePageQueryFilter
       );
     });
   }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  templateOverrideEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'templateOverride', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  templateOverrideGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'templateOverride',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  templateOverrideLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'templateOverride',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
+  templateOverrideBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'templateOverride',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> titleEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> titleGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> titleLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> titleBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'title',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> titleStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> titleEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> titleContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> titleMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'title',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> titleIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'title', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterFilterCondition> titleIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'title', value: ''),
+      );
+    });
+  }
 }
 
 extension NotePageQueryObject
     on QueryBuilder<NotePage, NotePage, QFilterCondition> {
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition>
-      importedContentsElement(FilterQuery<ImportedContent> q) {
+  importedContentsElement(FilterQuery<ImportedContent> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'importedContents');
     });
   }
 
   QueryBuilder<NotePage, NotePage, QAfterFilterCondition> shapesElement(
-      FilterQuery<ShapeElement> q) {
+    FilterQuery<ShapeElement> q,
+  ) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'shapes');
     });
@@ -1257,6 +1520,18 @@ extension NotePageQueryLinks
     on QueryBuilder<NotePage, NotePage, QFilterCondition> {}
 
 extension NotePageQuerySortBy on QueryBuilder<NotePage, NotePage, QSortBy> {
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByBookmarked() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'bookmarked', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByBookmarkedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'bookmarked', Sort.desc);
+    });
+  }
+
   QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -1328,10 +1603,46 @@ extension NotePageQuerySortBy on QueryBuilder<NotePage, NotePage, QSortBy> {
       return query.addSortBy(r'pageIndex', Sort.desc);
     });
   }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByTemplateOverride() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'templateOverride', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByTemplateOverrideDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'templateOverride', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByTitle() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'title', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> sortByTitleDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'title', Sort.desc);
+    });
+  }
 }
 
 extension NotePageQuerySortThenBy
     on QueryBuilder<NotePage, NotePage, QSortThenBy> {
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByBookmarked() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'bookmarked', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByBookmarkedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'bookmarked', Sort.desc);
+    });
+  }
+
   QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -1415,29 +1726,65 @@ extension NotePageQuerySortThenBy
       return query.addSortBy(r'pageIndex', Sort.desc);
     });
   }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByTemplateOverride() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'templateOverride', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByTemplateOverrideDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'templateOverride', Sort.desc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByTitle() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'title', Sort.asc);
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QAfterSortBy> thenByTitleDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'title', Sort.desc);
+    });
+  }
 }
 
 extension NotePageQueryWhereDistinct
     on QueryBuilder<NotePage, NotePage, QDistinct> {
+  QueryBuilder<NotePage, NotePage, QDistinct> distinctByBookmarked() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'bookmarked');
+    });
+  }
+
   QueryBuilder<NotePage, NotePage, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
     });
   }
 
-  QueryBuilder<NotePage, NotePage, QDistinct> distinctByImportGroupId(
-      {bool caseSensitive = true}) {
+  QueryBuilder<NotePage, NotePage, QDistinct> distinctByImportGroupId({
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'importGroupId',
-          caseSensitive: caseSensitive);
+      return query.addDistinctBy(
+        r'importGroupId',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
-  QueryBuilder<NotePage, NotePage, QDistinct> distinctByImportSourceName(
-      {bool caseSensitive = true}) {
+  QueryBuilder<NotePage, NotePage, QDistinct> distinctByImportSourceName({
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'importSourceName',
-          caseSensitive: caseSensitive);
+      return query.addDistinctBy(
+        r'importSourceName',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
@@ -1458,6 +1805,20 @@ extension NotePageQueryWhereDistinct
       return query.addDistinctBy(r'pageIndex');
     });
   }
+
+  QueryBuilder<NotePage, NotePage, QDistinct> distinctByTemplateOverride() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'templateOverride');
+    });
+  }
+
+  QueryBuilder<NotePage, NotePage, QDistinct> distinctByTitle({
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'title', caseSensitive: caseSensitive);
+    });
+  }
 }
 
 extension NotePageQueryProperty
@@ -1465,6 +1826,12 @@ extension NotePageQueryProperty
   QueryBuilder<NotePage, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<NotePage, bool, QQueryOperations> bookmarkedProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'bookmarked');
     });
   }
 
@@ -1487,7 +1854,7 @@ extension NotePageQueryProperty
   }
 
   QueryBuilder<NotePage, List<ImportedContent>, QQueryOperations>
-      importedContentsProperty() {
+  importedContentsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'importedContents');
     });
@@ -1512,9 +1879,21 @@ extension NotePageQueryProperty
   }
 
   QueryBuilder<NotePage, List<ShapeElement>, QQueryOperations>
-      shapesProperty() {
+  shapesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'shapes');
+    });
+  }
+
+  QueryBuilder<NotePage, int, QQueryOperations> templateOverrideProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'templateOverride');
+    });
+  }
+
+  QueryBuilder<NotePage, String, QQueryOperations> titleProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'title');
     });
   }
 }

@@ -12,6 +12,7 @@ import '../features/notebook/presentation/scene_editor_screen.dart';
 import '../features/notebook/presentation/notebook_editor_screen.dart';
 import '../features/notebook/presentation/notebook_book_view_screen.dart';
 import '../features/notebook/presentation/page_manager_screen.dart';
+import '../features/notebook/presentation/page_outline_screen.dart';
 import '../features/ai/presentation/flashcards/review_screen.dart';
 import '../features/ai/presentation/knowledge_graph/knowledge_graph_screen.dart';
 import '../features/ai/presentation/study_planner/study_planner_screen.dart';
@@ -53,6 +54,13 @@ final GoRouter appRouter = GoRouter(
           builder: (context, state) {
             final id = int.parse(state.pathParameters['id']!);
             return PageManagerScreen(notebookId: id);
+          },
+        ),
+        GoRoute(
+          path: 'outline',
+          builder: (context, state) {
+            final id = int.parse(state.pathParameters['id']!);
+            return PageOutlineScreen(notebookId: id);
           },
         ),
         GoRoute(

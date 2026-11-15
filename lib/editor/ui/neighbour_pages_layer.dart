@@ -28,6 +28,11 @@ class NeighbourPagesLayer extends ConsumerWidget {
   final Color paperColor;
   final TemplateType template;
 
+  /// The paper of the page above / below when it has its own; [template]
+  /// otherwise.
+  final TemplateType? aboveTemplate;
+  final TemplateType? belowTemplate;
+
   const NeighbourPagesLayer({
     super.key,
     required this.notebookId,
@@ -36,6 +41,8 @@ class NeighbourPagesLayer extends ConsumerWidget {
     required this.sheet,
     required this.paperColor,
     required this.template,
+    this.aboveTemplate,
+    this.belowTemplate,
   });
 
   @override
@@ -54,7 +61,7 @@ class NeighbourPagesLayer extends ConsumerWidget {
                 sheet: sheet,
                 viewport: viewport,
                 paperColor: paperColor,
-                template: template),
+                template: aboveTemplate ?? template),
           if (belowPageId case final id?)
             _NeighbourPage(
                 key: ValueKey('neighbourPage_$id'),
@@ -63,7 +70,7 @@ class NeighbourPagesLayer extends ConsumerWidget {
                 sheet: sheet,
                 viewport: viewport,
                 paperColor: paperColor,
-                template: template),
+                template: belowTemplate ?? template),
         ],
       ),
     );

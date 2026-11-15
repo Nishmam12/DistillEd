@@ -81,6 +81,15 @@ class _Pages implements PageRepository {
       db.pages.where((p) => p.notebookId == notebookId).toList()
         ..sort((a, b) => a.pageIndex.compareTo(b.pageIndex));
   @override
+  Future<void> setPageInfo(int pageId,
+      {bool? bookmarked, String? title, int? templateOverride}) async {
+    final p = db.pages.firstWhere((p) => p.id == pageId);
+    if (bookmarked != null) p.bookmarked = bookmarked;
+    if (title != null) p.title = title;
+    if (templateOverride != null) p.templateOverride = templateOverride;
+  }
+
+  @override
   Future<void> tagImport(int pageId,
       {required String importGroupId, required String importSourceName}) async {
     final p = db.pages.firstWhere((p) => p.id == pageId);
@@ -160,6 +169,26 @@ void main() {
       'notes/$id/imports/pdf_h_1.png',
       'notes/$id/imports/pdf_h_1.txt',
     ]));
+  });
+
+  test('a bookmark, a page name and a page template survive a restore',
+      () async {
+    final id = await seed();
+    final first = db.pages.firstWhere((p) => p.notebookId == id);
+    first
+      ..bookmarked = true
+      ..title = 'Bonds'
+      ..templateOverride = 2;
+    final bytes = NotebookArchive.encode((await library.snapshot(id))!);
+    final newId = await library.add(NotebookArchive.decode(bytes));
+
+    final pages = await _Pages(db).getPagesForNotebook(newId);
+    expect(pages[0].bookmarked, isTrue);
+    expect(pages[0].title, 'Bonds');
+    expect(pages[0].templateOverride, 2);
+    expect(pages[1].bookmarked, isFalse);
+    expect(pages[1].title, '');
+    expect(pages[1].templateOverride, -1);
   });
 
   test('a notebook in the trash is not backed up', () async {

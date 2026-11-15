@@ -7,6 +7,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/model/page_size.dart';
@@ -15,6 +16,7 @@ import '../../../editor/render/scene_image_cache.dart';
 import '../../../editor/state/page_notifier.dart';
 import '../../../editor/state/scene_controller.dart';
 import '../../../editor/state/scene_image_cache_provider.dart';
+import '../../home/domain/models/note_page.dart';
 import '../../home/presentation/home_notifier.dart';
 import 'page_thumbnail.dart';
 
@@ -32,6 +34,7 @@ class _PageManagerScreenState extends ConsumerState<PageManagerScreen> {
   Color _paper = const Color(0xFFFFFDF7);
   double _aspect = 1 / 1.414;
   bool _selecting = false;
+  bool _onlyBookmarked = false;
   final Set<int> _selected = {};
   bool _loading = true;
 
@@ -135,6 +138,11 @@ class _PageManagerScreenState extends ConsumerState<PageManagerScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(pageProvider(widget.notebookId));
     final pages = state.pages;
+    // Real indexes of the pages shown: all of them, or the bookmarked ones.
+    final shown = [
+      for (var i = 0; i < pages.length; i++)
+        if (!_onlyBookmarked || pages[i].bookmarked) i,
+    ];
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
@@ -142,6 +150,21 @@ class _PageManagerScreenState extends ConsumerState<PageManagerScreen> {
             ? '${_selected.length} selected'
             : 'Pages (${pages.length})'),
         actions: [
+          IconButton(
+            key: const Key('pageManagerFilter'),
+            tooltip: _onlyBookmarked ? 'Show all pages' : 'Bookmarked only',
+            isSelected: _onlyBookmarked,
+            icon: const Icon(Icons.bookmark_border),
+            selectedIcon: const Icon(Icons.bookmark),
+            onPressed: () => setState(() => _onlyBookmarked = !_onlyBookmarked),
+          ),
+          IconButton(
+            key: const Key('pageManagerOutline'),
+            tooltip: 'Outline',
+            icon: const Icon(Icons.list_alt),
+            onPressed: () =>
+                context.push('/note2/${widget.notebookId}/outline'),
+          ),
           if (_selecting)
             IconButton(
               key: const Key('pageManagerSelectAll'),
@@ -172,11 +195,11 @@ class _PageManagerScreenState extends ConsumerState<PageManagerScreen> {
                   crossAxisSpacing: 16,
                   childAspectRatio: _aspect * 0.85,
                 ),
-                itemCount: pages.length,
-                itemBuilder: (_, i) => _cell(
-                  index: i,
-                  id: pages[i].id,
-                  current: i == state.currentPageIndex,
+                itemCount: shown.length,
+                itemBuilder: (_, n) => _cell(
+                  index: shown[n],
+                  page: pages[shown[n]],
+                  current: shown[n] == state.currentPageIndex,
                   scheme: scheme,
                 ),
               ),
@@ -187,10 +210,11 @@ class _PageManagerScreenState extends ConsumerState<PageManagerScreen> {
 
   Widget _cell({
     required int index,
-    required int id,
+    required NotePage page,
     required bool current,
     required ColorScheme scheme,
   }) {
+    final id = page.id;
     final picked = _selected.contains(id);
     Widget tile(bool ghost) => Opacity(
           opacity: ghost ? 0.35 : 1,
@@ -221,6 +245,13 @@ class _PageManagerScreenState extends ConsumerState<PageManagerScreen> {
                         ),
                       ),
                     ),
+                    if (page.bookmarked)
+                      Positioned(
+                        key: Key('pageBookmark_$index'),
+                        top: 0,
+                        left: 4,
+                        child: Icon(Icons.bookmark, color: scheme.primary),
+                      ),
                     if (_selecting)
                       Positioned(
                         top: 4,
@@ -237,7 +268,11 @@ class _PageManagerScreenState extends ConsumerState<PageManagerScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text('${index + 1}'),
+              Text(
+                page.title.isEmpty ? '${index + 1}' : '${index + 1} · ${page.title}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         );
@@ -287,6 +322,12 @@ class _PageManagerScreenState extends ConsumerState<PageManagerScreen> {
             icon: const Icon(Icons.copy_outlined),
             onPressed:
                 has ? () => _after(() => _pages.duplicatePages(ids)) : null,
+          ),
+          IconButton(
+            key: const Key('pageManagerBookmark'),
+            tooltip: 'Bookmark',
+            icon: const Icon(Icons.bookmark_border),
+            onPressed: has ? () => _pages.toggleBookmarks(ids) : null,
           ),
           IconButton(
             key: const Key('pageManagerToStart'),

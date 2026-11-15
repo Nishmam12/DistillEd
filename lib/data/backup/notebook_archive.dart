@@ -64,11 +64,20 @@ class PageSnapshot {
   final String? importGroupId;
   final String? importSourceName;
 
+  /// The page's bookmark, name and own template (-1 follows the notebook). A
+  /// backup from before these existed reads as the defaults.
+  final bool bookmarked;
+  final String title;
+  final int templateOverride;
+
   const PageSnapshot({
     required this.elements,
     this.text = '',
     this.importGroupId,
     this.importSourceName,
+    this.bookmarked = false,
+    this.title = '',
+    this.templateOverride = -1,
   });
 }
 
@@ -106,6 +115,9 @@ class NotebookSnapshot {
             text: p.text,
             importGroupId: p.importGroupId,
             importSourceName: p.importSourceName,
+            bookmarked: p.bookmarked,
+            title: p.title,
+            templateOverride: p.templateOverride,
             elements: [
               for (final e in p.elements)
                 e is ImageElement
@@ -202,6 +214,9 @@ class NotebookArchive {
               text: (p as Map<String, dynamic>)['text'] as String? ?? '',
               importGroupId: p['importGroupId'] as String?,
               importSourceName: p['importSourceName'] as String?,
+              bookmarked: p['bookmarked'] as bool? ?? false,
+              title: p['title'] as String? ?? '',
+              templateOverride: (p['templateOverride'] as num? ?? -1).toInt(),
               elements:
                   SceneElementCodec.decodeList(p['elements'] as List? ?? const []),
             ),
@@ -264,6 +279,10 @@ class NotebookArchive {
               'text': p.text,
               'importGroupId': ?p.importGroupId,
               'importSourceName': ?p.importSourceName,
+              if (p.bookmarked) 'bookmarked': true,
+              if (p.title.isNotEmpty) 'title': p.title,
+              if (p.templateOverride >= 0)
+                'templateOverride': p.templateOverride,
               'elements': SceneElementCodec.encodeList(p.elements),
             },
         ],
