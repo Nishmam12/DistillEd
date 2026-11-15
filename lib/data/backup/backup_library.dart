@@ -51,6 +51,8 @@ class AppBackupLibrary implements BackupLibrary {
         if (e is! ImageElement) continue;
         await _addMedia(media, e.relativeImagePath);
         await _addMedia(media, StoragePaths.pdfTextSidecar(e.relativeImagePath));
+        await _addMedia(
+            media, StoragePaths.pdfWordsSidecar(e.relativeImagePath));
       }
       pageSnapshots.add(PageSnapshot(
         elements: els,

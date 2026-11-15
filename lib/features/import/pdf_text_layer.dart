@@ -8,18 +8,24 @@
 // the image, and reading the page later is one file read.
 
 import 'dart:io';
+import 'dart:ui' show Rect;
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfrx_engine/pdfrx_engine.dart';
 
 import '../../core/constants/storage_paths.dart';
+import '../../domain/model/page_words.dart';
 
 /// Reads the text of every page of a PDF.
 abstract class PdfTextSource {
   /// The raw text of each page, in page order; '' for a page with none.
   /// Throws when the file cannot be read as a PDF.
   Future<List<String>> pagesText(String pdfPath);
+
+  /// The visible words of each page and where they sit, in page order.
+  /// Throws when the file cannot be read as a PDF.
+  Future<List<PageWords>> pagesWords(String pdfPath);
 }
 
 /// [PdfTextSource] over PDFium (`pdfrx_engine`). PDFium runs on its own worker
@@ -50,19 +56,124 @@ class PdfiumTextSource implements PdfTextSource {
   Future<void> _startPdfium() async =>
       pdfrxInitialize(tmpPath: await _cacheDir());
 
-  @override
-  Future<List<String>> pagesText(String pdfPath) async {
+  /// The last PDF read, so the writer asking for text and then words opens the
+  /// file once.
+  String? _lastPath;
+  List<({String text, PageWords words})>? _last;
+
+  Future<List<({String text, PageWords words})>> _read(String pdfPath) async {
+    if (_lastPath == pdfPath && _last != null) return _last!;
     await _initialize();
     final document = await PdfDocument.openFile(pdfPath);
     try {
-      return [
-        for (final page in document.pages)
-          _visibleText(page, await page.loadText()),
-      ];
+      final out = <({String text, PageWords words})>[];
+      for (final page in document.pages) {
+        final raw = await page.loadText();
+        out.add((
+          text: _visibleText(page, raw),
+          words: raw == null || raw.charRects.length != raw.fullText.length
+              ? PageWords.empty
+              : wordsFromPdfChars(
+                  text: raw.fullText,
+                  rects: [
+                    for (final r in raw.charRects)
+                      (left: r.left, bottom: r.bottom, right: r.right, top: r.top),
+                  ],
+                  pageWidth: page.width,
+                  pageHeight: page.height,
+                ),
+        ));
+      }
+      _lastPath = pdfPath;
+      _last = out;
+      return out;
     } finally {
       await document.dispose();
     }
   }
+
+  @override
+  Future<List<String>> pagesText(String pdfPath) async =>
+      [for (final p in await _read(pdfPath)) p.text];
+
+  @override
+  Future<List<PageWords>> pagesWords(String pdfPath) async =>
+      [for (final p in await _read(pdfPath)) p.words];
+}
+
+/// A character's bounds in PDF points, origin bottom-left (as PDFium gives
+/// them).
+typedef PdfCharRect = ({double left, double bottom, double right, double top});
+
+/// The visible words of a PDF page from its characters and their bounds.
+///
+/// Words are split on whitespace; each box is the union of its characters'
+/// boxes, flipped to a top-left origin and normalised to the page. A new line
+/// starts at a line break in the text, or when a word sits clearly below the
+/// one before (some PDFs place lines without a break). Hidden characters (see
+/// [isVisibleTextBounds]) are left out, as they are from the text.
+PageWords wordsFromPdfChars({
+  required String text,
+  required List<PdfCharRect> rects,
+  required double pageWidth,
+  required double pageHeight,
+}) {
+  if (pageWidth <= 0 || pageHeight <= 0 || rects.length != text.length) {
+    return PageWords.empty;
+  }
+  final words = <PageWord>[];
+  var line = 0;
+  var pendingBreak = false;
+  final buffer = StringBuffer();
+  double? l, t, r, b; // top-left origin, points
+
+  void flush() {
+    if (buffer.isEmpty || l == null) {
+      buffer.clear();
+      return;
+    }
+    final box = Rect.fromLTRB(l! / pageWidth, t! / pageHeight,
+        r! / pageWidth, b! / pageHeight);
+    if (words.isNotEmpty) {
+      final prev = words.last.box;
+      final below = box.top > prev.top + prev.height * 0.6 &&
+          box.center.dy > prev.bottom;
+      if (pendingBreak || below) line++;
+    }
+    pendingBreak = false;
+    words.add(PageWord(text: buffer.toString(), box: box, line: line));
+    buffer.clear();
+    l = t = r = b = null;
+  }
+
+  for (var i = 0; i < text.length; i++) {
+    final char = text[i];
+    if (char.trim().isEmpty) {
+      flush();
+      if (char == '\n' || char == '\r') pendingBreak = true;
+      continue;
+    }
+    final c = rects[i];
+    if (!isVisibleTextBounds(
+      left: c.left,
+      bottom: c.bottom,
+      right: c.right,
+      top: c.top,
+      pageWidth: pageWidth,
+      pageHeight: pageHeight,
+    )) {
+      continue;
+    }
+    final top = pageHeight - c.top;
+    final bottom = pageHeight - c.bottom;
+    l = l == null ? c.left : (c.left < l! ? c.left : l);
+    r = r == null ? c.right : (c.right > r! ? c.right : r);
+    t = t == null ? top : (top < t! ? top : t);
+    b = b == null ? bottom : (bottom > b! ? bottom : b);
+    buffer.write(char);
+  }
+  flush();
+  return PageWords(source: PageWordsSource.pdf, words: words);
 }
 
 /// The page's text minus what a reader cannot see. A PDF can carry text sized to
@@ -137,7 +248,16 @@ class PdfTextLayerWriter {
       for (final image in pageImagePaths)
         File(StoragePaths.pdfTextSidecar(image)),
     ];
-    if (await _allExist(targets)) return;
+    final wordTargets = [
+      for (final image in pageImagePaths)
+        File(StoragePaths.pdfWordsSidecar(image)),
+    ];
+    final needText = !await _allExist(targets);
+    final needWords = !await _allExist(wordTargets);
+    if (!needText && !needWords) return;
+
+    if (needWords) await _writeWords(pdfPath, wordTargets, offset);
+    if (!needText) return;
 
     final List<String> texts;
     try {
@@ -162,6 +282,30 @@ class PdfTextLayerWriter {
         await tmp.rename(file.path);
       } catch (e) {
         debugPrint('[PdfText] could not keep the text of page ${i + 1}: $e');
+      }
+    }
+  }
+
+  /// Keeps each page's words beside its image. A page with no words still gets
+  /// a file, so it is not read again off the picture later.
+  Future<void> _writeWords(String pdfPath, List<File> targets, int offset) async {
+    final List<PageWords> words;
+    try {
+      words = await _source.pagesWords(pdfPath);
+    } catch (e) {
+      debugPrint('[PdfText] could not read the words of $pdfPath: $e');
+      return;
+    }
+    for (var i = 0; i < targets.length && offset + i < words.length; i++) {
+      final file = targets[i];
+      try {
+        if (await file.exists()) continue;
+        await file.parent.create(recursive: true);
+        final tmp = File('${file.path}.tmp');
+        await tmp.writeAsString(words[offset + i].encode(), flush: true);
+        await tmp.rename(file.path);
+      } catch (e) {
+        debugPrint('[PdfText] could not keep the words of page ${i + 1}: $e');
       }
     }
   }

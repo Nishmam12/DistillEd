@@ -15,6 +15,9 @@ import 'dart:ui';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart'
     as mlkit;
 
+import '../../../../domain/geometry/word_geometry.dart';
+import '../../../../domain/model/page_words.dart';
+
 /// One recognised line: its text and where it sat in the source image, in
 /// source pixels.
 typedef RecognizedLine = ({String text, Rect bounds});
@@ -74,6 +77,41 @@ class ImageTextRecognitionService {
     _cache[absolutePath] = out;
     if (_cache.length > _maxCached) _cache.remove(_cache.keys.first);
     return out;
+  }
+
+  /// Every word of the image and its box, normalised to the image, for
+  /// selecting text on a picture. Throws [TextExtractionException] when the
+  /// image cannot be read.
+  Future<PageWords> words(String absolutePath) async {
+    final mlkit.RecognizedText result;
+    final Size size;
+    try {
+      result = await _recognizer
+          .processImage(mlkit.InputImage.fromFilePath(absolutePath));
+      size = await _pixelSize(absolutePath);
+    } catch (e) {
+      throw TextExtractionException(
+          "Couldn't read the text in that picture.", e);
+    }
+    return pageWordsFromOcr([
+      for (final block in result.blocks)
+        for (final line in block.lines)
+          [
+            for (final e in line.elements)
+              (text: e.text, bounds: e.boundingBox),
+          ],
+    ], size);
+  }
+
+  /// The picture's size in pixels from its header, without decoding it.
+  static Future<Size> _pixelSize(String path) async {
+    final buffer = await ImmutableBuffer.fromFilePath(path);
+    final descriptor = await ImageDescriptor.encoded(buffer);
+    final size =
+        Size(descriptor.width.toDouble(), descriptor.height.toDouble());
+    descriptor.dispose();
+    buffer.dispose();
+    return size;
   }
 
   /// The image's text as a single block, lines joined top-to-bottom. Empty when

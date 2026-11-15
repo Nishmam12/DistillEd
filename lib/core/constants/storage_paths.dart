@@ -18,6 +18,16 @@ class StoragePaths {
     return '${hasExtension ? imagePath.substring(0, dot) : imagePath}.txt';
   }
 
+  /// Where the words of a page picture and their boxes are kept (see
+  /// `PageWords`): beside the image, same name, `.words.json`. From the PDF's
+  /// text layer at import, or read off the picture the first time it is
+  /// needed.
+  static String pdfWordsSidecar(String imagePath) {
+    final dot = imagePath.lastIndexOf('.');
+    final hasExtension = dot > imagePath.lastIndexOf('/');
+    return '${hasExtension ? imagePath.substring(0, dot) : imagePath}.words.json';
+  }
+
   /// Where a lecture recording's transcript is kept: beside the audio, named for
   /// it, `.transcript.json`. No schema — the audio file's own path is the key, so
   /// whatever owns the recording owns its transcript.

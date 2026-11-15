@@ -112,7 +112,8 @@ class PageRepository {
         if (shared == 0) {
           files
             ..add(img)
-            ..add(StoragePaths.pdfTextSidecar(img));
+            ..add(StoragePaths.pdfTextSidecar(img))
+            ..add(StoragePaths.pdfWordsSidecar(img));
         }
       }
       files.add('notes/$notebookId/page_${pageToDelete.id}.ink');

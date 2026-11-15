@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:margo/domain/model/page_words.dart';
 import 'package:margo/features/import/pdf_text_layer.dart';
+import 'dart:ui' show Rect;
 
 /// A PDF "reader" that returns a fixed text per page, or fails.
 class _FakeSource implements PdfTextSource {
@@ -17,6 +19,25 @@ class _FakeSource implements PdfTextSource {
     final f = failure;
     if (f != null) throw f;
     return pages;
+  }
+
+  int wordsRead = 0;
+
+  @override
+  Future<List<PageWords>> pagesWords(String pdfPath) async {
+    wordsRead++;
+    final f = failure;
+    if (f != null) throw f;
+    return [
+      for (final p in pages)
+        PageWords(source: PageWordsSource.pdf, words: [
+          if (p.isNotEmpty)
+            PageWord(
+                text: p.split(' ').first,
+                box: const Rect.fromLTRB(0.1, 0.1, 0.3, 0.15),
+                line: 0),
+        ]),
+    ];
   }
 }
 
@@ -138,5 +159,33 @@ void main() {
     await PdfTextLayerWriter(source).write(pdfPath: '/x.pdf', pageImagePaths: []);
 
     expect(source.opened, 0);
+  });
+
+  String words(int page) => '${dir.path}/imports/pdf_abc_$page.words.json';
+
+  test('each page also gets its words, beside its text', () async {
+    final source = _FakeSource(['First slide', '']);
+    await PdfTextLayerWriter(source)
+        .write(pdfPath: '/x.pdf', pageImagePaths: images(2));
+    final first = PageWords.decode(File(words(1)).readAsStringSync());
+    expect(first.words.single.text, 'First');
+    // A page with no text still gets a file, so it is not read again later.
+    expect(PageWords.decode(File(words(2)).readAsStringSync()).isEmpty, isTrue);
+  });
+
+  test('re-importing a PDF imported before word boxes fills in the words only',
+      () async {
+    for (var i = 1; i <= 2; i++) {
+      File(sidecar(i))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('kept');
+    }
+    final source = _FakeSource(['new text', 'more']);
+    await PdfTextLayerWriter(source)
+        .write(pdfPath: '/x.pdf', pageImagePaths: images(2));
+    expect(File(words(1)).existsSync(), isTrue);
+    expect(source.wordsRead, 1);
+    expect(source.opened, 0, reason: 'the text was there: not read again');
+    expect(File(sidecar(1)).readAsStringSync(), 'kept');
   });
 }
