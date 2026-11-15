@@ -39,6 +39,40 @@ void main() {
     });
   }
 
+  test('the template order is stable: new kinds are only appended', () {
+    expect(TemplateType.values.take(5), [
+      TemplateType.blank,
+      TemplateType.ruled,
+      TemplateType.dotted,
+      TemplateType.grid,
+      TemplateType.engineeringGrid,
+    ]);
+    expect(TemplateType.values.skip(5), [
+      TemplateType.cornell,
+      TemplateType.music,
+      TemplateType.isometric,
+      TemplateType.checklist,
+    ]);
+  });
+
+  test('cornell on a real page paints its cue column and summary band', () {
+    final recorder = PictureRecorder();
+    TemplatePainter.paint(
+      Canvas(recorder),
+      const Size(400, 300),
+      TemplateType.cornell,
+      Colors.white,
+      region: const Rect.fromLTWH(0, 0, 400, 300),
+      bounded: true,
+    );
+    final picture = recorder.endRecording();
+    final blank = _paint(TemplateType.blank, Colors.white);
+    expect(picture.approximateBytesUsed,
+        greaterThan(blank.approximateBytesUsed));
+    picture.dispose();
+    blank.dispose();
+  });
+
   test('a pattern too dense to read when zoomed far out is skipped', () {
     // Spacing times zoom falls under the on-screen minimum: nothing is drawn.
     final blank = _paint(TemplateType.blank, Colors.white);

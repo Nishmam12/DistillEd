@@ -12,5 +12,9 @@ extension TemplateTypeIcon on TemplateType {
         TemplateType.dotted => Icons.more_horiz,
         TemplateType.grid => Icons.grid_on,
         TemplateType.engineeringGrid => Icons.grid_4x4,
+        TemplateType.cornell => Icons.view_sidebar_outlined,
+        TemplateType.music => Icons.music_note,
+        TemplateType.isometric => Icons.change_history,
+        TemplateType.checklist => Icons.checklist,
       };
 }

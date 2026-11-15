@@ -63,6 +63,35 @@ class TemplateConfig {
           majorLineColor: Color(0xFFB0B8C1),
           majorLineInterval: 5,
         );
+      case TemplateType.cornell:
+        return const TemplateConfig(
+          lineSpacing: 32.0,
+          lineWidth: 0.5,
+          lineColor: Color(0xFFD0D7DE),
+          majorLineColor: Color(0xFF9AA4AF),
+          majorLineWidth: 1.0,
+        );
+      case TemplateType.music:
+        // lineSpacing is the gap between the five lines of a staff.
+        return const TemplateConfig(
+          lineSpacing: 10.0,
+          lineWidth: 0.6,
+          lineColor: Color(0xFFA9B2BC),
+        );
+      case TemplateType.isometric:
+        return const TemplateConfig(
+          dotSpacing: 24.0,
+          dotRadius: 1.4,
+          lineColor: Color(0xFFC0C8D0),
+        );
+      case TemplateType.checklist:
+        return const TemplateConfig(
+          lineSpacing: 32.0,
+          lineWidth: 0.5,
+          lineColor: Color(0xFFD0D7DE),
+          majorLineColor: Color(0xFF9AA4AF),
+          majorLineWidth: 0.8,
+        );
     }
   }
 
@@ -99,6 +128,34 @@ class TemplateConfig {
           majorLineWidth: 0.8,
           majorLineColor: Color(0xFF3A424D),
           majorLineInterval: 5,
+        );
+      case TemplateType.cornell:
+        return const TemplateConfig(
+          lineSpacing: 32.0,
+          lineWidth: 0.5,
+          lineColor: Color(0xFF30363D),
+          majorLineColor: Color(0xFF4A535E),
+          majorLineWidth: 1.0,
+        );
+      case TemplateType.music:
+        return const TemplateConfig(
+          lineSpacing: 10.0,
+          lineWidth: 0.6,
+          lineColor: Color(0xFF4A535E),
+        );
+      case TemplateType.isometric:
+        return const TemplateConfig(
+          dotSpacing: 24.0,
+          dotRadius: 1.4,
+          lineColor: Color(0xFF3A424D),
+        );
+      case TemplateType.checklist:
+        return const TemplateConfig(
+          lineSpacing: 32.0,
+          lineWidth: 0.5,
+          lineColor: Color(0xFF30363D),
+          majorLineColor: Color(0xFF4A535E),
+          majorLineWidth: 0.8,
         );
     }
   }

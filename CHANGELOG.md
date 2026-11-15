@@ -16,6 +16,14 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 
+### Added
+- **Four more paper templates:** Cornell (cue column, notes area and summary
+  band), Music (staves), Isometric (a triangular dot grid) and Checklist
+  (ruled lines with a tick box on each). Pick them in the new-note dialog or
+  the page sheet, for the notebook or for one page. On the infinite canvas
+  Cornell shows as ruled paper with a margin, since it needs a page's edges.
+  No database change: templates are stored by number and these are appended.
+
 ### Changed
 - **Database: three new columns on NotePage** (approved 2026-11-15):
   `bookmarked` (false), `title` (empty) and `templateOverride` (-1 = follow

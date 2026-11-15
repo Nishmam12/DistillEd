@@ -97,7 +97,7 @@ class BackgroundLayer extends CustomPainter {
       canvas.translate(scrollX, scrollY);
       canvas.scale(zoom);
       TemplatePainter.paint(canvas, size, templateType, backgroundColor,
-          region: page, zoom: zoom);
+          region: page, zoom: zoom, bounded: true);
       canvas.restore();
     }
 

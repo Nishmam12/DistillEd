@@ -6,7 +6,11 @@ enum TemplateType {
   ruled(displayName: 'Ruled'),
   dotted(displayName: 'Dotted'),
   grid(displayName: 'Grid'),
-  engineeringGrid(displayName: 'Engineering');
+  engineeringGrid(displayName: 'Engineering'),
+  cornell(displayName: 'Cornell'),
+  music(displayName: 'Music'),
+  isometric(displayName: 'Isometric'),
+  checklist(displayName: 'Checklist');
 
   const TemplateType({required this.displayName});
 

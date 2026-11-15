@@ -20,6 +20,10 @@ void main() {
       'dotted',
       'grid',
       'engineeringGrid',
+      'cornell',
+      'music',
+      'isometric',
+      'checklist',
     ]);
   });
 }

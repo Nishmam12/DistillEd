@@ -141,12 +141,12 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
               const SizedBox(height: 16),
               Text('Page Style', style: label),
               const SizedBox(height: 12),
-              // Five 51×69 pages inset 25 from each side of the field and
-              // spread across it; on the narrowest phones they shrink (same
-              // shape) rather than overflow.
+              // 51×69 pages inset 25 from each side of the field, five to a
+              // row and spread across it; on the narrowest phones they shrink
+              // (same shape) rather than overflow, and the rest wrap below.
               LayoutBuilder(
                 builder: (context, constraints) {
-                  const count = 5;
+                  const count = 5; // per row
                   const minGap = 6.0;
                   final side = math.min(25.0, constraints.maxWidth * 0.05);
                   final tileWidth = math.min(
@@ -156,16 +156,39 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
                   );
                   return Padding(
                     padding: EdgeInsets.symmetric(horizontal: side),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
                       children: [
-                        for (final type in TemplateType.values)
-                          _StyleTile(
-                            type: type,
-                            width: tileWidth,
-                            paper: newNotePaperColors[_paper],
-                            selected: type.index == _template,
-                            onTap: () => setState(() => _template = type.index),
+                        for (var from = 0;
+                            from < TemplateType.values.length;
+                            from += count)
+                          Padding(
+                            padding: EdgeInsets.only(top: from == 0 ? 0 : 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                for (var i = from;
+                                    i < from + count &&
+                                        i < TemplateType.values.length;
+                                    i++)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                        right: i == from + count - 1
+                                            ? 0
+                                            : (constraints.maxWidth -
+                                                    side * 2 -
+                                                    tileWidth * count) /
+                                                (count - 1)),
+                                    child: _StyleTile(
+                                      type: TemplateType.values[i],
+                                      width: tileWidth,
+                                      paper: newNotePaperColors[_paper],
+                                      selected: i == _template,
+                                      onTap: () =>
+                                          setState(() => _template = i),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                       ],
                     ),
@@ -377,6 +400,35 @@ class _PaperPainter extends CustomPainter {
         }
         for (var x = step; x < size.width; x += step) {
           canvas.drawLine(Offset(x, 0), Offset(x, size.height), line);
+        }
+      case TemplateType.cornell:
+        final cue = size.width * 0.28;
+        final summary = size.height * 0.82;
+        for (var y = step; y < summary; y += step) {
+          canvas.drawLine(Offset(cue, y), Offset(size.width, y), line);
+        }
+        canvas.drawLine(Offset(cue, 0), Offset(cue, summary), line);
+        canvas.drawLine(Offset(0, summary), Offset(size.width, summary), line);
+      case TemplateType.music:
+        for (var top = 6.0; top + 8 < size.height; top += 22) {
+          for (var i = 0; i < 5; i++) {
+            final y = top + i * 2;
+            canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
+          }
+        }
+      case TemplateType.isometric:
+        final dot = Paint()..color = ink.withValues(alpha: 0.5);
+        var row = 0;
+        for (var y = 6.0; y < size.height; y += 7.8) {
+          for (var x = row.isOdd ? 8.5 : 4.0; x < size.width; x += 9) {
+            canvas.drawCircle(Offset(x, y), 0.9, dot);
+          }
+          row++;
+        }
+      case TemplateType.checklist:
+        for (var y = step + 4; y < size.height; y += step) {
+          canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
+          canvas.drawRect(Rect.fromLTWH(4, y - 7, 5, 5), line);
         }
       case TemplateType.engineeringGrid:
         const fine = 4.5;

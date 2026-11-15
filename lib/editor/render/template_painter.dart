@@ -27,6 +27,7 @@ class TemplatePainter {
     Color backgroundColor, {
     Rect? region,
     double zoom = 1.0,
+    bool bounded = false,
   }) {
     if (type == TemplateType.blank) return;
 
@@ -36,8 +37,9 @@ class TemplatePainter {
     // Cull only when tiling a transformed (scene-space) region; plain
     // screen-space callers always render at their native density.
     final scale = region == null ? 1.0 : zoom;
-    final spacing =
-        type == TemplateType.dotted ? config.dotSpacing : config.lineSpacing;
+    final spacing = type == TemplateType.dotted || type == TemplateType.isometric
+        ? config.dotSpacing
+        : config.lineSpacing;
     if (spacing * scale < _minOnScreenSpacing) return;
 
     switch (type) {
@@ -51,6 +53,105 @@ class TemplatePainter {
         _paintGrid(canvas, r, config);
       case TemplateType.engineeringGrid:
         _paintEngineeringGrid(canvas, r, config);
+      case TemplateType.cornell:
+        // The cue column and summary band need the page's real edges; on an
+        // endless canvas it is a ruled page with a margin.
+        bounded ? _paintCornell(canvas, r, config) : _paintRuled(canvas, r, config);
+      case TemplateType.music:
+        _paintMusic(canvas, r, config);
+      case TemplateType.isometric:
+        _paintIsometric(canvas, r, config);
+      case TemplateType.checklist:
+        _paintChecklist(canvas, r, config);
+    }
+  }
+
+  /// Cornell notes: a cue column on the left, a summary band at the bottom and
+  /// ruled lines in the notes area between them.
+  static void _paintCornell(Canvas canvas, Rect page, TemplateConfig config) {
+    final line = Paint()
+      ..color = config.lineColor
+      ..strokeWidth = config.lineWidth
+      ..style = PaintingStyle.stroke;
+    final divider = Paint()
+      ..color = config.majorLineColor
+      ..strokeWidth = config.majorLineWidth
+      ..style = PaintingStyle.stroke;
+
+    final cueX = page.left + page.width * 0.28;
+    final summaryY = page.bottom - page.height * 0.18;
+
+    for (final t in _ticks(page.top, summaryY, config.lineSpacing)) {
+      canvas.drawLine(Offset(cueX, t.value), Offset(page.right, t.value), line);
+    }
+    canvas.drawLine(Offset(cueX, page.top), Offset(cueX, summaryY), divider);
+    canvas.drawLine(
+        Offset(page.left, summaryY), Offset(page.right, summaryY), divider);
+  }
+
+  /// Staves of five lines, a gap between each.
+  static void _paintMusic(Canvas canvas, Rect region, TemplateConfig config) {
+    final paint = Paint()
+      ..color = config.lineColor
+      ..strokeWidth = config.lineWidth
+      ..style = PaintingStyle.stroke;
+    final gap = config.lineSpacing;
+    final staff = gap * 4;
+    final period = staff + gap * 5;
+    var top = (region.top / period).floor() * period + gap * 2;
+    for (; top < region.bottom; top += period) {
+      for (var i = 0; i < 5; i++) {
+        final y = top + i * gap;
+        if (y < region.top || y > region.bottom) continue;
+        canvas.drawLine(Offset(region.left, y), Offset(region.right, y), paint);
+      }
+    }
+  }
+
+  /// Dots on a triangular lattice, the grid for isometric drawing.
+  static void _paintIsometric(
+      Canvas canvas, Rect region, TemplateConfig config) {
+    final dotPaint = Paint()
+      ..color = config.lineColor
+      ..strokeWidth = config.dotRadius * 2
+      ..strokeCap = StrokeCap.round;
+    final s = config.dotSpacing;
+    final rowHeight = s * 0.8660254037844386; // sqrt(3) / 2
+    final dots = <Offset>[];
+    for (final row in _ticks(region.top, region.bottom, rowHeight)) {
+      final shift = row.index.isOdd ? s / 2 : 0.0;
+      for (final x
+          in _ticks(region.left - shift, region.right - shift, s)) {
+        dots.add(Offset(x.value + shift, row.value));
+      }
+    }
+    canvas.drawPoints(ui.PointMode.points, dots, dotPaint);
+  }
+
+  /// Ruled lines with an empty tick box at the start of each one.
+  static void _paintChecklist(
+      Canvas canvas, Rect region, TemplateConfig config) {
+    final line = Paint()
+      ..color = config.lineColor
+      ..strokeWidth = config.lineWidth
+      ..style = PaintingStyle.stroke;
+    final box = Paint()
+      ..color = config.majorLineColor
+      ..strokeWidth = config.majorLineWidth
+      ..style = PaintingStyle.stroke;
+    final s = config.lineSpacing;
+    const side = 14.0;
+    const left = 24.0;
+    for (final t in _ticks(region.top, region.bottom, s)) {
+      canvas.drawLine(
+          Offset(region.left, t.value), Offset(region.right, t.value), line);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(left, t.value - (s + side) / 2, side, side),
+          const Radius.circular(3),
+        ),
+        box,
+      );
     }
   }
 
