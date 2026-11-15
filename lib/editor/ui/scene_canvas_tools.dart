@@ -93,6 +93,10 @@ extension _SceneCanvasTools on _SceneCanvasState {
   // ---- selection gestures ---------------------------------------------------
 
   void _onSelectDown(StrokePoint p) {
+    if (ref.read(editorToolProvider).selectText) {
+      _onTextSelectDown(_toScene(p));
+      return;
+    }
     final scene = _toScene(p);
     final screen = Offset(p.x, p.y);
     final vp = ref.read(viewportProvider);
@@ -228,6 +232,8 @@ extension _SceneCanvasTools on _SceneCanvasState {
         _marquee.value = Rect.fromPoints(_gestureStartScene, scene);
         final loop = _lasso.value;
         if (loop != null) _lasso.value = [...loop, scene];
+      case _SelMode.text:
+        _onTextSelectMove(scene);
       case _SelMode.none:
         break;
     }
@@ -274,6 +280,10 @@ extension _SceneCanvasTools on _SceneCanvasState {
   }
 
   void _onSelectUp(StrokePoint p) {
+    if (_selMode == _SelMode.text) {
+      _onTextSelectUp(_toScene(p));
+      return;
+    }
     final lockedUnderTap = _lockedUnderTap;
     _lockedUnderTap = null;
     if (_selMode == _SelMode.marquee) {
@@ -361,10 +371,28 @@ extension _SceneCanvasTools on _SceneCanvasState {
     );
     _history.push(AddElementsCommand([stroke]));
 
+    final up = upMs ?? points.last.t ?? 0;
+    // A highlighter over printed text on a page picture snaps to the words.
+    // Finding them can take a moment (the first time, they are read off the
+    // picture), so it finishes on its own; the stroke is on the page already.
+    if (stroke.penKind == PenKind.highlighter &&
+        ref.read(settingsProvider).snapHighlighter) {
+      final image = _imageUnderStroke(stroke);
+      if (image != null) {
+        unawaited(_snapHighlight(stroke, image, up));
+        return;
+      }
+    }
+    _finishStroke(stroke, up);
+  }
+
+  /// What happens after a stroke is on the page: straighten it if it was held
+  /// at the end, otherwise offer it to the ink gestures.
+  void _finishStroke(FreehandElement stroke, int up) {
+    final points = stroke.points;
     // Held at the end of a line: straighten it, as its own undo step so one
     // undo brings back the line as drawn. Needs no model, and a straightened
     // line is not then offered to the shape model as well.
-    final up = upMs ?? points.last.t ?? 0;
     final straight = ref.read(settingsProvider).straightenLines
         ? straightenedLine(points, up, zoom: ref.read(viewportProvider).zoom)
         : null;

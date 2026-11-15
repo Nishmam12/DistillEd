@@ -160,6 +160,18 @@ class SettingsScreen extends ConsumerWidget {
           ),
           onTap: () => notifier.setStraightenLines(!settings.straightenLines),
         ),
+        _SettingsRow(
+          icon: AppIcons.brush,
+          title: 'Snap highlighter to text',
+          subtitle: 'Highlight over the printed words of a PDF page or a '
+              'photo and the mark lines up with them. Undo brings your '
+              'stroke back.',
+          trailing: _AccentSwitch(
+            value: settings.snapHighlighter,
+            onChanged: notifier.setSnapHighlighter,
+          ),
+          onTap: () => notifier.setSnapHighlighter(!settings.snapHighlighter),
+        ),
         // SET-16. Draw-to-shape: hold the pen at the end of a stroke.
         _InkGestureRow(
           icon: AppIcons.addCircle,

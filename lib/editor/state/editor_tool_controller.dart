@@ -57,6 +57,9 @@ class EditorToolState {
   // Select tool: drag a free-form loop round things instead of a rectangle.
   final bool selectLasso;
 
+  // Select tool: drag across the words of a page picture to select its text.
+  final bool selectText;
+
   // Whether the active tool's floating options panel is showing. Distinct
   // from which tool is active: the panel opens (briefly) when a tool is
   // picked and closes the instant the user starts drawing — see
@@ -86,6 +89,7 @@ class EditorToolState {
     this.fontFamily = 'Roboto',
     this.eraserPixel = false,
     this.selectLasso = false,
+    this.selectText = false,
     this.panelOpen = true,
   });
 
@@ -114,6 +118,7 @@ class EditorToolState {
     String? fontFamily,
     bool? eraserPixel,
     bool? selectLasso,
+    bool? selectText,
     bool? panelOpen,
   }) {
     return EditorToolState(
@@ -139,6 +144,7 @@ class EditorToolState {
       fontFamily: fontFamily ?? this.fontFamily,
       eraserPixel: eraserPixel ?? this.eraserPixel,
       selectLasso: selectLasso ?? this.selectLasso,
+      selectText: selectText ?? this.selectText,
       panelOpen: panelOpen ?? this.panelOpen,
     );
   }
@@ -281,7 +287,11 @@ class EditorToolController extends StateNotifier<EditorToolState> {
   void setFontSize(double s) => state = state.copyWith(fontSize: s);
   void setFontFamily(String f) => state = state.copyWith(fontFamily: f);
   void setEraserPixel(bool v) => state = state.copyWith(eraserPixel: v);
-  void setSelectLasso(bool v) => state = state.copyWith(selectLasso: v);
+  void setSelectLasso(bool v) =>
+      state = state.copyWith(selectLasso: v, selectText: false);
+
+  /// Text mode: a drag selects the words of a page picture, not elements.
+  void setSelectText(bool v) => state = state.copyWith(selectText: v);
 }
 
 /// The tool state for the open editor. Opens with the pen used last time, and

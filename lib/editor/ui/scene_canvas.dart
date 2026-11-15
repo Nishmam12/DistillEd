@@ -20,6 +20,10 @@ import '../../domain/geometry/scene_geometry.dart';
 import '../../domain/geometry/scene_hit_test.dart';
 import '../../domain/geometry/selection_bounds.dart';
 import '../../domain/geometry/element_transformer.dart';
+import '../../domain/geometry/word_geometry.dart';
+import '../../domain/model/page_words.dart';
+import '../../domain/services/text_highlight.dart';
+import '../../features/import/page_words_service.dart';
 import '../../domain/model/scene_element.dart';
 import '../../domain/services/eraser_service.dart';
 import '../../domain/services/frame_service.dart';
@@ -36,9 +40,11 @@ import '../render/scene_laser_layer.dart';
 import '../render/scene_preview_layer.dart';
 import '../render/scene_static_layer.dart';
 import '../render/selection_overlay_layer.dart';
+import '../render/text_selection_layer.dart';
 import '../state/editor_tool_controller.dart';
 import '../state/history_controller.dart';
 import '../state/inline_text_request.dart';
+import '../state/page_text_selection.dart';
 import '../state/ink_gesture_providers.dart';
 import '../state/scene_controller.dart';
 import '../state/scene_image_cache_provider.dart';
@@ -51,11 +57,12 @@ import 'text_input_dialog.dart' show SceneTextResult;
 import '../../core/theme/app_colors.dart';
 
 part 'scene_canvas_tools.dart';
+part 'scene_canvas_text.dart';
 
 const double _kSnapScreen = 8.0;
 const int _kLaserFadeMs = 700;
 
-enum _SelMode { none, move, resize, rotate, marquee }
+enum _SelMode { none, move, resize, rotate, marquee, text }
 
 /// Thinnest tape laid, in scene units: a quick stroke along a line of writing
 /// still covers it.
@@ -120,6 +127,13 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   final ValueNotifier<List<(Offset, Offset)>> _guides = ValueNotifier(const []);
   final ValueNotifier<Set<String>> _eraserPending = ValueNotifier(const {});
   final ValueNotifier<List<LaserPoint>> _laser = ValueNotifier(const []);
+
+  // Text mode of the select tool (see scene_canvas_text.dart): where the drag
+  // began and last was, and the picture and words it is on.
+  Offset _textAnchor = Offset.zero;
+  Offset? _textLast;
+  ImageElement? _textImage;
+  PageWords? _textWords;
 
   late final Ticker _ticker;
   late final SceneImageCache _imageCache;
@@ -652,6 +666,35 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
                             ),
                           ),
                         ),
+                        Consumer(builder: (_, ref, _) {
+                          final sel = ref.watch(pageTextSelectionProvider);
+                          final tool = ref.watch(editorToolProvider);
+                          // Only while the select tool is in Text mode.
+                          final mine = sel != null &&
+                                  sel.key == _key &&
+                                  tool.tool == EditorTool.select &&
+                                  tool.selectText
+                              ? sel
+                              : null;
+                          ImageElement? img;
+                          if (mine != null) {
+                            for (final e in elements) {
+                              if (e is ImageElement && e.id == mine.imageId) {
+                                img = e;
+                              }
+                            }
+                          }
+                          return IgnorePointer(
+                            child: CustomPaint(
+                              painter: TextSelectionLayer(
+                                selection: mine,
+                                image: img,
+                                color: context.colors.accent,
+                              ),
+                              size: Size.infinite,
+                            ),
+                          );
+                        }),
                         RepaintBoundary(
                           child: ValueListenableBuilder<List<LaserPoint>>(
                             valueListenable: _laser,

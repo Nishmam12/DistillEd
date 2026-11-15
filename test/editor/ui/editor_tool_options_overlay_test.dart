@@ -25,6 +25,20 @@ void main() {
     return container;
   }
 
+  testWidgets('the select panel offers Rectangle, Lasso and Text',
+      (tester) async {
+    final container = await pumpOverlay(tester);
+    container.read(editorToolProvider.notifier).setTool(EditorTool.select);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('selectText')));
+    await tester.pump();
+    expect(container.read(editorToolProvider).selectText, isTrue);
+    await tester.tap(find.byKey(const ValueKey('selectRectangle')));
+    await tester.pump();
+    expect(container.read(editorToolProvider).selectText, isFalse);
+    expect(container.read(editorToolProvider).selectLasso, isFalse);
+  });
+
   group('panel content per tool', () {
     testWidgets('shows the pen panel (size/opacity) for the default tool',
         (tester) async {

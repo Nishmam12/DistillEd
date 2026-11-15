@@ -25,6 +25,9 @@ import '../../ai/domain/page_content_extractor.dart' show kLocalImageReads;
 import '../../ai/presentation/ai_providers.dart';
 import '../../ai/presentation/notebook_index_notifier.dart';
 import '../../ai/presentation/sidebar/ai_sidebar.dart';
+import '../../ai/domain/features/explainer.dart' show ExplainMode;
+import '../../ai/presentation/explain_notifier.dart' show ExplainRequest;
+import 'controls/text_selection_bar.dart';
 import '../../ai/presentation/sidebar/floating_ai_panel.dart';
 import '../../../domain/model/page_size.dart';
 import '../../../domain/model/template_type.dart';
@@ -544,6 +547,19 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                               ),
                             ),
                           ),
+                        // Words selected on a page picture (select tool, Text).
+                        Positioned(
+                          left: 16,
+                          right: 16,
+                          bottom: 16,
+                          child: Center(
+                            child: TextSelectionBar(
+                              pageKey: key,
+                              onAsk: (text) => _askAboutText(key, text),
+                              onJump: _jumpToSource,
+                            ),
+                          ),
+                        ),
                         // The AI panel floating over the page (wide screens,
                         // the default): the page keeps its full size under it.
                         if (_aiPanelOpen && _aiPanelFloats(context))
@@ -682,6 +698,18 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             _jumpToSource(pageId);
           });
     }
+  }
+
+  /// "Ask the AI" on selected words: opens the AI panel and explains them.
+  void _askAboutText(ScenePageKey key, String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    final wide = MediaQuery.of(context).size.width >= kAiSidebarBreakpoint;
+    if (!wide || !_aiPanelOpen) _toggleAiPanel(key);
+    ref.read(explainNotifierProvider.notifier).run(ExplainRequest(
+          mode: ExplainMode.intermediate,
+          resolveContent: () async => trimmed,
+        ));
   }
 
   /// Jumps to the page a "Ask your notes" source passage came from, by finding

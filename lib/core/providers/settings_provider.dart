@@ -139,6 +139,10 @@ class SettingsState {
   /// default: it used to be always on and fired when it was not wanted.
   final bool straightenLines;
 
+  /// A highlighter stroke over printed text on a page picture snaps to the
+  /// words. On by default.
+  final bool snapHighlighter;
+
   /// Whether one finger draws on the page. On by default, as it always was.
   /// Off, a finger scrolls the page and only a pen draws — what most people
   /// writing with a stylus want, and what stops a resting finger leaving ink.
@@ -210,6 +214,7 @@ class SettingsState {
     this.snapShapes = false,
     this.scribbleErase = false,
     this.straightenLines = false,
+    this.snapHighlighter = true,
     this.fingerDraws = true,
     this.stylusTipShown = false,
     this.aiPanelWidth = 340,
@@ -244,6 +249,7 @@ class SettingsState {
     bool? snapShapes,
     bool? scribbleErase,
     bool? straightenLines,
+    bool? snapHighlighter,
     bool? fingerDraws,
     bool? stylusTipShown,
     double? aiPanelWidth,
@@ -266,6 +272,7 @@ class SettingsState {
       snapShapes: snapShapes ?? this.snapShapes,
       scribbleErase: scribbleErase ?? this.scribbleErase,
       straightenLines: straightenLines ?? this.straightenLines,
+      snapHighlighter: snapHighlighter ?? this.snapHighlighter,
       fingerDraws: fingerDraws ?? this.fingerDraws,
       stylusTipShown: stylusTipShown ?? this.stylusTipShown,
       aiPanelWidth: aiPanelWidth ?? this.aiPanelWidth,
@@ -301,6 +308,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kSnapShapes = 'ui.snapShapes';
   static const _kScribbleErase = 'ui.scribbleErase';
   static const _kStraightenLines = 'ui.straightenLines';
+  static const _kSnapHighlighter = 'ui.snapHighlighter';
   static const _kFingerDraws = 'ui.fingerDraws';
   static const _kStylusTipShown = 'ui.stylusTipShown';
   static const _kAiPanelWidth = 'ui.aiPanelWidth';
@@ -353,6 +361,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       snapShapes: prefs.getBool(_kSnapShapes) ?? false,
       scribbleErase: prefs.getBool(_kScribbleErase) ?? false,
       straightenLines: prefs.getBool(_kStraightenLines) ?? false,
+      snapHighlighter: prefs.getBool(_kSnapHighlighter) ?? true,
       fingerDraws: prefs.getBool(_kFingerDraws) ?? true,
       stylusTipShown: prefs.getBool(_kStylusTipShown) ?? false,
       aiPanelWidth: prefs.getDouble(_kAiPanelWidth) ?? 340,
@@ -470,6 +479,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(snapShapes: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kSnapShapes, value);
+  }
+
+  Future<void> setSnapHighlighter(bool value) async {
+    state = state.copyWith(snapHighlighter: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kSnapHighlighter, value);
   }
 
   Future<void> setStraightenLines(bool value) async {

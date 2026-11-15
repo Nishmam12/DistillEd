@@ -304,7 +304,7 @@ Fable 5.2 only for figure-pipeline bugs.
 | 11 | DONE (`PageManagerScreen`, route `/note2/:id/pages`, `PageNotifier.movePages/deletePages/duplicatePages`, shared `PageThumbnail`; no schema change). C: page manager grid, drag-reorder, multi-select | Sonnet |
 | 12 | DONE (`NotePage.bookmarked/title/templateOverride`, approved 2026-11-15; `PageOutlineScreen`, route `/note2/:id/outline`). C: page bookmarks and outline, per-page template | Sonnet |
 | 13 | DONE (`cornell`, `music`, `isometric`, `checklist` appended to `TemplateType`; no schema change). C: extra templates | Sonnet |
-| 14 | D: PDF word boxes, text selection, highlighter snapping | Opus |
+| 14 | DONE (`PageWords` sidecar `.words.json`, `PageWordsService` with ML Kit fallback, select tool Text mode, `TextSelectionBar`, `settings.snapHighlighter`; no schema change). D: PDF word boxes, text selection, highlighter snapping | Opus |
 | 15 | D: vector PDF export with searchable text | Opus |
 | 16 | D: PDF outline and links, search hits on the page | Sonnet |
 | 17 | E leftovers: restore list, last-five snapshots | Sonnet |

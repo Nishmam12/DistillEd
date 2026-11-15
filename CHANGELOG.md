@@ -17,6 +17,22 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 ## [Unreleased]
 
 ### Added
+- **Select the text on a PDF page or a photo.** The select tool has a third
+  mode, Text: drag across the printed words and they are selected. Then
+  Copy them, Highlight them (a clean mark over exactly those words, in your
+  highlighter's colour), Ask the AI about them, or Search the notebook for
+  them.
+- **The highlighter snaps to printed text.** Highlight over the words of a PDF
+  page or a photo and the stroke becomes a straight mark over just those
+  words. Undo brings your stroke back. Settings, "Snap highlighter to text"
+  (on by default).
+- Where each word sits is kept beside the page picture (`.words.json`), from
+  the PDF's own text when it is imported. A page without it (a scan, a photo,
+  or a PDF imported before this version) is read once on the device the first
+  time you select or highlight on it, and kept. Re-importing an older PDF
+  adds its words without rendering it again. No database change.
+
+### Added
 - **Four more paper templates:** Cornell (cue column, notes area and summary
   band), Music (staves), Isometric (a triangular dot grid) and Checklist
   (ruled lines with a tick box on each). Pick them in the new-note dialog or
