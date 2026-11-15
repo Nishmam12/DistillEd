@@ -28,6 +28,26 @@ Commits: <first>..<last>
 
 ## Push log
 
+### 2026-11-15 · Nabil (RTX 4070 Ti Super) · `margo-device-fixes` · 5.4.0+36
+Commits: `2a84c44`..(this release commit), including the merge of Afnan's `0bb8452` and `b990117`
+
+**What changed:**
+- **Page manager:** a full-screen grid of every page. Long-press a page and drag it to reorder. "Select" then duplicates, moves or deletes several pages at once (it asks first; the last page can't be deleted). Open it from the grid button in the page bar or the Book view.
+- **Bookmarks, page names and an outline.** Bookmark a page or name it from its menu, filter the grid to bookmarked pages, and see them in the outline (the list button in the page bar).
+- **One paper per page:** the page sheet's template section has "Whole notebook" and "This page only".
+- **Four new paper templates:** Cornell, Music, Isometric and Checklist. On the infinite canvas Cornell looks like ruled paper.
+- **Select text on PDF pages and photos:** the select tool's new Text mode. Drag over words to Copy them, Highlight them, Ask the AI, or Search the notebook.
+- **The highlighter snaps to printed words** (Settings → "Snap highlighter to text", on by default). Undo brings back your stroke.
+- **Afnan's changes are in this push too:** the Gradle and AGP bump, and the readable cloud error messages (see their entries below).
+
+**What you need to do:**
+- **Database change.** Pages gained three columns: `bookmarked`, `title` and `templateOverride`. **Update to 5.4.0+36 before using bookmarks, page names or a per-page template.** An older build ignores them.
+- **Gradle:** the first build after pulling downloads Gradle 9.3.1 and AGP 9.1.1.
+- No new dependency. No `flutter pub get` needed for this push.
+- **Text on old PDFs and photos:** the first time you select words on one, the page is read once on the device. Nothing is sent anywhere.
+
+**Tested:** `flutter analyze` clean; 3,100 tests passing, 44 skipped; `error_log_test` (a known flaky test) fails in the full run. Not on a device yet. The merged Gradle bump was not built here.
+
 ### 2026-11-15 · Afnan (RTX 2070 Super) · `margo-device-fixes` · no version bump
 Commits: `b990117`..(this commit)
 
@@ -263,3 +283,9 @@ This is a summary of everything Nabil (`Nishmam12`) has pushed to DistillEd up t
 **5.3.0** (pushed 2026-11-14):
 - **Real page sizes** (A4, Letter, 16:10, or Fit screen) and a **continuous layout**, with pages stacked and scrolled like a document.
 - This team changelog.
+
+**5.4.0** (pushed 2026-11-15):
+- Page manager, bookmarks, page names and an outline; one paper per page.
+- Four more paper templates.
+- Select the text on PDF pages and photos; the highlighter snaps to printed words.
+- Word positions for PDF pages, read once on the device where a page has none.

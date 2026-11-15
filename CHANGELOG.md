@@ -16,53 +16,54 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 
-### Added
-- **Select the text on a PDF page or a photo.** The select tool has a third
-  mode, Text: drag across the printed words and they are selected. Then
-  Copy them, Highlight them (a clean mark over exactly those words, in your
-  highlighter's colour), Ask the AI about them, or Search the notebook for
-  them.
-- **The highlighter snaps to printed text.** Highlight over the words of a PDF
-  page or a photo and the stroke becomes a straight mark over just those
-  words. Undo brings your stroke back. Settings, "Snap highlighter to text"
-  (on by default).
-- Where each word sits is kept beside the page picture (`.words.json`), from
-  the PDF's own text when it is imported. A page without it (a scan, a photo,
-  or a PDF imported before this version) is read once on the device the first
-  time you select or highlight on it, and kept. Re-importing an older PDF
-  adds its words without rendering it again. No database change.
-
-### Added
-- **Four more paper templates:** Cornell (cue column, notes area and summary
-  band), Music (staves), Isometric (a triangular dot grid) and Checklist
-  (ruled lines with a tick box on each). Pick them in the new-note dialog or
-  the page sheet, for the notebook or for one page. On the infinite canvas
-  Cornell shows as ruled paper with a margin, since it needs a page's edges.
-  No database change: templates are stored by number and these are appended.
-
-### Changed
-- **Database: three new columns on NotePage** (approved 2026-11-15):
-  `bookmarked` (false), `title` (empty) and `templateOverride` (-1 = follow
-  the notebook). Existing pages read as the defaults; an older build ignores
-  the columns. Backups carry them, and an older backup restores as the defaults.
-
-### Added
-- **Bookmarks and page names.** Bookmark or name a page from its menu (or
-  bookmark several in the page manager). The page manager shows a bookmark
-  badge and the name, and can show bookmarked pages only.
-- **Outline.** A list of the bookmarked or named pages; tap one to open it.
-  Opened from the page bar or the page manager.
-- **A paper template for one page.** In the page sheet, "This page only" gives
-  the current page its own template; "Whole notebook" changes the notebook's
-  and puts the page back to following it. Duplicating a page keeps all three.
-
+## [5.4.0] - 2026-11-15
 ### Added
 - **Page manager.** A full-screen grid of every page, opened from the grid
   button in the editor's page bar or the Book view's app bar. Long-press a page
   and drag it to a new place; "Select" lets you pick several pages to
   duplicate, move to the start or end, or delete (it asks first, and the last
   page can't be deleted). Thumbnails use the notebook's real page shape, and
-  tapping one opens it. No database change.
+  tapping one opens it.
+- **Bookmarks, page names and an outline.** Bookmark or name a page from its
+  menu (or bookmark several in the page manager). The page manager shows a
+  bookmark badge and the name, and can show bookmarked pages only. The outline
+  lists the bookmarked or named pages; tap one to open it.
+- **A paper template for one page.** In the page sheet, "This page only" gives
+  the current page its own template; "Whole notebook" changes the notebook's
+  and puts the page back to following it. Duplicating a page keeps all three.
+- **Four more paper templates:** Cornell (cue column, notes area and summary
+  band), Music (staves), Isometric (a triangular dot grid) and Checklist (ruled
+  lines with a tick box on each). On the infinite canvas Cornell shows as ruled
+  paper with a margin, since it needs a page's edges.
+- **Select the text on a PDF page or a photo.** The select tool has a third
+  mode, Text: drag across the printed words to select them, then Copy them,
+  Highlight them (a clean mark over exactly those words, in your highlighter's
+  colour), Ask the AI about them, or Search the notebook for them.
+- **The highlighter snaps to printed text.** Highlight over the words of a PDF
+  page or a photo and the stroke becomes a straight mark over just those words.
+  Undo brings your stroke back. Settings: "Snap highlighter to text" (on by
+  default).
+- Where each word sits is kept beside the page picture (`.words.json`): from the
+  PDF's own text at import, or read once on the device the first time you select
+  or highlight on a page without it (a scan, a photo, or an older PDF).
+  Re-importing an older PDF adds its words without rendering it again.
+
+### Changed
+- **Database: three new columns on NotePage** (approved 2026-11-15):
+  `bookmarked` (false), `title` (empty) and `templateOverride` (-1 = follow the
+  notebook). Existing pages read as the defaults; an older build ignores the
+  columns. Backups carry them, and an older backup restores as the defaults.
+- Templates and word positions need no other database change: templates are
+  stored by number, and word positions live in a file beside each page picture.
+
+### Fixed
+- **Android build tools raised** so Flutter 3.50.0 builds again: Gradle 9.1.0
+  to 9.3.1, and Android Gradle Plugin 9.0.1 to 9.1.1. The first build downloads
+  them.
+- **Cloud error messages are readable.** A cloud 404 says "Cloud gateway
+  unreachable"; other statuses say "Cloud request failed (HTTP …)".
+- **Flashcard and Quiz loading panels** span the full width of the screen, like
+  the other AI panels.
 
 ## [5.3.0] - 2026-11-14
 ### Changed
