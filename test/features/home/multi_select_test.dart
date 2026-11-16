@@ -62,6 +62,7 @@ void main() {
       addTearDown(tester.view.reset);
       final c = ProviderContainer(retry: (_, _) => null, overrides: [
         noteCardsProvider.overrideWith((ref) async => [_c(1), _c(2), _c(3)]),
+        noteRepositoryProvider.overrideWithValue(FakeNoteRepository()),
       ]);
       addTearDown(c.dispose);
       await tester.pumpWidget(UncontrolledProviderScope(
@@ -95,6 +96,66 @@ void main() {
       expect(c.read(notesSelectionProvider), isEmpty);
       expect(find.byKey(const ValueKey('selectionCount')), findsNothing);
     });
+
+    testWidgets('changing the view starts the selection again', (tester) async {
+      final c = await pump(tester);
+      c.read(notesSelectionProvider.notifier).state = {1, 2};
+      await tester.pumpAndSettle();
+      expect(find.text('2 selected'), findsOneWidget);
+      c.read(notesFavoritesOnlyProvider.notifier).state = true;
+      await tester.pumpAndSettle();
+      expect(c.read(notesSelectionProvider), isEmpty);
+      expect(find.byKey(const ValueKey('selectionCount')), findsNothing);
+    });
+
+    testWidgets('cancelling the folder sheet keeps the selection',
+        (tester) async {
+      final c = await pump(tester);
+      c.read(notesSelectionProvider.notifier).state = {1, 2};
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('selectionFolder')));
+      await tester.pumpAndSettle();
+      // Dismiss the sheet without choosing.
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(c.read(notesSelectionProvider), {1, 2});
+    });
+
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('the selection bar and Recent strip fit a 320 dp phone '
+          '(text x$scale)', (tester) async {
+        SharedPreferences.setMockInitialValues({
+          'home.recentNotebooks': ['1', '2', '3'],
+        });
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        final c = ProviderContainer(retry: (_, _) => null, overrides: [
+          noteCardsProvider.overrideWith((ref) async => [_c(1), _c(2), _c(3)]),
+        ]);
+        addTearDown(c.dispose);
+        await tester.pumpWidget(UncontrolledProviderScope(
+          container: c,
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+            home: const NotesScreen(),
+          ),
+        ));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('recentStrip')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        c.read(notesSelectionProvider.notifier).state = {1};
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('selectionCount')), findsOneWidget);
+        expect(find.byKey(const ValueKey('selectionMore')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     testWidgets('un-picking the last notebook leaves select mode',
         (tester) async {

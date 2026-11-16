@@ -99,7 +99,13 @@ class _SearchPopoverButtonState extends ConsumerState<SearchPopoverButton> {
               right: math.max(margin, right),
               child: _Panel(
                 width: width,
-                maxHeight: math.max(160, screen.height - top - margin),
+                maxHeight: math.max(
+                  160,
+                  screen.height -
+                      MediaQuery.viewInsetsOf(overlayContext).bottom -
+                      top -
+                      margin,
+                ),
                 query: _query,
                 scrollController: _results,
                 onChanged: (v) => setState(() => _query = v),

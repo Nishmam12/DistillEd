@@ -46,6 +46,27 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final cards = ref.watch(visibleNoteCardsProvider);
+    // A selection belongs to the view it was made in: another folder, the
+    // favourites, a tag or a search starts again, and a notebook that leaves
+    // the view (trashed, filtered out) leaves the selection.
+    void clearSelection(Object? _, Object? _) =>
+        ref.read(notesSelectionProvider.notifier).state = const {};
+    ref.listen(notesFolderFilterProvider, clearSelection);
+    ref.listen(notesFavoritesOnlyProvider, clearSelection);
+    ref.listen(notesTagFilterProvider, clearSelection);
+    ref.listen(notesSearchQueryProvider, clearSelection);
+    ref.listen(visibleNoteCardsProvider, (_, next) {
+      final selected = ref.read(notesSelectionProvider);
+      final shown = next.value;
+      if (selected.isEmpty || shown == null) return;
+      final keep = {
+        for (final n in shown)
+          if (selected.contains(n.id)) n.id,
+      };
+      if (keep.length != selected.length) {
+        ref.read(notesSelectionProvider.notifier).state = keep;
+      }
+    });
     final windowWidth = MediaQuery.sizeOf(context).width;
     final wide = context.windowSize.isExpanded;
     final sidebarWidth = NotesPalette.sidebarWidthFor(windowWidth);

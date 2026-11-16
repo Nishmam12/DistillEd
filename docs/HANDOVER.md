@@ -314,7 +314,7 @@ Fable 5.2 only for figure-pipeline bugs.
 | 15 | DONE (`vector_pdf_writer.dart` in an isolate, `VectorPdfExport`, `TemplateSink`, Noto fonts in `assets/fonts/pdf`, invisible text over handwriting and page words, raster fallback; no schema change). D: vector PDF export with searchable text | Opus |
 | 16 | DONE (`.links.json` sidecar, `linksFromPdf`, `PdfLinkLayer`, `findLinkTargetPage`, outline PDF contents, `SearchHighlightLayer`; no schema change). D: PDF outline and links, search hits on the page | Sonnet |
 | 17 | DONE (dated snapshots pruned to five, `RestoreListScreen`, `BackupTarget.list/copyOut`; Kotlin not compiled; no schema change). E leftovers: restore list, last-five snapshots | Sonnet |
-| 18 | F: nested folders, covers, multi-select, recents, global search | Sonnet, one item per session |
+| 18 | PARTLY DONE: recents (`recent_notebooks.dart`), multi-select (`selection_bar.dart`), global search (`global_search.dart`) are in; covers (Notebook cover fields) and nested folders (Folder.parentId) are approved but held until the tablet check of the step 12 schema changes. F: nested folders, covers, multi-select, recents, global search | Sonnet, one item per session |
 | 19 | F: onboarding, launcher shortcuts, keyboard shortcuts, accessibility | Sonnet |
 | 20 | F: share-into-Margo, multi-window, drag-and-drop | Opus |
 | 21 | F: audio ink replay, shared-element transitions | Opus |

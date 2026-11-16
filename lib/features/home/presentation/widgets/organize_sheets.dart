@@ -17,25 +17,27 @@ Future<void> showMoveToFolderSheet(
   BuildContext context,
   WidgetRef ref, {
   required NoteCardData note,
-}) =>
-    _moveToFolder(context, ref, {note.id}, note.folderId);
+}) async {
+  await _moveToFolder(context, ref, {note.id}, note.folderId);
+}
 
-/// Moves several notebooks at once (multi-select).
-Future<void> showMoveManyToFolderSheet(
+/// Moves several notebooks at once (multi-select). True when they were moved;
+/// false when the sheet or the new-folder prompt was dismissed.
+Future<bool> showMoveManyToFolderSheet(
   BuildContext context,
   WidgetRef ref, {
   required Set<int> ids,
 }) =>
     _moveToFolder(context, ref, ids, null);
 
-Future<void> _moveToFolder(
+Future<bool> _moveToFolder(
   BuildContext context,
   WidgetRef ref,
   Set<int> ids,
   int? currentFolderId,
 ) async {
   final folders = await ref.read(noteRepositoryProvider).getFolders();
-  if (!context.mounted) return;
+  if (!context.mounted) return false;
 
   // An explicit choice type, not a nullable int: Flutter reports a dismissed
   // sheet as null, so returning null for "No folder" would make swiping the
@@ -84,7 +86,7 @@ Future<void> _moveToFolder(
   );
 
   // null here means the sheet was dismissed — leave the note where it is.
-  if (choice == null || !context.mounted) return;
+  if (choice == null || !context.mounted) return false;
 
   final int? target;
   switch (choice.kind) {
@@ -94,12 +96,13 @@ Future<void> _moveToFolder(
       target = choice.folderId;
     case _FolderChoiceKind.create:
       final name = await _promptFolderName(context);
-      if (name == null || !context.mounted) return;
+      if (name == null || !context.mounted) return false;
       target = (await ref.read(noteRepositoryProvider).createFolder(name)).id;
   }
 
   await ref.read(homeNotifierProvider.notifier).setFolderMany(ids, target);
   ref.invalidate(foldersProvider);
+  return true;
 }
 
 /// Prompts for a name and creates a folder — the sidebar's ⊕. Returns the new
@@ -206,33 +209,44 @@ Future<void> showEditTagsDialog(
   ref.invalidate(tagCountsProvider);
 }
 
-/// Adds tags to several notebooks at once; the tags they have are kept.
-Future<void> showAddTagsDialog(
+/// Adds tags to several notebooks at once; the tags they have are kept. True
+/// when tags were added.
+Future<bool> showAddTagsDialog(
   BuildContext context,
   WidgetRef ref, {
   required Set<int> ids,
 }) async {
   final known = await ref.read(noteRepositoryProvider).tagCounts();
-  if (!context.mounted) return;
+  if (!context.mounted) return false;
 
   final result = await showDialog<List<String>>(
     context: context,
     builder: (_) => _TagsDialog(
       initial: const [],
       known: known.keys.toList()..sort(),
+      title: 'Add tags',
+      confirm: 'Add',
     ),
   );
-  if (result == null || result.isEmpty) return;
+  if (result == null || result.isEmpty) return false;
 
   await ref.read(homeNotifierProvider.notifier).addTagsMany(ids, result);
   ref.invalidate(tagCountsProvider);
+  return true;
 }
 
 class _TagsDialog extends StatefulWidget {
   final List<String> initial;
   final List<String> known;
+  final String title;
+  final String confirm;
 
-  const _TagsDialog({required this.initial, required this.known});
+  const _TagsDialog({
+    required this.initial,
+    required this.known,
+    this.title = 'Tags',
+    this.confirm = 'Save',
+  });
 
   @override
   State<_TagsDialog> createState() => _TagsDialogState();
@@ -268,7 +282,7 @@ class _TagsDialogState extends State<_TagsDialog> {
 
     return AlertDialog(
       backgroundColor: context.colors.surface,
-      title: const Text('Tags'),
+      title: Text(widget.title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -311,7 +325,7 @@ class _TagsDialogState extends State<_TagsDialog> {
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, _current.toList()..sort()),
-          child: const Text('Save'),
+          child: Text(widget.confirm),
         ),
       ],
     );

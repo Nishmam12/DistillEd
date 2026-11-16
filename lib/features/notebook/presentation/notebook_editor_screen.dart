@@ -243,6 +243,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     }
     // Per-page scene and undo state would otherwise live until the app dies.
     _container.read(pageProvider(widget.notebookId).notifier).release();
+    // The search tint belongs to this visit. Cleared a moment later: a
+    // provider is not changed while the tree is being torn down.
+    final container = _container;
+    Future.microtask(
+        () => container.read(searchHighlightProvider.notifier).state = null);
     // Leaving a note is when "back up after each note" runs. The backup waits
     // for this page's queued writes itself (see AppBackupLibrary.snapshot).
     if (_container.read(settingsProvider).autoBackup) {

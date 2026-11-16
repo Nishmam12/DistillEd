@@ -34,7 +34,7 @@ class RecentStrip extends StatelessWidget {
                   color: c.textSecondary)),
           const SizedBox(height: 6),
           SizedBox(
-            height: 36,
+            height: MediaQuery.textScalerOf(context).scale(36).clamp(36.0, 80.0),
             child: ListView.separated(
               key: const ValueKey('recentStrip'),
               scrollDirection: Axis.horizontal,

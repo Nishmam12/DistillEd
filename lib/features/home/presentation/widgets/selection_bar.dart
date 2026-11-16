@@ -25,8 +25,25 @@ class SelectionBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final selected = ref.watch(notesSelectionProvider);
-    final all = visible.isNotEmpty && visible.length == selected.length;
+    final all = visible.isNotEmpty && visible.every((n) => selected.contains(n.id));
     final anyUnpinned = visible.any((n) => selected.contains(n.id) && !n.pinned);
+    // Five icon buttons and a text button need about 320 dp.
+    final compact = MediaQuery.sizeOf(context).width < 520;
+
+    void clear() => ref.read(notesSelectionProvider.notifier).state = const {};
+    Future<void> pin() async {
+      await _run(ref, (home, ids) => home.setPinnedMany(ids, anyUnpinned));
+    }
+
+    Future<void> move() async {
+      if (await showMoveManyToFolderSheet(context, ref, ids: {...selected})) {
+        clear();
+      }
+    }
+
+    Future<void> tag() async {
+      if (await showAddTagsDialog(context, ref, ids: {...selected})) clear();
+    }
 
     return Padding(
       padding:
@@ -61,34 +78,44 @@ class SelectionBar extends ConsumerWidget {
                     all ? const {} : {for (final n in visible) n.id},
                 child: Text(all ? 'None' : 'All'),
               ),
-              IconButton(
-                key: const ValueKey('selectionPin'),
-                tooltip: anyUnpinned ? 'Pin' : 'Unpin',
-                icon: Icon(
-                    anyUnpinned ? Icons.push_pin_outlined : Icons.push_pin),
-                onPressed: () => _run(
-                    ref, (home, ids) => home.setPinnedMany(ids, anyUnpinned)),
-              ),
-              IconButton(
-                key: const ValueKey('selectionFolder'),
-                tooltip: 'Move to folder',
-                icon: const Icon(Icons.folder_outlined),
-                onPressed: () async {
-                  final ids = {...selected};
-                  await showMoveManyToFolderSheet(context, ref, ids: ids);
-                  ref.read(notesSelectionProvider.notifier).state = const {};
-                },
-              ),
-              IconButton(
-                key: const ValueKey('selectionTags'),
-                tooltip: 'Add tags',
-                icon: const Icon(Icons.label_outline),
-                onPressed: () async {
-                  final ids = {...selected};
-                  await showAddTagsDialog(context, ref, ids: ids);
-                  ref.read(notesSelectionProvider.notifier).state = const {};
-                },
-              ),
+              if (!compact) ...[
+                IconButton(
+                  key: const ValueKey('selectionPin'),
+                  tooltip: anyUnpinned ? 'Pin' : 'Unpin',
+                  icon: Icon(
+                      anyUnpinned ? Icons.push_pin_outlined : Icons.push_pin),
+                  onPressed: pin,
+                ),
+                IconButton(
+                  key: const ValueKey('selectionFolder'),
+                  tooltip: 'Move to folder',
+                  icon: const Icon(Icons.folder_outlined),
+                  onPressed: move,
+                ),
+                IconButton(
+                  key: const ValueKey('selectionTags'),
+                  tooltip: 'Add tags',
+                  icon: const Icon(Icons.label_outline),
+                  onPressed: tag,
+                ),
+              ] else
+                // Narrow windows: the three filing actions share one menu.
+                PopupMenuButton<String>(
+                  key: const ValueKey('selectionMore'),
+                  tooltip: 'More',
+                  onSelected: (v) => switch (v) {
+                    'pin' => pin(),
+                    'folder' => move(),
+                    _ => tag(),
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                        value: 'pin', child: Text(anyUnpinned ? 'Pin' : 'Unpin')),
+                    const PopupMenuItem(
+                        value: 'folder', child: Text('Move to folder')),
+                    const PopupMenuItem(value: 'tags', child: Text('Add tags')),
+                  ],
+                ),
               IconButton(
                 key: const ValueKey('selectionDelete'),
                 tooltip: 'Move to trash',
