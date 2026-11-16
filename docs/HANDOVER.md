@@ -110,8 +110,14 @@ Shell quirks on this machine (Windows, Git Bash):
   a file. Backups are written to **Downloads/Margo** through MediaStore
   (`MainActivity.kt`, channel `com.margo.margo/backup`).
 - Unchanged notebooks are skipped. Restore always adds a copy.
-- **Not done:** keeping the last five snapshots, a restore list screen,
-  offering restore on first launch or after a failed database open.
+- Step 17: the last five dated snapshots of each notebook are kept
+  (`<title> (<id>) <date time>.margo`, pruned from the saved state), and
+  Settings → Backup → Restore opens a list of them
+  (`lib/features/backup/restore_list_screen.dart`). Android shows an app only
+  the files it wrote, so the list can be empty after a reinstall; the file
+  picker stays as a fallback.
+- **Not done:** offering restore on first launch or after a failed database
+  open.
 - **Never compiled:** the Kotlin side. Expect the first Android build to
   need fixes.
 

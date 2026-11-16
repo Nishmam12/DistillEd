@@ -277,6 +277,7 @@ class BackupService {
     var written = 0, unchanged = 0;
     final failures = <String>[];
     String? location = previous.location;
+    final present = <Set<String>?>[]; // filled once, only for a forced run
 
     for (final id in await library.notebookIds()) {
       try {
@@ -289,8 +290,8 @@ class BackupService {
         // few taps would replace the history with identical copies.
         if (before != null &&
             before.fingerprint == fingerprint &&
-            (!force || before.snapshots.isNotEmpty) &&
-            before.fileName == name) {
+            before.fileName == name &&
+            (!force || await _latestStillThere(before, present))) {
           unchanged++;
           continue;
         }
@@ -387,6 +388,26 @@ class BackupService {
       }
     }
     return RestoreReport(restored, failed);
+  }
+
+  /// Whether the newest snapshot of [record] is still in the backup folder, so
+  /// a forced backup can repair a folder that was cleared. Unknown (the folder
+  /// could not be listed): yes, as a forced backup used to not be asked.
+  Future<bool> _latestStillThere(
+      BackupRecord record, List<Set<String>?> cache) async {
+    if (cache.isEmpty) {
+      try {
+        cache.add({for (final f in await target.list()) f.name});
+      } catch (_) {
+        cache.add(null);
+      }
+    }
+    final names = cache.single;
+    if (names == null) return true;
+    final latest = record.snapshots.isNotEmpty
+        ? record.snapshots.last
+        : '${record.fileName}.margo';
+    return names.contains(latest);
   }
 
   /// The `.margo` files in the backup folder, newest first.

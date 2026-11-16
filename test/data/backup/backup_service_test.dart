@@ -179,6 +179,20 @@ void main() {
     expect(margos(target), hasLength(1));
   });
 
+  test('"Back up now" writes again when the backup folder was cleared',
+      () async {
+    final lib = _FakeLibrary({1: snap(1)});
+    final target = _FakeTarget();
+    final state = _MemoryState();
+    await service(lib, target, state).run();
+    target.files.clear();
+    final r = await service(lib, target, state,
+            now: DateTime.utc(2026, 11, 11, 11))
+        .run(force: true);
+    expect(r.written, 1);
+    expect(margos(target), ['Notes (1) 2026-11-11 1100.margo']);
+  });
+
   test('two snapshots in one minute do not overwrite each other', () async {
     final lib = _FakeLibrary({1: snap(1)});
     final target = _FakeTarget();

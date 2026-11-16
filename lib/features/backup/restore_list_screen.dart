@@ -128,9 +128,15 @@ class _RestoreListScreenState extends ConsumerState<RestoreListScreen> {
   Future<void> _run(Future<RestoreReport> Function() restore) async {
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
-    final report = await restore();
-    await ref.read(homeNotifierProvider.notifier).loadNotebooks();
-    if (mounted) setState(() => _busy = false);
+    // Read before the awaits: the screen may be left while this runs.
+    final home = ref.read(homeNotifierProvider.notifier);
+    final RestoreReport report;
+    try {
+      report = await restore();
+      await home.loadNotebooks();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
     final restored = report.restored.length;
     messenger.showSnackBar(SnackBar(
       content: Text([
@@ -182,7 +188,11 @@ class _RestoreListScreenState extends ConsumerState<RestoreListScreen> {
                               ListTile(
                                 key: ValueKey('backup:${f.name}'),
                                 title: Text(_when(f)),
-                                subtitle: Text(backupSizeLabel(f.size)),
+                                subtitle: Text(
+                                    parseBackupName(f.name)?.title == g.title
+                                        ? backupSizeLabel(f.size)
+                                        : '${parseBackupName(f.name)?.title} · '
+                                            '${backupSizeLabel(f.size)}'),
                                 enabled: !_busy,
                                 onTap: () => _restoreNamed(f),
                               ),
