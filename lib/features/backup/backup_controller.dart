@@ -115,6 +115,13 @@ class BackupController extends StateNotifier<BackupStatus> {
   }
 
   Future<RestoreReport> restore(List<String> paths) => _service().restore(paths);
+
+  /// The backups in the backup folder, newest first.
+  Future<List<BackupFile>> available() => _service().available();
+
+  /// Restores backup [name] from the backup folder as a new notebook.
+  Future<RestoreReport> restoreNamed(String name) =>
+      _service().restoreNamed(name);
 }
 
 final _backupTargetProvider =

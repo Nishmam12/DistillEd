@@ -87,9 +87,20 @@ class MainActivity : FlutterActivity() {
                 // File copies can take a moment: off the main thread.
                 backupIo.execute {
                     try {
-                        val name = call.argument<String>("name")
-                            ?: throw IllegalArgumentException("name")
+                        val name = call.argument<String>("name") ?: ""
+                        if (call.method != "list" && name.isEmpty()) {
+                            throw IllegalArgumentException("name")
+                        }
                         val reply: Any? = when (call.method) {
+                            "list" -> listBackups()
+                            "copyOut" -> {
+                                copyBackupOut(
+                                    name,
+                                    call.argument<String>("destPath")
+                                        ?: throw IllegalArgumentException("destPath"),
+                                )
+                                null
+                            }
                             "save" -> saveBackup(
                                 call.argument<String>("sourcePath")
                                     ?: throw IllegalArgumentException("sourcePath"),
@@ -173,6 +184,51 @@ class MainActivity : FlutterActivity() {
             )
         }
         return mapOf("location" to "Download/Margo", "appStorage" to false)
+    }
+
+    /** The `.margo` files this app can see in the backup folder. */
+    private fun listBackups(): List<Map<String, Any>> {
+        val out = mutableListOf<Map<String, Any>>()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            legacyBackupDir().listFiles()?.forEach { f ->
+                if (f.isFile && f.name.endsWith(".margo")) {
+                    out.add(mapOf("name" to f.name, "size" to f.length(), "modified" to f.lastModified()))
+                }
+            }
+            return out
+        }
+        val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        contentResolver.query(
+            collection,
+            arrayOf(
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                MediaStore.MediaColumns.SIZE,
+                MediaStore.MediaColumns.DATE_MODIFIED,
+            ),
+            "${MediaStore.MediaColumns.RELATIVE_PATH}=?",
+            arrayOf(backupRelativePath),
+            null,
+        )?.use { c ->
+            while (c.moveToNext()) {
+                val name = c.getString(0) ?: continue
+                if (!name.endsWith(".margo")) continue
+                // DATE_MODIFIED is in seconds.
+                out.add(mapOf("name" to name, "size" to c.getLong(1), "modified" to c.getLong(2) * 1000))
+            }
+        }
+        return out
+    }
+
+    /** Copies backup [name] to a plain file at [destPath]. */
+    private fun copyBackupOut(name: String, destPath: String) {
+        val dest = File(destPath)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            File(legacyBackupDir(), name).copyTo(dest, overwrite = true)
+            return
+        }
+        val uri = findOwnBackup(name) ?: throw IOException("No backup named $name")
+        (contentResolver.openInputStream(uri) ?: throw IOException("Could not read $name"))
+            .use { input -> dest.outputStream().use { input.copyTo(it) } }
     }
 
     private fun deleteBackup(name: String) {

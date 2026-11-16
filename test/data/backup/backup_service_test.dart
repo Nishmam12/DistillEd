@@ -52,6 +52,7 @@ class _FakeLibrary implements BackupLibrary {
 class _FakeTarget implements BackupTarget {
   final Map<String, Uint8List> files = {};
   final List<String> deleted = [];
+  bool failDelete = false;
   @override
   Future<String> save(String sourcePath, String name, String mimeType) async {
     files[name] = File(sourcePath).readAsBytesSync();
@@ -60,9 +61,20 @@ class _FakeTarget implements BackupTarget {
 
   @override
   Future<void> delete(String name) async {
+    if (failDelete) throw StateError('no');
     deleted.add(name);
     files.remove(name);
   }
+
+  @override
+  Future<List<BackupFile>> list() async => [
+        for (final e in files.entries)
+          BackupFile(e.key, e.value.length, DateTime.utc(2026)),
+      ];
+
+  @override
+  Future<void> copyOut(String name, String destPath) async =>
+      File(destPath).writeAsBytesSync(files[name]!);
 }
 
 class _MemoryState implements BackupStateStore {
@@ -97,9 +109,11 @@ void main() {
 
     expect(report.written, 2);
     expect(target.files.keys, containsAll([
-      'Biology (1).margo', 'Biology (1).md', 'Maths (2).margo', 'Maths (2).md',
+      'Biology (1) 2026-11-11 1000.margo', 'Biology (1).md',
+      'Maths (2) 2026-11-11 1000.margo', 'Maths (2).md',
     ]));
-    final back = NotebookArchive.decode(target.files['Biology (1).margo']!);
+    final back = NotebookArchive.decode(
+        target.files['Biology (1) 2026-11-11 1000.margo']!);
     expect(back.meta.title, 'Biology');
   });
 
@@ -127,24 +141,147 @@ void main() {
     expect(report.written, 1);
   });
 
-  test('"Back up now" writes everything even if unchanged', () async {
+  List<String> margos(_FakeTarget t) =>
+      (t.files.keys.where((n) => n.endsWith('.margo')).toList()..sort());
+
+  Future<void> change(_FakeLibrary lib, _FakeTarget t, _MemoryState st, int n,
+      {String title = 'Notes'}) async {
+    lib.notebooks[1] = snap(1, title: title, text: 'v$n');
+    await service(lib, t, st, now: DateTime.utc(2026, 11, 11, 10, n)).run();
+  }
+
+  test('each change is a new dated snapshot; the last five are kept', () async {
     final lib = _FakeLibrary({1: snap(1)});
+    final target = _FakeTarget();
     final state = _MemoryState();
-    await service(lib, _FakeTarget(), state).run();
-    final report = await service(lib, _FakeTarget(), state).run(force: true);
-    expect(report.written, 1);
+    for (var n = 1; n <= 7; n++) {
+      await change(lib, target, state, n);
+    }
+    expect(margos(target), [
+      'Notes (1) 2026-11-11 1003.margo',
+      'Notes (1) 2026-11-11 1004.margo',
+      'Notes (1) 2026-11-11 1005.margo',
+      'Notes (1) 2026-11-11 1006.margo',
+      'Notes (1) 2026-11-11 1007.margo',
+    ]);
+    expect(target.files.keys.where((n) => n.endsWith('.md')), ['Notes (1).md']);
   });
 
-  test('a renamed notebook replaces its old files', () async {
-    final lib = _FakeLibrary({1: snap(1, title: 'Old')});
+  test('"Back up now" on an unchanged notebook adds no snapshot', () async {
+    final lib = _FakeLibrary({1: snap(1)});
     final target = _FakeTarget();
     final state = _MemoryState();
     await service(lib, target, state).run();
+    for (var i = 0; i < 6; i++) {
+      final r = await service(lib, target, state).run(force: true);
+      expect(r.written, 0);
+    }
+    expect(margos(target), hasLength(1));
+  });
 
-    lib.notebooks[1] = snap(1, title: 'New');
-    await service(lib, target, state).run();
-    expect(target.deleted, containsAll(['Old (1).margo', 'Old (1).md']));
-    expect(target.files.keys, containsAll(['New (1).margo', 'New (1).md']));
+  test('two snapshots in one minute do not overwrite each other', () async {
+    final lib = _FakeLibrary({1: snap(1)});
+    final target = _FakeTarget();
+    final state = _MemoryState();
+    final at = DateTime.utc(2026, 11, 11, 10, 30);
+    await service(lib, target, state, now: at).run();
+    lib.notebooks[1] = snap(1, text: 'other');
+    await service(lib, target, state, now: at).run();
+    expect(margos(target),
+        ['Notes (1) 2026-11-11 1030-2.margo', 'Notes (1) 2026-11-11 1030.margo']);
+  });
+
+  test('a renamed notebook keeps its history and drops only its old .md',
+      () async {
+    final lib = _FakeLibrary({1: snap(1, title: 'Old')});
+    final target = _FakeTarget();
+    final state = _MemoryState();
+    await change(lib, target, state, 1, title: 'Old');
+    await change(lib, target, state, 2, title: 'New');
+    expect(target.deleted, ['Old (1).md']);
+    expect(margos(target), [
+      'New (1) 2026-11-11 1002.margo',
+      'Old (1) 2026-11-11 1001.margo',
+    ]);
+    expect(target.files.containsKey('New (1).md'), isTrue);
+  });
+
+  test('a file from before snapshots counts as the oldest and is pruned',
+      () async {
+    final lib = _FakeLibrary({1: snap(1)});
+    final target = _FakeTarget()..files['Notes (1).margo'] = Uint8List(1);
+    final state = _MemoryState()
+      ..state = BackupState(records: {
+        1: BackupRecord(NotebookArchive.fingerprint(snap(1)), 'Notes (1)'),
+      });
+    for (var n = 1; n <= 5; n++) {
+      await change(lib, target, state, n);
+    }
+    expect(target.files.containsKey('Notes (1).margo'), isFalse);
+    expect(margos(target), hasLength(5));
+  });
+
+  test('a snapshot that will not delete does not fail the backup', () async {
+    final lib = _FakeLibrary({1: snap(1)});
+    final target = _FakeTarget()..failDelete = true;
+    final state = _MemoryState();
+    for (var n = 1; n <= 6; n++) {
+      await change(lib, target, state, n);
+    }
+    expect(state.state.lastError, isNull);
+    expect(margos(target), hasLength(6));
+    target.failDelete = false;
+    await change(lib, target, state, 7);
+    expect(margos(target), hasLength(5));
+  });
+
+  test('state saved before snapshots still loads', () {
+    final back = BackupState.fromJson({
+      'records': {
+        '4': {'fp': 'abc', 'name': 'Biology (4)'},
+      },
+    });
+    expect(back.records[4]!.snapshots, isEmpty);
+    final again = BackupState.fromJson(back.toJson());
+    expect(again.records[4]!.fileName, 'Biology (4)');
+    final withSnaps = BackupState.fromJson({
+      'records': {
+        '4': {'fp': 'abc', 'name': 'B (4)', 'snaps': ['a.margo', 7]},
+      },
+    });
+    expect(withSnaps.records[4]!.snapshots, ['a.margo']);
+  });
+
+  test('available lists only .margo backups, newest first; restoreNamed '
+      'restores one as a copy', () async {
+    final lib = _FakeLibrary({});
+    final target = _FakeTarget()
+      ..files['Physics (7) 2026-11-11 1001.margo'] =
+          NotebookArchive.encode(snap(7, title: 'Physics'))
+      ..files['Physics (7).md'] = Uint8List(1)
+      ..files['stray.margo'] = Uint8List(1);
+    final svc = service(lib, target, _MemoryState());
+    final files = await svc.available();
+    expect(files.map((f) => f.name), ['Physics (7) 2026-11-11 1001.margo']);
+
+    final report = await svc.restoreNamed(files.single.name);
+    expect(report.restored, ['Physics']);
+    expect(lib.added, hasLength(1));
+    final broken = await svc.restoreNamed('missing.margo');
+    expect(broken.failed, isNotEmpty);
+    expect(tmp.listSync().whereType<File>().where((f) => f.path.contains('restore_')),
+        isEmpty);
+  });
+
+  group('backup names', () {
+    test('a snapshot name reads back to its notebook and time', () {
+      final p = parseBackupName('Bio (3) (12) 2026-11-11 1030-2.margo')!;
+      expect((p.title, p.id), ('Bio (3)', 12));
+      expect(p.at, DateTime(2026, 11, 11, 10, 30));
+      expect(parseBackupName('Notes (4).margo')!.at, isNull);
+      expect(parseBackupName('Notes (4).md'), isNull);
+      expect(parseBackupName('random.margo'), isNull);
+    });
   });
 
   test('one notebook failing does not stop the rest, and is reported', () async {

@@ -38,6 +38,12 @@ class _Target implements BackupTarget {
 
   @override
   Future<void> delete(String name) async {}
+
+  @override
+  Future<List<BackupFile>> list() async => const [];
+
+  @override
+  Future<void> copyOut(String name, String destPath) async {}
 }
 
 class _State implements BackupStateStore {

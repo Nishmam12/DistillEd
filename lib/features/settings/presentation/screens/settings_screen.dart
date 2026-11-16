@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:margo/core/icons/app_icon.dart';
@@ -36,8 +35,8 @@ import '../../../../editor/tools/ink_gestures.dart'
     show kGestureModel, kShapesModel;
 import '../../../../data/backup/backup_service.dart' show BackupTrigger;
 import '../../../backup/backup_controller.dart';
+import '../../../backup/restore_list_screen.dart';
 import '../../../home/data/repositories/note_repository.dart';
-import '../../../home/presentation/home_notifier.dart';
 import '../../../home/presentation/widgets/search_popover.dart';
 import '../../../summarize/presentation/summarize_providers.dart';
 

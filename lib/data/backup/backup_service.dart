@@ -63,6 +63,53 @@ abstract interface class BackupLibrary {
   Future<int> add(NotebookSnapshot snapshot);
 }
 
+/// One file in the backup folder.
+@immutable
+class BackupFile {
+  final String name;
+  final int size;
+  final DateTime modified;
+  const BackupFile(this.name, this.size, this.modified);
+}
+
+/// How many snapshots of each notebook are kept.
+const int kBackupSnapshotsKept = 5;
+
+/// What a backup file's name says: the notebook's title and id, and when the
+/// snapshot was taken (null for the older unsuffixed name).
+typedef ParsedBackupName = ({String title, int id, DateTime? at});
+
+final _snapshotName = RegExp(
+    r'^(.*) \((\d+)\)(?: (\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(?:-\d+)?)?\.margo$');
+
+/// The snapshot file name for [base] (from [backupFileName]) taken at [at]. A
+/// second snapshot in the same minute gets "-2", "-3"… ([taken] are the names
+/// already in use).
+String snapshotFileName(String base, DateTime at, Iterable<String> taken) {
+  String two(int n) => n.toString().padLeft(2, '0');
+  final stamp = '${at.year.toString().padLeft(4, '0')}-${two(at.month)}-'
+      '${two(at.day)} ${two(at.hour)}${two(at.minute)}';
+  var name = '$base $stamp.margo';
+  for (var n = 2; taken.contains(name); n++) {
+    name = '$base $stamp-$n.margo';
+  }
+  return name;
+}
+
+/// Reads a `.margo` backup name, or null when it is not one of ours.
+ParsedBackupName? parseBackupName(String name) {
+  final m = _snapshotName.firstMatch(name);
+  if (m == null) return null;
+  final id = int.tryParse(m.group(2)!);
+  if (id == null) return null;
+  DateTime? at;
+  if (m.group(3) != null) {
+    at = DateTime(int.parse(m.group(3)!), int.parse(m.group(4)!),
+        int.parse(m.group(5)!), int.parse(m.group(6)!), int.parse(m.group(7)!));
+  }
+  return (title: m.group(1)!, id: id, at: at);
+}
+
 abstract interface class BackupTarget {
   /// Copies the file at [sourcePath] into the backup folder as [name],
   /// replacing a file of that name this app wrote earlier. Returns where the
@@ -71,13 +118,27 @@ abstract interface class BackupTarget {
 
   /// Removes [name] from the backup folder, if this app wrote it.
   Future<void> delete(String name);
+
+  /// The files this app can see in the backup folder. After a reinstall that
+  /// may be none: Android shows an app only the files it wrote itself.
+  Future<List<BackupFile>> list();
+
+  /// Copies backup [name] to [destPath] so it can be read as a plain file.
+  Future<void> copyOut(String name, String destPath);
 }
 
 @immutable
 class BackupRecord {
   final String fingerprint;
+
+  /// The base name (title and id) the notebook was last backed up under.
   final String fileName;
-  const BackupRecord(this.fingerprint, this.fileName);
+
+  /// The `.margo` snapshot files kept for it, oldest first. Empty for a
+  /// notebook backed up before snapshots: its one file is `$fileName.margo`.
+  final List<String> snapshots;
+  const BackupRecord(this.fingerprint, this.fileName,
+      [this.snapshots = const []]);
 }
 
 @immutable
@@ -104,7 +165,11 @@ class BackupState {
   Map<String, Object?> toJson() => {
         'records': {
           for (final r in records.entries)
-            '${r.key}': {'fp': r.value.fingerprint, 'name': r.value.fileName},
+            '${r.key}': {
+              'fp': r.value.fingerprint,
+              'name': r.value.fileName,
+              if (r.value.snapshots.isNotEmpty) 'snaps': r.value.snapshots,
+            },
         },
         'lastRunAt': lastRunAt?.toIso8601String(),
         'lastSuccessAt': lastSuccessAt?.toIso8601String(),
@@ -118,6 +183,10 @@ class BackupState {
             ?int.tryParse(r.key): BackupRecord(
               (r.value as Map)['fp'] as String,
               (r.value as Map)['name'] as String,
+              [
+                for (final n in ((r.value as Map)['snaps'] as List?) ?? const [])
+                  if (n is String) n,
+              ],
             ),
         },
         lastRunAt: DateTime.tryParse(j['lastRunAt'] as String? ?? ''),
@@ -199,7 +268,8 @@ class BackupService {
   final bool runInBackground;
 
   /// Backs up every notebook that changed since the last run ([force]: every
-  /// notebook). One notebook failing is recorded and the rest carry on.
+  /// notebook that has no snapshot yet). One notebook failing is recorded and
+  /// the rest carry on.
   Future<BackupReport> run({bool force = false}) async {
     final previous = await state.load();
     final records = Map<int, BackupRecord>.of(previous.records);
@@ -215,13 +285,24 @@ class BackupService {
         final name = backupFileName(snapshot.meta.title, id);
         final fingerprint = await _run(NotebookArchive.fingerprint, snapshot);
         final before = records[id];
-        if (!force &&
-            before != null &&
+        // Nothing changed: no new snapshot, not even for "Back up now", or a
+        // few taps would replace the history with identical copies.
+        if (before != null &&
             before.fingerprint == fingerprint &&
+            (!force || before.snapshots.isNotEmpty) &&
             before.fileName == name) {
           unchanged++;
           continue;
         }
+
+        // A notebook backed up before snapshots has one file, which becomes the
+        // oldest snapshot.
+        final kept = before == null
+            ? <String>[]
+            : (before.snapshots.isNotEmpty
+                ? List<String>.of(before.snapshots)
+                : ['${before.fileName}.margo']);
+        final snapName = snapshotFileName(name, _clock(), kept);
 
         final bytes = await _run(NotebookArchive.encode, snapshot);
         final margo = File('$dir/backup_$id.margo');
@@ -231,24 +312,36 @@ class BackupService {
           await md.writeAsString(NotebookArchive.markdown(snapshot), flush: true);
           // octet-stream: a known zip type makes Android add ".zip" to the name.
           location = await target.save(
-              margo.path, '$name.margo', 'application/octet-stream');
+              margo.path, snapName, 'application/octet-stream');
           await target.save(md.path, '$name.md', 'text/markdown');
         } finally {
           if (await margo.exists()) await margo.delete();
           if (await md.exists()) await md.delete();
         }
+        kept.removeWhere((n) => n == snapName);
+        kept.add(snapName);
 
-        // Renamed since last time: the files under the old name go.
+        // Renamed since last time: the old readable copy goes; the snapshots
+        // stay, they are the history.
         if (before != null && before.fileName != name) {
-          for (final ext in const ['margo', 'md']) {
-            try {
-              await target.delete('${before.fileName}.$ext');
-            } catch (_) {
-              // A stale file left behind costs only a little space.
-            }
+          try {
+            await target.delete('${before.fileName}.md');
+          } catch (_) {
+            // A stale file left behind costs only a little space.
           }
         }
-        records[id] = BackupRecord(fingerprint, name);
+        // Only now, with the new snapshot safe, drop the oldest. A file that
+        // will not go stays on the list for the next run to try again.
+        while (kept.length > kBackupSnapshotsKept) {
+          try {
+            await target.delete(kept.first);
+            kept.removeAt(0);
+          } catch (e) {
+            debugPrint('[Backup] could not remove an old snapshot: $e');
+            break;
+          }
+        }
+        records[id] = BackupRecord(fingerprint, name, kept);
         written++;
       } catch (e, st) {
         debugPrint('[Backup] notebook $id failed: $e\n$st');
@@ -294,6 +387,31 @@ class BackupService {
       }
     }
     return RestoreReport(restored, failed);
+  }
+
+  /// The `.margo` files in the backup folder, newest first.
+  Future<List<BackupFile>> available() async {
+    final all = await target.list();
+    final files = [
+      for (final f in all)
+        if (parseBackupName(f.name) != null) f,
+    ]..sort((a, b) => b.modified.compareTo(a.modified));
+    return files;
+  }
+
+  /// Restores the backup file [name] from the backup folder as a new notebook.
+  Future<RestoreReport> restoreNamed(String name) async {
+    final dir = await tempDir();
+    final copy = File('$dir/restore_${name.hashCode.toUnsigned(32)}.margo');
+    try {
+      await target.copyOut(name, copy.path);
+      return await restore([copy.path]);
+    } catch (e) {
+      debugPrint('[Backup] could not read $name: $e');
+      return const RestoreReport([], ['That backup could not be read.']);
+    } finally {
+      if (await copy.exists()) await copy.delete();
+    }
   }
 
   Future<R> _run<Q, R>(R Function(Q) fn, Q arg) =>

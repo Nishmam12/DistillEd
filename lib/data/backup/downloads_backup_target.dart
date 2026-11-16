@@ -29,4 +29,23 @@ class DownloadsBackupTarget implements BackupTarget {
   @override
   Future<void> delete(String name) =>
       _channel.invokeMethod<void>('delete', {'name': name});
+
+  @override
+  Future<List<BackupFile>> list() async {
+    final rows = await _channel.invokeListMethod<Map<Object?, Object?>>('list');
+    return [
+      for (final r in rows ?? const <Map<Object?, Object?>>[])
+        if (r['name'] case final String name)
+          BackupFile(
+            name,
+            (r['size'] as num?)?.toInt() ?? 0,
+            DateTime.fromMillisecondsSinceEpoch(
+                (r['modified'] as num?)?.toInt() ?? 0),
+          ),
+    ];
+  }
+
+  @override
+  Future<void> copyOut(String name, String destPath) =>
+      _channel.invokeMethod<void>('copyOut', {'name': name, 'destPath': destPath});
 }

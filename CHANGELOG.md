@@ -17,6 +17,17 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 ## [Unreleased]
 
 ### Added
+- **Backups keep the last five snapshots of each notebook, and you can pick
+  which to restore.** Each backup that finds a change is saved as a new dated
+  `.margo` file (for example `Biology (3) 2026-11-16 1601.margo`), and the
+  sixth oldest is removed. "Back up now" on a notebook that has not changed
+  adds nothing. The readable `.md` copy stays a single latest file. Settings →
+  Backup → "Restore from a backup…" now opens a list of the backups, grouped
+  by notebook, newest first; tap one to bring it back as a new notebook
+  (nothing is overwritten). After a reinstall Android may hide earlier
+  backups from the app, so "Pick a file instead…" is still there. Five
+  snapshots of a notebook with many PDF pages take about five times the space
+  in Downloads.
 - **A PDF's contents and links come with it.** When a PDF is imported, its
   table of contents and the links on its pages are kept. The Outline now starts
   with "PDF contents", indented as the PDF has it; tap an entry to open that
