@@ -492,6 +492,13 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
         value ? AiProcessingMode.auto : AiProcessingMode.onDevice,
       );
 
+  /// Whether the student is asked before a cloud call. Stored by name.
+  Future<void> setCloudPrivacy(CloudPrivacy value) async {
+    state = state.copyWith(cloudPrivacy: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kCloudPrivacy, value.name);
+  }
+
   /// Stores which model answers (see [SettingsState.answerModelId]). Leaves
   /// [SettingsState.aiMode] alone: picking a model is not a change to where
   /// pages are read.

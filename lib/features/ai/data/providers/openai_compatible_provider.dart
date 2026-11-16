@@ -60,17 +60,15 @@ class OpenAiCompatibleProvider implements AiProvider, ToolCallingClient {
     required String baseUrl,
     required String modelId,
     required String displayName,
-    required String label,
+    required this._label,
     required int contextWindowTokens,
-    required Future<String?> Function() apiKey,
+    required this._apiKey,
     bool Function()? isCloudAllowed,
     Dio? dio,
   })  : _chatUrl =
             '${baseUrl.trim().replaceFirst(RegExp(r'/+$'), '')}/chat/completions',
         _host = Uri.tryParse(baseUrl.trim())?.host ?? baseUrl,
         _modelId = modelId,
-        _label = label,
-        _apiKey = apiKey,
         _isCloudAllowed = isCloudAllowed ?? (() => true),
         _dio = dio ??
             Dio(BaseOptions(

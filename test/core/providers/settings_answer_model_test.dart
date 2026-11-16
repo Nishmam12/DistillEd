@@ -40,6 +40,19 @@ void main() {
     expect(notifier.state.aiMode.prefersCloud, isFalse);
   });
 
+  test('the ask-before-sending setting is still set after a restart', () async {
+    final notifier = await restoredNotifier();
+    expect(notifier.state.cloudPrivacy, CloudPrivacy.askEachTime);
+
+    await notifier.setCloudPrivacy(CloudPrivacy.allowCloudForNonSensitive);
+
+    final afterRestart = await restoredNotifier();
+    expect(
+      afterRestart.state.cloudPrivacy,
+      CloudPrivacy.allowCloudForNonSensitive,
+    );
+  });
+
   test('switching cloud AI off keeps the pick for when it is back on',
       () async {
     final notifier = await restoredNotifier();

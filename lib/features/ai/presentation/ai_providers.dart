@@ -23,6 +23,8 @@ import '../../../editor/render/scene_image_cache.dart';
 import '../../../editor/state/page_notifier.dart' show pageRepositoryProvider;
 import '../../../editor/state/scene_controller.dart';
 import '../../home/presentation/home_notifier.dart' show noteRepositoryProvider;
+import '../data/catalog/margo_catalog.dart';
+import '../data/catalog/user_connection_store.dart';
 import '../data/embeddings/embedder_download_manager.dart';
 import '../data/device/device_health.dart';
 import '../data/embeddings/local_text_embedder.dart';
@@ -40,6 +42,13 @@ import '../data/ocr/image_text_recognition_service.dart';
 import '../data/ocr/isar_read_cache.dart';
 import '../data/providers/cloud_gateway_provider.dart';
 import '../data/providers/local_gemma_provider.dart';
+import '../data/providers/openai_compatible_provider.dart';
+import '../domain/catalog/ai_model_entry.dart';
+import '../domain/catalog/answer_route.dart';
+import '../domain/catalog/user_connection.dart';
+import '../domain/routing/selected_answer_provider.dart';
+import 'cloud_send_gate.dart';
+import 'user_connections_notifier.dart';
 import 'model_memory_observer.dart';
 import '../data/embeddings/embedder_adapter.dart' show embedderInstallerFor;
 import '../data/embeddings/embedder_rollout_models.dart';
@@ -102,6 +111,7 @@ import 'rag_index_scheduler.dart';
 import 'research_notifier.dart';
 import 'writing_assistant_notifier.dart';
 
+part 'ai_model_providers.dart';
 part 'ai_rag_providers.dart';
 
 final handwritingRecognitionServiceProvider =
