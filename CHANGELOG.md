@@ -17,6 +17,13 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 ## [Unreleased]
 
 ### Added
+- **Search the pages of every notebook from the home screen.** Typing in the
+  home search still lists notebooks by title and text; under it an "On pages"
+  section lists matching pages from any notebook (notebook, page number and the
+  words around the match, up to three per notebook). Tapping one opens that
+  notebook on that page with the matching words tinted. It searches the text
+  Margo already has for each page (handwriting that has been read, typed text,
+  PDF text); it does not start reading pages.
 - **A "Recent" strip on the home screen.** The last eight notebooks you opened
   sit above the grid as chips; tap one to open it. It shows only on the plain
   list (not while searching, filtering or selecting). The list is kept on the

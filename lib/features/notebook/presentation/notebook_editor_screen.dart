@@ -155,7 +155,18 @@ enum _ImportSource { gallery, camera, pdf }
 
 class NotebookEditorScreen extends ConsumerStatefulWidget {
   final int notebookId;
-  const NotebookEditorScreen({super.key, required this.notebookId});
+
+  /// Open on this page (0-based) and, with [searchQuery], tint its matches:
+  /// set when a home-screen search result is opened.
+  final int? initialPageIndex;
+  final String? searchQuery;
+
+  const NotebookEditorScreen({
+    super.key,
+    required this.notebookId,
+    this.initialPageIndex,
+    this.searchQuery,
+  });
 
   @override
   ConsumerState<NotebookEditorScreen> createState() =>
@@ -164,6 +175,7 @@ class NotebookEditorScreen extends ConsumerStatefulWidget {
 
 class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   final Set<int> _loadedPages = {};
+  bool _openedAtResult = false;
   Notebook? _notebook;
   // Set when the notebook is missing or could not be opened. Without it the
   // screen would wait on the page list forever.
@@ -317,6 +329,21 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final pageState = ref.watch(pageProvider(widget.notebookId));
+
+    // Opened from a search result: go to the page once the pages are in.
+    final openAt = widget.initialPageIndex;
+    if (openAt != null &&
+        !_openedAtResult &&
+        openAt >= 0 &&
+        openAt < pageState.pages.length) {
+      _openedAtResult = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _switchTo(openAt);
+        final q = widget.searchQuery;
+        if (q != null) _tintSearch(openAt, q);
+      });
+    }
 
     // Placing pictures ends when they stop being selected (a tap elsewhere,
     // Done, a page turn) or when the user picks another tool themselves.

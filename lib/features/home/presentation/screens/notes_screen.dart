@@ -171,9 +171,17 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
 }
 
 /// Opens notebook [id] in the editor and remembers it for the Recent strip.
-void _openNotebook(BuildContext context, WidgetRef ref, int id) {
+///
+/// With [page] (0-based) the editor opens on that page, and with [query] it
+/// tints the matching words there.
+void _openNotebook(BuildContext context, WidgetRef ref, int id,
+    {int? page, String? query}) {
   unawaited(ref.read(recentNotebooksProvider.notifier).record(id));
-  unawaited(context.push('/note2/$id'));
+  final args = [
+    if (page != null) 'page=$page',
+    if (query != null && query.isNotEmpty) 'q=${Uri.encodeQueryComponent(query)}',
+  ];
+  unawaited(context.push('/note2/$id${args.isEmpty ? '' : '?${args.join('&')}'}'));
 }
 
 /// Title, chrome icons, sort row and the grid.
@@ -256,6 +264,8 @@ class _Main extends ConsumerWidget {
       children: [
         SearchPopoverButton(
           onOpenNote: (note) => _openNotebook(context, ref, note.id),
+          onOpenHit: (hit, query) => _openNotebook(context, ref, hit.notebookId,
+              page: hit.hit.pageIndex, query: query),
         ),
         SizedBox(width: iconGap - inset * 2),
         AppIconButton(

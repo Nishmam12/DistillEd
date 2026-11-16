@@ -5,22 +5,31 @@
 // alone, as in the design.
 
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/icons/app_icon.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../search/domain/global_search.dart';
+import '../../../search/presentation/global_search_provider.dart';
 import '../models/note_card_data.dart';
 import '../note_cards_provider.dart';
 import '../notes_palette.dart';
 import 'search_bar_widget.dart';
 
 class SearchPopoverButton extends ConsumerStatefulWidget {
-  const SearchPopoverButton({super.key, required this.onOpenNote});
+  const SearchPopoverButton({
+    super.key,
+    required this.onOpenNote,
+    this.onOpenHit,
+  });
 
   final ValueChanged<NoteCardData> onOpenNote;
+
+  /// A match on a page: open that notebook at that page. Null leaves page
+  /// matches out of the results.
+  final void Function(GlobalSearchHit hit, String query)? onOpenHit;
 
   @override
   ConsumerState<SearchPopoverButton> createState() =>
@@ -98,6 +107,13 @@ class _SearchPopoverButtonState extends ConsumerState<SearchPopoverButton> {
                   _close();
                   widget.onOpenNote(note);
                 },
+                onOpenHit: widget.onOpenHit == null
+                    ? null
+                    : (hit) {
+                        final q = _query.trim();
+                        _close();
+                        widget.onOpenHit!(hit, q);
+                      },
               ),
             ),
           ],
@@ -125,6 +141,7 @@ class _Panel extends ConsumerWidget {
     required this.scrollController,
     required this.onChanged,
     required this.onOpen,
+    this.onOpenHit,
   });
 
   final double width;
@@ -133,6 +150,7 @@ class _Panel extends ConsumerWidget {
   final ScrollController scrollController;
   final ValueChanged<String> onChanged;
   final ValueChanged<NoteCardData> onOpen;
+  final ValueChanged<GlobalSearchHit>? onOpenHit;
 
   /// Rows visible before the list scrolls (the design shows three and a bit).
   static const _visibleRows = 3.5;
@@ -151,77 +169,159 @@ class _Panel extends ConsumerWidget {
               if (card.matches(query)) card,
           ];
     final rowHeight = _Row.heightFor(MediaQuery.textScalerOf(context));
+    // Matches inside pages, across every notebook. Loaded once the user starts
+    // typing; titles still show at once.
+    final pageHits = onOpenHit == null || query.trim().isEmpty
+        ? const <GlobalSearchHit>[]
+        : searchAcrossNotebooks(
+            ref.watch(globalSearchCorpusProvider).value ?? const [], query);
 
-    // Frosted sage glass (design: #C9D6C3 @ 40%, background blur). Dark
-    // needs more body to read over dark cards, and a hairline for an edge.
+    // Sage panel. The design is #C9D6C3 at 40% over a background blur; the
+    // blur was dropped for its per-frame cost, and without it 40% leaves the
+    // cards underneath legible through the results, so the panel is near
+    // opaque. Dark also gets a hairline for an edge.
     return ClipRRect(
       borderRadius: _radius,
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          width: width,
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          decoration: BoxDecoration(
-            color: c.surfaceSubtle.withValues(alpha: isDark ? 0.75 : 0.4),
-            borderRadius: _radius,
-            border: isDark ? Border.all(color: c.border) : null,
-          ),
-          padding: const EdgeInsets.only(top: 7, bottom: 12),
-          child: Material(
-            type: MaterialType.transparency,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+      child: Container(
+        width: width,
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        decoration: BoxDecoration(
+          color: c.surfaceSubtle.withValues(alpha: 0.96),
+          borderRadius: _radius,
+          border: isDark ? Border.all(color: c.border) : null,
+        ),
+        padding: const EdgeInsets.only(top: 7, bottom: 12),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(13, 0, 13, 6),
+                child: SearchBarWidget(autofocus: true, onChanged: onChanged),
+              ),
+              const _Rule(),
+              if (hits.isEmpty && pageHits.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(13, 0, 13, 6),
-                  child: SearchBarWidget(autofocus: true, onChanged: onChanged),
-                ),
-                const _Rule(),
-                if (hits.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(13, 12, 13, 2),
-                    child: Text(
-                      cards.isEmpty ? 'No notes yet' : 'No notes match',
-                      style: TextStyle(
-                        fontFamily: 'ModulusPro',
-                        fontSize: 15,
-                        color: c.textPrimary.withValues(alpha: 0.6),
-                      ),
+                  padding: const EdgeInsets.fromLTRB(13, 12, 13, 2),
+                  child: Text(
+                    cards.isEmpty ? 'No notes yet' : 'No notes match',
+                    style: TextStyle(
+                      fontFamily: 'ModulusPro',
+                      fontSize: 15,
+                      color: c.textPrimary.withValues(alpha: 0.6),
                     ),
-                  )
-                else
-                  Flexible(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: rowHeight * _visibleRows,
-                      ),
-                      // The design's 5px sage thumb, 7 in from the edge.
-                      child: RawScrollbar(
+                  ),
+                )
+              else if (hits.isNotEmpty)
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: rowHeight * _visibleRows,
+                    ),
+                    // The design's 5px sage thumb, 7 in from the edge.
+                    child: RawScrollbar(
+                      controller: scrollController,
+                      thumbVisibility: true,
+                      thumbColor: c.surfaceSubtle,
+                      thickness: 5,
+                      radius: const Radius.circular(50),
+                      crossAxisMargin: 7,
+                      child: ListView.builder(
                         controller: scrollController,
-                        thumbVisibility: true,
-                        thumbColor: c.surfaceSubtle,
-                        thickness: 5,
-                        radius: const Radius.circular(50),
-                        crossAxisMargin: 7,
-                        child: ListView.builder(
-                          controller: scrollController,
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          itemExtent: rowHeight,
-                          itemCount: hits.length,
-                          itemBuilder: (context, i) => _Row(
-                            note: hits[i],
-                            onTap: () => onOpen(hits[i]),
-                          ),
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemExtent: rowHeight,
+                        itemCount: hits.length,
+                        itemBuilder: (context, i) => _Row(
+                          note: hits[i],
+                          onTap: () => onOpen(hits[i]),
                         ),
                       ),
                     ),
                   ),
+                ),
+              if (pageHits.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(13, 8, 13, 4),
+                  child: Text(
+                    'On pages',
+                    style: TextStyle(
+                      fontFamily: 'ModulusPro',
+                      fontSize: 12,
+                      color: c.textPrimary.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 54 * 3.5),
+                    child: ListView.builder(
+                      key: const ValueKey('pageHits'),
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: pageHits.length,
+                      itemBuilder: (context, i) => _HitRow(
+                        hit: pageHits[i],
+                        onTap: () => onOpenHit!(pageHits[i]),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A match on a page: the notebook and page, and the words around it.
+class _HitRow extends StatelessWidget {
+  const _HitRow({required this.hit, required this.onTap});
+
+  final GlobalSearchHit hit;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(13, 6, 19, 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${hit.notebookTitle} · ${hit.hit.pageLabel}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'ModulusPro',
+                    fontSize: 15,
+                    color: c.textPrimary,
+                  ),
+                ),
+                Text(
+                  hit.hit.snippet,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'ModulusPro',
+                    fontSize: 12,
+                    color: c.textPrimary.withValues(alpha: 0.6),
+                  ),
+                ),
               ],
             ),
           ),
-        ),
+          const _Rule(),
+        ],
       ),
     );
   }

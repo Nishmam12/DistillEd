@@ -39,7 +39,13 @@ final GoRouter appRouter = GoRouter(
       path: '/note2/:id',
       builder: (context, state) {
         final id = int.parse(state.pathParameters['id']!);
-        return NotebookEditorScreen(notebookId: id);
+        // From a search result: open on this page and tint these words.
+        final page = int.tryParse(state.uri.queryParameters['page'] ?? '');
+        return NotebookEditorScreen(
+          notebookId: id,
+          initialPageIndex: page,
+          searchQuery: state.uri.queryParameters['q'],
+        );
       },
       routes: [
         GoRoute(
