@@ -54,6 +54,11 @@ enum AnswerTier {
   /// possible or permitted. The UI must show a low-confidence warning rather
   /// than presenting this as reliable.
   localLowConfidence,
+
+  /// A cloud model the student picked to answer with. The on-device model was
+  /// not asked, so this is not a check on anything: it is simply who answered,
+  /// and the UI names that model.
+  cloud,
 }
 
 /// One guarded generation.

@@ -17,6 +17,8 @@ import '../data/llm/llm_exceptions.dart';
 import '../data/llm/model_download_manager.dart';
 import '../domain/ai_provider.dart';
 import '../domain/ai_scope.dart';
+import '../domain/catalog/ai_model_entry.dart';
+import '../domain/catalog/answer_route.dart';
 import '../domain/chat_commands.dart';
 import '../domain/features/figure_qa.dart';
 import '../domain/features/notes_qa.dart';
@@ -87,6 +89,10 @@ class AskNotesAnswered extends AskNotesState {
   /// but the user's `askEachTime` privacy setting means they must say so first.
   final bool canRetryOnCloud;
 
+  /// The cloud model that answered, when the student picked one
+  /// ([AnswerTier.cloud]). Null for an on-device answer.
+  final String? modelName;
+
   const AskNotesAnswered(
     this.question,
     this.text,
@@ -95,6 +101,7 @@ class AskNotesAnswered extends AskNotesState {
     this.figure,
     this.tier = AnswerTier.local,
     this.canRetryOnCloud = false,
+    this.modelName,
   });
 }
 
@@ -162,6 +169,14 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
   /// passages alone, as before.
   final FigureQa? _figureQa;
 
+  /// Who answers, read per question (see `domain/catalog/answer_route.dart`).
+  /// Null answers on the device, as before there was a model picker.
+  final AnswerRoute Function()? _route;
+
+  /// Asks the student before their passages go to a cloud model they picked.
+  /// Null sends without asking, which only tests rely on.
+  final Future<bool> Function(AiModelEntry model)? _confirmSend;
+
   AskNotesNotifier({
     required this._qa,
     required this._llmDownloads,
@@ -171,6 +186,8 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     this._setCloudEnabled,
     this._privacyAsksEachTime,
     this._figureQa,
+    this._route,
+    this._confirmSend,
   })  : super(const AskNotesIdle());
 
   String? _lastQuestion;
@@ -223,12 +240,28 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
         return;
       }
 
+      // A cloud model the student picked answers this one. Asked here — after
+      // the search, so nobody is asked about a question the notes cannot
+      // answer anyway, and before anything slow, so the wait comes after the
+      // yes rather than before the question.
+      final route = _route?.call();
+      final picked = route is CloudDirect ? route.model : null;
+      if (picked != null) {
+        final confirm = _confirmSend;
+        if (confirm != null && !await confirm(picked)) {
+          if (mounted) state = const AskNotesComposing();
+          return;
+        }
+        if (!mounted) return;
+      }
+
       final figure = await _lookAtFigure(trimmed, sources, scope);
       if (!mounted) return;
 
       state = AskNotesAnswering(trimmed, '', sources,
           scope: scope, figure: figure);
-      final answer = await _generate(trimmed, sources, scope, figure);
+      final answer = await _generate(trimmed, sources, scope, figure,
+          picked: picked);
       if (!mounted) return;
 
       final text = answer.text.trim();
@@ -245,6 +278,7 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
           figure: figure,
           tier: answer.tier,
           canRetryOnCloud: answer.canRetryOnCloud,
+          modelName: picked?.displayName,
         );
       }
     } catch (e) {
@@ -318,8 +352,9 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     String question,
     List<RetrievedChunk> sources,
     AiScope? scope,
-    FigureAnswer? figure,
-  ) async {
+    FigureAnswer? figure, {
+    AiModelEntry? picked,
+  }) async {
     void onPartial(String partial) {
       if (mounted) {
         state = AskNotesAnswering(question, partial, sources,
@@ -327,8 +362,12 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
       }
     }
 
+    // The guard exists to catch a broken ON-DEVICE answer and hand it to the
+    // cloud. With a cloud model picked there is no on-device answer to check:
+    // running the guard would load the local model and answer there first,
+    // which is the opposite of what was picked.
     final guard = _guard;
-    if (guard != null) {
+    if (guard != null && picked == null) {
       return guard.run(
         prompt: _qa.promptFor(
             question: question, sources: sources, figure: figure),
@@ -346,7 +385,10 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
       buffer.write(chunk);
       onPartial(buffer.toString());
     }
-    return GuardedResult(text: buffer.toString(), tier: AnswerTier.local);
+    return GuardedResult(
+      text: buffer.toString(),
+      tier: picked == null ? AnswerTier.local : AnswerTier.cloud,
+    );
   }
 
   /// Re-runs the current answer on the cloud tier, on an explicit user tap.

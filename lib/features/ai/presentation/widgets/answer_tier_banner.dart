@@ -31,11 +31,16 @@ class AnswerTierBanner extends StatelessWidget {
   /// Null hides the action — a button that cannot work is worse than none.
   final VoidCallback? onVerifyWithCloud;
 
+  /// The cloud model the student picked, for [AnswerTier.cloud]. Text that
+  /// left the device is always labelled with where it went.
+  final String? modelName;
+
   const AnswerTierBanner({
     super.key,
     required this.tier,
     this.issue,
     this.onVerifyWithCloud,
+    this.modelName,
   });
 
   @override
@@ -51,6 +56,14 @@ class AnswerTierBanner extends StatelessWidget {
       AnswerTier.localLowConfidence => _Warning(
           issue: issue,
           onVerifyWithCloud: onVerifyWithCloud,
+        ),
+      AnswerTier.cloud => _Chip(
+          icon: Icons.cloud_outlined,
+          label: modelName == null
+              ? 'Answered by a cloud model'
+              : 'Answered by $modelName',
+          foreground: context.colors.accent,
+          background: context.colors.accentMuted,
         ),
     };
   }
@@ -161,12 +174,17 @@ class _Chip extends StatelessWidget {
           children: [
             Icon(icon, size: 13, color: foreground),
             const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: foreground,
+            // A model's name is the student's own text and can be any length.
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: foreground,
+                ),
               ),
             ),
           ],

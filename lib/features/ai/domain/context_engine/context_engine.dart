@@ -171,7 +171,12 @@ $kMathMarkup''';
       text: result.text,
       ranOn: switch (result.tier) {
         AnswerTier.cloudVerified => AiRanOn.cloudEscalated,
-        AnswerTier.local || AnswerTier.localLowConfidence => _providerRanOn,
+        // `cloud` never reaches here: page analysis does not follow the model
+        // picker. It is grouped with the cases that report this engine's own
+        // provider, which is the truthful answer if it ever did.
+        AnswerTier.local ||
+        AnswerTier.localLowConfidence ||
+        AnswerTier.cloud => _providerRanOn,
       },
     );
   }

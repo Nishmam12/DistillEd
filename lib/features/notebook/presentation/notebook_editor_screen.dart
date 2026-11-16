@@ -29,6 +29,7 @@ import '../../ai/domain/features/explainer.dart' show ExplainMode;
 import '../../ai/presentation/explain_notifier.dart' show ExplainRequest;
 import 'controls/text_selection_bar.dart';
 import '../../ai/presentation/sidebar/floating_ai_panel.dart';
+import '../../ai/presentation/widgets/cloud_send_dialog.dart';
 import '../../../domain/model/page_size.dart';
 import '../../../domain/model/template_type.dart';
 import '../../import/pdf_service.dart'
@@ -349,6 +350,11 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
         if (q != null) _tintSearch(openAt, q);
       });
     }
+
+    // Every AI feature that can send text to a cloud model the student picked
+    // is started from this screen (the AI panel and its sheets), so this is
+    // where the "send this?" question is shown.
+    showCloudSendPrompts(context, ref);
 
     // Placing pictures ends when they stop being selected (a tap elsewhere,
     // Done, a page turn) or when the user picks another tool themselves.

@@ -251,7 +251,8 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
         :final sources,
         :final figure,
         :final tier,
-        :final canRetryOnCloud
+        :final canRetryOnCloud,
+        :final modelName
       ) =>
         _Answer(
           text: text,
@@ -262,6 +263,7 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
           onJumpToSource: widget.onJumpToSource,
           onPlayLecture: _playLecture,
           tier: tier,
+          modelName: modelName,
           // Offered only when the guard said a cloud run is both possible and
           // permitted — under `askEachTime` this button IS the user's consent,
           // and nothing reaches the network until it is pressed.
@@ -320,6 +322,9 @@ class _Answer extends StatelessWidget {
   final AnswerTier tier;
   final VoidCallback? onVerifyWithCloud;
 
+  /// The cloud model the student picked, shown on its answers.
+  final String? modelName;
+
   const _Answer({
     required this.text,
     required this.sources,
@@ -330,6 +335,7 @@ class _Answer extends StatelessWidget {
     this.onPlayLecture,
     this.tier = AnswerTier.local,
     this.onVerifyWithCloud,
+    this.modelName,
   });
 
   @override
@@ -351,6 +357,7 @@ class _Answer extends StatelessWidget {
                   AnswerTierBanner(
                     tier: tier,
                     onVerifyWithCloud: onVerifyWithCloud,
+                    modelName: modelName,
                   ),
                   const SizedBox(height: 12),
                 ],

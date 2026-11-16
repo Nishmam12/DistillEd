@@ -403,9 +403,13 @@ final aiQualityGuardProvider = Provider<AiQualityGuard>((ref) {
 
 /// "Ask your notes": grounded QA over a notebook (retrieve → answer from those
 /// passages only).
+///
+/// Answers with the model the student picked ([answerAiProvider]): on the
+/// device unless they chose a cloud model. Finding the passages always happens
+/// on the device; only the passages that were found, and the question, are sent.
 final notesQaProvider = Provider<NotesQa>(
   (ref) => NotesQa(
-    provider: ref.watch(localAiProvider),
+    provider: ref.watch(answerAiProvider),
     retriever: ref.watch(ragRetrieverProvider),
   ),
 );
@@ -457,5 +461,8 @@ final askNotesNotifierProvider =
             ref.read(settingsProvider.notifier).setCloudAiEnabled(enabled),
         privacyAsksEachTime: () =>
             ref.read(settingsProvider).cloudPrivacy == CloudPrivacy.askEachTime,
+        route: ref.watch(answerRouteProvider),
+        confirmSend: (model) =>
+            ref.read(cloudSendGateProvider.notifier).confirm(model),
       );
     });
