@@ -19,12 +19,14 @@ import '../home_notifier.dart';
 import '../models/note_card_data.dart';
 import '../note_cards_provider.dart';
 import '../notes_palette.dart';
+import '../notes_selection.dart';
 import '../recent_notebooks.dart';
 import '../widgets/home_sidebar.dart';
 import '../widgets/new_note_dialog.dart';
 import '../widgets/note_card.dart';
 import '../widgets/organize_sheets.dart';
 import '../widgets/recent_strip.dart';
+import '../widgets/selection_bar.dart';
 import '../widgets/search_popover.dart';
 
 class NotesScreen extends ConsumerStatefulWidget {
@@ -202,7 +204,8 @@ class _Main extends ConsumerWidget {
         !favoritesOnly &&
         ref.watch(notesSearchQueryProvider).trim().isEmpty &&
         ref.watch(notesTagFilterProvider).isEmpty;
-    final recents = !plain
+    final selecting = ref.watch(notesSelectionProvider).isNotEmpty;
+    final recents = !plain || selecting
         ? const <NoteCardData>[]
         : recentCards(ref.watch(noteCardsProvider).value ?? const [],
             ref.watch(recentNotebooksProvider));
@@ -272,7 +275,13 @@ class _Main extends ConsumerWidget {
     );
     final sortButton = _SortButton(label: sort.label, onTap: onSort);
 
-    return Stack(
+    // Back leaves select mode first.
+    return PopScope(
+      canPop: !selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) ref.read(notesSelectionProvider.notifier).state = const {};
+      },
+      child: Stack(
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -355,6 +364,8 @@ class _Main extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: 24 - _SortButton.padding),
+            if (selecting)
+              SelectionBar(visible: cards.value ?? const [], padding: pad),
             if (recents.isNotEmpty)
               RecentStrip(
                 notes: recents,
@@ -384,7 +395,7 @@ class _Main extends ConsumerWidget {
           child: _NewButton(onPressed: onCompose),
         ),
       ],
-    );
+    ));
   }
 }
 
@@ -498,6 +509,7 @@ class _NotesGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final images = ref.watch(sceneImageCacheProvider);
+    final selection = ref.watch(notesSelectionProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -543,18 +555,53 @@ class _NotesGrid extends ConsumerWidget {
           itemCount: cards.length,
           itemBuilder: (context, index) {
             final note = cards[index];
-            return NoteCard(
+            final picking = selection.isNotEmpty;
+            void toggle() =>
+                ref.read(notesSelectionProvider.notifier).toggle(note.id);
+            return Stack(
               key: ValueKey(note.id),
-              note: note,
-              sceneImageResolver: images.get,
-              sceneRepaint: images,
-              onTap: () => _openNotebook(context, ref, note.id),
-              // The design's cards carry no graph button; the knowledge graph
-              // is in the long-press sheet.
-              onLongPress: () => _showActions(context, ref, note),
-              onToggleFavorite: () => ref
-                  .read(homeNotifierProvider.notifier)
-                  .setPinned(note.id, !note.pinned),
+              children: [
+                Positioned.fill(
+                  child: NoteCard(
+                    note: note,
+                    sceneImageResolver: images.get,
+                    sceneRepaint: images,
+                    onTap: picking
+                        ? toggle
+                        : () => _openNotebook(context, ref, note.id),
+                    // The design's cards carry no graph button; the knowledge
+                    // graph is in the long-press sheet.
+                    onLongPress: picking
+                        ? toggle
+                        : () => _showActions(context, ref, note),
+                    onToggleFavorite: () => ref
+                        .read(homeNotifierProvider.notifier)
+                        .setPinned(note.id, !note.pinned),
+                  ),
+                ),
+                if (selection.contains(note.id))
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        key: ValueKey('picked:${note.id}'),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                              color: context.colors.accent, width: 3),
+                          color: context.colors.accent.withValues(alpha: 0.12),
+                        ),
+                        child: Align(
+                          alignment: Alignment.topLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(Icons.check_circle,
+                                color: context.colors.accent),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             );
           },
         );
@@ -583,6 +630,11 @@ class _NotesGrid extends ConsumerWidget {
               ),
               title: Text(note.pinned ? 'Unpin' : 'Pin to top'),
               onTap: () => Navigator.of(context).pop('pin'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline),
+              title: const Text('Select'),
+              onTap: () => Navigator.of(context).pop('select'),
             ),
             ListTile(
               leading: const Icon(Icons.folder_outlined),
@@ -624,6 +676,8 @@ class _NotesGrid extends ConsumerWidget {
     if (!context.mounted || action == null) return;
 
     switch (action) {
+      case 'select':
+        ref.read(notesSelectionProvider.notifier).state = {note.id};
       case 'pin':
         await ref
             .read(homeNotifierProvider.notifier)

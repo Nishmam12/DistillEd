@@ -17,6 +17,14 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 ## [Unreleased]
 
 ### Added
+- **A "Recent" strip on the home screen.** The last eight notebooks you opened
+  sit above the grid as chips; tap one to open it. It shows only on the plain
+  list (not while searching, filtering or selecting). The list is kept on the
+  device in the app's settings, so there is no database change.
+- **Select several notebooks at once.** Long-press a notebook and choose
+  "Select" (or, once selecting, tap or long-press cards to pick them). A bar
+  shows how many are picked, with All/None, pin, move to folder, add tags and
+  move to trash (with Undo). Back leaves select mode.
 - **Backups keep the last five snapshots of each notebook, and you can pick
   which to restore.** Each backup that finds a change is saved as a new dated
   `.margo` file (for example `Biology (3) 2026-11-16 1601.margo`), and the

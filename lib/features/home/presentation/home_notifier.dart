@@ -69,6 +69,47 @@ class HomeNotifier extends StateNotifier<List<Notebook>> {
     await loadNotebooks();
   }
 
+  // Several notebooks at once (multi-select): the single-notebook repository
+  // calls in a row, then one reload, so the home list rebuilds once.
+
+  Future<void> setPinnedMany(Iterable<int> ids, bool pinned) async {
+    for (final id in ids) {
+      await _repository.setPinned(id, pinned);
+    }
+    await loadNotebooks();
+  }
+
+  Future<void> setFolderMany(Iterable<int> ids, int? folderId) async {
+    for (final id in ids) {
+      await _repository.setFolder(id, folderId);
+    }
+    await loadNotebooks();
+  }
+
+  /// Adds [tags] to each notebook, keeping the tags it already has.
+  Future<void> addTagsMany(Iterable<int> ids, List<String> tags) async {
+    final byId = {for (final n in state) n.id: n};
+    for (final id in ids) {
+      final have = byId[id]?.tags ?? const <String>[];
+      await _repository.setTags(id, [...have, ...tags]);
+    }
+    await loadNotebooks();
+  }
+
+  Future<void> deleteMany(Iterable<int> ids) async {
+    for (final id in ids) {
+      await _repository.moveToTrash(id);
+    }
+    await loadNotebooks();
+  }
+
+  Future<void> restoreMany(Iterable<int> ids) async {
+    for (final id in ids) {
+      await _repository.restoreFromTrash(id);
+    }
+    await loadNotebooks();
+  }
+
   /// Purges notebooks whose retention window has passed. Returns the count.
   Future<int> purgeExpiredTrash() => _repository.purgeExpiredTrash();
 

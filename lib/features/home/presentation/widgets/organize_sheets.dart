@@ -17,7 +17,23 @@ Future<void> showMoveToFolderSheet(
   BuildContext context,
   WidgetRef ref, {
   required NoteCardData note,
-}) async {
+}) =>
+    _moveToFolder(context, ref, {note.id}, note.folderId);
+
+/// Moves several notebooks at once (multi-select).
+Future<void> showMoveManyToFolderSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required Set<int> ids,
+}) =>
+    _moveToFolder(context, ref, ids, null);
+
+Future<void> _moveToFolder(
+  BuildContext context,
+  WidgetRef ref,
+  Set<int> ids,
+  int? currentFolderId,
+) async {
   final folders = await ref.read(noteRepositoryProvider).getFolders();
   if (!context.mounted) return;
 
@@ -37,7 +53,9 @@ Future<void> showMoveToFolderSheet(
           ListTile(
             leading: const Icon(Icons.folder_off_outlined),
             title: const Text('No folder'),
-            trailing: note.folderId == null ? const Icon(Icons.check) : null,
+            trailing: ids.length == 1 && currentFolderId == null
+                ? const Icon(Icons.check)
+                : null,
             onTap: () =>
                 Navigator.pop(sheetContext, const _FolderChoice.none()),
           ),
@@ -47,7 +65,9 @@ Future<void> showMoveToFolderSheet(
               leading: const Icon(Icons.folder_outlined),
               title: Text(folder.name),
               trailing:
-                  note.folderId == folder.id ? const Icon(Icons.check) : null,
+                  ids.length == 1 && currentFolderId == folder.id
+                      ? const Icon(Icons.check)
+                      : null,
               onTap: () =>
                   Navigator.pop(sheetContext, _FolderChoice.existing(folder.id)),
             ),
@@ -78,7 +98,7 @@ Future<void> showMoveToFolderSheet(
       target = (await ref.read(noteRepositoryProvider).createFolder(name)).id;
   }
 
-  await ref.read(homeNotifierProvider.notifier).setFolder(note.id, target);
+  await ref.read(homeNotifierProvider.notifier).setFolderMany(ids, target);
   ref.invalidate(foldersProvider);
 }
 
@@ -183,6 +203,28 @@ Future<void> showEditTagsDialog(
   if (result == null) return;
 
   await ref.read(homeNotifierProvider.notifier).setTags(note.id, result);
+  ref.invalidate(tagCountsProvider);
+}
+
+/// Adds tags to several notebooks at once; the tags they have are kept.
+Future<void> showAddTagsDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  required Set<int> ids,
+}) async {
+  final known = await ref.read(noteRepositoryProvider).tagCounts();
+  if (!context.mounted) return;
+
+  final result = await showDialog<List<String>>(
+    context: context,
+    builder: (_) => _TagsDialog(
+      initial: const [],
+      known: known.keys.toList()..sort(),
+    ),
+  );
+  if (result == null || result.isEmpty) return;
+
+  await ref.read(homeNotifierProvider.notifier).addTagsMany(ids, result);
   ref.invalidate(tagCountsProvider);
 }
 
