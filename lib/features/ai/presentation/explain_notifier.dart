@@ -45,7 +45,15 @@ class ExplainStreaming extends ExplainState {
   /// Whether this answer is (or will be) coming from the cloud tier —
   /// drives the persistent cloud-in-flight badge in the view.
   final bool fromCloud;
-  const ExplainStreaming(this.text, this.mode, {this.fromCloud = false});
+
+  /// The cloud model the student picked, when that is who is answering.
+  final String? modelName;
+  const ExplainStreaming(
+    this.text,
+    this.mode, {
+    this.fromCloud = false,
+    this.modelName,
+  });
 }
 
 class ExplainReady extends ExplainState {
@@ -63,12 +71,16 @@ class ExplainReady extends ExplainState {
   /// the user's `askEachTime` setting means they have to say so first.
   final bool canRetryOnCloud;
 
+  /// The cloud model the student picked, when that is who answered.
+  final String? modelName;
+
   const ExplainReady(
     this.text,
     this.mode, {
     this.fromCloud = false,
     this.tier = AnswerTier.local,
     this.canRetryOnCloud = false,
+    this.modelName,
   });
 }
 
@@ -83,7 +95,17 @@ class ExplainDownloadingModel extends ExplainState {
 class ExplainConfirmCloud extends ExplainState {
   final CloudTier tier;
   final bool isFirstEver;
-  const ExplainConfirmCloud({required this.tier, required this.isFirstEver});
+
+  /// The cloud model the student picked, and where it is. Null when the cloud
+  /// was chosen because the passage did not fit on the device.
+  final String? modelName;
+  final String? host;
+  const ExplainConfirmCloud({
+    required this.tier,
+    required this.isFirstEver,
+    this.modelName,
+    this.host,
+  });
 }
 
 class ExplainError extends ExplainState {
@@ -160,22 +182,29 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
       }
 
       var fromCloud = false;
+      String? modelName;
       final evaluate = _evaluateCloudRoute;
       if (evaluate != null) {
         final decision = await evaluate(content);
         fromCloud = decision != null;
-        if (decision != null && !cloudConfirmed) {
+        modelName = decision?.modelName;
+        // A cloud call is asked about unless the decision says the student has
+        // already agreed to sends to this model (one they picked themselves).
+        if (decision != null && !cloudConfirmed && decision.needsConfirm) {
           state = ExplainConfirmCloud(
             tier: decision.tier,
             isFirstEver: !_hasSeenFirstCloudCall(),
+            modelName: decision.modelName,
+            host: decision.host,
           );
           return;
         }
       }
 
-      state = ExplainStreaming('', request.mode, fromCloud: fromCloud);
-      final result =
-          await _generate(content, request.mode, fromCloud: fromCloud);
+      state = ExplainStreaming('', request.mode,
+          fromCloud: fromCloud, modelName: modelName);
+      final result = await _generate(content, request.mode,
+          fromCloud: fromCloud, modelName: modelName);
 
       if (!mounted) return;
       final text = result.text.trim();
@@ -188,6 +217,7 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
               fromCloud: fromCloud || result.tier == AnswerTier.cloudVerified,
               tier: result.tier,
               canRetryOnCloud: result.canRetryOnCloud,
+              modelName: modelName,
             );
     } catch (e) {
       if (!mounted) return;
@@ -211,10 +241,12 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
     String content,
     ExplainMode mode, {
     required bool fromCloud,
+    String? modelName,
   }) async {
     void onPartial(String partial) {
       if (mounted) {
-        state = ExplainStreaming(partial, mode, fromCloud: fromCloud);
+        state = ExplainStreaming(partial, mode,
+            fromCloud: fromCloud, modelName: modelName);
       }
     }
 

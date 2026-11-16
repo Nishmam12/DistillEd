@@ -99,9 +99,15 @@ class QuizNotifier extends StateNotifier<QuizState> {
   /// Below this the page is too thin to make a worthwhile quiz.
   static const int _minWords = 15;
 
+  /// Asked once before a page is sent to build a quiz. It answers yes at once
+  /// unless the student picked a cloud model, in which case it shows them the
+  /// "send this?" question. Null never asks (on-device, and tests).
+  final Future<bool> Function()? _confirmSend;
+
   QuizNotifier({
     required this._generator,
     required this._downloads,
+    this._confirmSend,
   })  : super(const QuizIdle());
 
   QuizRequest? _last;
@@ -127,6 +133,15 @@ class QuizNotifier extends StateNotifier<QuizState> {
         );
         return;
       }
+
+      // Once per tap, not per request: the generator asks the model again when
+      // a reply does not parse.
+      final confirm = _confirmSend;
+      if (confirm != null && !await confirm()) {
+        if (mounted && run == _run) state = const QuizIdle();
+        return;
+      }
+      if (!mounted || run != _run) return;
 
       final questions = await _generator.generate(
         text: text,

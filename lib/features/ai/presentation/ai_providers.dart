@@ -556,10 +556,19 @@ final explainAiProviderProvider = Provider<RoutedAiProvider>((ref) {
     cloudMid: ref.watch(cloudGatewayMidProvider),
     cloudFrontier: ref.watch(cloudGatewayFrontierProvider),
     // Cloud switched off (on-device mode) reads as localOnly, as in Research:
-    // no cloud route, so a degraded local model still runs locally.
+    // no cloud route, so a degraded local model still runs locally. The same
+    // when the student picked the on-device model in the picker: a passage too
+    // long for it is cut to fit, not sent away.
     privacy: () {
-      final s = ref.read(settingsProvider);
-      return s.cloudAiEnabled ? s.cloudPrivacy : CloudPrivacy.localOnly;
+      if (ref.read(answerRouteProvider)() is LocalOnly) {
+        return CloudPrivacy.localOnly;
+      }
+      return ref.read(settingsProvider).cloudPrivacy;
+    },
+    // A cloud model the student picked answers every Explain, long or short.
+    forcedCloud: () => switch (ref.read(answerRouteProvider)()) {
+      CloudDirect(:final model) => ref.read(cloudProviderForProvider)(model),
+      LocalOnly() || LocalFirst() => null,
     },
   );
 });
@@ -630,9 +639,10 @@ final writingAssistantProvider = Provider<WritingAssistant>(
   (ref) => WritingAssistant(provider: ref.watch(localAiProvider)),
 );
 
-/// Quiz Generator feature — builds gradeable questions from page content.
+/// Quiz Generator feature — builds gradeable questions from page content, with
+/// the model the student picked ([answerAiProvider]).
 final quizGeneratorProvider = Provider<QuizGenerator>(
-  (ref) => QuizGenerator(provider: ref.watch(localAiProvider)),
+  (ref) => QuizGenerator(provider: ref.watch(answerAiProvider)),
 );
 
 /// Drives the quiz sheet. Session-scoped (not autoDispose): closing the sidebar
@@ -644,12 +654,13 @@ final quizNotifierProvider = StateNotifierProvider<QuizNotifier, QuizState>((
   return QuizNotifier(
     generator: ref.watch(quizGeneratorProvider),
     downloads: ref.watch(modelDownloadManagerProvider),
+    confirmSend: ref.watch(confirmAnswerSendProvider),
   );
 });
 
 /// Flashcard Generator feature — builds a deck from a page's concepts/definitions.
 final flashcardGeneratorProvider = Provider<FlashcardGenerator>(
-  (ref) => FlashcardGenerator(provider: ref.watch(localAiProvider)),
+  (ref) => FlashcardGenerator(provider: ref.watch(answerAiProvider)),
 );
 
 /// Durable flashcard store (Isar). Flashcards persist across sessions.
@@ -664,6 +675,7 @@ final flashcardNotifierProvider =
         generator: ref.watch(flashcardGeneratorProvider),
         store: ref.watch(flashcardStoreProvider),
         downloads: ref.watch(modelDownloadManagerProvider),
+        confirmSend: ref.watch(confirmAnswerSendProvider),
       );
     });
 
@@ -796,12 +808,33 @@ final explainNotifierProvider =
       return ExplainNotifier(
         explainer: ref.watch(explainerProvider),
         downloads: ref.watch(modelDownloadManagerProvider),
-        evaluateCloudRoute: (content) =>
-            ref.read(explainAiProviderProvider).peekRoute(content),
+        evaluateCloudRoute: (content) async {
+          // A model the student picked: Explain's own "send this?" step names
+          // it, and is skipped once they have agreed to sends to that model.
+          final route = ref.read(answerRouteProvider)();
+          if (route is CloudDirect) {
+            return CloudRouteDecision(
+              CloudTier.mid,
+              modelName: route.model.displayName,
+              host: route.model.host,
+              needsConfirm: ref
+                  .read(cloudSendGateProvider.notifier)
+                  .needsConfirmation(route.model),
+            );
+          }
+          return ref.read(explainAiProviderProvider).peekRoute(content);
+        },
         hasSeenFirstCloudCall: () =>
             ref.read(settingsProvider).hasSeenFirstCloudCall,
-        markFirstCloudCallSeen: () =>
-            ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
+        // A yes given on Explain's step counts for the picked model everywhere.
+        markFirstCloudCallSeen: () {
+          final route = ref.read(answerRouteProvider)();
+          return route is CloudDirect
+              ? ref
+                    .read(cloudSendGateProvider.notifier)
+                    .markConsented(route.model)
+              : ref.read(settingsProvider.notifier).markFirstCloudCallSeen();
+        },
         guard: ref.watch(aiQualityGuardProvider),
       );
     });

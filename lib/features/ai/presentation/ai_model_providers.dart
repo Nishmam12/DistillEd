@@ -135,6 +135,17 @@ final answerSupportsToolsProvider = Provider<bool Function()>(
   },
 );
 
+/// For a feature about to send a page to [answerAiProvider]: yes at once when
+/// the on-device model answers, and the "send this?" question when a cloud
+/// model is picked. Called once per thing the student asks for.
+final confirmAnswerSendProvider = Provider<Future<bool> Function()>(
+  (ref) => () async {
+    final route = ref.read(answerRouteProvider)();
+    if (route is! CloudDirect) return true;
+    return ref.read(cloudSendGateProvider.notifier).confirm(route.model);
+  },
+);
+
 /// Asks the student before text is sent to a model they picked. See
 /// `cloud_send_gate.dart`.
 final cloudSendGateProvider =

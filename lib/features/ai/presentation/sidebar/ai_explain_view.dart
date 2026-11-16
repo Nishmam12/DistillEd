@@ -37,9 +37,16 @@ class AiExplainView extends ConsumerWidget {
         ),
       ExplainDownloadingModel(:final progress) =>
         _Header(child: _Downloading(progress: progress)),
-      ExplainStreaming(:final text, :final mode, :final fromCloud) => _Header(
+      ExplainStreaming(
+        :final text,
+        :final mode,
+        :final fromCloud,
+        :final modelName
+      ) =>
+        _Header(
           mode: mode,
           fromCloud: fromCloud,
+          modelName: modelName,
           child: _Body(
             text: text,
             streaming: true,
@@ -51,11 +58,13 @@ class AiExplainView extends ConsumerWidget {
         :final mode,
         :final fromCloud,
         :final tier,
-        :final canRetryOnCloud
+        :final canRetryOnCloud,
+        :final modelName
       ) =>
         _Header(
           mode: mode,
           fromCloud: fromCloud,
+          modelName: modelName,
           child: _Body(
             text: text,
             streaming: false,
@@ -84,7 +93,16 @@ class _Header extends ConsumerWidget {
   /// Persistent, hard-to-miss indicator per the phase spec's "clearly
   /// indicate when cloud AI is being used" privacy rule.
   final bool fromCloud;
-  const _Header({required this.child, this.mode, this.fromCloud = false});
+
+  /// The cloud model the student picked, named on the badge in place of the
+  /// bare word "Cloud".
+  final String? modelName;
+  const _Header({
+    required this.child,
+    this.mode,
+    this.fromCloud = false,
+    this.modelName,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -106,7 +124,7 @@ class _Header extends ConsumerWidget {
                     color: context.colors.textPrimary,
                   )),
             ),
-            if (fromCloud) const _CloudBadge(),
+            if (fromCloud) _CloudBadge(modelName: modelName),
             if (mode != null) _ModeSelector(mode: mode!),
             IconButton(
               tooltip: 'Close',
@@ -291,10 +309,25 @@ class _Body extends StatelessWidget {
 /// behind a tooltip or icon-only affordance (the spec requires it be
 /// "genuinely noticeable, not buried").
 class _CloudBadge extends StatelessWidget {
-  const _CloudBadge();
+  final String? modelName;
+  const _CloudBadge({this.modelName});
 
   @override
   Widget build(BuildContext context) {
+    final name = modelName;
+    if (name == null) return _badge(context, 'Cloud');
+    // The name is the student's own text and the header row is narrow: show
+    // as much as fits, and the whole of it on a long press.
+    return Tooltip(
+      message: 'Answered by $name',
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 120),
+        child: _badge(context, name),
+      ),
+    );
+  }
+
+  Widget _badge(BuildContext context, String label) {
     return Container(
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -308,12 +341,16 @@ class _CloudBadge extends StatelessWidget {
         children: [
           Icon(Icons.cloud_outlined, size: 13, color: context.colors.accent),
           const SizedBox(width: 4),
-          Text('Cloud',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: context.colors.accent,
-              )),
+          Flexible(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: context.colors.accent,
+                )),
+          ),
         ],
       ),
     );
@@ -332,20 +369,33 @@ class _ConfirmCloudBody extends ConsumerWidget {
     final notifier = ref.read(explainNotifierProvider.notifier);
     final tierLabel =
         state.tier == CloudTier.frontier ? 'a frontier cloud model' : 'a cloud model';
-    final subtitle = state.isFirstEver
+    final picked = state.modelName;
+    final destination =
+        (state.host ?? '').isEmpty ? 'a cloud service' : state.host!;
+    // A model the student picked themselves: say which, and whose servers.
+    final title = picked == null
+        ? 'Use the cloud for this one?'
+        : 'Send this to $picked?';
+    final pickedSubtitle = state.isFirstEver
+        ? 'This passage would go to $destination to be explained. That text '
+            'leaves this device. Everything else stays here, and you can '
+            'switch cloud AI off at any time.'
+        : 'This passage would go to $destination.';
+    final routedSubtitle = state.isFirstEver
         ? 'This passage is long enough that explaining it well needs more '
             'than the on-device model can do — so this one request (and only '
             'this one) would be sent to $tierLabel to answer. Nothing else '
             'about your notebook leaves the device, and you\'ll see this '
             'prompt every time unless you change it in Settings.'
         : 'This would be sent to $tierLabel to answer.';
+    final subtitle = picked == null ? routedSubtitle : pickedSubtitle;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _Centered(
           icon: Icons.cloud_outlined,
-          title: 'Use the cloud for this one?',
+          title: title,
           subtitle: subtitle,
         ),
         const SizedBox(height: 14),

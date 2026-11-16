@@ -78,10 +78,15 @@ class FlashcardNotifier extends StateNotifier<FlashcardState> {
 
   static const int _minWords = 15;
 
+  /// Asked once before a page is sent to make cards. See
+  /// [QuizNotifier]'s field of the same name.
+  final Future<bool> Function()? _confirmSend;
+
   FlashcardNotifier({
     required this._generator,
     required this._store,
     required this._downloads,
+    this._confirmSend,
   })  : super(const FlashcardIdle());
 
   FlashcardRequest? _last;
@@ -107,6 +112,13 @@ class FlashcardNotifier extends StateNotifier<FlashcardState> {
         );
         return;
       }
+
+      final confirm = _confirmSend;
+      if (confirm != null && !await confirm()) {
+        if (mounted && run == _run) state = const FlashcardIdle();
+        return;
+      }
+      if (!mounted || run != _run) return;
 
       final cards = await _generator.generate(
         context: request.context,

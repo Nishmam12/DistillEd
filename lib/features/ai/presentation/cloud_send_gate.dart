@@ -55,15 +55,21 @@ class CloudSendGate extends StateNotifier<CloudSendPrompt?> {
 
   Completer<bool>? _pending;
 
+  /// Whether sending to [model] has to wait for a yes. For a surface that
+  /// shows its own question (Explain's panel) instead of this gate's dialog.
+  bool needsConfirmation(AiModelEntry model) => needsSendConfirmation(
+        privacy: _privacy(),
+        firstEverCloudCall: !_hasSeenFirstCloudCall(),
+        firstUseOfModel: !_hasConsentedTo(model),
+      );
+
+  /// Records a yes that was given somewhere other than this gate's dialog.
+  Future<void> markConsented(AiModelEntry model) => _markConsented(model);
+
   /// True when text may be sent to [model] for the work about to start.
   Future<bool> confirm(AiModelEntry model) async {
     final firstEver = !_hasSeenFirstCloudCall();
-    final needed = needsSendConfirmation(
-      privacy: _privacy(),
-      firstEverCloudCall: firstEver,
-      firstUseOfModel: !_hasConsentedTo(model),
-    );
-    if (!needed) return true;
+    if (!needsConfirmation(model)) return true;
     // One question at a time. A second piece of work starting meanwhile is not
     // sent, rather than riding on an answer given about something else.
     if (_pending != null) return false;

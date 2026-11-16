@@ -195,6 +195,37 @@ void main() {
     });
   });
 
+  group('Explain', () {
+    final longPassage = List.filled(4000, 'word').join(' ');
+
+    test('a short passage goes to the picked model', () async {
+      await addConnectionAndPick(_bigId);
+      final explain = container.read(explainAiProviderProvider);
+
+      expect(await explain.generate(prompt: 'entropy').join(), 'from cloud');
+      expect(local.calls, isEmpty);
+    });
+
+    test('with the on-device model picked, a passage too long for it still '
+        'stays on the device', () async {
+      await addConnectionAndPick(kAnswerLocal);
+      final explain = container.read(explainAiProviderProvider);
+
+      expect(await explain.peekRoute(longPassage), isNull);
+      expect(await explain.generate(prompt: longPassage).join(), 'from local');
+      expect(cloud.calls, isEmpty);
+    });
+
+    test('with cloud AI off, the picked model is not used', () async {
+      await addConnectionAndPick(_bigId);
+      await container.read(settingsProvider.notifier).setCloudAiEnabled(false);
+      final explain = container.read(explainAiProviderProvider);
+
+      expect(await explain.generate(prompt: 'entropy').join(), 'from local');
+      expect(cloud.calls, isEmpty);
+    });
+  });
+
   group('tools', () {
     test('a picked model that supports tools is offered for them', () async {
       await addConnectionAndPick(_bigId);

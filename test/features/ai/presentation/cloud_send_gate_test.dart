@@ -116,6 +116,25 @@ void main() {
     expect(gate.state, isNull);
   });
 
+  test('can say whether a question is needed without showing one', () {
+    expect(gate.needsConfirmation(_mine), isFalse);
+
+    privacy = CloudPrivacy.askEachTime;
+    expect(gate.needsConfirmation(_mine), isTrue);
+    expect(gate.state, isNull);
+  });
+
+  test('a yes given elsewhere can be recorded here', () async {
+    consented.clear();
+    seenFirstCloudCall = false;
+
+    await gate.markConsented(_mine);
+
+    expect(consented, {_mine.id});
+    expect(seenFirstCloudCall, isTrue);
+    expect(gate.needsConfirmation(_mine), isFalse);
+  });
+
   test('an answer with no question showing does nothing', () {
     gate.answer(true);
     expect(gate.state, isNull);

@@ -105,7 +105,26 @@ class IntelligentRouter {
 /// [RoutedAiProvider.peekRoute]) means "runs local, no confirmation needed".
 class CloudRouteDecision {
   final CloudTier tier;
-  const CloudRouteDecision(this.tier);
+
+  /// The cloud model the student picked, when that is why the cloud is being
+  /// used. Null when the router chose the cloud itself (the passage did not fit
+  /// on the device).
+  final String? modelName;
+
+  /// Where the text would go, for the wording of the question.
+  final String? host;
+
+  /// False when the student has already agreed to sends to this model and need
+  /// not be asked again. True by default: a cloud call the router chose is
+  /// always asked about.
+  final bool needsConfirm;
+
+  const CloudRouteDecision(
+    this.tier, {
+    this.modelName,
+    this.host,
+    this.needsConfirm = true,
+  });
 }
 
 /// Wraps [IntelligentRouter] + three real providers as one [AiProvider], so a
@@ -127,6 +146,12 @@ class RoutedAiProvider implements AiProvider {
   final AiProvider cloudFrontier;
   final CloudPrivacy Function() privacy;
 
+  /// The cloud model the student picked to answer with, or null when they
+  /// picked none. When there is one it answers everything: the pick is a
+  /// stronger statement than "this passage happens to fit on the device", so
+  /// the router's own rules are not consulted. Read per call.
+  final AiProvider? Function()? forcedCloud;
+
   const RoutedAiProvider({
     required this.task,
     required this.router,
@@ -134,10 +159,14 @@ class RoutedAiProvider implements AiProvider {
     required this.cloudMid,
     required this.cloudFrontier,
     required this.privacy,
+    this.forcedCloud,
   });
 
   @override
-  AiCapabilities get capabilities => AiCapabilities(
+  AiCapabilities get capabilities =>
+      forcedCloud?.call()?.capabilities ?? _routedCapabilities;
+
+  AiCapabilities get _routedCapabilities => AiCapabilities(
         modelId: 'routed-${task.name}',
         displayName: 'Routed (${task.name})',
         // The LARGEST of the three tiers — deliberately not just local's.
@@ -160,6 +189,9 @@ class RoutedAiProvider implements AiProvider {
   /// What [generate] would do for [prompt], without calling it. Null means
   /// "local — no cloud confirmation needed".
   Future<CloudRouteDecision?> peekRoute(String prompt) async {
+    if (forcedCloud?.call() != null) {
+      return const CloudRouteDecision(CloudTier.mid);
+    }
     final target = await _decide(prompt);
     return switch (target) {
       RouteLocal() => null,
@@ -174,6 +206,19 @@ class RoutedAiProvider implements AiProvider {
     List<AiMessage>? history,
     AiGenerationOptions? options,
   }) async* {
+    final forced = forcedCloud?.call();
+    if (forced != null) {
+      // Not cut to the on-device budget: the caller already fitted the passage
+      // to [capabilities], which is this model's window.
+      yield* forced.generate(
+        prompt: prompt,
+        systemPrompt: systemPrompt,
+        history: history,
+        options: options,
+      );
+      return;
+    }
+
     final target = await _decide(prompt);
     final chosen = switch (target) {
       RouteLocal() => local,
