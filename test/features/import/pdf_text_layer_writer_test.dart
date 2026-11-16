@@ -23,6 +23,9 @@ class _FakeSource implements PdfTextSource {
   }
 
   int wordsRead = 0;
+
+  /// Pages (0-based) whose words cannot be placed, as a turned page's cannot.
+  Set<int> unplaceable = {};
   int linksRead = 0;
 
   @override
@@ -41,19 +44,22 @@ class _FakeSource implements PdfTextSource {
   }
 
   @override
-  Future<List<PageWords>> pagesWords(String pdfPath) async {
+  Future<List<PageWords?>> pagesWords(String pdfPath) async {
     wordsRead++;
     final f = failure;
     if (f != null) throw f;
     return [
-      for (final p in pages)
-        PageWords(source: PageWordsSource.pdf, words: [
-          if (p.isNotEmpty)
-            PageWord(
-                text: p.split(' ').first,
-                box: const Rect.fromLTRB(0.1, 0.1, 0.3, 0.15),
-                line: 0),
-        ]),
+      for (var i = 0; i < pages.length; i++)
+        if (unplaceable.contains(i))
+          null
+        else
+          PageWords(source: PageWordsSource.pdf, words: [
+            if (pages[i].isNotEmpty)
+              PageWord(
+                  text: pages[i].split(' ').first,
+                  box: const Rect.fromLTRB(0.1, 0.1, 0.3, 0.15),
+                  line: 0),
+          ]),
     ];
   }
 }
@@ -188,6 +194,16 @@ void main() {
     expect(first.words.single.text, 'First');
     // A page with no text still gets a file, so it is not read again later.
     expect(PageWords.decode(File(words(2)).readAsStringSync()).isEmpty, isTrue);
+  });
+
+  test('a page whose words cannot be placed keeps no words file, so its picture '
+      'is read when words are first needed', () async {
+    final source = _FakeSource(['a', 'b'])..unplaceable = {1};
+    await PdfTextLayerWriter(source)
+        .write(pdfPath: '/x.pdf', pageImagePaths: images(2));
+    expect(File(words(1)).existsSync(), isTrue);
+    expect(File(words(2)).existsSync(), isFalse);
+    expect(File(sidecar(2)).readAsStringSync(), 'b', reason: 'its text is kept');
   });
 
   test('re-importing a PDF imported before word boxes fills in the words only',

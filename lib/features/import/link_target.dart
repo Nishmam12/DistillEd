@@ -13,6 +13,10 @@ import '../home/domain/models/note_page.dart';
 /// beside [fromImagePath], or null when there is none. When more than one page
 /// shows it (a copied page), the one nearest [currentIndex] wins, the earlier
 /// on a tie.
+///
+/// Searches outwards from the current page and stops at the first hit, so the
+/// usual link (to a page close by) reads only a few pages. Every page is a
+/// candidate: a copy of a page does not carry its import mark.
 Future<int?> findLinkTargetPage({
   required List<NotePage> pages,
   required Future<List<SceneElement>> Function(int pageId) load,
@@ -21,18 +25,16 @@ Future<int?> findLinkTargetPage({
   required int currentIndex,
 }) async {
   final target = siblingPdfPagePath(fromImagePath, destPage);
-  if (target == null) return null;
-  int? best;
-  for (var i = 0; i < pages.length; i++) {
-    // Only pages that came from an import can show a PDF page.
-    if (pages[i].importGroupId == null) continue;
-    final shows = (await load(pages[i].id)).any(
-        (e) => e is ImageElement && e.relativeImagePath == target);
-    if (!shows) continue;
-    if (best == null ||
-        (i - currentIndex).abs() < (best - currentIndex).abs()) {
-      best = i;
-    }
+  if (target == null || pages.isEmpty) return null;
+  Future<bool> shows(int i) async => (await load(pages[i].id)).any(
+      (e) => e is ImageElement && e.relativeImagePath == target);
+
+  final from = currentIndex.clamp(0, pages.length - 1);
+  for (var d = 0; d < pages.length; d++) {
+    // The earlier page first, so a tie goes to it.
+    final before = from - d, after = from + d;
+    if (before >= 0 && await shows(before)) return before;
+    if (d > 0 && after < pages.length && await shows(after)) return after;
   }
-  return best;
+  return null;
 }

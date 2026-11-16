@@ -3,6 +3,7 @@
 // inside widget tests hang.
 
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -93,55 +94,165 @@ Future<ProviderContainer> _scene(
 }
 
 void main() {
+  group('resolveLinkTap', () {
+    test('the smallest box containing the tap wins, not the later one', () {
+      final boxes = [
+        const Rect.fromLTWH(0, 0, 200, 40), // a wide line
+        const Rect.fromLTWH(10, 10, 60, 20), // a word inside it
+      ];
+      expect(resolveLinkTap(boxes, const Offset(20, 20)), 1);
+      expect(resolveLinkTap(boxes, const Offset(150, 20)), 0);
+    });
+
+    test('a tap just outside goes to the nearest within the slop, else none',
+        () {
+      final boxes = [
+        const Rect.fromLTWH(0, 0, 100, 20),
+        const Rect.fromLTWH(0, 40, 100, 20),
+      ];
+      expect(resolveLinkTap(boxes, const Offset(50, 28)), 0); // 8 from the first
+      expect(resolveLinkTap(boxes, const Offset(50, 33)), 1); // 7 from the second
+      expect(resolveLinkTap(boxes, const Offset(50, 120)), isNull);
+    });
+  });
+
   group('PdfLinkLayer', () {
-    Future<(ProviderContainer, List<(PageLink, String)>)> pump(
-        WidgetTester tester) async {
+    // The picture is 700 x 500 at 1:1. Link 0 covers (70,50)-(280,75), link 1
+    // (350,300)-(560,325).
+    const link0 = Offset(175, 62);
+    const link1 = Offset(455, 312);
+
+    Future<(ProviderContainer, List<(PageLink, String)>, List<PointerEvent>)>
+        pump(WidgetTester tester) async {
       final followed = <(PageLink, String)>[];
+      final below = <PointerEvent>[];
       final c = await _scene(
         tester,
-        (_) => PdfLinkLayer(
-            pageKey: _key, onFollow: (l, p) => followed.add((l, p))),
+        (_) => Stack(children: [
+          // The canvas stand-in: whatever the layer lets through lands here.
+          Positioned.fill(
+              child: Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerDown: below.add,
+            child: const SizedBox.expand(),
+          )),
+          Positioned.fill(
+              child: PdfLinkLayer(
+                  pageKey: _key, onFollow: (l, p) => followed.add((l, p)))),
+        ]),
       );
-      return (c, followed);
+      c.read(editorToolProvider.notifier).setTool(EditorTool.hand);
+      await tester.pump();
+      await tester.pump();
+      return (c, followed, below);
+    }
+
+    Future<void> tap(WidgetTester tester, Offset at,
+        {PointerDeviceKind kind = PointerDeviceKind.touch,
+        Duration down = Duration.zero,
+        Duration held = const Duration(milliseconds: 80),
+        Offset drift = Offset.zero}) async {
+      final g = await tester.startGesture(at, kind: kind);
+      // startGesture sends the down at time zero.
+      await g.moveTo(at + drift, timeStamp: held ~/ 2);
+      await g.up(timeStamp: held);
+      await tester.pump();
     }
 
     testWidgets('with the hand tool, a tap on a link follows it',
         (tester) async {
-      final (c, followed) = await pump(tester);
-      c.read(editorToolProvider.notifier).setTool(EditorTool.hand);
-      await tester.pump();
-      await tester.pump();
-
-      await tester.tap(find.byKey(const Key('pdfLink_0')));
-      await tester.pump();
+      final (_, followed, _) = await pump(tester);
+      await tap(tester, link0);
       expect(followed, hasLength(1));
       expect(followed.single.$1.destPage, 2);
       expect(followed.single.$2, _path);
 
-      await tester.tap(find.byKey(const Key('pdfLink_1')));
+      await tap(tester, link1);
       expect(followed.last.$1.url, 'https://example.org');
     });
 
-    testWidgets('in the select tool\'s Text mode too', (tester) async {
-      final (c, followed) = await pump(tester);
+    testWidgets('a tap just beside a thin link still finds it, and a tap far '
+        'away does not', (tester) async {
+      final (_, followed, _) = await pump(tester);
+      await tap(tester, const Offset(175, 85)); // 10 below the link
+      expect(followed, hasLength(1));
+      await tap(tester, const Offset(175, 200));
+      expect(followed, hasLength(1));
+    });
+
+    testWidgets('in the select tool\'s Text mode too, and with the pen',
+        (tester) async {
+      final (c, followed, _) = await pump(tester);
       c.read(editorToolProvider.notifier)
         ..setTool(EditorTool.select)
         ..setSelectText(true);
       await tester.pump();
       await tester.pump();
-      await tester.tap(find.byKey(const Key('pdfLink_0')));
+      await tap(tester, link0, kind: PointerDeviceKind.stylus);
       expect(followed, hasLength(1));
+    });
+
+    testWidgets('the layer lets every touch through to what is underneath, '
+        'links included', (tester) async {
+      final (_, _, below) = await pump(tester);
+      await tap(tester, link0);
+      await tap(tester, const Offset(600, 450));
+      expect(below.whereType<PointerDownEvent>(), hasLength(2),
+          reason: 'palm rejection and panning underneath see both');
+    });
+
+    testWidgets('a palm: a touch while a stylus is down, or just after it '
+        'lifted, is not a tap', (tester) async {
+      final (_, followed, _) = await pump(tester);
+
+      // Pen down elsewhere, a touch on a link meanwhile.
+      final pen = await tester.startGesture(const Offset(600, 450),
+          kind: PointerDeviceKind.stylus);
+      await tap(tester, link0);
+      expect(followed, isEmpty);
+      await pen.up(timeStamp: const Duration(milliseconds: 100));
+      await tester.pump();
+
+      // The pen has only just lifted: still a palm.
+      final soon = await tester.createGesture();
+      await soon.down(link0, timeStamp: const Duration(milliseconds: 110));
+      await soon.up(timeStamp: const Duration(milliseconds: 150));
+      await tester.pump();
+      expect(followed, isEmpty);
+
+      // Later, a finger is a finger.
+      final later = await tester.createGesture();
+      await later.down(link0, timeStamp: const Duration(milliseconds: 880));
+      await later.up(timeStamp: const Duration(milliseconds: 900));
+      await tester.pump();
+      expect(followed, hasLength(1));
+    });
+
+    testWidgets('a long press, a drag and two fingers are not taps',
+        (tester) async {
+      final (_, followed, _) = await pump(tester);
+      await tap(tester, link0, held: const Duration(milliseconds: 500));
+      await tap(tester, link0, drift: const Offset(30, 0));
+      expect(followed, isEmpty);
+
+      final a = await tester.startGesture(link0);
+      final b = await tester.startGesture(link1);
+      await a.up(timeStamp: const Duration(milliseconds: 60));
+      await b.up(timeStamp: const Duration(milliseconds: 60));
+      await tester.pump();
+      expect(followed, isEmpty);
     });
 
     testWidgets('with the pen, the eraser or plain selection there are no '
         'links to tap', (tester) async {
-      final (c, followed) = await pump(tester);
+      final (c, followed, _) = await pump(tester);
       for (final tool in [EditorTool.pen, EditorTool.eraser, EditorTool.select]) {
         c.read(editorToolProvider.notifier).setTool(tool);
         await tester.pump();
         await tester.pump();
-        expect(find.byKey(const Key('pdfLink_0')), findsNothing,
+        expect(find.byKey(const Key('pdfLinkLayer')), findsNothing,
             reason: '$tool');
+        await tap(tester, link0);
       }
       expect(followed, isEmpty);
     });
@@ -168,7 +279,7 @@ void main() {
       ));
       await tester.pump();
       await tester.pump();
-      expect(find.byKey(const Key('pdfLink_0')), findsNothing);
+      expect(find.byKey(const Key('pdfLinkLayer')), findsNothing);
       await tester.pump(const Duration(seconds: 5));
     });
   });
@@ -256,8 +367,9 @@ void main() {
   });
 
   group('findLinkTargetPage', () {
-    // Page 1 is hand-made; the rest came from an import.
-    final pages = [for (var i = 0; i < 5; i++) _page(i + 1, imported: i != 0)];
+    // A copy of an imported page does not carry its import mark, so no page is
+    // marked here: every page has to be a candidate.
+    final pages = [for (var i = 0; i < 5; i++) _page(i + 1, imported: false)];
 
     Future<List<SceneElement>> load(int pageId, {Set<int> showing = const {}}) async =>
         showing.contains(pageId)

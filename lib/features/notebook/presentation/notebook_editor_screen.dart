@@ -320,6 +320,16 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
     // Placing pictures ends when they stop being selected (a tap elsewhere,
     // Done, a page turn) or when the user picks another tool themselves.
+    // The words tinted for a search belong to the page they were found on:
+    // leaving it ends the tint.
+    ref.listen(pageProvider(widget.notebookId), (_, next) {
+      final tint = ref.read(searchHighlightProvider);
+      if (tint == null || next.pages.isEmpty) return;
+      final at = next.currentPageIndex.clamp(0, next.pages.length - 1);
+      if (next.pages[at].id != tint.pageId) {
+        ref.read(searchHighlightProvider.notifier).state = null;
+      }
+    });
     ref.listen<Set<String>>(selectionProvider, (_, next) {
       final placing = _placing;
       if (placing != null && !next.containsAll(placing.ids)) _endPlacement();
@@ -738,7 +748,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     // The address comes from a file that can arrive inside someone else's
     // backup: only web and email addresses are ever opened.
     if (url == null || !isSafeLinkUrl(url)) {
-      _toast('Margo only opens web and email links.');
+      _toast('Margo only opens web links.');
       return;
     }
     final go = await showDialog<bool>(

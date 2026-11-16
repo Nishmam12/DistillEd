@@ -135,14 +135,15 @@ class PageLinks {
   static double _round(double v) => (v * 100000).roundToDouble() / 100000;
 }
 
-/// Whether a link's web address is one to open: http, https or mail, and
-/// nothing that runs code or reaches a file. Checked when the link is opened.
+/// Whether a link's address is one to open: http or https, and nothing that
+/// runs code or reaches a file. Checked when the link is opened, since it can
+/// come from a file inside someone else's backup. (Email links are not opened:
+/// the app's one door to a browser, `openExternalUrl`, takes web links only.)
 bool isSafeLinkUrl(String? url) {
   if (url == null || url.length > 2000) return false;
   final uri = Uri.tryParse(url.trim());
   if (uri == null) return false;
-  if (uri.isScheme('http') || uri.isScheme('https')) return uri.host.isNotEmpty;
-  return uri.isScheme('mailto') && uri.path.isNotEmpty;
+  return (uri.isScheme('http') || uri.isScheme('https')) && uri.host.isNotEmpty;
 }
 
 /// The name of the picture of PDF page [destPage] that sits beside the picture

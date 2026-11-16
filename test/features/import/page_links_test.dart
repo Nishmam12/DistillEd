@@ -122,11 +122,10 @@ void main() {
   });
 
   group('addresses and sibling pictures', () {
-    test('only web and mail addresses are safe to open', () {
+    test('only web addresses are safe to open', () {
       for (final ok in [
         'https://example.org/a?b=1',
         'http://example.org',
-        'mailto:me@example.org',
       ]) {
         expect(isSafeLinkUrl(ok), isTrue, reason: ok);
       }
@@ -138,7 +137,7 @@ void main() {
         'intent://x#Intent;end',
         'tel:123',
         'https://',
-        'mailto:',
+        'mailto:me@example.org',
         'content://media/x',
         'https://${'a' * 2100}.com',
       ]) {

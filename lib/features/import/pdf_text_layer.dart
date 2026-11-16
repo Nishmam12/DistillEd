@@ -24,9 +24,11 @@ abstract class PdfTextSource {
   /// Throws when the file cannot be read as a PDF.
   Future<List<String>> pagesText(String pdfPath);
 
-  /// The visible words of each page and where they sit, in page order.
+  /// The visible words of each page and where they sit, in page order; null
+  /// for a page whose words cannot be placed (see [PdfiumTextSource]), so none
+  /// is kept for it and its picture is read when words are first needed.
   /// Throws when the file cannot be read as a PDF.
-  Future<List<PageWords>> pagesWords(String pdfPath);
+  Future<List<PageWords?>> pagesWords(String pdfPath);
 
   /// The links and contents entries of each page, in page order. A PDF with
   /// none gives empty entries, and one whose links cannot be read does too:
@@ -65,24 +67,32 @@ class PdfiumTextSource implements PdfTextSource {
   /// The last PDF read, so the writer asking for text and then words opens the
   /// file once.
   String? _lastPath;
-  List<({String text, PageWords words, PageLinks links})>? _last;
+  List<({String text, PageWords? words, PageLinks links})>? _last;
 
-  Future<List<({String text, PageWords words, PageLinks links})>> _read(
+  Future<List<({String text, PageWords? words, PageLinks links})>> _read(
       String pdfPath) async {
     if (_lastPath == pdfPath && _last != null) return _last!;
     await _initialize();
     final document = await PdfDocument.openFile(pdfPath);
     try {
-      final out = <({String text, PageWords words, PageLinks links})>[];
+      final out = <({String text, PageWords? words, PageLinks links})>[];
       final sizes = <(double, double)>[];
       final linkInputs = <List<PdfLinkInput>>[];
       for (final page in document.pages) {
         sizes.add((page.width, page.height));
-        linkInputs.add(await _loadLinks(page));
+        // PDFium reports a turned page (/Rotate) at its turned size but gives
+        // text and link boxes on the page as it was made, so the boxes cannot
+        // be placed on the picture with the page size. Rather than misplace
+        // them, a turned page keeps none: its text is still read, its words
+        // are read off the picture when needed, and it has no links.
+        final turned = page.rotation != PdfPageRotation.none;
+        linkInputs.add(turned ? const [] : await _loadLinks(page));
         final raw = await page.loadText();
         out.add((
           text: _visibleText(page, raw),
-          words: raw == null || raw.charRects.length != raw.fullText.length
+          words: turned
+              ? null
+              : raw == null || raw.charRects.length != raw.fullText.length
               ? PageWords.empty
               : wordsFromPdfChars(
                   text: raw.fullText,
@@ -154,7 +164,7 @@ class PdfiumTextSource implements PdfTextSource {
       [for (final p in await _read(pdfPath)) p.links];
 
   @override
-  Future<List<PageWords>> pagesWords(String pdfPath) async =>
+  Future<List<PageWords?>> pagesWords(String pdfPath) async =>
       [for (final p in await _read(pdfPath)) p.words];
 }
 
@@ -450,7 +460,7 @@ class PdfTextLayerWriter {
   /// Keeps each page's words beside its image. A page with no words still gets
   /// a file, so it is not read again off the picture later.
   Future<void> _writeWords(String pdfPath, List<File> targets, int offset) async {
-    final List<PageWords> words;
+    final List<PageWords?> words;
     try {
       words = await _source.pagesWords(pdfPath);
     } catch (e) {
@@ -459,11 +469,14 @@ class PdfTextLayerWriter {
     }
     for (var i = 0; i < targets.length && offset + i < words.length; i++) {
       final file = targets[i];
+      final pageWords = words[offset + i];
+      // No file, not an empty one: an empty file says "looked, found none".
+      if (pageWords == null) continue;
       try {
         if (await file.exists()) continue;
         await file.parent.create(recursive: true);
         final tmp = File('${file.path}.tmp');
-        await tmp.writeAsString(words[offset + i].encode(), flush: true);
+        await tmp.writeAsString(pageWords.encode(), flush: true);
         await tmp.rename(file.path);
       } catch (e) {
         debugPrint('[PdfText] could not keep the words of page ${i + 1}: $e');

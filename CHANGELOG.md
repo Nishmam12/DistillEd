@@ -23,13 +23,16 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   page. With the hand tool (or the select tool's Text mode) the links on a page
   are underlined and tapping one follows it: a link to another page opens that
   page, and a web link asks "Open this link?" and shows the address first. Only
-  web and email addresses are ever opened. A link to a PDF page you did not
-  import says so. PDFs imported before this version have no contents or links
-  (the PDF itself is not kept), but re-importing one adds them.
+  web (http and https) addresses are ever opened. A link to a PDF page you did
+  not import says so. A resting palm is not taken for a tap. PDFs imported
+  before this version have no contents or links (the PDF itself is not kept),
+  but re-importing one adds them. Pages the PDF has turned (a "rotate" setting)
+  have no links, and their words are read off the picture instead of the PDF.
 - **Search hits are marked on the page.** Open a result from Find in notebook,
   or from Search on a text selection, and the words it found on a PDF page or
   photo are tinted, with a "3 matches on this page" chip that clears the tint.
-  Handwriting and typed text hits still jump to the page but are not tinted.
+  The tint goes when you leave the page. Handwriting and typed text hits still
+  jump to the page but are not tinted.
 - Links and contents are kept in a small file beside each page picture
   (`.links.json`), carried in backups. No database change, no new dependency.
 

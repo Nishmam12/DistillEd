@@ -28,6 +28,9 @@ extension _SceneCanvasText on _SceneCanvasState {
     unawaited(service.wordsFor(image.relativeImagePath).then((words) {
       if (!mounted || _textImage?.id != image.id) return;
       _textWords = words;
+      // Only a gesture still going selects: a tap that has lifted (it may have
+      // followed a link) must not have a word selected under it afterwards.
+      if (_selMode != _SelMode.text) return;
       if (words.isEmpty) {
         _textToast('No text found on this picture.');
         return;

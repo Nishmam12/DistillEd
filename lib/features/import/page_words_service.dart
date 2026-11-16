@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/storage_paths.dart';
+import '../../domain/model/page_links.dart' show siblingPdfPagePath;
 import '../../domain/model/page_words.dart';
 import '../../editor/state/scene_controller.dart' show appDocsPathProvider;
 import '../ai/presentation/ai_providers.dart'
@@ -88,10 +89,17 @@ class PageWordsService {
   }
 }
 
-/// The words of one picture, by relative path: the kept ones, or read off the
-/// picture once. Only watched after a search opened the page.
+/// The words of one picture, by relative path, for tinting a search. The kept
+/// words, and for a picture of a PDF page that has none (an older import) one
+/// read off the picture. Any other picture is never read here: a page of
+/// photos must not start a read for each of them on one jump.
 final pageWordsProvider = FutureProvider.autoDispose.family<PageWords, String>(
-    (ref, rel) => ref.watch(pageWordsServiceProvider).wordsFor(rel));
+    (ref, rel) {
+  final service = ref.watch(pageWordsServiceProvider);
+  return siblingPdfPagePath(rel, 1) != null
+      ? service.wordsFor(rel)
+      : service.storedWordsFor(rel);
+});
 
 final pageWordsServiceProvider = Provider<PageWordsService>((ref) {
   final ocr = ref.watch(imageTextRecognitionServiceProvider);
