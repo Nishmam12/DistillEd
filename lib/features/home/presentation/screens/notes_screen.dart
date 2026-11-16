@@ -5,7 +5,6 @@
 // below the expanded window size (840 dp) it opens as a drawer instead.
 
 import 'dart:async';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,10 +19,12 @@ import '../home_notifier.dart';
 import '../models/note_card_data.dart';
 import '../note_cards_provider.dart';
 import '../notes_palette.dart';
+import '../recent_notebooks.dart';
 import '../widgets/home_sidebar.dart';
 import '../widgets/new_note_dialog.dart';
 import '../widgets/note_card.dart';
 import '../widgets/organize_sheets.dart';
+import '../widgets/recent_strip.dart';
 import '../widgets/search_popover.dart';
 
 class NotesScreen extends ConsumerStatefulWidget {
@@ -114,7 +115,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           backgroundColor: result.backgroundColor,
         );
 
-    if (context.mounted) unawaited(context.push('/note2/${notebook.id}'));
+    if (context.mounted) _openNotebook(context, ref, notebook.id);
   }
 
   Future<void> _pickSort(BuildContext context, WidgetRef ref) async {
@@ -167,6 +168,12 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   }
 }
 
+/// Opens notebook [id] in the editor and remembers it for the Recent strip.
+void _openNotebook(BuildContext context, WidgetRef ref, int id) {
+  unawaited(ref.read(recentNotebooksProvider.notifier).record(id));
+  unawaited(context.push('/note2/$id'));
+}
+
 /// Title, chrome icons, sort row and the grid.
 class _Main extends ConsumerWidget {
   const _Main({
@@ -190,6 +197,15 @@ class _Main extends ConsumerWidget {
     final favoritesOnly = ref.watch(notesFavoritesOnlyProvider);
     final folder = ref.watch(notesFolderFilterProvider);
     final folders = ref.watch(foldersProvider).value ?? const [];
+    // The Recent strip only belongs on the plain, unfiltered list.
+    final plain = folder == FolderFilter.all &&
+        !favoritesOnly &&
+        ref.watch(notesSearchQueryProvider).trim().isEmpty &&
+        ref.watch(notesTagFilterProvider).isEmpty;
+    final recents = !plain
+        ? const <NoteCardData>[]
+        : recentCards(ref.watch(noteCardsProvider).value ?? const [],
+            ref.watch(recentNotebooksProvider));
 
     final title = favoritesOnly
         ? 'Favorites'
@@ -236,7 +252,7 @@ class _Main extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SearchPopoverButton(
-          onOpenNote: (note) => context.push('/note2/${note.id}'),
+          onOpenNote: (note) => _openNotebook(context, ref, note.id),
         ),
         SizedBox(width: iconGap - inset * 2),
         AppIconButton(
@@ -339,6 +355,12 @@ class _Main extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: 24 - _SortButton.padding),
+            if (recents.isNotEmpty)
+              RecentStrip(
+                notes: recents,
+                padding: pad,
+                onOpen: (note) => _openNotebook(context, ref, note.id),
+              ),
             Expanded(
               child: cards.when(
                 loading: () =>
@@ -409,7 +431,10 @@ class _SortButton extends StatelessWidget {
   }
 }
 
-/// The floating "+ new" pill: frosted glass, accent at half strength.
+/// The floating "+ new" pill: the accent, slightly see-through.
+///
+/// It used to be frosted glass. A backdrop blur that sits over a scrolling
+/// list is recomputed on every frame of the scroll, so it is a tint now.
 class _NewButton extends StatelessWidget {
   const _NewButton({required this.onPressed});
 
@@ -421,12 +446,13 @@ class _NewButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Light is the design (#4F6B5A @ 50%, white label). Light sage at half
-    // strength under a white label would wash out in dark, so dark uses the
+    // The design is #4F6B5A at 50% over a blur. Without the blur, half
+    // strength lets card text show through the white label, so it is denser.
+    // Light sage under a white label would wash out in dark, so dark uses the
     // deep field green with the cream ink instead.
     final fill = isDark
-        ? c.fieldFill.withValues(alpha: 0.8)
-        : c.accent.withValues(alpha: 0.5);
+        ? c.fieldFill.withValues(alpha: 0.92)
+        : c.accent.withValues(alpha: 0.88);
     final ink = isDark ? c.textPrimary : c.onAccent;
     final style = TextStyle(
       fontFamily: 'ModulusPro',
@@ -442,22 +468,19 @@ class _NewButton extends StatelessWidget {
       excludeSemantics: true,
       child: ClipRRect(
         borderRadius: _radius,
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-          child: Material(
-            color: fill,
-            child: InkWell(
-              onTap: onPressed,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(21, 7, 16, 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('+', style: style),
-                    const SizedBox(width: 4),
-                    Text('new', style: style),
-                  ],
-                ),
+        child: Material(
+          color: fill,
+          child: InkWell(
+            onTap: onPressed,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(21, 7, 16, 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('+', style: style),
+                  const SizedBox(width: 4),
+                  Text('new', style: style),
+                ],
               ),
             ),
           ),
@@ -525,7 +548,7 @@ class _NotesGrid extends ConsumerWidget {
               note: note,
               sceneImageResolver: images.get,
               sceneRepaint: images,
-              onTap: () => context.push('/note2/${note.id}'),
+              onTap: () => _openNotebook(context, ref, note.id),
               // The design's cards carry no graph button; the knowledge graph
               // is in the long-press sheet.
               onLongPress: () => _showActions(context, ref, note),
