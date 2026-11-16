@@ -42,5 +42,9 @@ class PageLinksService {
   }
 }
 
+/// The links of one picture, by relative path.
+final pageLinksProvider = FutureProvider.autoDispose.family<PageLinks, String>(
+    (ref, rel) => ref.watch(pageLinksServiceProvider).linksFor(rel));
+
 final pageLinksServiceProvider = Provider<PageLinksService>(
     (ref) => PageLinksService(docsDir: ref.watch(appDocsPathProvider)));

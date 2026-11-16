@@ -24,8 +24,8 @@ class TextSelectionBar extends ConsumerWidget {
   /// Ask the AI about the selected text (the editor opens the panel).
   final ValueChanged<String> onAsk;
 
-  /// Go to a page of this notebook, by id.
-  final ValueChanged<int> onJump;
+  /// Go to a page of this notebook, by id, to show the words searched for.
+  final void Function(int pageId, String query) onJump;
 
   const TextSelectionBar({
     super.key,
@@ -147,7 +147,7 @@ class TextSelectionBar extends ConsumerWidget {
         pageNumber: (id) => (order[id] ?? 0) + 1,
         onOpen: (id) {
           Navigator.pop(sheet);
-          onJump(id);
+          onJump(id, text);
         },
       ),
     );

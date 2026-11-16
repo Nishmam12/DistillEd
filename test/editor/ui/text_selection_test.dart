@@ -200,7 +200,7 @@ void main() {
 
   group('the text bar', () {
     Future<ProviderContainer> bar(WidgetTester tester,
-        {ValueChanged<String>? onAsk, ValueChanged<int>? onJump}) async {
+        {ValueChanged<String>? onAsk, void Function(int, String)? onJump}) async {
       SharedPreferences.setMockInitialValues({});
       final repo = FakePageRepository();
       final texts = InMemoryPageTextStore();
@@ -234,7 +234,7 @@ void main() {
               child: TextSelectionBar(
                 pageKey: _key,
                 onAsk: onAsk ?? (_) {},
-                onJump: onJump ?? (_) {},
+                onJump: onJump ?? (_, _) {},
               ),
             ),
           ),
@@ -294,7 +294,11 @@ void main() {
     testWidgets('Search lists the pages that mention the words',
         (tester) async {
       int? jumped;
-      final c = await bar(tester, onJump: (id) => jumped = id);
+      String? searched;
+      final c = await bar(tester, onJump: (id, q) {
+        jumped = id;
+        searched = q;
+      });
       c.read(pageTextSelectionProvider.notifier).state =
           const PageTextSelection(
               key: _key, imageId: 'pdf', words: _words, indexes: [0, 1]);
@@ -306,6 +310,7 @@ void main() {
       await tester.tap(find.byKey(Key('searchHit_$second')));
       await tester.pumpAndSettle();
       expect(jumped, second);
+      expect(searched, 'Cell division');
       await tester.pump(const Duration(seconds: 5));
     });
 

@@ -10,14 +10,18 @@ import '../../../data/persistence/page_text_store.dart';
 import '../../../editor/state/page_notifier.dart';
 import '../domain/note_search.dart';
 
-/// Opens find-in-notebook. Resolves to the page index the user chose to jump
-/// to, or null if they dismissed without picking one.
-Future<int?> showNoteSearchSheet(
+/// The result the user picked: where to jump, and what they searched for (to
+/// tint it on the page).
+typedef NoteSearchPick = ({int pageIndex, String query});
+
+/// Opens find-in-notebook. Resolves to the pick, or null if they dismissed
+/// without picking one.
+Future<NoteSearchPick?> showNoteSearchSheet(
   BuildContext context,
   WidgetRef ref, {
   required int notebookId,
 }) {
-  return showModalBottomSheet<int>(
+  return showModalBottomSheet<NoteSearchPick>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -191,7 +195,8 @@ class _NoteSearchSheetState extends ConsumerState<_NoteSearchSheet> {
           title: Text(hit.pageLabel,
               style: Theme.of(context).textTheme.labelMedium),
           subtitle: _HighlightedSnippet(hit: hit),
-          onTap: () => Navigator.pop(context, hit.pageIndex),
+          onTap: () => Navigator.pop(
+              context, (pageIndex: hit.pageIndex, query: _controller.text.trim())),
         );
       },
     );

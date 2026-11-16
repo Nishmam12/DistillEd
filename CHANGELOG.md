@@ -16,6 +16,23 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 
+### Added
+- **A PDF's contents and links come with it.** When a PDF is imported, its
+  table of contents and the links on its pages are kept. The Outline now starts
+  with "PDF contents", indented as the PDF has it; tap an entry to open that
+  page. With the hand tool (or the select tool's Text mode) the links on a page
+  are underlined and tapping one follows it: a link to another page opens that
+  page, and a web link asks "Open this link?" and shows the address first. Only
+  web and email addresses are ever opened. A link to a PDF page you did not
+  import says so. PDFs imported before this version have no contents or links
+  (the PDF itself is not kept), but re-importing one adds them.
+- **Search hits are marked on the page.** Open a result from Find in notebook,
+  or from Search on a text selection, and the words it found on a PDF page or
+  photo are tinted, with a "3 matches on this page" chip that clears the tint.
+  Handwriting and typed text hits still jump to the page but are not tinted.
+- Links and contents are kept in a small file beside each page picture
+  (`.links.json`), carried in backups. No database change, no new dependency.
+
 ### Changed
 - **PDF export is now a real vector PDF with searchable text.** Ink, shapes and
   the paper pattern are drawn as vector lines, so the PDF stays sharp at any

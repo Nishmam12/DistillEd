@@ -88,6 +88,11 @@ class PageWordsService {
   }
 }
 
+/// The words of one picture, by relative path: the kept ones, or read off the
+/// picture once. Only watched after a search opened the page.
+final pageWordsProvider = FutureProvider.autoDispose.family<PageWords, String>(
+    (ref, rel) => ref.watch(pageWordsServiceProvider).wordsFor(rel));
+
 final pageWordsServiceProvider = Provider<PageWordsService>((ref) {
   final ocr = ref.watch(imageTextRecognitionServiceProvider);
   return PageWordsService(

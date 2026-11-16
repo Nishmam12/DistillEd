@@ -54,6 +54,13 @@ import '../../../editor/state/editor_tool_controller.dart';
 import '../../../editor/state/history_controller.dart';
 import '../../../editor/state/library_controller.dart';
 import '../../../editor/state/scene_controller.dart';
+import '../../../editor/state/page_text_selection.dart';
+import '../../../editor/state/search_highlight.dart';
+import '../../../editor/ui/pdf_link_layer.dart';
+import '../../../editor/ui/search_highlight_layer.dart';
+import '../../../domain/model/page_links.dart';
+import '../../../core/utils/external_links.dart';
+import '../../import/link_target.dart';
 import '../../../editor/state/selection_controller.dart';
 import '../../../editor/state/viewport_controller.dart';
 import '../../../editor/ui/editable_note_title.dart';
@@ -501,6 +508,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                                   : templateForPage(below, _notebookTemplate),
                             ),
                           ),
+                        // Search words tinted, and the links of PDF pages.
+                        Positioned.fill(
+                            child: SearchHighlightLayer(pageKey: key)),
+                        Positioned.fill(
+                            child: PdfLinkLayer(
+                                pageKey: key, onFollow: _followLink)),
                         // Zoom level and the universal colour palette, both
                         // top-right under the toolbar; tap the pill to reset
                         // the view, tap the swatch to open the colour grid.
@@ -556,7 +569,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                             child: TextSelectionBar(
                               pageKey: key,
                               onAsk: (text) => _askAboutText(key, text),
-                              onJump: _jumpToSource,
+                              onJump: _jumpToSearchHit,
                             ),
                           ),
                         ),
@@ -666,13 +679,88 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
   /// Find-in-notebook. Picking a result jumps to that page.
   Future<void> _findInNotebook() async {
-    final pageIndex = await showNoteSearchSheet(
+    final pick = await showNoteSearchSheet(
       context,
       ref,
       notebookId: widget.notebookId,
     );
-    if (pageIndex == null || !mounted) return;
-    _switchTo(pageIndex);
+    if (pick == null || !mounted) return;
+    _switchTo(pick.pageIndex);
+    _tintSearch(pick.pageIndex, pick.query);
+  }
+
+  /// Marks the words [query] found on the page at [pageIndex], once the page
+  /// is open, so they can be seen without hunting.
+  void _tintSearch(int pageIndex, String query) {
+    final pages = ref.read(pageProvider(widget.notebookId)).pages;
+    if (pageIndex < 0 || pageIndex >= pages.length || query.trim().isEmpty) {
+      return;
+    }
+    ref.read(searchHighlightProvider.notifier).state =
+        SearchHighlight(pageId: pages[pageIndex].id, query: query);
+  }
+
+  /// Opens a result of the text bar's Search: the page, with the words tinted.
+  void _jumpToSearchHit(int pageId, String query) {
+    final pages = ref.read(pageProvider(widget.notebookId)).pages;
+    final index = pages.indexWhere((p) => p.id == pageId);
+    if (index < 0) return;
+    _switchTo(index);
+    _tintSearch(index, query);
+  }
+
+  /// A tap on a link of an imported PDF page: to another page of the notebook,
+  /// or out to the web after asking.
+  Future<void> _followLink(PageLink link, String imagePath) async {
+    // A tap in Text mode also picked the word under it; following the link
+    // should not leave that behind.
+    ref.read(pageTextSelectionProvider.notifier).state = null;
+    final dest = link.destPage;
+    if (dest != null) {
+      final state = ref.read(pageProvider(widget.notebookId));
+      final store = ref.read(sceneElementStoreProvider);
+      final index = await findLinkTargetPage(
+        pages: state.pages,
+        load: store.loadForPage,
+        fromImagePath: imagePath,
+        destPage: dest,
+        currentIndex: state.currentPageIndex,
+      );
+      if (!mounted) return;
+      if (index == null) {
+        _toast("That page isn't in this notebook.");
+        return;
+      }
+      _switchTo(index);
+      return;
+    }
+    final url = link.url;
+    // The address comes from a file that can arrive inside someone else's
+    // backup: only web and email addresses are ever opened.
+    if (url == null || !isSafeLinkUrl(url)) {
+      _toast('Margo only opens web and email links.');
+      return;
+    }
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Open this link?'),
+        content: SelectableText(url),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              key: const Key('openLinkConfirm'),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Open')),
+        ],
+      ),
+    );
+    if (go != true || !mounted) return;
+    if (!await openExternalUrl(url) && mounted) {
+      _toast("Couldn't open $url");
+    }
   }
 
   /// Toggles the live AI insights surface. Wide screens dock it beside the
