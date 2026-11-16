@@ -124,6 +124,17 @@ class SettingsState {
   /// happens once per install, not once per app launch.
   final bool hasSeenFirstCloudCall;
 
+  /// Which model answers what the student asks: `auto` (on-device first, the
+  /// behaviour before there was a picker), `local` (only ever the on-device
+  /// model), or the id of a model in the list — see
+  /// `features/ai/domain/catalog/answer_route.dart`, which is the only place
+  /// this is interpreted.
+  ///
+  /// Separate from [aiMode] on purpose. [aiMode] decides where pages are READ
+  /// and whether the cloud may be used at all; this decides who ANSWERS. Folding
+  /// the two together would make picking a model re-read every page.
+  final String answerModelId;
+
   /// Hold the pen still at the end of a freehand stroke and a rectangle, ellipse,
   /// triangle or arrow snaps to the clean shape (ML Kit's shape model, a small
   /// download made when this is switched on). Off by default: it changes what the
@@ -214,6 +225,7 @@ class SettingsState {
     this.aiMode = AiProcessingMode.onDevice,
     this.cloudPrivacy = CloudPrivacy.askEachTime,
     this.hasSeenFirstCloudCall = false,
+    this.answerModelId = 'auto',
     this.recognitionLanguage = 'en',
     this.transcribeLectures = false,
     this.snapShapes = false,
@@ -250,6 +262,7 @@ class SettingsState {
     AiProcessingMode? aiMode,
     CloudPrivacy? cloudPrivacy,
     bool? hasSeenFirstCloudCall,
+    String? answerModelId,
     String? recognitionLanguage,
     bool? transcribeLectures,
     bool? snapShapes,
@@ -274,6 +287,7 @@ class SettingsState {
       aiMode: aiMode ?? this.aiMode,
       cloudPrivacy: cloudPrivacy ?? this.cloudPrivacy,
       hasSeenFirstCloudCall: hasSeenFirstCloudCall ?? this.hasSeenFirstCloudCall,
+      answerModelId: answerModelId ?? this.answerModelId,
       recognitionLanguage: recognitionLanguage ?? this.recognitionLanguage,
       transcribeLectures: transcribeLectures ?? this.transcribeLectures,
       snapShapes: snapShapes ?? this.snapShapes,
@@ -310,6 +324,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   /// so an existing opt-in is not silently revoked. Never written.
   static const _kLegacyCloudAiEnabled = 'ai.cloudEnabled';
   static const _kCloudPrivacy = 'ai.cloudPrivacy';
+  static const _kAnswerModelId = 'ai.answerModelId';
   static const _kHasSeenFirstCloudCall = 'ai.hasSeenFirstCloudCall';
   static const _kRecognitionLanguage = 'ai.recognitionLanguage';
   static const _kTranscribeLectures = 'ai.transcribeLectures';
@@ -365,6 +380,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
         orElse: () => CloudPrivacy.askEachTime,
       ),
       hasSeenFirstCloudCall: prefs.getBool(_kHasSeenFirstCloudCall) ?? false,
+      answerModelId: prefs.getString(_kAnswerModelId) ?? 'auto',
       recognitionLanguage: prefs.getString(_kRecognitionLanguage) ?? 'en',
       transcribeLectures: prefs.getBool(_kTranscribeLectures) ?? false,
       snapShapes: prefs.getBool(_kSnapShapes) ?? false,
@@ -475,6 +491,15 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   Future<void> setCloudAiEnabled(bool value) => setAiMode(
         value ? AiProcessingMode.auto : AiProcessingMode.onDevice,
       );
+
+  /// Stores which model answers (see [SettingsState.answerModelId]). Leaves
+  /// [SettingsState.aiMode] alone: picking a model is not a change to where
+  /// pages are read.
+  Future<void> setAnswerModelId(String value) async {
+    state = state.copyWith(answerModelId: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kAnswerModelId, value);
+  }
 
   /// Marks the first-cloud-call explainer as shown — every confirmation
   /// after this one is the terser, repeat version.
