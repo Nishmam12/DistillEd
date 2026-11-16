@@ -53,6 +53,8 @@ class AppBackupLibrary implements BackupLibrary {
         await _addMedia(media, StoragePaths.pdfTextSidecar(e.relativeImagePath));
         await _addMedia(
             media, StoragePaths.pdfWordsSidecar(e.relativeImagePath));
+        await _addMedia(
+            media, StoragePaths.pdfLinksSidecar(e.relativeImagePath));
       }
       pageSnapshots.add(PageSnapshot(
         elements: els,

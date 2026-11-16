@@ -113,7 +113,8 @@ class PageRepository {
           files
             ..add(img)
             ..add(StoragePaths.pdfTextSidecar(img))
-            ..add(StoragePaths.pdfWordsSidecar(img));
+            ..add(StoragePaths.pdfWordsSidecar(img))
+            ..add(StoragePaths.pdfLinksSidecar(img));
         }
       }
       files.add('notes/$notebookId/page_${pageToDelete.id}.ink');

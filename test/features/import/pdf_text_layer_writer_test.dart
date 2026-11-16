@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:margo/domain/model/page_links.dart';
 import 'package:margo/domain/model/page_words.dart';
 import 'package:margo/features/import/pdf_text_layer.dart';
 import 'dart:ui' show Rect;
@@ -22,6 +23,22 @@ class _FakeSource implements PdfTextSource {
   }
 
   int wordsRead = 0;
+  int linksRead = 0;
+
+  @override
+  Future<List<PageLinks>> pagesLinks(String pdfPath) async {
+    linksRead++;
+    final f = failure;
+    if (f != null) throw f;
+    return [
+      for (var i = 0; i < pages.length; i++)
+        PageLinks(links: [
+          PageLink(rect: const Rect.fromLTRB(0, 0, 0.5, 0.1), destPage: i + 1),
+        ], outline: [
+          OutlineEntry(title: 'Part ${i + 1}', depth: 0, order: i),
+        ]),
+    ];
+  }
 
   @override
   Future<List<PageWords>> pagesWords(String pdfPath) async {
@@ -187,5 +204,49 @@ void main() {
     expect(source.wordsRead, 1);
     expect(source.opened, 0, reason: 'the text was there: not read again');
     expect(File(sidecar(1)).readAsStringSync(), 'kept');
+  });
+
+  String links(int page) => '${dir.path}/imports/pdf_abc_$page.links.json';
+
+  test('each page also gets its links and contents entries', () async {
+    final source = _FakeSource(['a', 'b']);
+    await PdfTextLayerWriter(source)
+        .write(pdfPath: '/x.pdf', pageImagePaths: images(2));
+    final second = PageLinks.decode(File(links(2)).readAsStringSync());
+    expect(second.links.single.destPage, 2);
+    expect(second.outline.single.title, 'Part 2');
+  });
+
+  test('importing pages 3-4 keeps the links of pages 3-4, and a link to a '
+      'page that was not imported is not lost', () async {
+    final source = _FakeSource(['1', '2', '3', '4']);
+    await PdfTextLayerWriter(source).write(
+      pdfPath: '/x.pdf',
+      pageImagePaths: [
+        '${dir.path}/imports/pdf_abc_3.png',
+        '${dir.path}/imports/pdf_abc_4.png',
+      ],
+      firstPage: 3,
+    );
+    expect(PageLinks.decode(File(links(3)).readAsStringSync()).outline.single.title,
+        'Part 3');
+    expect(File(links(1)).existsSync(), isFalse);
+  });
+
+  test('re-importing a PDF imported before links were kept fills them in only',
+      () async {
+    for (var i = 1; i <= 2; i++) {
+      File(sidecar(i))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('kept');
+      File(words(i)).writeAsStringSync(PageWords.empty.encode());
+    }
+    final source = _FakeSource(['x', 'y']);
+    await PdfTextLayerWriter(source)
+        .write(pdfPath: '/x.pdf', pageImagePaths: images(2));
+    expect(File(links(1)).existsSync(), isTrue);
+    expect(source.linksRead, 1);
+    expect(source.wordsRead, 0, reason: 'the words were there');
+    expect(source.opened, 0, reason: 'the text was there');
   });
 }
