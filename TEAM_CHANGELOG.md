@@ -29,6 +29,43 @@ Commits: <first>..<last>
 ## Push log
 
 ### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `fc07649`..`821f4c7` (8 commits), plus this changelog commit
+
+**What changed** (phase 5 of `docs/COMPETITOR_UPGRADE_PLAN.md`, items 1-6):
+- **Eraser modes.** The eraser panel has "Highlighter only" (both erasers
+  then touch only highlighter strokes), "Erase all handwriting" and "Clear
+  page", each one undo step. Locked items (imported PDF pages) are never
+  removed.
+- **Eyedropper.** "Pick from page" in the colour palette: the next touch
+  takes the colour of the ink, shape or text under it instead of drawing.
+  Pictures are not sampled.
+- **Lock canvas and reading mode**, in the editor's more menu. Lock stops
+  the page panning or zooming. Reading mode hides the tools; touches only
+  scroll and follow links; "Done reading" brings the tool back. Both switch
+  off when the notebook is closed.
+- **Three new pens:** marker, calligraphy (a flat 45° nib) and a shading
+  pencil. Added at the end of the pen list, so older strokes are unchanged;
+  SVG and PDF export draw them as the page does. The shading pencil stands
+  in for the plan's tilt-shaded pencil: stroke points don't store tilt.
+- **Customise toolbar** (more menu): reorder tools, switch them on or off,
+  Reset.
+- **Writing pad** (more menu), for phones: write large in a pad under the
+  page and the ink lands small in a box on the page; the box moves on by
+  itself, or with Space and New line; tap the page to move it.
+- Not done: item 7, stroke prediction (needs measuring on a real stylus
+  first).
+
+**What you need to do:** pull. No database migration: the three pens only
+extend the stored pen enum (`scene_element_record.g.dart` regenerated);
+the toolbar layout is in shared_preferences. No new dependencies.
+
+**Tested:** `flutter analyze` clean (no errors or warnings); full suite
+3,642 passing. Each item tried on the Pixel Tablet emulator (eraser
+actions with undo, eyedropper, reading mode, lock, a stroke with each new
+pen, hiding and resetting toolbar tools, writing in the pad). Not tried
+with a real stylus.
+
+### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
 Commits: `6e3d2b7`..`c88fc0c` (5 commits), plus this changelog commit
 
 **What changed** (phase 4 of `docs/COMPETITOR_UPGRADE_PLAN.md`):
