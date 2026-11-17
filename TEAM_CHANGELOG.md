@@ -29,6 +29,50 @@ Commits: <first>..<last>
 ## Push log
 
 ### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `c0f8376`..`8fd36a2` (7 commits), plus this changelog commit
+
+**What changed** (phases 1 and 2 of `docs/COMPETITOR_UPGRADE_PLAN.md`):
+- **Share to Margo / Open with Margo (Android).** Margo now appears in the
+  share sheet for text, links, images, PDFs, `.txt` and `.md` files (one or
+  several), and in "Open with" for PDFs and text files. A sheet asks: new
+  note or an existing one. Several PDFs into a new note: one note, or a note
+  each. Only `content://` links from other apps are read; Margo's own files
+  can't be pulled in through a share.
+- **Password-protected PDFs** ask for the password and import an unlocked
+  copy (PDFium does the unlocking; the password is not kept).
+- **Text and Markdown files** become typed text pages, split to fit the page.
+  Also in the editor's import sheet: "Text or Markdown file".
+- **A shared web link** becomes a small text card (title, site, address).
+  Nothing is fetched from the web; it isn't tappable yet (comes with phase 3).
+- **Lecture recording:** a pause/resume button while recording (the paused
+  time is not in the file, and later ink still lines up); a player bar when a
+  lecture plays (play/pause, time, 0.5×–2× speed); while it plays, ink
+  written later in the lecture is faint and fills in (note replay); tapping a
+  transcript line shows the ink written while it was said.
+- **Study summary after a transcript:** new setting "Summarise lectures" (on
+  by default, only acts with transcripts on). The page is summarised on the
+  phone only, never the cloud, and shown in the transcript sheet with "Make
+  flashcards from this lecture".
+- **Bug fixed:** "Play from here" always started a recording at 0:00, because
+  strokes were stamped by mixing two different clocks. New recordings seek
+  correctly; strokes in older recordings keep their wrong 0:00 time.
+- **Bug fixed:** opening a PDF with Margo showed "Page Not Found" (Flutter's
+  deep linking is now off in the manifest; Margo has no deep links).
+
+**What you need to do:** pull, then do a full rebuild (not hot reload): the
+Android manifest and `MainActivity.kt` changed. No new packages, no
+`flutter pub get` needed, no database change. Summaries are saved as
+`*.summary.txt` files next to lecture transcripts.
+
+**Tested:** `flutter analyze` clean (0 errors, 0 warnings); all 3,586 tests
+pass. On the Pixel Tablet emulator: locked PDF via "Open with" (wrong and
+right password), Markdown and a link shared with the app open, pause during
+a recording (a ~9 s pause is absent from the file), play from a stroke,
+replay fading, 2× speed. Not tried: "a note each" for several PDFs (adb can't
+send a multi-file share), transcript→ink and the summary (need the speech and
+language models on a device), and nothing on a real phone yet.
+
+### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
 Commits: the commit after `a44587b` (this push)
 
 **What changed:**
