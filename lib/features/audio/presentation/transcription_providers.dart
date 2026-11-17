@@ -5,10 +5,19 @@
 // the lock it shares with Gemma, the language detector, the indexer — and the
 // recording side must not depend on that.
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../core/error_log.dart';
 import '../../../data/persistence/page_text_store.dart';
+import '../../ai/domain/quality/ai_quality_guard.dart' show AnswerTier;
+import '../../summarize/domain/services/summarization_service.dart';
+import '../../summarize/presentation/summarize_providers.dart'
+    show summarizationServiceProvider;
+import '../data/transcript_store.dart';
+import '../domain/lecture_recording.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../editor/state/scene_controller.dart' show appDocsPathProvider;
 import '../../ai/data/providers/local_gemma_provider.dart';
@@ -84,6 +93,45 @@ final lectureTranscriptionProvider = StateNotifierProvider<
       await ref
           .read(notebookIndexProvider(recording.notebookId).notifier)
           .runWhenFree(notebookId: recording.notebookId, pageIds: [recording.pageId]);
+      // A study summary of the page, lecture now included, waiting in the
+      // transcript sheet. Not awaited: the next lecture's transcript must not
+      // wait on it.
+      if (ref.read(settingsProvider).summarizeLectures) {
+        unawaited(summarizeLecturePage(
+          recording: recording,
+          service: ref.read(summarizationServiceProvider),
+          store: ref.read(transcriptStoreProvider),
+          languageCode: ref.read(settingsProvider).recognitionLanguage,
+        ));
+      }
     },
   );
 });
+
+/// Summarises [recording]'s page on the device and keeps the summary beside
+/// its transcript. Quietly does nothing when there is no on-device model, the
+/// page is not worth summarising, or the recap came out unreliable: this runs
+/// with nobody waiting, so a failure is just no summary.
+Future<void> summarizeLecturePage({
+  required LectureRecording recording,
+  required SummarizationService service,
+  required TranscriptStore store,
+  required String languageCode,
+}) async {
+  try {
+    final result = await service.summarizeScope(
+      notebookId: recording.notebookId,
+      scope: PageScope(recording.pageId),
+      languageCode: languageCode,
+      cloudEnabled: false,
+      localOnly: true,
+    );
+    if (result.tier == AnswerTier.localLowConfidence) return;
+    final summary = result.summary.trim();
+    if (summary.isNotEmpty) await store.saveSummary(recording, summary);
+  } on SummarizeException {
+    // No model, nothing meaningful, or cancelled: no summary.
+  } catch (e, st) {
+    await ErrorLog.record(e, st);
+  }
+}

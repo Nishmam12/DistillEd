@@ -81,6 +81,7 @@ class ScriptedService extends SummarizationService {
     required SummarizeScope scope,
     required String languageCode,
     required bool cloudEnabled,
+    bool localOnly = false,
     bool preferCloud = false,
     void Function(SummarizeStage stage)? onStage,
     Future<bool> Function()? confirmSend,

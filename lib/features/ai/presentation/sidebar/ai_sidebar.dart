@@ -587,35 +587,42 @@ class _FlashcardBar extends ConsumerWidget {
     );
   }
 
-  void _startCards(BuildContext context, WidgetRef ref) {
-    final extractor = ref.read(pageContentExtractorProvider);
-    final recognition = ref.read(handwritingRecognitionServiceProvider);
-    final languageCode = ref.read(settingsProvider).recognitionLanguage;
-    final pageContext =
-        ref.read(pageContextProvider(pageKey).notifier).shown ??
-        PageContext.empty;
-    final pageId = pageKey.pageId;
+  void _startCards(BuildContext context, WidgetRef ref) =>
+      startPageFlashcards(context, ref, pageKey);
+}
 
-    ref
-        .read(flashcardNotifierProvider.notifier)
-        .generate(
-          FlashcardRequest(
-            notebookId: pageKey.notebookId,
-            pageId: pageId,
-            context: pageContext,
-            resolveText: () async {
-              await recognition.ensureModelDownloaded(languageCode);
-              final content = await extractor.extractPage(
-                pageId,
-                languageCode: languageCode,
-                useVision: true,
-              );
-              return content.combinedTextWithFigures;
-            },
-          ),
-        );
-    showFlashcardSheet(context);
-  }
+/// Makes flashcards from the page at [pageKey] — handwriting, typed text,
+/// figures and any lecture transcript on it — and opens the deck sheet. Shared
+/// by the AI panel and a lecture's transcript sheet.
+void startPageFlashcards(
+    BuildContext context, WidgetRef ref, ScenePageKey pageKey) {
+  final extractor = ref.read(pageContentExtractorProvider);
+  final recognition = ref.read(handwritingRecognitionServiceProvider);
+  final languageCode = ref.read(settingsProvider).recognitionLanguage;
+  final pageContext =
+      ref.read(pageContextProvider(pageKey).notifier).shown ??
+      PageContext.empty;
+  final pageId = pageKey.pageId;
+
+  ref
+      .read(flashcardNotifierProvider.notifier)
+      .generate(
+        FlashcardRequest(
+          notebookId: pageKey.notebookId,
+          pageId: pageId,
+          context: pageContext,
+          resolveText: () async {
+            await recognition.ensureModelDownloaded(languageCode);
+            final content = await extractor.extractPage(
+              pageId,
+              languageCode: languageCode,
+              useVision: true,
+            );
+            return content.combinedTextWithFigures;
+          },
+        ),
+      );
+  showFlashcardSheet(context);
 }
 
 /// A pill-styled action trigger shared by the Summarize/Explain launchers.

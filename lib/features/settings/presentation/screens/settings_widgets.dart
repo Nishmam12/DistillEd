@@ -309,6 +309,30 @@ class _InkGestureRow extends ConsumerWidget {
   }
 }
 
+/// "Summarise lectures": after a transcript, a study summary of its page, made
+/// on the device. Only means something while transcripts are on.
+class _LectureSummaryRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final transcribing =
+        ref.watch(settingsProvider.select((s) => s.transcribeLectures));
+    final on = ref.watch(settingsProvider.select((s) => s.summarizeLectures));
+    return _SettingsRow(
+      icon: AppIcons.mic,
+      title: 'Summarise lectures',
+      subtitle: transcribing
+          ? 'After a transcript, a study summary of the page, made on this device'
+          : 'Needs lecture transcripts on',
+      trailing: Switch(
+        value: on && transcribing,
+        onChanged: transcribing
+            ? ref.read(settingsProvider.notifier).setSummarizeLectures
+            : null,
+      ),
+    );
+  }
+}
+
 /// "Transcribe lectures": a switch whose subtitle follows the speech model's
 /// download. Turning it on starts that download; a failed one is retried by
 /// tapping the row.

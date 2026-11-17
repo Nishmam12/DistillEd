@@ -122,6 +122,7 @@ class SettingsScreen extends ConsumerWidget {
         // downloads the model; a lecture is transcribed on the device after it
         // stops.
         _LectureTranscriptsRow(),
+        _LectureSummaryRow(),
         // The model downloads and the HuggingFace token live on their own screen.
         _SettingsRow(
           icon: AppIcons.flashCircle,

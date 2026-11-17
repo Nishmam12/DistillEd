@@ -145,6 +145,42 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
+  // The summary made after a lecture is transcribed runs with nobody there to
+  // confirm a send: it must stay on the device whatever model is picked.
+  test('localOnly never uses the picked model, asks nothing, stays local',
+      () async {
+    final result = await build().summarizeScope(
+      notebookId: 7,
+      scope: const PageScope(11),
+      languageCode: 'en',
+      cloudEnabled: true,
+      localOnly: true,
+      confirmSend: () async {
+        asked++;
+        return true;
+      },
+    );
+
+    expect(result.summary, 'a summary from local');
+    expect(picked.prompts, isEmpty);
+    expect(asked, 0);
+  });
+
+  test('localOnly without the on-device model fails instead of going out',
+      () async {
+    await expectLater(
+      build(modelInstalled: false).summarizeScope(
+        notebookId: 7,
+        scope: const PageScope(11),
+        languageCode: 'en',
+        cloudEnabled: true,
+        localOnly: true,
+      ),
+      throwsA(isA<LocalModelRequiredException>()),
+    );
+    expect(picked.prompts, isEmpty);
+  });
+
   test('the picked model writes the summary and is named on it', () async {
     final result = await summarize(build());
 

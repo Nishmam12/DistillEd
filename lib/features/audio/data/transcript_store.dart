@@ -16,6 +16,12 @@ abstract class TranscriptStore {
 
   /// Whether [recording] has a transcript, without reading it.
   Future<bool> exists(LectureRecording recording);
+
+  /// The study summary made after [recording] was transcribed (a summary of
+  /// its page, lecture included); null when there is none.
+  Future<String?> loadSummary(LectureRecording recording);
+
+  Future<void> saveSummary(LectureRecording recording, String summary);
 }
 
 class FileTranscriptStore implements TranscriptStore {
@@ -47,13 +53,33 @@ class FileTranscriptStore implements TranscriptStore {
   }
 
   @override
-  Future<void> save(LectureRecording recording, Transcript transcript) async {
-    final file = _fileOf(recording);
+  Future<void> save(LectureRecording recording, Transcript transcript) =>
+      _write(_fileOf(recording), jsonEncode(transcript.toJson()));
+
+  File _summaryOf(LectureRecording recording) => File(_fileOf(recording)
+      .path
+      .replaceFirst(RegExp(r'\.transcript\.json$'), '.summary.txt'));
+
+  @override
+  Future<String?> loadSummary(LectureRecording recording) async {
+    try {
+      final file = _summaryOf(recording);
+      return await file.exists() ? await file.readAsString() : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveSummary(LectureRecording recording, String summary) =>
+      _write(_summaryOf(recording), summary);
+
+  /// Written aside and renamed in, so a crash mid-write leaves the old file
+  /// (or none) rather than half of a new one.
+  Future<void> _write(File file, String contents) async {
     await file.parent.create(recursive: true);
-    // Written aside and renamed in, so a crash mid-write leaves the old
-    // transcript (or none) rather than half of a new one.
     final temp = File('${file.path}.tmp');
-    await temp.writeAsString(jsonEncode(transcript.toJson()), flush: true);
+    await temp.writeAsString(contents, flush: true);
     await temp.rename(file.path);
   }
 }
@@ -73,6 +99,16 @@ class InMemoryTranscriptStore implements TranscriptStore {
   @override
   Future<void> save(LectureRecording recording, Transcript transcript) async =>
       _byPath[recording.relativePath] = transcript;
+
+  final Map<String, String> summaries = {};
+
+  @override
+  Future<String?> loadSummary(LectureRecording recording) async =>
+      summaries[recording.relativePath];
+
+  @override
+  Future<void> saveSummary(LectureRecording recording, String summary) async =>
+      summaries[recording.relativePath] = summary;
 }
 
 /// The transcripts of [recordings] (the lectures recorded on one page, oldest

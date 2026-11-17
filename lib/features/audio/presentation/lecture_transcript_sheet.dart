@@ -17,6 +17,7 @@ import '../../../editor/state/editor_tool_controller.dart';
 import '../../../editor/state/scene_controller.dart';
 import '../../../editor/state/selection_controller.dart';
 import '../../../editor/state/viewport_controller.dart';
+import '../../ai/presentation/sidebar/ai_sidebar.dart' show startPageFlashcards;
 
 import '../../../core/theme/app_colors.dart';
 import '../domain/lecture_recording.dart';
@@ -237,6 +238,8 @@ class _RecordingSectionState extends ConsumerState<_RecordingSection> {
         }
         return Column(
           children: [
+            _LectureSummary(
+                recording: recording, notebookId: widget.notebookId),
             for (final segment in transcript.segments)
               InkWell(
                 borderRadius: BorderRadius.circular(8),
@@ -301,5 +304,68 @@ class _RecordingSectionState extends ConsumerState<_RecordingSection> {
     if (size.isEmpty) return;
     viewport.pan(size.center(Offset.zero) -
         ref.read(viewportProvider).toViewport(bounds.center));
+  }
+}
+
+/// The study summary made after the lecture was transcribed (a summary of its
+/// page, on the device), with "make flashcards". Nothing until there is one.
+class _LectureSummary extends ConsumerStatefulWidget {
+  final LectureRecording recording;
+  final int notebookId;
+
+  const _LectureSummary({required this.recording, required this.notebookId});
+
+  @override
+  ConsumerState<_LectureSummary> createState() => _LectureSummaryState();
+}
+
+class _LectureSummaryState extends ConsumerState<_LectureSummary> {
+  late final Future<String?> _summary =
+      ref.read(transcriptStoreProvider).loadSummary(widget.recording);
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return FutureBuilder<String?>(
+      future: _summary,
+      builder: (context, snapshot) {
+        final summary = snapshot.data;
+        if (summary == null) return const SizedBox.shrink();
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.textSecondary.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Study summary',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textSecondary)),
+              const SizedBox(height: 6),
+              SelectableText(summary,
+                  style: TextStyle(
+                      fontSize: 14, height: 1.4, color: colors.textPrimary)),
+              const SizedBox(height: 8),
+              FilledButton.tonal(
+                onPressed: () => startPageFlashcards(
+                  context,
+                  ref,
+                  (notebookId: widget.notebookId,
+                      pageId: widget.recording.pageId),
+                ),
+                child: const Text('Make flashcards from this lecture'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

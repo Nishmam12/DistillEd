@@ -366,6 +366,16 @@ void main() {
       expect(back.language, 'en');
     });
 
+    test('a study summary is kept beside the transcript', () async {
+      final store = FileTranscriptStore(docs.path);
+      expect(await store.loadSummary(recording()), isNull);
+
+      await store.saveSummary(recording(), 'Key points.');
+
+      expect(await store.loadSummary(recording()), 'Key points.');
+      expect(File('${docs.path}/audio/n1_p2_17.summary.txt').existsSync(), isTrue);
+    });
+
     test('a recording that was never transcribed has none', () async {
       expect(await FileTranscriptStore(docs.path).load(recording()), isNull);
     });

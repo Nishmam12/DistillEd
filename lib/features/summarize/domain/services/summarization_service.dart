@@ -19,6 +19,7 @@ import '../../../ai/domain/meaningfulness_gate.dart';
 import '../../../ai/domain/page_content.dart';
 import '../../../ai/domain/page_content_extractor.dart';
 import '../../../ai/domain/quality/ai_quality_guard.dart';
+import '../../../ai/domain/quality/output_quality.dart';
 import '../../../ai/domain/text_budget.dart' as text_budget;
 import '../../../ai/domain/tutor_voice.dart';
 import '../../data/cache/summary_cache.dart';
@@ -311,11 +312,16 @@ class SummarizationService {
   /// sent to a cloud model the student picked: after the page has been read,
   /// the gate has passed and the cache has missed. A no throws
   /// [SummarizeCancelledException].
+  ///
+  /// [localOnly] keeps it on the device even when a cloud model is picked: for
+  /// a summary nobody asked for just now (after a lecture is transcribed),
+  /// where there is no one to confirm a send.
   Future<SummarizationResult> summarizeScope({
     required int notebookId,
     required SummarizeScope scope,
     required String languageCode,
     required bool cloudEnabled,
+    bool localOnly = false,
     bool preferCloud = false,
     void Function(SummarizeStage stage)? onStage,
     Future<bool> Function()? confirmSend,
@@ -343,7 +349,7 @@ class SummarizationService {
       }
     }
 
-    final picked = _directCloud?.call();
+    final picked = localOnly ? null : _directCloud?.call();
     if (picked != null) {
       if (confirmSend != null && !await confirmSend()) {
         throw SummarizeCancelledException();
@@ -363,8 +369,8 @@ class SummarizationService {
 
     final decision = await _router.decide(
       inputWordCount: text_budget.budgetWords(text),
-      cloudEnabled: cloudEnabled,
-      preferCloud: preferCloud,
+      cloudEnabled: cloudEnabled && !localOnly,
+      preferCloud: preferCloud && !localOnly,
     );
 
     String summary;
@@ -392,14 +398,14 @@ class SummarizationService {
           modelUsed = 'cloud';
         } on CloudUnavailableException {
           // Cloud tier is a stub / unreachable — degrade to local.
-          (summary, chunked, tier) = await _generate(text);
+          (summary, chunked, tier) = await _generate(text, localOnly: localOnly);
           modelUsed = _localModelLabel;
           cloudFellBack = true;
         }
 
       case AiRoute.local:
         onStage?.call(SummarizeStage.summarizing);
-        (summary, chunked, tier) = await _generate(text);
+        (summary, chunked, tier) = await _generate(text, localOnly: localOnly);
         modelUsed = tier == AnswerTier.cloudVerified
             ? 'cloud'
             : _localModelLabel;
@@ -526,6 +532,7 @@ class SummarizationService {
   Future<(String, bool, AnswerTier)> _generate(
     String text, {
     AiProvider? on,
+    bool localOnly = false,
   }) async {
     // Budget against the longer of the two prompts so every pass fits, and
     // against the window of the model that will actually read it.
@@ -536,11 +543,13 @@ class SummarizationService {
           : reduceInstruction,
     );
     if (text_budget.budgetWords(text) <= budget) {
-      final result = await _guarded(text, noteInstruction, on: on);
+      final result =
+          await _guarded(text, noteInstruction, on: on, localOnly: localOnly);
       return (result.text.trim(), false, result.tier);
     }
     // The reduce pass IS the final pass, so the guard runs there (see [_guard]).
-    final result = await _chunkAndReduce(text, budget, on: on);
+    final result =
+        await _chunkAndReduce(text, budget, on: on, localOnly: localOnly);
     return (result.text.trim(), true, result.tier);
   }
 
@@ -556,6 +565,7 @@ class SummarizationService {
     String text,
     String instruction, {
     AiProvider? on,
+    bool localOnly = false,
   }) async {
     // The guard checks an ON-DEVICE summary and hands a broken one to the
     // cloud. A cloud model the student picked is not checked by running the
@@ -567,6 +577,18 @@ class SummarizationService {
       );
     }
     final guard = _guard;
+    // On the device only: the guard's check without its cloud re-run. A
+    // broken recap is marked low-confidence instead of being sent anywhere.
+    if (localOnly) {
+      final local = await _summarizeOnce(text, instruction);
+      return GuardedResult(
+        text: local,
+        tier: checkOutputQuality(local, context: QualityContext.ungrounded)
+                .passed
+            ? AnswerTier.local
+            : AnswerTier.localLowConfidence,
+      );
+    }
     if (guard == null) {
       return GuardedResult(
         text: await _summarizeOnce(text, instruction),
@@ -594,6 +616,7 @@ class SummarizationService {
     int budget, {
     int pass = 0,
     AiProvider? on,
+    bool localOnly = false,
   }) async {
     final sections = text_budget.chunkByWords(text, budget);
     if (sections.length <= 1) {
@@ -602,6 +625,7 @@ class SummarizationService {
         sections.isEmpty ? text : sections.first,
         pass == 0 ? noteInstruction : reduceInstruction,
         on: on,
+        localOnly: localOnly,
       );
     }
 
@@ -613,7 +637,8 @@ class SummarizationService {
     final combined = partials.join('\n\n');
 
     if (text_budget.budgetWords(combined) <= budget) {
-      return _guarded(combined, reduceInstruction, on: on);
+      return _guarded(combined, reduceInstruction,
+          on: on, localOnly: localOnly);
     }
     if (pass + 1 >= _maxReducePasses) {
       // Safety net for a tiny context window: stop recursing and reduce the
@@ -622,9 +647,11 @@ class SummarizationService {
         text_budget.truncateToWords(combined, budget),
         reduceInstruction,
         on: on,
+        localOnly: localOnly,
       );
     }
-    return _chunkAndReduce(combined, budget, pass: pass + 1, on: on);
+    return _chunkAndReduce(combined, budget,
+        pass: pass + 1, on: on, localOnly: localOnly);
   }
 
   /// Sampling for a summarization pass — a constant so the guard's cloud re-run

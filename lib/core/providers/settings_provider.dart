@@ -216,6 +216,11 @@ class SettingsState {
   /// default: it costs storage and an ~80 MB model, and not everyone wants it.
   final bool transcribeLectures;
 
+  /// After a lecture is transcribed, summarise its page on the device (never
+  /// the cloud) so a study summary is waiting. Skipped quietly where the
+  /// on-device model is not installed.
+  final bool summarizeLectures;
+
   /// ML Kit digital-ink model for handwriting recognition: 'en', 'bn' (Bangla
   /// script) or 'bn-Latn' (Bangla written in English letters).
   final String recognitionLanguage;
@@ -267,6 +272,7 @@ class SettingsState {
     this.teachingStyle = TeachingStyle.explain,
     this.recognitionLanguage = 'en',
     this.transcribeLectures = false,
+    this.summarizeLectures = true,
     this.snapShapes = false,
     this.scribbleErase = false,
     this.straightenLines = false,
@@ -323,6 +329,7 @@ class SettingsState {
     TeachingStyle? teachingStyle,
     String? recognitionLanguage,
     bool? transcribeLectures,
+    bool? summarizeLectures,
     bool? snapShapes,
     bool? scribbleErase,
     bool? straightenLines,
@@ -354,6 +361,7 @@ class SettingsState {
       teachingStyle: teachingStyle ?? this.teachingStyle,
       recognitionLanguage: recognitionLanguage ?? this.recognitionLanguage,
       transcribeLectures: transcribeLectures ?? this.transcribeLectures,
+      summarizeLectures: summarizeLectures ?? this.summarizeLectures,
       snapShapes: snapShapes ?? this.snapShapes,
       scribbleErase: scribbleErase ?? this.scribbleErase,
       straightenLines: straightenLines ?? this.straightenLines,
@@ -398,6 +406,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kHasSeenFirstCloudCall = 'ai.hasSeenFirstCloudCall';
   static const _kRecognitionLanguage = 'ai.recognitionLanguage';
   static const _kTranscribeLectures = 'ai.transcribeLectures';
+  static const _kSummarizeLectures = 'ai.summarizeLectures';
   static const _kSnapShapes = 'ui.snapShapes';
   static const _kScribbleErase = 'ui.scribbleErase';
   static const _kStraightenLines = 'ui.straightenLines';
@@ -467,6 +476,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       teachingStyle: TeachingStyle.byName(prefs.getString(_kTeachingStyle)),
       recognitionLanguage: prefs.getString(_kRecognitionLanguage) ?? 'en',
       transcribeLectures: prefs.getBool(_kTranscribeLectures) ?? false,
+      summarizeLectures: prefs.getBool(_kSummarizeLectures) ?? true,
       snapShapes: prefs.getBool(_kSnapShapes) ?? false,
       scribbleErase: prefs.getBool(_kScribbleErase) ?? false,
       straightenLines: prefs.getBool(_kStraightenLines) ?? false,
@@ -692,6 +702,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(aiPanelWidth: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_kAiPanelWidth, value);
+  }
+
+  Future<void> setSummarizeLectures(bool value) async {
+    state = state.copyWith(summarizeLectures: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kSummarizeLectures, value);
   }
 
   Future<void> setTranscribeLectures(bool value) async {

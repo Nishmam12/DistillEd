@@ -40,6 +40,11 @@ import 'package:margo/features/audio/presentation/transcription_providers.dart';
 import '../ai/data/providers/local_gemma_provider_test.dart' show StreamingFakeRuntime;
 import 'lecture_recording_test.dart' show FakeCapture;
 import 'recording_notifier_test.dart' show FakePlayback;
+import 'package:margo/features/summarize/domain/services/summarization_service.dart';
+import 'package:margo/features/summarize/presentation/summarize_providers.dart';
+
+import '../summarize/presentation/summarize_notifier_test.dart'
+    show ScriptedService;
 
 class _Speech implements SpeechToText {
   int closed = 0;
@@ -141,6 +146,26 @@ LectureRecording _wav(int id, {int pageId = 7}) => LectureRecording(
 
 Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 40));
 
+/// Every summary is "A summary." — the post-transcript summary is wired, not
+/// tested, here (see lecture_summary_test.dart).
+class _Summaries extends ScriptedService {
+  _Summaries() : super(const []);
+
+  @override
+  Future<SummarizationResult> summarizeScope({
+    required int notebookId,
+    required SummarizeScope scope,
+    required String languageCode,
+    required bool cloudEnabled,
+    bool localOnly = false,
+    bool preferCloud = false,
+    void Function(SummarizeStage stage)? onStage,
+    Future<bool> Function()? confirmSend,
+  }) async =>
+      const SummarizationResult(
+          summary: 'A summary.', recognizedText: '', modelUsed: 'local');
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -175,6 +200,7 @@ void main() {
       pageTextStoreProvider.overrideWithValue(pageStore ?? pageTexts),
       languageDetectorProvider.overrideWithValue(_Detector(detectedLanguage)),
       notebookIndexProvider(1).overrideWith((ref) => index),
+      summarizationServiceProvider.overrideWithValue(_Summaries()),
       ...extra,
     ]);
     addTearDown(c.dispose);
@@ -195,6 +221,8 @@ void main() {
     expect(index.runs.single.pageIds, [7]);
     expect(transcriber.paths.single, '${docs.path}/audio/n1_p7_1.wav');
     expect(speech.closed, 1);
+    // Then a study summary of the page, kept beside the transcript.
+    expect(transcripts.summaries.values.single, 'A summary.');
   });
 
   test('the notes beside a lecture decide its language — over the setting',
