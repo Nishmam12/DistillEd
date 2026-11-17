@@ -28,6 +28,7 @@ import '../widgets/organize_sheets.dart';
 import '../widgets/recent_strip.dart';
 import '../widgets/selection_bar.dart';
 import '../widgets/search_popover.dart';
+import '../widgets/sort_filter_sheet.dart';
 
 class NotesScreen extends ConsumerStatefulWidget {
   const NotesScreen({super.key});
@@ -141,54 +142,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     if (context.mounted) _openNotebook(context, ref, notebook.id);
   }
 
-  Future<void> _pickSort(BuildContext context, WidgetRef ref) async {
-    final current = ref.read(notesSortProvider);
-    final picked = await showModalBottomSheet<NotesSort>(
-      context: context,
-      backgroundColor: context.colors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: context.colors.textSecondary.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
-            for (final sort in NotesSort.values)
-              ListTile(
-                title: Text(
-                  sort.label,
-                  style: TextStyle(
-                    fontFamily: 'ModulusPro',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: context.colors.textPrimary,
-                  ),
-                ),
-                trailing: sort == current
-                    ? Icon(Icons.check_rounded, color: context.colors.accent)
-                    : null,
-                onTap: () => Navigator.of(context).pop(sort),
-              ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-
-    if (picked != null) {
-      ref.read(notesSortProvider.notifier).state = picked;
-    }
-  }
+  Future<void> _pickSort(BuildContext context, WidgetRef ref) =>
+      showSortFilterSheet(context);
 }
 
 /// Opens notebook [id] in the editor and remembers it for the Recent strip.
@@ -232,7 +187,8 @@ class _Main extends ConsumerWidget {
     final plain = folder == FolderFilter.all &&
         !favoritesOnly &&
         ref.watch(notesSearchQueryProvider).trim().isEmpty &&
-        ref.watch(notesTagFilterProvider).isEmpty;
+        ref.watch(notesTagFilterProvider).isEmpty &&
+        !ref.watch(notesMoreFiltersProvider).isActive;
     final selecting = ref.watch(notesSelectionProvider).isNotEmpty;
     final recents = !plain || selecting
         ? const <NoteCardData>[]
@@ -304,7 +260,11 @@ class _Main extends ConsumerWidget {
         ),
       ],
     );
-    final sortButton = _SortButton(label: sort.label, onTap: onSort);
+    final sortButton = _SortButton(
+        label: ref.watch(notesMoreFiltersProvider).isActive
+            ? '${sort.label} · filtered'
+            : sort.label,
+        onTap: onSort);
 
     // Back leaves select mode first.
     return PopScope(

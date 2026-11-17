@@ -9,7 +9,12 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import 'package:isar_community/isar.dart';
+
+import '../../../data/persistence/lecture_recording_record.dart';
 import '../../../data/persistence/page_text_store.dart';
+import '../../../data/persistence/scene_element_record.dart';
+import '../../../shared/isar/isar_service.dart';
 import '../../../domain/model/scene_element.dart';
 import '../../../editor/state/page_notifier.dart';
 import '../../../editor/state/scene_controller.dart';
@@ -81,18 +86,96 @@ final visibleNoteCardsProvider = Provider<AsyncValue<List<NoteCardData>>>((ref) 
   final folder = ref.watch(notesFolderFilterProvider);
   final tags = ref.watch(notesTagFilterProvider);
   final favoritesOnly = ref.watch(notesFavoritesOnlyProvider);
+  final more = ref.watch(notesMoreFiltersProvider);
+  // Only read when a filter needs it, so the plain list never waits on it.
+  final facts = more.inkOnly || more.recordingOnly
+      ? ref.watch(notebookFactsProvider).value
+      : null;
 
   return ref.watch(noteCardsProvider).whenData((cards) {
+    final now = DateTime.now();
     final visible = [
       for (final card in cards)
         if (card.matches(query) &&
             (!favoritesOnly || card.pinned) &&
             folder.accepts(card) &&
-            _hasEveryTag(card, tags))
+            _hasEveryTag(card, tags) &&
+            more.accepts(card, facts: facts, now: now))
           card,
     ];
     return sortCards(visible, sort);
   });
+});
+
+/// The filters beyond folder, tag and favourites (Evernote's filter builder,
+/// kept to what a study notebook needs).
+enum NotesDateFilter {
+  any('Any time', null),
+  week('Last 7 days', 7),
+  month('Last 30 days', 30);
+
+  const NotesDateFilter(this.label, this.days);
+  final String label;
+  final int? days;
+}
+
+class NotesMoreFilters {
+  final NotesDateFilter date;
+  final bool inkOnly;
+  final bool recordingOnly;
+
+  const NotesMoreFilters({
+    this.date = NotesDateFilter.any,
+    this.inkOnly = false,
+    this.recordingOnly = false,
+  });
+
+  bool get isActive =>
+      date != NotesDateFilter.any || inkOnly || recordingOnly;
+
+  NotesMoreFilters copyWith(
+          {NotesDateFilter? date, bool? inkOnly, bool? recordingOnly}) =>
+      NotesMoreFilters(
+        date: date ?? this.date,
+        inkOnly: inkOnly ?? this.inkOnly,
+        recordingOnly: recordingOnly ?? this.recordingOnly,
+      );
+
+  /// Whether [card] passes. [facts] null (not loaded yet) passes nothing that
+  /// needs them, rather than everything.
+  bool accepts(NoteCardData card,
+      {required NotebookFacts? facts, required DateTime now}) {
+    final days = date.days;
+    if (days != null && now.difference(card.createdAt).inDays >= days) {
+      return false;
+    }
+    if (inkOnly && !(facts?.withInk.contains(card.id) ?? false)) return false;
+    if (recordingOnly && !(facts?.withRecording.contains(card.id) ?? false)) {
+      return false;
+    }
+    return true;
+  }
+}
+
+final notesMoreFiltersProvider =
+    StateProvider<NotesMoreFilters>((ref) => const NotesMoreFilters());
+
+/// Which notebooks have handwriting, and which have a lecture recording.
+typedef NotebookFacts = ({Set<int> withInk, Set<int> withRecording});
+
+/// One query per kind across all notebooks; fresh whenever the cards are.
+final notebookFactsProvider = FutureProvider<NotebookFacts>((ref) async {
+  ref.watch(noteCardsProvider);
+  final isar = IsarService.instance;
+  final ink = await isar.sceneElementRecords
+      .filter()
+      .kindEqualTo(SceneElementKind.freehand)
+      .isEraserEqualTo(false)
+      .notebookIdProperty()
+      .findAll();
+  final recorded =
+      await isar.lectureRecordingRecords.where().notebookIdProperty().findAll();
+  return (withInk: ink.toSet(), withRecording: recorded.toSet());
 });
 
 /// Tag filtering is AND, not OR: picking "physics" then "exam" narrows to notes
@@ -116,6 +199,9 @@ sealed class FolderFilter {
   const factory FolderFilter.only(int folderId) = _OneFolder;
 
   bool accepts(NoteCardData card);
+
+  /// The one folder this is scoped to; null for all and for unfiled.
+  int? get folderIdOrNull => null;
 }
 
 class _AllFolders extends FolderFilter {
@@ -135,6 +221,9 @@ class _OneFolder extends FolderFilter {
   const _OneFolder(this.folderId);
   @override
   bool accepts(NoteCardData card) => card.folderId == folderId;
+
+  @override
+  int? get folderIdOrNull => folderId;
 
   @override
   bool operator ==(Object other) =>
