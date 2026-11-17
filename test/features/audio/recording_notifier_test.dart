@@ -45,6 +45,14 @@ class FakePlayback implements AudioPlaybackPort {
   Stream<Duration> get position => const Stream.empty();
 
   @override
+  Stream<bool> get playingStream => const Stream.empty();
+
+  double speed = 1;
+
+  @override
+  Future<void> setSpeed(double speed) async => this.speed = speed;
+
+  @override
   bool get isPlaying => playing;
 }
 
@@ -121,6 +129,25 @@ void main() {
     expect(f.notifier.state.isRecording, isTrue);
     expect(f.notifier.state.active!.id, greaterThan(0));
     expect(f.capture.started, isTrue);
+  });
+
+  test('togglePause pauses and resumes; stop clears the pause', () async {
+    final f = _build();
+    await f.notifier.togglePause(); // nothing recording: no-op
+    expect(f.notifier.state.isPaused, isFalse);
+
+    await f.notifier.start(10);
+    await f.notifier.togglePause();
+    expect(f.notifier.state.isPaused, isTrue);
+    expect(f.capture.paused, isTrue);
+    await f.notifier.togglePause();
+    expect(f.notifier.state.isPaused, isFalse);
+    expect(f.capture.paused, isFalse);
+
+    await f.notifier.togglePause();
+    await f.notifier.stop(10);
+    expect(f.notifier.state.isRecording, isFalse);
+    expect(f.notifier.state.isPaused, isFalse);
   });
 
   test('the audio file path is scoped to the notebook and page', () async {

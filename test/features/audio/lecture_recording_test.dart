@@ -50,6 +50,14 @@ class FakeCapture implements AudioCapturePort {
     cancelled = true;
   }
 
+  bool paused = false;
+
+  @override
+  Future<void> pause() async => paused = true;
+
+  @override
+  Future<void> resume() async => paused = false;
+
   @override
   bool get isRecording => started;
 }
@@ -57,16 +65,55 @@ class FakeCapture implements AudioCapturePort {
 void main() {
   group('RecordingClock', () {
     test('offset is measured from when audio actually started', () {
-      const clock = RecordingClock(startedAtEngineMs: 5000, recordingId: 1);
+      final clock = RecordingClock(startedAtEngineMs: 5000, recordingId: 1);
 
       expect(clock.offsetFor(5000), 0);
       expect(clock.offsetFor(9500), 4500);
     });
 
     test('a stroke just before the start clamps to zero', () {
-      const clock = RecordingClock(startedAtEngineMs: 5000, recordingId: 1);
+      final clock = RecordingClock(startedAtEngineMs: 5000, recordingId: 1);
 
       expect(clock.offsetFor(4990), 0);
+    });
+
+    // The plan's test: draw, pause 10 s, resume, draw. The audio file has no
+    // gap where the pause was, so the second offset must not include it.
+    test('paused time is not part of later offsets', () {
+      final clock = RecordingClock(startedAtEngineMs: 0, recordingId: 1);
+      expect(clock.offsetFor(2000), 2000);
+      clock
+        ..pause(3000)
+        ..resume(13000);
+      expect(clock.offsetFor(15000), 5000);
+    });
+
+    test('a stroke begun before a pause keeps its offset when stamped later',
+        () {
+      final clock = RecordingClock(startedAtEngineMs: 0, recordingId: 1)
+        ..pause(3000)
+        ..resume(13000);
+      expect(clock.offsetFor(2000), 2000);
+    });
+
+    test('ink drawn during a pause points at the moment of the pause', () {
+      final clock = RecordingClock(startedAtEngineMs: 0, recordingId: 1)
+        ..pause(3000);
+      expect(clock.offsetFor(8000), 3000);
+      clock.resume(13000);
+      expect(clock.offsetFor(8000), 3000);
+    });
+
+    test('several pauses add up; pause and resume twice are ignored', () {
+      final clock = RecordingClock(startedAtEngineMs: 0, recordingId: 1)
+        ..pause(1000)
+        ..pause(1500)
+        ..resume(2000)
+        ..resume(2500)
+        ..pause(5000)
+        ..resume(9000);
+      expect(clock.isPaused, isFalse);
+      expect(clock.offsetFor(10000), 10000 - 1000 - 4000);
     });
   });
 
@@ -98,6 +145,33 @@ void main() {
       expect(stamp, isNotNull);
       expect(stamp!.recordingId, 1);
       expect(stamp.audioOffsetMs, 3000);
+    });
+
+    test('pause and resume reach the capture, and later ink skips the pause',
+        () async {
+      await session.begin(
+          recording: _recording(), absolutePath: '/tmp/a.m4a');
+      engineMs += 2000;
+      await session.pause();
+      expect(capture.paused, isTrue);
+      expect(session.isPaused, isTrue);
+      expect(session.isRecording, isTrue);
+      final during = engineMs + 4000;
+      engineMs += 10000;
+      await session.resume();
+      expect(capture.paused, isFalse);
+
+      expect(session.stampFor(during)!.audioOffsetMs, 2000);
+      expect(session.stampFor(engineMs + 1000)!.audioOffsetMs, 3000);
+    });
+
+    test('a paused session can be stopped', () async {
+      await session.begin(
+          recording: _recording(), absolutePath: '/tmp/a.m4a');
+      await session.pause();
+      final done = await session.stop();
+      expect(done.durationMs, capture.stopReturns);
+      expect(session.isRecording, isFalse);
     });
 
     test('stops stamping once the session ends', () async {

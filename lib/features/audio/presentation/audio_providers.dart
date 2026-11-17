@@ -28,8 +28,10 @@ final audioPlaybackProvider = Provider<AudioPlaybackPort>((ref) {
   return playback;
 });
 
-/// Reads the same monotonic clock that stamps `StrokePoint.t`, so a stroke's
-/// timestamp and the recording's origin are measured against one clock.
+/// The clock a recording's start, pauses and stroke stamps are all read on.
+/// NOT the clock of `StrokePoint.t` (pointer event time, which only compares
+/// with itself): a stroke is stamped at this clock's "now" less its age
+/// (`strokeAgeMs`).
 ///
 /// Overridable in tests, where time is supplied rather than observed.
 final engineClockProvider = Provider<int Function()>(
@@ -52,3 +54,9 @@ final recordingSessionProvider =
 final transcriptStoreProvider = Provider<TranscriptStore>(
   (ref) => FileTranscriptStore(ref.watch(appDocsPathProvider)),
 );
+
+/// Where the lecture player is, and whether it is playing.
+final lecturePositionProvider = StreamProvider<Duration>(
+    (ref) => ref.watch(audioPlaybackProvider).position);
+final lecturePlayingProvider = StreamProvider<bool>(
+    (ref) => ref.watch(audioPlaybackProvider).playingStream);

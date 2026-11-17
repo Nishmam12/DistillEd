@@ -104,6 +104,20 @@ class RecordAudioCapture implements AudioCapturePort {
   }
 
   @override
+  Future<void> pause() async {
+    if (!_recording) return;
+    await _recorder.pause();
+    _elapsed.stop(); // the paused time is not in the file
+  }
+
+  @override
+  Future<void> resume() async {
+    if (!_recording) return;
+    await _recorder.resume();
+    _elapsed.start();
+  }
+
+  @override
   Future<void> cancel() async {
     if (!_recording) return;
     _elapsed.stop();

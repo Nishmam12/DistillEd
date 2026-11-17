@@ -23,8 +23,11 @@ import '../../domain/geometry/element_transformer.dart';
 import '../../domain/geometry/word_geometry.dart';
 import '../../domain/model/page_words.dart';
 import '../../domain/services/text_highlight.dart';
+import '../../features/audio/presentation/recording_notifier.dart'
+    show inkReplayProvider;
 import '../../features/import/page_words_service.dart';
 import '../../domain/model/scene_element.dart';
+import '../../domain/model/stroke_point.dart' show strokeAgeMs;
 import '../../domain/services/eraser_service.dart';
 import '../../domain/services/frame_service.dart';
 import '../../domain/services/pixel_eraser_service.dart';
@@ -84,10 +87,11 @@ class SceneCanvas extends ConsumerStatefulWidget {
   final Size? pageSize;
 
   /// Stamps a new stroke with how far into a running lecture recording it
-  /// began, given its first point's time (null when the point has none). Null,
-  /// or a null answer, leaves the stroke unstamped. Supplied by the screen so
-  /// the canvas engine does not depend on the audio feature.
-  final ({int recordingId, int audioOffsetMs})? Function(int? firstPointMs)?
+  /// began, given how long ago it began ([strokeAgeMs]; strokes are committed
+  /// as the pen lifts). Null, or a null answer, leaves the stroke unstamped.
+  /// Supplied by the screen so the canvas engine does not depend on the audio
+  /// feature.
+  final ({int recordingId, int audioOffsetMs})? Function(int strokeAgeMs)?
       stampStroke;
 
   /// Continuous layout (with [pageMode]): the pages either side show above
@@ -529,6 +533,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     final viewport = ref.watch(viewportProvider);
     final tool = ref.watch(editorToolProvider);
     final elements = ref.watch(sceneControllerProvider(_key));
+    // Note replay: faint ink after the lecture's playhead.
+    final replay = ref.watch(inkReplayProvider(_key.notebookId));
     final selectedIds = ref.watch(selectionProvider);
     final fingerDraws =
         ref.watch(settingsProvider.select((s) => s.fingerDraws));
@@ -645,6 +651,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
                                       : {...hidden, inline!.editing!.id},
                                   imageResolver: _imageCache.get,
                                   imageEpoch: _imageCache.version,
+                                  replay: replay,
                                 ),
                                 size: Size.infinite,
                               ),

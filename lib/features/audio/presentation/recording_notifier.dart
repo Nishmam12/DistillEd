@@ -5,6 +5,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../data/persistence/lecture_recording_store.dart';
@@ -20,7 +21,16 @@ import 'transcription_providers.dart';
 
 class RecordingUiState {
   final bool isRecording;
+
+  /// Recording is under way but paused ([isRecording] stays true).
+  final bool isPaused;
   final LectureRecording? active;
+
+  /// The lecture loaded in the player; null when the player is closed.
+  final LectureRecording? nowPlaying;
+
+  /// Playback speed (0.5–2), kept for the session.
+  final double speed;
 
   /// Recordings already captured on the current page.
   final List<LectureRecording> onPage;
@@ -30,22 +40,32 @@ class RecordingUiState {
 
   const RecordingUiState({
     this.isRecording = false,
+    this.isPaused = false,
     this.active,
+    this.nowPlaying,
+    this.speed = 1,
     this.onPage = const [],
     this.error,
   });
 
   RecordingUiState copyWith({
     bool? isRecording,
+    bool? isPaused,
     LectureRecording? active,
+    LectureRecording? nowPlaying,
+    double? speed,
     List<LectureRecording>? onPage,
     String? error,
     bool clearActive = false,
+    bool clearNowPlaying = false,
     bool clearError = false,
   }) =>
       RecordingUiState(
         isRecording: isRecording ?? this.isRecording,
+        isPaused: isPaused ?? this.isPaused,
         active: clearActive ? null : (active ?? this.active),
+        nowPlaying: clearNowPlaying ? null : (nowPlaying ?? this.nowPlaying),
+        speed: speed ?? this.speed,
         onPage: onPage ?? this.onPage,
         error: clearError ? null : (error ?? this.error),
       );
@@ -173,6 +193,7 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
     state = state.copyWith(
       error: stopError,
       isRecording: false,
+      isPaused: false,
       clearActive: true,
     );
     try {
@@ -181,6 +202,18 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
     } catch (e) {
       if (kDebugMode) debugPrint('[audio] reload after stop failed: $e');
     }
+  }
+
+  /// Pauses a recording under way, or carries on with a paused one.
+  Future<void> togglePause() async {
+    if (!_session.isRecording) return;
+    try {
+      _session.isPaused ? await _session.resume() : await _session.pause();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[audio] pause/resume failed: $e');
+      if (mounted) state = state.copyWith(error: 'Could not pause the recording.');
+    }
+    if (mounted) state = state.copyWith(isPaused: _session.isPaused);
   }
 
   /// Plays the recording a stroke was drawn during, from that exact moment.
@@ -221,8 +254,10 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
   Future<void> _playFrom(LectureRecording recording, int offsetMs) async {
     try {
       await _playback.load(_absolute(recording.relativePath));
+      await _playback.setSpeed(state.speed);
       await _playback.seek(Duration(milliseconds: offsetMs));
       await _playback.play();
+      if (mounted) state = state.copyWith(nowPlaying: recording);
     } on Exception catch (e) {
       if (!mounted) return;
       state = state.copyWith(
@@ -234,6 +269,23 @@ class RecordingNotifier extends StateNotifier<RecordingUiState> {
   }
 
   Future<void> pause() => _playback.pause();
+
+  /// The player's play/pause button.
+  Future<void> togglePlayback() =>
+      _playback.isPlaying ? _playback.pause() : _playback.play();
+
+  static const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+  Future<void> setSpeed(double speed) async {
+    state = state.copyWith(speed: speed);
+    await _playback.setSpeed(speed);
+  }
+
+  /// Stops playback and closes the player.
+  Future<void> closePlayer() async {
+    await _playback.pause();
+    if (mounted) state = state.copyWith(clearNowPlaying: true);
+  }
 
   void clearError() => state = state.copyWith(clearError: true);
 }
@@ -253,4 +305,19 @@ final recordingNotifierProvider = StateNotifierProvider.family<
         ref.read(lectureTranscriptionProvider.notifier).enqueue(recording),
     transcripts: ref.watch(transcriptStoreProvider),
   );
+});
+
+/// Note replay: the playhead of the lecture in this notebook's player, so ink
+/// drawn after it can be shown faintly. Null when the player is closed.
+///
+/// Rounded to a quarter second: the canvas repaints a few times a second
+/// rather than on every position tick.
+final inkReplayProvider =
+    Provider.family<({int recordingId, int atMs})?, int>((ref, notebookId) {
+  final playing = ref.watch(
+      recordingNotifierProvider(notebookId).select((s) => s.nowPlaying));
+  if (playing == null) return null;
+  final quarter = ref.watch(lecturePositionProvider
+      .select((p) => (p.value?.inMilliseconds ?? 0) ~/ 250));
+  return (recordingId: playing.id, atMs: quarter * 250);
 });

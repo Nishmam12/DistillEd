@@ -37,6 +37,7 @@ import '../../import/pdf_service.dart'
 import '../../../editor/import/text_pages.dart' show paginateText;
 import '../../../editor/render/scene_element_painter.dart'
     show SceneElementPainter;
+import '../../audio/domain/lecture_recording.dart' show LectureRecording;
 import '../../audio/presentation/audio_providers.dart';
 import '../../audio/presentation/lecture_transcript_sheet.dart';
 import '../../audio/presentation/lecture_transcription_notifier.dart';
@@ -543,10 +544,10 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                             pageSize: sheet,
                             continuous: _continuous,
                             onNeighbourTouched: _stepPage,
-                            stampStroke: (t) => ref
+                            stampStroke: (ageMs) => ref
                                 .read(recordingSessionProvider(
                                     widget.notebookId))
-                                .stampFor(t ?? ref.read(engineClockProvider)()),
+                                .stampFor(ref.read(engineClockProvider)() - ageMs),
                           ),
                         ),
                         if (_continuous && sheet != null)
@@ -618,6 +619,17 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                               ),
                             ),
                           ),
+                        // The lecture player, above the bars that share
+                        // the bottom edge.
+                        Positioned(
+                          left: 16,
+                          right: 16,
+                          bottom: 80,
+                          child: Center(
+                            child: _LecturePlayerBar(
+                                notebookId: widget.notebookId),
+                          ),
+                        ),
                         // Words selected on a page picture (select tool, Text).
                         Positioned(
                           left: 16,

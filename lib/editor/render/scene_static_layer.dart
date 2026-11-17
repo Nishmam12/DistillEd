@@ -10,6 +10,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../domain/geometry/element_bounds.dart';
 import '../../domain/model/scene_element.dart';
 import '../../domain/services/frame_service.dart';
 import 'freehand_path.dart';
@@ -30,12 +31,25 @@ class SceneStaticLayer extends CustomPainter {
   /// repaints even though [elements] is unchanged.
   final int imageEpoch;
 
+  /// Note replay: ink drawn during [replay]'s recording after its playhead is
+  /// painted faintly, so the page fills in as the lecture plays.
+  final ({int recordingId, int atMs})? replay;
+
   const SceneStaticLayer({
     required this.elements,
     this.hiddenIds = const {},
     this.imageResolver,
     this.imageEpoch = 0,
+    this.replay,
   });
+
+  bool _ahead(SceneElement e) {
+    final r = replay;
+    return r != null &&
+        e is FreehandElement &&
+        e.recordingId == r.recordingId &&
+        (e.audioOffsetMs ?? 0) > r.atMs;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -56,6 +70,13 @@ class SceneStaticLayer extends CustomPainter {
         _erase(canvas, e);
         continue;
       }
+      // A layer per faint stroke: dimming through the element's own opacity
+      // would mean a new element, and so a new outline, every frame.
+      final ahead = _ahead(e);
+      if (ahead) {
+        canvas.saveLayer(ElementBounds.of(e).inflate(e is FreehandElement ? e.size : 0),
+            Paint()..color = const Color(0x2E000000));
+      }
       final clip = clipById[e.id];
       if (clip != null) {
         canvas.save();
@@ -67,6 +88,7 @@ class SceneStaticLayer extends CustomPainter {
         SceneElementPainter.paint(canvas, e,
             byId: byId, imageResolver: imageResolver);
       }
+      if (ahead) canvas.restore();
     }
 
     if (hasEraser) canvas.restore();
@@ -91,5 +113,6 @@ class SceneStaticLayer extends CustomPainter {
   bool shouldRepaint(SceneStaticLayer oldDelegate) =>
       !identical(elements, oldDelegate.elements) ||
       !identical(hiddenIds, oldDelegate.hiddenIds) ||
-      imageEpoch != oldDelegate.imageEpoch;
+      imageEpoch != oldDelegate.imageEpoch ||
+      replay != oldDelegate.replay;
 }

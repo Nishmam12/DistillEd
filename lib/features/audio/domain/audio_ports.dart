@@ -33,6 +33,12 @@ abstract class AudioCapturePort {
   /// Discards an in-progress capture without keeping the file.
   Future<void> cancel();
 
+  /// Stops writing without ending the file; [resume] carries on in it. The
+  /// paused time is not in the file, nor in the length [stop] returns.
+  Future<void> pause();
+
+  Future<void> resume();
+
   bool get isRecording;
 }
 
@@ -44,8 +50,14 @@ abstract class AudioPlaybackPort {
   Future<void> seek(Duration position);
   Future<void> dispose();
 
+  /// Playback speed, 1.0 normal. Pitch is kept.
+  Future<void> setSpeed(double speed);
+
   /// Current position, for the scrubber.
   Stream<Duration> get position;
+
+  /// Whether sound is coming out; false once the file has played to its end.
+  Stream<bool> get playingStream;
 
   bool get isPlaying;
 }

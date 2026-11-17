@@ -78,6 +78,11 @@ class LectureRecording {
 /// between a stroke's engine timestamp and that reading is the stroke's offset
 /// into the recording. The reading never leaves this object and is never
 /// persisted — only the derived offset is.
+///
+/// A pause leaves no gap in the audio file, so it keeps a log of pauses (as
+/// Samsung Notes does: start, pause, resume) and takes out of an offset only
+/// the pauses that came BEFORE the moment asked about. A stroke is stamped
+/// from its start time, which can be earlier than a pause that has begun since.
 class RecordingClock {
   /// Engine timestamp (ms) at the moment recording began.
   final int startedAtEngineMs;
@@ -85,17 +90,42 @@ class RecordingClock {
   /// The recording being written to.
   final int recordingId;
 
-  const RecordingClock({
+  /// Engine times of each pause and its resume; the last end is null while
+  /// paused.
+  final List<(int, int?)> _pauses = [];
+
+  RecordingClock({
     required this.startedAtEngineMs,
     required this.recordingId,
   });
 
+  bool get isPaused => _pauses.isNotEmpty && _pauses.last.$2 == null;
+
+  void pause(int engineMs) {
+    if (!isPaused) _pauses.add((engineMs, null));
+  }
+
+  void resume(int engineMs) {
+    if (isPaused) _pauses.last = (_pauses.last.$1, engineMs);
+  }
+
   /// How far into the recording an event at engine time [engineMs] falls.
   ///
-  /// Clamped at zero: a stroke begun a hair before the recorder actually
+  /// During a pause that is the moment the pause began: nothing was recorded
+  /// then. Clamped at zero: a stroke begun a hair before the recorder actually
   /// started should seek to the beginning, not to a negative position.
   int offsetFor(int engineMs) {
-    final offset = engineMs - startedAtEngineMs;
+    var at = engineMs;
+    var paused = 0;
+    for (final (from, to) in _pauses) {
+      if (at <= from) break;
+      if (to == null || at < to) {
+        at = from;
+        break;
+      }
+      paused += to - from;
+    }
+    final offset = at - startedAtEngineMs - paused;
     return offset < 0 ? 0 : offset;
   }
 }

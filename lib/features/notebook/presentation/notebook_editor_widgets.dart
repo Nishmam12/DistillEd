@@ -258,6 +258,15 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
               pageId: widget.pageId,
             ),
           ),
+        if (state.isRecording)
+          IconButton(
+            tooltip: state.isPaused ? 'Resume recording' : 'Pause recording',
+            icon: Icon(state.isPaused
+                ? Icons.fiber_manual_record
+                : Icons.pause_circle_outline),
+            color: state.isPaused ? Theme.of(context).colorScheme.error : null,
+            onPressed: () => unawaited(notifier.togglePause()),
+          ),
         IconButton(
           tooltip: state.isRecording ? 'Stop recording' : 'Record lecture',
           icon: state.isRecording
@@ -285,6 +294,72 @@ class _RecordButtonState extends ConsumerState<_RecordButton> {
   void _toastTranscript(String message) =>
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(message)));
+}
+
+/// The lecture player: shown once a lecture is played (from a stroke or a
+/// source card). Play/pause, where it is, speed, and close. While it is open,
+/// ink drawn later in the lecture is faint (see [inkReplayProvider]).
+class _LecturePlayerBar extends ConsumerWidget {
+  final int notebookId;
+
+  const _LecturePlayerBar({required this.notebookId});
+
+  static String _speedLabel(double s) =>
+      '${s == s.roundToDouble() ? s.toInt() : s}×';
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(recordingNotifierProvider(notebookId));
+    final recording = state.nowPlaying;
+    if (recording == null) return const SizedBox.shrink();
+    final notifier = ref.read(recordingNotifierProvider(notebookId).notifier);
+    final playing = ref.watch(lecturePlayingProvider).value ?? false;
+    final at = ref.watch(lecturePositionProvider).value ?? Duration.zero;
+    final colors = Theme.of(context).colorScheme;
+
+    return Material(
+      elevation: 3,
+      color: colors.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(28),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: playing ? 'Pause' : 'Play',
+              icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+              onPressed: () => unawaited(notifier.togglePlayback()),
+            ),
+            Text(
+              '${LectureRecording.formatOffset(at.inMilliseconds)} / '
+              '${LectureRecording.formatOffset(recording.durationMs)}',
+              style: const TextStyle(fontFeatures: [FontFeature.tabularFigures()]),
+            ),
+            PopupMenuButton<double>(
+              tooltip: 'Playback speed',
+              initialValue: state.speed,
+              onSelected: (s) => unawaited(notifier.setSpeed(s)),
+              itemBuilder: (_) => [
+                for (final s in RecordingNotifier.speeds)
+                  PopupMenuItem(value: s, child: Text(_speedLabel(s))),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                child: Text(_speedLabel(state.speed),
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Close player',
+              icon: const Icon(Icons.close),
+              onPressed: () => unawaited(notifier.closePlayer()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _PageNavBar extends StatelessWidget {

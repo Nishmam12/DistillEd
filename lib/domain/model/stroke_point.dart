@@ -63,3 +63,16 @@ class StrokePoint {
   }
 
 }
+
+/// How long before the pen lifted at [upMs] the stroke of [points] began, in
+/// ms. Point times are on the pointer events' own clock, which only compares
+/// with itself: anything outside the stroke (a recording's start, say) must
+/// work from this age and its own clock's "now", never from a point's time.
+/// 0 when the times are missing.
+int strokeAgeMs(List<StrokePoint> points, int? upMs) {
+  if (points.isEmpty) return 0;
+  final first = points.first.t;
+  final up = upMs ?? points.last.t;
+  if (first == null || up == null || up < first) return 0;
+  return up - first;
+}

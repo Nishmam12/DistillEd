@@ -62,9 +62,9 @@ class _SceneEditorBody extends ConsumerWidget {
             child: SceneCanvas(
               notebookId: 0,
               pageId: 0,
-              stampStroke: (t) => ref
+              stampStroke: (ageMs) => ref
                   .read(recordingSessionProvider(0))
-                  .stampFor(t ?? ref.read(engineClockProvider)()),
+                  .stampFor(ref.read(engineClockProvider)() - ageMs),
             ),
           ),
           // Toolbar sits below in bottomNavigationBar here, so its options

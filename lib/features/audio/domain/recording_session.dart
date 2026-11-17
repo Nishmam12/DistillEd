@@ -8,13 +8,13 @@ import 'audio_ports.dart';
 import 'lecture_recording.dart';
 
 /// What the session is doing.
-enum RecordingStatus { idle, recording, saving }
+enum RecordingStatus { idle, recording, paused, saving }
 
 class RecordingSession {
   final AudioCapturePort _capture;
 
-  /// Reads the same monotonic engine clock that stamps [StrokePoint.t], so
-  /// stroke offsets and the recording start are measured against one clock.
+  /// The clock the start, pauses and stroke times are all read on (see
+  /// `engineClockProvider`; not the pointer clock of `StrokePoint.t`).
   final int Function() _engineNowMs;
 
   RecordingSession({
@@ -27,7 +27,28 @@ class RecordingSession {
   LectureRecording? _active;
 
   RecordingStatus get status => _status;
-  bool get isRecording => _status == RecordingStatus.recording;
+  /// A recording is under way — capturing or paused.
+  bool get isRecording =>
+      _status == RecordingStatus.recording || _status == RecordingStatus.paused;
+
+  bool get isPaused => _status == RecordingStatus.paused;
+
+  /// Stops capturing without ending the recording. Ink drawn meanwhile points
+  /// at the moment of the pause.
+  Future<void> pause() async {
+    if (_status != RecordingStatus.recording) return;
+    await _capture.pause();
+    _clock?.pause(_engineNowMs());
+    _status = RecordingStatus.paused;
+  }
+
+  Future<void> resume() async {
+    if (_status != RecordingStatus.paused) return;
+    await _capture.resume();
+    // Read after the capture is live again, as [begin] does.
+    _clock?.resume(_engineNowMs());
+    _status = RecordingStatus.recording;
+  }
 
   /// The recording being written to, or null when idle.
   LectureRecording? get active => _active;
@@ -64,7 +85,7 @@ class RecordingSession {
   /// recorded — in which case the stroke carries no audio link at all.
   ({int recordingId, int audioOffsetMs})? stampFor(int strokeEngineMs) {
     final clock = _clock;
-    if (clock == null || _status != RecordingStatus.recording) return null;
+    if (clock == null || !isRecording) return null;
     return (
       recordingId: clock.recordingId,
       audioOffsetMs: clock.offsetFor(strokeEngineMs),
@@ -74,7 +95,7 @@ class RecordingSession {
   /// Stops and returns the finished recording with its duration filled in.
   Future<LectureRecording> stop() async {
     final recording = _active;
-    if (_status != RecordingStatus.recording || recording == null) {
+    if (!isRecording || recording == null) {
       throw StateError('Not recording');
     }
     _status = RecordingStatus.saving;
