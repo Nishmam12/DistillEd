@@ -28,6 +28,8 @@ import '../../../../core/providers/settings_provider.dart';
 import '../../../home/presentation/home_notifier.dart';
 import '../../../../editor/state/clipboard_service.dart';
 import 'toolbar_customiser_sheet.dart';
+import 'writing_pad_panel.dart';
+import '../../../../editor/state/writing_pad.dart';
 import '../../../../editor/state/editor_tool_controller.dart';
 import '../../../../editor/state/history_controller.dart';
 import '../../../../editor/state/page_notifier.dart';
@@ -90,6 +92,8 @@ class EditorAppBarActions extends ConsumerWidget {
             toggleReadingMode(ref);
           case 'toolbar':
             showToolbarCustomiser(context);
+          case 'pad':
+            toggleWritingPad(ref);
           case 'paste':
             _paste(ref);
           case 'library':
@@ -153,6 +157,11 @@ class EditorAppBarActions extends ConsumerWidget {
           value: 'reading',
           checked: ref.read(readingModeProvider) != null,
           child: const Text('Reading mode'),
+        ),
+        CheckedPopupMenuItem(
+          value: 'pad',
+          checked: ref.read(writingPadProvider) != null,
+          child: const Text('Writing pad'),
         ),
         const PopupMenuItem(
             value: 'toolbar', child: Text('Customise toolbar…')),

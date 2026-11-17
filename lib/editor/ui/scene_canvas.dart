@@ -46,6 +46,7 @@ import '../render/selection_overlay_layer.dart';
 import '../render/text_selection_layer.dart';
 import '../../domain/services/selection_editing.dart';
 import '../state/editor_tool_controller.dart';
+import '../state/writing_pad.dart';
 import '../state/pen_presets.dart' show recentColorsProvider;
 import '../state/history_controller.dart';
 import '../state/inline_text_request.dart';
@@ -341,6 +342,12 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
     // nothing else.
     if (_inline != null) {
       _tapToCommit = true;
+      return;
+    }
+    // The writing pad is open: a touch on the page moves its box there.
+    if (ref.read(writingPadProvider) case final pad?) {
+      ref.read(writingPadProvider.notifier).state = pad.placedAt(_toScene(p));
+      _pickTouch = true;
       return;
     }
     if (ref.read(eyedropperProvider)) {

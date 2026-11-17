@@ -25,6 +25,8 @@ import '../../ai/domain/page_content_extractor.dart' show kLocalImageReads;
 import '../../ai/presentation/ai_providers.dart';
 import '../../ai/presentation/notebook_index_notifier.dart';
 import '../../search/presentation/page_index_provider.dart';
+import '../../../editor/state/writing_pad.dart';
+import 'controls/writing_pad_panel.dart';
 import '../../home/domain/suggested_terms.dart' show asTitle;
 import '../../home/presentation/suggested_terms_loader.dart';
 import '../../ai/presentation/sidebar/ai_sidebar.dart';
@@ -273,6 +275,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
         container.read(editorToolProvider.notifier).useTool(readingFrom);
       }
       container.read(canvasLockedProvider.notifier).state = false;
+      container.read(writingPadProvider.notifier).state = null;
     });
     // Leaving a note is when "back up after each note" runs. The backup waits
     // for this page's queued writes itself (see AppBackupLibrary.snapshot).
@@ -715,10 +718,15 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                                       onMoveEnd: onMoveEnd),
                             ),
                           ),
+                        // Where the writing pad's ink lands.
+                        const Positioned.fill(child: WritingPadTargetLayer()),
                       ],
                     );
                   }),
                 ),
+                // The easy writing pad, under the page (phones mostly).
+                if (ref.watch(writingPadProvider) != null && !reading)
+                  WritingPadPanel(pageKey: key, paper: _paperColor),
               ],
             ),
           ),
