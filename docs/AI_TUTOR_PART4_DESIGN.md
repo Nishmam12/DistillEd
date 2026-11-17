@@ -15,16 +15,16 @@ what the design does without it. Do not make one without asking the user.
 
 ## 0. Read this first
 
-1. Build order is **4c, then 4a, then 4d, then 4e**. 4c is the user's priority
-   and stands alone. 4a (conversation held in memory) is what makes "explain
-   that in more detail" and the guide style work, so it should follow 4c
-   directly. Section 9 puts that order to the user.
+1. Build order is **4c, then 4a, then 4d, then 4e**, with 4a ahead of Part 3
+   (the user agreed this on 2026-11-17; see section 9). 4c is the user's
+   priority and stands alone. 4a (conversation held in memory) is what makes
+   "explain that in more detail" and the guide style work.
 2. Part 2 must be wired into Ask before 4c starts. Part 2 steps 1 to 3 exist
    (`lib/features/ai/domain/tutor/tutor_prompt.dart`, commits `7431bb7` and
    `5aeebbe`); steps 4 to 11 of plan 5.9 do not. 4c assumes
    `NotesQa.systemPromptFor(context, windowTokens: …)` exists.
 3. Every prompt sentence in this file is final wording. Copy it; do not
-   rephrase it. The 2,048-token window has four words of room (section 2.5),
+   rephrase it. The 2,048-token window has two words of room (section 2.5),
    so a longer sentence fails a test.
 4. Section 10 lists what was checked in the code on 2026-11-17 and what was
    not. Re-check the first list if roadmap work has moved those files.
@@ -46,7 +46,9 @@ Terms used throughout:
 - **Passage**: one numbered block the model is shown. Section 3.5 defines it
   exactly; it is one or more chunks of one page joined together.
 - **Depth**: how much answer the student asked for: brief, standard or
-  detailed.
+  detailed. Standard is what they get when they do not say, and it is not a
+  short answer: it is a line or two that sums the answer up, then the
+  explanation step by step (the user's decision, section 9).
 
 ## 1. What the user asked for
 
@@ -163,12 +165,12 @@ eighths of the window, whatever was asked for.
 ### 2.5 The budget as it stands after Part 2 steps 1 to 3
 
 Measured with `AiRouter.inputWordBudgetFor` on Ask's prompt with the persona
-inserted and a 512-token reply:
+inserted, the contract sentence replaced as in 3.6, and a 512-token reply:
 
 | Window | Before the persona | Persona, plain | Persona, worst-case tail |
 | --- | --- | --- | --- |
-| 2,048 | 690 words | 645 | 634 |
-| 4,096 | 1,850 words | 1,582 | 1,372 |
+| 2,048 | 690 words | 643 | 632 |
+| 4,096 | 1,850 words | 1,593 | 1,383 |
 
 The two rules from plan 5.7 hold and are tests in
 `test/features/ai/domain/tutor_persona_budget_test.dart`: at least 1,250 words
@@ -185,6 +187,10 @@ New file `domain/tutor/answer_depth.dart`.
 
 ```dart
 /// How much answer the student asked for.
+///
+/// [standard] is the default and means "sum it up in a line or two, then go
+/// through it step by step". [brief] and [detailed] are only ever chosen by
+/// the student's own words.
 enum AnswerDepth { brief, standard, detailed }
 
 /// Reads the depth off the question's own words. Never calls a model.
@@ -232,7 +238,11 @@ Left out on purpose, with the false match each would cause: `detailed` alone
 Why this is safe to get wrong: detection moves budgets and adds one line to
 the prompt. The model still reads the question itself, and `kTeachingRules`
 already tells it to match the depth asked for. A missed phrase, or a question
-in another language, gets `standard`, which is today's behaviour. The lists
+in another language, gets `standard`: a short summary, then the steps.
+
+There are no depth chips in the composer. The user was asked and chose a
+better default over a control: the default already goes step by step, so the
+only thing a student has to ask for is less. The lists
 are English only; say so in the file's header.
 
 Tests, `test/features/ai/domain/tutor/answer_depth_test.dart`:
@@ -270,7 +280,11 @@ const String kDepthDetailedCompact = 'Explain fully, step by step.';
 
 Rules for the tail, added to the ones `tutorTail` already follows:
 
-- `standard` adds nothing.
+- `standard` adds nothing. Its instruction is already in the teaching rules,
+  in full ("open with a sentence or two that sums up the answer, then go
+  through it step by step") and in compact form ("Sum up the answer first,
+  then go step by step, unless they ask for less"). A depth line exists only
+  to move the model off that default.
 - Window at or below `kCompactPromptWindowTokens`: the compact line.
 - **When the guide style line is emitted, no depth line is emitted.** A hint
   has no depth, and the two instructions would pull against each other.
@@ -296,7 +310,7 @@ Tests, added to `test/features/ai/domain/tutor/tutor_prompt_test.dart`:
 
 Budget tests, added to `tutor_persona_budget_test.dart`: on the 2,048 window
 the composed prompt with the explain style and `detailed` leaves at least 630
-words. Measured: 639. (`brief` is not at risk: its reply reserve is smaller.)
+words. Measured: 637. (`brief` is not at risk: its reply reserve is smaller.)
 
 ### 3.3 Step 3: one function owns the budget
 
@@ -338,7 +352,7 @@ The rules, with `window = capabilities.contextWindowTokens` and
 | | brief | standard | detailed |
 | --- | --- | --- | --- |
 | Reply tokens wanted, window ≤ 2,048 | 256 | 512 | 512 |
-| Reply tokens wanted, window ≤ 4,096 | 256 | 512 | 768 |
+| Reply tokens wanted, window ≤ 4,096 | 256 | 640 | 768 |
 | Reply tokens wanted, window ≤ 16,000 | 256 | 768 | 1,024 |
 | Reply tokens wanted, larger | 256 | 768 | 2,048 |
 | `topK`, small window | 3 | 5 | 5 |
@@ -372,15 +386,15 @@ passages get the whole input on a small window, and the rule holds as tested.
 A follow-up (4a) may spend up to a quarter of the input on the earlier
 exchange, and passages then never fall under 1,000 words on the 4,096 window
 (four full chunks) or 450 on the 2,048 window. Measured on 4,096: a standard
-follow-up keeps 1,187 words of passages and gives 395 to history; a detailed
-one keeps 1,017 and gives 338. This only takes effect when 4a is built, and
-section 9 puts it to the user with the question about 4a.
+follow-up keeps 1,124 words of passages and gives 374 to history; a detailed
+one keeps 1,024 and gives 341. This only takes effect when 4a is built. The
+user agreed to 4a, with this trade stated, on 2026-11-17.
 
 **A turn that will be guided plans as `standard`.** When the guide style line
 is going to be emitted, `NotesQa.prepare` calls `planAnswer` with
 `AnswerDepth.standard` whatever was detected. The depth line is suppressed
 for a guided turn (3.2), a hint needs little reply, and reserving 768 reply
-tokens for it would take 190 words from the passages for nothing.
+tokens for it would take passages for nothing.
 
 On a larger window the fifth of the input not given to passages or history is
 deliberate slack. The token estimate is 3.5 characters per token, a cloud
@@ -391,37 +405,40 @@ context and the depth line (`hasHistory: false`):
 
 | Window | Depth | Reply tokens | Input words | Passage words | `topK` |
 | --- | --- | --- | --- | --- | --- |
-| 2,048 | brief | 256 | 828 | 828 | 3 |
-| 2,048 | standard | 512 | 645 | 645 | 5 |
-| 2,048 | detailed | 512 | 639 | 639 | 5 |
-| 4,096 | brief | 256 | 1,748 | 1,748 | 3 |
-| 4,096 | standard | 512 | 1,582 | 1,582 | 5 |
-| 4,096 | detailed | 768 | 1,355 | 1,355 | 5 |
-| 8,000 | brief | 256 | 4,640 | 1,000 | 4 |
-| 8,000 | standard | 768 | 4,285 | 2,500 | 10 |
-| 8,000 | detailed | 1,024 | 4,057 | 2,434 | 20 |
-| 32,000 | brief | 256 | 22,417 | 1,000 | 4 |
-| 32,000 | standard | 768 | 22,062 | 2,500 | 10 |
-| 32,000 | detailed | 2,048 | 21,077 | 5,000 | 20 |
-| 128,000 | brief | 256 | 93,528 | 1,000 | 4 |
-| 128,000 | standard | 768 | 93,174 | 2,500 | 10 |
-| 128,000 | detailed | 2,048 | 92,188 | 5,000 | 20 |
+| 2,048 | brief | 256 | 825 | 825 | 3 |
+| 2,048 | standard | 512 | 643 | 643 | 5 |
+| 2,048 | detailed | 512 | 637 | 637 | 5 |
+| 4,096 | brief | 256 | 1,758 | 1,758 | 3 |
+| 4,096 | standard | 640 | 1,498 | 1,498 | 5 |
+| 4,096 | detailed | 768 | 1,365 | 1,365 | 5 |
+| 8,000 | brief | 256 | 4,650 | 1,000 | 4 |
+| 8,000 | standard | 768 | 4,295 | 2,500 | 10 |
+| 8,000 | detailed | 1,024 | 4,068 | 2,441 | 20 |
+| 32,000 | brief | 256 | 22,428 | 1,000 | 4 |
+| 32,000 | standard | 768 | 22,073 | 2,500 | 10 |
+| 32,000 | detailed | 2,048 | 21,087 | 5,000 | 20 |
+| 128,000 | brief | 256 | 93,539 | 1,000 | 4 |
+| 128,000 | standard | 768 | 93,184 | 2,500 | 10 |
+| 128,000 | detailed | 2,048 | 92,198 | 5,000 | 20 |
 
-Three decisions inside that table:
+Four decisions inside that table:
 
 1. **On the 4,096 window a detailed answer gets 768 reply tokens, not 1,024.**
    At 1,024 the passages fall to about 1,200 words, under the 1,250-word rule.
-   At 768 they are 1,355 with the plain context. A full learner profile (five
-   40-character names, the most it can hold) costs about 100 words, which
-   leaves about 1,255: still five passages, with nothing to spare. Add a
-   test for that case; if it lands under 1,250, lower the detailed reply on
-   this window to 704 before touching any wording. A guided turn never
-   reaches this case, because it plans as standard (below). The existing
-   1,250-word test stays as it is, at standard depth with the worst-case
-   tail.
-2. **On the 2,048 window a detailed answer cannot have a longer reply.**
+   At 768 they are 1,365 with the plain context, and 1,268 with a full
+   learner profile (five 40-character names, the most it can hold): still
+   five passages. Add a test for that second case. A guided turn never
+   reaches it, because it plans as standard (below).
+2. **On the 4,096 window a standard answer gets 640 reply tokens, up from
+   today's 512.** The default answer is now a summary followed by the steps,
+   and 512 tokens (about 380 words) cuts too many of those off mid-step. 640
+   is about 470 words. Passages stay above the rule: 1,498 words with the
+   plain context and 1,288 with the worst-case tail. The existing 1,250-word
+   test measures at 512; add the same assertion at 640. On the 2,048 window
+   there is no room for this and standard stays at 512.
+3. **On the 2,048 window a detailed answer cannot have a longer reply.**
    There is no room. It still gets the depth line.
-3. **A large window does not mean a huge prompt.** 20 chunks and 5,000 words
+4. **A large window does not mean a huge prompt.** 20 chunks and 5,000 words
    is the most Ask sends. The student pays per token on their own key, a
    longer prompt is slower, and past about 20 chunks the extra ones are
    noise.
@@ -731,14 +748,18 @@ Answer in a few clear sentences, and refer to the passages by their number (e.g.
 with
 
 ```
-Unless they ask for more or less, answer in a few clear sentences, citing passages by number, e.g. [1].
+Refer to the passages by their number (e.g. [1]) when you use them.
 ```
 
-The old sentence orders every answer to be a few sentences, which contradicts
-the depth rule in `kTeachingRules` and the depth line. The new one keeps the
-short default the on-device model needs and yields to what the student asked
-for. It is one character shorter than the old one, so the 2,048 budget does
-not move. Every grounding sentence around it stays exactly as it is. Tests
+The old sentence orders every answer to be a few sentences. That contradicts
+the default the user chose (a summary, then the steps) and the depth line.
+How long an answer is now comes from one place, the teaching rules, in full
+and in compact form, with the depth line to move it. The sentence that is
+left only says how to cite. It is 37 characters shorter, and the persona's
+budget on the 2,048 window counts on those words, so **this change and the
+persona must go into Ask in the same commit**;
+`tutor_persona_budget_test.dart` already measures the prompt that way. Every
+grounding sentence around it stays exactly as it is. Tests
 that pin `'ONLY the passages'`, `'do NOT guess'`, `'Never invent facts'` and
 the refusal string are unaffected; find any test that pins the old sentence
 and update it in the same commit.
@@ -775,7 +796,8 @@ Tests:
   fake retriever and a recording provider. A detailed question on a
   128,000-token model asks the retriever for `topK: 20, poolSize: 60` and the
   model for 2,048 tokens; the same question on the 4,096 model asks for 5 and
-  768; a brief question asks for 3 or 4 and 256.
+  768; a plain question on the 4,096 model asks for 5 and 640; a brief
+  question asks for 3 or 4 and 256.
 - The prompt text for one passage with a label matches the block in 3.5
   exactly.
 - The composed system prompt for a detailed question ends with
@@ -825,8 +847,11 @@ constant in its own commit. Until that is done, leave 0.45.
 
 - The table in 3.3 holds, as tests.
 - On the tablet with the on-device model: the same question asked plainly,
-  with "briefly" and with "in detail" gives visibly different lengths, and
-  the detailed one is not cut off mid-sentence in the usual case.
+  with "briefly" and with "in detail" gives visibly different lengths. Asked
+  plainly, the answer opens with a line or two that sums it up and then goes
+  through it in order. Neither the plain nor the detailed answer is cut off
+  mid-sentence in the usual case; if plain answers are, the lever is the
+  standard reply on 4,096 (3.3, decision 2), not the wording.
 - With a cloud model that has a large window: a detailed question shows more
   than five source cards.
 - A source card shows a page number, and the file name for an imported page.
@@ -1318,7 +1343,8 @@ is never left with a note about tool calls in place of an answer.
   `plan.replyTokens` if it can; otherwise note the gap here.
 
 **Consent.** One yes per user action covers every round, as `CloudSendGate`
-already works. The dialog must say what a yes now allows. When the agent
+already works. The user confirmed this on 2026-11-17: one yes per question,
+no second prompt per lookup. The dialog must say what a yes now allows. When the agent
 engine will answer, the body of `cloud_send_dialog.dart` gains one sentence:
 
 ```
@@ -1414,7 +1440,9 @@ Changed:
 Nothing below is assumed. Each is a question for the user, and the design
 works as written if every answer is no.
 
-1. **The PDF's own page number.** `NotePage` stores the page's position in
+1. **The PDF's own page number. Decided 2026-11-17: no. Headers use the
+   notebook's page number and `NotePage` is not changed.** For the record:
+   `NotePage` stores the page's position in
    the notebook, not its number in the file it came from. If a student
    imports pages 40 to 60 of a textbook into a notebook that already has ten
    pages, the header says "page 11", and the book says "page 40". Without a
@@ -1434,24 +1462,31 @@ works as written if every answer is no.
    question. If a "always answer in detail" preference is wanted later, it
    belongs in prefs like `teachingStyle`, not in Isar.
 
-## 9. Questions for the user
+## 9. What the user decided (2026-11-17)
 
-1. **Order.** The agreed order is Part 2, then 4c, then Part 3. This design
-   recommends Part 2 wiring, 4c, then **4a** before Part 3: 4a needs no
-   schema change, and without it "explain that in more detail" and the guide
-   style do not work. Is that order acceptable? It comes with one trade: on
-   the on-device model a follow-up question keeps at least 1,000 words of
-   passages, not 1,250, because the earlier exchange takes the rest (3.3).
-2. **Page numbers** in headers: the notebook's page number (no schema
-   change), or also the file's own page number (section 8, item 1)?
-3. **Depth chips.** Depth is read from the question's words. Should the
-   composer also have "Brief" and "In detail" chips for students who do not
-   think to type it? It is a small addition to 4c: a chip sets the depth for
-   the next question and overrides detection.
-4. **The agent engine's reach.** In this design a tool-using cloud model may
-   read further passages from the scope the student chose, after one yes.
-   Is one yes per question enough, or should each extra lookup ask again?
-   The design assumes one yes, with the dialog saying so.
+All four questions this design raised were answered. Nothing here is open.
+
+1. **Order: yes, 4a goes before Part 3.** The order is Part 2 wiring, 4c,
+   4a, then Part 3. The trade was stated and accepted: on the on-device
+   model a follow-up question keeps at least 1,000 words of passages, not
+   1,250, because the earlier exchange takes the rest (3.3).
+2. **Page numbers: the notebook's page number only.** No Isar change.
+3. **No depth chips. A better default instead.** In the user's words: "for a
+   study partner, going step by step in detail is better. It can give a bit
+   of a summary at the start to explain it and then proceed accordingly." So
+   when a student does not say how much they want, the answer opens with a
+   line or two that sums it up and then goes through it step by step. This
+   is built into `kTeachingRules` and its compact twin (commit after
+   `ff6682b` on `ai-tutor-persona`), it is why Ask's contract loses "a few
+   clear sentences" (3.6), and it is why a standard answer on the 4,096
+   window gets 640 reply tokens (3.3). A student who wants less says so, and
+   3.1 catches it.
+4. **Tool-using models: one yes per question.** A cloud model that can call
+   tools may read further passages from the scope the student chose without
+   asking again. The dialog says so (6.4).
+
+Still needing the user's approval when its turn comes, and not part of this
+design: saved conversations (4b), which need two new Isar collections.
 
 ## 10. What was checked, and what was not
 
@@ -1472,10 +1507,11 @@ works as written if every answer is no.
   (`context_length` or `context_window`), else 8,000; tool support comes from
   `supported_parameters`, else off.
 - The budget figures were produced by calling `AiRouter.inputWordBudgetFor`
-  on the real prompts. Those in 2.5 are on the code as committed, with the
-  persona inserted the way the budget test inserts it. Those in 3.3 also have
-  the contract sentence replaced as in 3.6 and the depth lines of 3.2, and
-  the two history figures use the formula in 3.3.
+  on the real prompts, re-measured after the user's decision on the default
+  depth. All of them have the persona inserted and the contract sentence
+  replaced as in 3.6, which is how the budget test builds the prompt. Those
+  in 3.3 also have the depth lines of 3.2, and the history figures use the
+  formula in 3.3.
 
 ### 10.2 Not checked; verify before relying on it
 

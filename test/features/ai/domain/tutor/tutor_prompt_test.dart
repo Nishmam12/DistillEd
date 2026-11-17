@@ -56,7 +56,20 @@ void main() {
       // The user's stated priority: an answer as detailed as the student
       // wants, not one length for every question.
       expect(kTeachingRules, contains('at the depth they asked for'));
-      expect(kTeachingRulesCompact, contains('depth'));
+    });
+
+    test('with no depth asked for, the default is a summary, then the steps',
+        () {
+      // Decided by the user on 2026-11-17: a study partner sums the answer up
+      // in a line or two and then goes through it step by step. Short is what
+      // a student has to ask for, not the other way round.
+      expect(kTeachingRules, contains('When they do not say, open with'));
+      expect(kTeachingRules, contains('sums up the answer'));
+      expect(kTeachingRules, contains('step by step'));
+      expect(kTeachingRules, contains('short only when they ask'));
+      expect(kTeachingRulesCompact, contains('Sum up the answer first'));
+      expect(kTeachingRulesCompact, contains('step by step'));
+      expect(kTeachingRulesCompact, contains('unless they ask for less'));
     });
 
     test('the rules keep the behaviours a reader can check in a reply', () {

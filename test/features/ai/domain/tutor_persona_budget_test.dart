@@ -41,11 +41,25 @@ final _worstCase = TutorContext(
   ),
 );
 
+/// The sentence of Ask's contract that fixes every answer at "a few clear
+/// sentences". The wiring replaces it with [_citeSentence], because the
+/// length of an answer now comes from the teaching rules (a summary, then the
+/// steps, unless the student asks for less). The two changes must land in the
+/// same commit: the persona's budget on the 2,048 window counts on the words
+/// this sentence gives back.
+const _fewSentences =
+    'Answer in a few clear sentences, and refer to the passages by their '
+    'number (e.g. [1]) when you use them. ';
+const _citeSentence =
+    'Refer to the passages by their number (e.g. [1]) when you use them. ';
+
 String _askWithPersona(TutorContext context, int window) {
-  final constantPart = NotesQa.systemPrompt.replaceFirst(
-    kTutorVoiceWithMath,
-    '$kTutorRole\n\n$kTeachingRules\n\n$kTutorVoiceWithMath',
-  );
+  final constantPart = NotesQa.systemPrompt
+      .replaceFirst(_fewSentences, _citeSentence)
+      .replaceFirst(
+        kTutorVoiceWithMath,
+        '$kTutorRole\n\n$kTeachingRules\n\n$kTutorVoiceWithMath',
+      );
   return withTutorTail(
     constantPart,
     tutorTail(context,
@@ -60,6 +74,15 @@ int _words(String system, int window) => AiRouter.inputWordBudgetFor(
     );
 
 void main() {
+  test('the helper builds the prompt the wiring will', () {
+    // If this fails after Ask is wired, the contract sentence has already
+    // been changed in the real prompt: delete the helper, as the TODO says.
+    expect(NotesQa.systemPrompt, contains(_fewSentences));
+    expect(_askWithPersona(TutorContext.plain, 4096),
+        isNot(contains('a few clear sentences')));
+    expect(_askWithPersona(TutorContext.plain, 4096), contains(_citeSentence));
+  });
+
   test('the helper really inserts the persona', () {
     final prompt = _askWithPersona(_worstCase, 4096);
     expect(prompt, contains(kTutorRole));
@@ -84,8 +107,8 @@ void main() {
     // part of that constant, measuring "today" here would compare the persona
     // with itself and pass whatever it cost.
     //
-    // Measured the same day: 645 with the plain context, 634 with a guide
-    // tail. Four words of room, so re-measure after any change to a compact
+    // Measured the same day: 643 with the plain context, 632 with a guide
+    // tail. Two words of room, so re-measure after any change to a compact
     // constant or to Ask's contract.
     const beforePersona = 690;
     const window = kCompactPromptWindowTokens;

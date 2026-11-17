@@ -51,9 +51,9 @@ What the wiring session does, in order:
 1. Ask: `NotesQa.systemPromptFor(context, windowTokens: …)`. Order of parts:
    untrusted-data rule, the grounding contract (still first), `kTutorRole`,
    `kTeachingRules`, `kTutorVoiceWithMath`, then the tail through
-   `withTutorTail`. Change the one contract sentence given in plan 5.0. Then
-   point `tutor_persona_budget_test.dart` at the real composed prompt (the
-   file has a TODO) and keep the literal 690.
+   `withTutorTail`. Change the one contract sentence given in plan 5.0, in
+   the same commit. Then point `tutor_persona_budget_test.dart` at the real
+   composed prompt (the file has a TODO) and keep the literal 690.
 2. Explain, Summarize, Research, then the quiz, flashcard and writing line,
    per the table in plan 5.4.
 3. The notifiers read `tutorContextProvider(notebookId)` just before they
@@ -97,9 +97,10 @@ compile) before the code existed. No new dependency.
    Part 3. **This is a change to the order the user agreed and is theirs to
    decide.**
 2. **Ask's contract says "answer in a few clear sentences"**, which
-   contradicts the new rule that depth follows what the student asked for.
-   The replacement sentence is in plan 5.0. It must go in when Ask is wired.
-3. **The 2,048 window has four words of room** under the "at most 60 words
+   contradicts the default the user chose. The replacement sentence is in
+   plan 5.0. It must go in **in the same commit** that wires the persona
+   into Ask: the budget on the 2,048 window counts on the words it frees.
+3. **The 2,048 window has two words of room** under the "at most 60 words
    lost" rule. Any edit to a compact constant or to Ask's contract can fail
    the budget test. That is the test working.
 4. **`weakConcepts` returns concepts the student has only seen**, not only
@@ -118,16 +119,16 @@ Recorded in plan section 10, decided by the user on 2026-11-17:
 - 12: yes, a privacy control in Settings. Not built.
 - 13: order is Part 2, then 4c, then Part 3.
 
-Waiting on the user (Part 4 design, section 9):
+Also decided on 2026-11-17 (Part 4 design, section 9). Nothing is waiting on
+the user:
 
-1. Does Part 4a go between 4c and Part 3?
-2. Passage headers show the notebook's page number. Showing the PDF's own
-   page number as well would need one new field on `NotePage`, an Isar
-   change. Wanted?
-3. Should the composer have "Brief" and "In detail" chips as well as reading
-   depth from the question?
-4. Is one yes per question enough for a tool-using cloud model to look up
-   more passages, or should each lookup ask?
+1. **4a goes before Part 3.** Order: Part 2 wiring, 4c, 4a, Part 3.
+2. **Passage headers show the notebook's page number only.** No Isar change.
+3. **No depth chips; a better default.** With no depth asked for, the answer
+   opens with a line or two that sums it up and then goes step by step. This
+   is in `kTeachingRules` and its compact twin already. It is why Ask's
+   contract loses "a few clear sentences" when Ask is wired.
+4. **One yes per question** covers a tool-using cloud model's extra lookups.
 
 ## 7. Standing rules that bite
 

@@ -44,12 +44,18 @@ const String kTutorRole =
 /// How a good teacher behaves, as things that can be checked in a reply.
 ///
 /// The first rule is the one the user asked for by name: the depth of an
-/// answer follows what the student asked for. The rule about uncertainty
-/// defers to "exact words" because Ask recognises a grounded refusal by its
-/// exact text, and a bare "say so" invites a paraphrase of it.
+/// answer follows what the student asked for. Its default, decided by the user
+/// on 2026-11-17, is what a study partner does: sum the answer up in a line or
+/// two, then go through it step by step. Short is what a student asks for.
+/// "Step by step" here means the order of the explanation; the voice still
+/// forbids lists, so the steps arrive as prose.
+///
+/// The rule about uncertainty defers to "exact words" because Ask recognises a
+/// grounded refusal by its exact text, and a bare "say so" invites a
+/// paraphrase of it.
 const String kTeachingRules = '''
 How you teach:
-- Answer what they asked, at the depth they asked for: short when they want it brief, full and worked through when they ask for detail or for the steps. When they do not say, give enough that the idea stands on its own.
+- Answer what they asked, at the depth they asked for. When they do not say, open with a sentence or two that sums up the answer, then go through it step by step. Keep it short only when they ask for that.
 - Start from what the student already wrote or said, and build the next step on it.
 - One new idea at a time, in the order a learner needs them.
 - Pitch it to their level. Use a technical term only if they have used it or you have just defined it.
@@ -67,9 +73,13 @@ const String kTutorRoleCompact =
 /// Says nothing about uncertainty on purpose. Every grounded feature already
 /// states its own rule, and on a small model a second "if unsure, say so" is
 /// the likeliest line to pull an answer off the exact refusal string.
+///
+/// Its first sentence is the only length guidance a small window gets once
+/// Ask's contract stops saying "a few clear sentences", so it leads.
 const String kTeachingRulesCompact =
-    'Build on what they wrote, one idea at a time, at their level and the '
-    'depth they asked for. Say what they got right before what is wrong.';
+    'Sum up the answer first, then go step by step, unless they ask for '
+    'less. Build on what they wrote, one idea at a time, at their level. '
+    'Say what they got right before what is wrong.';
 
 /// The guide style: hints first, the answer when they have tried or asked.
 ///

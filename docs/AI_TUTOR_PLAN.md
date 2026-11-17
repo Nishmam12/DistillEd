@@ -48,6 +48,7 @@ on a tablet.
 | 9 Budget tests (5.7) | Done, on a prompt composed in the test | `7431bb7` |
 | 4 to 8 Wire into Ask, Explain, Summarize, Research, quiz and flashcards | **Not started** | |
 | 10 Style control in the panel | **Not started; wait for Part 4a** | |
+| Default depth: summary, then the steps (user, 2026-11-17) | Done in the constants | see `git log` on `tutor_prompt.dart` |
 | 11 The 20-question read | **Not started** | |
 
 **Nothing is wired in.** No prompt the app sends has changed. Read "5.0 What
@@ -831,8 +832,11 @@ it.
 1. **The wording changed.** `kTutorRole` no longer says "not that they were
    handed an answer", which read as an order to withhold. `kTeachingRules`
    gained a first rule that ties the depth of an answer to what the student
-   asked for, and its rule about uncertainty now points at a feature's exact
-   refusal words. The compact rules say nothing about uncertainty: on a small
+   asked for. **Its default is the user's decision of 2026-11-17: when the
+   student does not say, open with a line or two that sums up the answer,
+   then go through it step by step; short only when they ask.** The compact
+   rules lead with the same default. The rule about uncertainty now points
+   at a feature's exact refusal words. The compact rules say nothing about uncertainty: on a small
    model "if unsure, say so" is the likeliest line to pull a grounded answer
    off the exact refusal string.
 2. **There is no `kStyleExplain`.** The explain style adds no line on any
@@ -881,19 +885,30 @@ Three things the next builder must know:
   `provider.capabilities.contextWindowTokens` at call time. A tail built for
   a large window and sent to the lite model costs passages; a test shows it
   does not overflow.
-- **The 2,048 window has four words of room.** Measured on Ask's prompt with
-  the persona: 645 words of passages with the plain context, 634 with a guide
-  tail, against 690 before and a floor of 630. On 4,096: 1,582 and, at worst,
-  1,372, against a floor of 1,250. Any change to a compact constant or to
-  Ask's contract needs re-measuring;
-  `test/features/ai/domain/tutor_persona_budget_test.dart` will say so.
+- **The 2,048 window has two words of room.** Measured on Ask's prompt with
+  the persona and the contract sentence below already replaced: 643 words of
+  passages with the plain context, 632 with a guide tail, against 690 before
+  and a floor of 630. On 4,096: 1,593 and, at worst, 1,383, against a floor
+  of 1,250. Any change to a compact constant or to Ask's contract needs
+  re-measuring; `test/features/ai/domain/tutor_persona_budget_test.dart` will
+  say so.
 
-When wiring Ask (step 4), also change one sentence of its contract, exactly as
-`docs/AI_TUTOR_PART4_DESIGN.md` section 3.6 gives it: "Answer in a few clear
-sentences, and refer to the passages by their number (e.g. [1]) when you use
-them." becomes "Unless they ask for more or less, answer in a few clear
-sentences, citing passages by number, e.g. [1]." The old sentence contradicts
-the depth rule. The new one is one character shorter.
+**When wiring Ask (step 4), change one sentence of its contract in the same
+commit.** "Answer in a few clear sentences, and refer to the passages by
+their number (e.g. [1]) when you use them." becomes "Refer to the passages by
+their number (e.g. [1]) when you use them." The old sentence fixes every
+answer at a few sentences, which contradicts the default above. The length of
+an answer now comes from the teaching rules alone. The budget test already
+measures the prompt with this sentence replaced; without the replacement the
+2,048 window fails its floor. The exact text is also in
+`docs/AI_TUTOR_PART4_DESIGN.md` section 3.6.
+
+One thing to watch between this wiring and Part 4c: `NotesQa.answerOptions`
+still caps a reply at 512 tokens, and the default answer is now longer than
+"a few sentences". If the 20-question read shows on-device answers cut off
+mid-step, that is expected and is fixed by 4c (640 reply tokens at standard
+depth on the 4,096 window, design section 3.3). Do not shorten the wording to
+compensate.
 
 For the human read (5.8), add one thing to look for: with the guide style on
 and a question the notes do not cover, the reply is the exact refusal, not a
@@ -1429,10 +1444,15 @@ jump to the right page, a deleted page leaves no text in a saved thread.
 - **12: decided, yes.** Add a privacy control to Settings. **Not built yet.**
 - **13: decided.** Part 2, then Part 4c, then Part 3.
 
-Still open, raised by the Part 4 design (its section 9): whether Part 4a
-(conversation in memory) goes between 4c and Part 3; which page number a
-passage header shows; whether the composer gets depth chips; whether one yes
-per question covers a tool-using model's extra lookups.
+Also decided on 2026-11-17, in answer to the Part 4 design (its section 9):
+
+- **Order: Part 2 wiring, then 4c, then 4a, then Part 3.** 4a (conversation
+  held in memory, no schema change) moves ahead of Part 3.
+- **Passage headers show the notebook's page number only.** No Isar change to
+  `NotePage`.
+- **No depth chips.** The default answer is a short summary and then the
+  steps; a student asks when they want less.
+- **A tool-using cloud model gets one yes per question**, not one per lookup.
 
 ---
 
