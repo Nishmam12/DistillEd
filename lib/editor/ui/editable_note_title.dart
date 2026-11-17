@@ -14,10 +14,15 @@ class EditableNoteTitle extends StatefulWidget {
   /// notebook is still loading and there is nothing to rename yet.
   final ValueChanged<String>? onRename;
 
+  /// Titles to offer while editing (at most three are shown, beside the
+  /// field); tapping one renames to it. Null offers none.
+  final Future<List<String>> Function()? suggestTitles;
+
   const EditableNoteTitle({
     super.key,
     required this.title,
     required this.onRename,
+    this.suggestTitles,
   });
 
   @override
@@ -26,6 +31,7 @@ class EditableNoteTitle extends StatefulWidget {
 
 class _EditableNoteTitleState extends State<EditableNoteTitle> {
   bool _editing = false;
+  List<String> _suggestions = const [];
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focus = FocusNode();
 
@@ -51,8 +57,26 @@ class _EditableNoteTitleState extends State<EditableNoteTitle> {
       ..text = widget.title
       ..selection =
           TextSelection(baseOffset: 0, extentOffset: widget.title.length);
-    setState(() => _editing = true);
+    setState(() {
+      _editing = true;
+      _suggestions = const [];
+    });
     _focus.requestFocus();
+    final suggest = widget.suggestTitles;
+    if (suggest != null) {
+      suggest().then((titles) {
+        if (!mounted || !_editing) return;
+        setState(() => _suggestions = [
+              for (final t in titles)
+                if (t.toLowerCase() != widget.title.toLowerCase()) t,
+            ].take(3).toList());
+      }, onError: (_) {});
+    }
+  }
+
+  void _pick(String title) {
+    _controller.text = title;
+    _commit();
   }
 
   void _commit() {
@@ -72,7 +96,7 @@ class _EditableNoteTitleState extends State<EditableNoteTitle> {
         theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge;
 
     if (_editing) {
-      return TextField(
+      final field = TextField(
         controller: _controller,
         focusNode: _focus,
         autofocus: true,
@@ -85,6 +109,29 @@ class _EditableNoteTitleState extends State<EditableNoteTitle> {
         ),
         onSubmitted: (_) => _commit(),
         onTapOutside: (_) => _commit(),
+      );
+      if (_suggestions.isEmpty) return field;
+      // In the field's tap region: tapping a suggestion is not a tap outside.
+      return TextFieldTapRegion(
+        child: Row(
+          children: [
+            Expanded(child: field),
+            for (final t in _suggestions)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 180),
+                  child: ActionChip(
+                    key: ValueKey('suggestedTitle:$t'),
+                    tooltip: 'Use this title',
+                    label: Text(t, overflow: TextOverflow.ellipsis),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _pick(t),
+                  ),
+                ),
+              ),
+          ],
+        ),
       );
     }
 

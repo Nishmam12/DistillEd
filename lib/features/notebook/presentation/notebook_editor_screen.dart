@@ -25,6 +25,8 @@ import '../../ai/domain/page_content_extractor.dart' show kLocalImageReads;
 import '../../ai/presentation/ai_providers.dart';
 import '../../ai/presentation/notebook_index_notifier.dart';
 import '../../search/presentation/page_index_provider.dart';
+import '../../home/domain/suggested_terms.dart' show asTitle;
+import '../../home/presentation/suggested_terms_loader.dart';
 import '../../ai/presentation/sidebar/ai_sidebar.dart';
 import '../../ai/domain/features/explainer.dart' show ExplainMode;
 import '../../ai/presentation/explain_notifier.dart' show ExplainRequest;
@@ -464,6 +466,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
               child: EditableNoteTitle(
                 title: _notebook?.title ?? 'Notebook',
                 onRename: _notebook == null ? null : _rename,
+                suggestTitles: () async => [
+                  for (final t in await suggestedTermsFor(
+                      ref, widget.notebookId,
+                      max: 5))
+                    asTitle(t),
+                ],
               ),
             ),
             const SizedBox(width: 16),

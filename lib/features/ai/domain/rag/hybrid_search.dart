@@ -14,7 +14,7 @@ import 'dart:math' as math;
 /// Function words that say nothing about what a question is about. English
 /// only — Bengali and the like are matched exactly, which is the right default
 /// for a name or a term.
-const Set<String> _stopwords = {
+const Set<String> kStopwords = {
   'a', 'an', 'the', 'and', 'or', 'but', 'if', 'so', 'of', 'to', 'in', 'on',
   'at', 'by', 'for', 'with', 'from', 'as', 'into', 'about', 'than', 'then',
   'that', 'this', 'these', 'those', 'it', 'its', 'is', 'are', 'was', 'were',
@@ -50,7 +50,7 @@ List<String> queryTerms(String query) {
   final seen = <String>{};
   return [
     for (final token in keywordTokens(query))
-      if (!_stopwords.contains(token) && seen.add(token)) token,
+      if (!kStopwords.contains(token) && seen.add(token)) token,
   ];
 }
 

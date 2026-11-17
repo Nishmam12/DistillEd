@@ -6,6 +6,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../suggested_terms_loader.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../data/repositories/note_repository.dart';
 import '../home_notifier.dart';
@@ -194,6 +196,11 @@ Future<void> showEditTagsDialog(
   required NoteCardData note,
 }) async {
   final known = await ref.read(noteRepositoryProvider).tagCounts();
+  // From the notebook's own words; only saved if picked.
+  final suggested = {
+    for (final t in await suggestedTermsFor(ref, note.id))
+      ...NoteRepository.normalizeTags([t]),
+  };
   if (!context.mounted) return;
 
   final result = await showDialog<List<String>>(
@@ -201,6 +208,10 @@ Future<void> showEditTagsDialog(
     builder: (_) => _TagsDialog(
       initial: note.tags,
       known: known.keys.toList()..sort(),
+      suggested: [
+        for (final t in suggested)
+          if (!known.containsKey(t)) t,
+      ],
     ),
   );
   if (result == null) return;
@@ -241,9 +252,13 @@ class _TagsDialog extends StatefulWidget {
   final String title;
   final String confirm;
 
+  /// Tags drawn from the notebook's pages, not yet used anywhere.
+  final List<String> suggested;
+
   const _TagsDialog({
     required this.initial,
     required this.known,
+    this.suggested = const [],
     this.title = 'Tags',
     this.confirm = 'Save',
   });
@@ -279,6 +294,10 @@ class _TagsDialogState extends State<_TagsDialog> {
       for (final tag in widget.known)
         if (!selected.contains(tag)) tag,
     ];
+    final fromPages = [
+      for (final tag in widget.suggested)
+        if (!selected.contains(tag)) tag,
+    ];
 
     return AlertDialog(
       backgroundColor: context.colors.surface,
@@ -296,6 +315,28 @@ class _TagsDialogState extends State<_TagsDialog> {
               helperText: 'Separate with commas',
             ),
           ),
+          if (fromPages.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Suggested from this note',
+                  style: Theme.of(context).textTheme.labelSmall),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final tag in fromPages)
+                  ActionChip(
+                    key: ValueKey('suggestedTag:$tag'),
+                    avatar: const Icon(Icons.add, size: 16),
+                    label: Text(tag),
+                    onPressed: () => _toggle(tag),
+                  ),
+              ],
+            ),
+          ],
           if (suggestions.isNotEmpty) ...[
             const SizedBox(height: 16),
             Align(

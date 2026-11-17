@@ -81,4 +81,33 @@ void main() {
 
     expect(calls, 1);
   });
+
+  testWidgets('suggested titles show beside the field; tapping one renames',
+      (tester) async {
+    String? renamed;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: EditableNoteTitle(
+            title: 'Untitled',
+            onRename: (v) => renamed = v,
+            suggestTitles: () async =>
+                ['Untitled', 'Cell Division', 'Mitosis', 'DNA', 'Fourth'],
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('Untitled'));
+    await tester.pump();
+    await tester.pump();
+    // The current title is not offered; at most three are.
+    expect(find.byKey(const ValueKey('suggestedTitle:Untitled')), findsNothing);
+    expect(find.byKey(const ValueKey('suggestedTitle:Fourth')), findsNothing);
+    expect(find.byKey(const ValueKey('suggestedTitle:DNA')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('suggestedTitle:Cell Division')));
+    await tester.pump();
+    expect(renamed, 'Cell Division');
+    expect(find.byType(TextField), findsNothing);
+  });
 }
