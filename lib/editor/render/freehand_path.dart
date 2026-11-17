@@ -27,6 +27,25 @@ class FreehandPath {
   /// Pencil graphite is a little lighter than ink.
   static const double pencilAlpha = 0.85;
 
+  /// A felt marker is nearly opaque; a shading pencil is laid on lightly.
+  static const double markerAlpha = 0.92;
+  static const double shadingAlpha = 0.45;
+
+  /// The calligraphy nib: its angle, and its width as a multiple of the pen
+  /// size (a pen size reads as a line width; a nib is broader than that).
+  static const double nibAngle = -math.pi / 4;
+  static const double nibScale = 2.5;
+
+  /// How much a pen of [kind] multiplies the stroke's own alpha by, for
+  /// writers that set an opacity rather than using [paintFor] (SVG, PDF). A
+  /// highlighter is the exception: its alpha replaces the colour's.
+  static double alphaFactor(PenKind kind) => switch (kind) {
+        PenKind.pencil => pencilAlpha,
+        PenKind.marker => markerAlpha,
+        PenKind.shading => shadingAlpha,
+        _ => 1,
+      };
+
   /// Builds the filled outline path for [points] drawn with [kind]. Returns
   /// null when there is nothing to draw. [isComplete] tapers the tail when the
   /// stroke is finished.
@@ -37,6 +56,11 @@ class FreehandPath {
     PenKind kind = PenKind.ballpoint,
   }) {
     if (points.isEmpty) return null;
+
+    if (kind == PenKind.calligraphy) {
+      final ribbon = _nibOutline(points, size);
+      return ribbon.isEmpty ? null : _buildPath(ribbon);
+    }
 
     final input =
         points.map((p) => PointVector(p.x, p.y, p.pressure)).toList();
@@ -60,6 +84,7 @@ class FreehandPath {
     PenKind kind = PenKind.ballpoint,
   }) {
     if (points.isEmpty) return const [];
+    if (kind == PenKind.calligraphy) return _nibOutline(points, size);
     return getStroke(
       [for (final p in points) PointVector(p.x, p.y, p.pressure)],
       options: _options(kind, size,
@@ -113,15 +138,66 @@ class FreehandPath {
             simulatePressure: simulate,
             isComplete: isComplete,
           ),
+        // A felt tip: one width, a steady hand.
+        PenKind.marker => StrokeOptions(
+            size: size,
+            thinning: 0,
+            smoothing: 0.55,
+            streamline: 0.6,
+            easing: (t) => t,
+            simulatePressure: false,
+            isComplete: isComplete,
+          ),
+        // Broad and soft, width following pressure: lay it on in passes.
+        PenKind.shading => StrokeOptions(
+            size: size * 3,
+            thinning: 0.7,
+            smoothing: 0.6,
+            streamline: 0.3,
+            easing: (t) => t,
+            simulatePressure: simulate,
+            isComplete: isComplete,
+          ),
+        // Drawn by [_nibOutline]; these are never used.
+        PenKind.calligraphy => StrokeOptions(size: size),
       };
+
+  /// The outline a flat nib leaves when dragged through [points]: each point
+  /// stretched along the nib's angle, one side out and the other back. Thick
+  /// where the stroke runs across the nib, thin where it runs along it; a
+  /// sliver of width is kept so a stroke along the nib still shows.
+  static List<Offset> _nibOutline(List<StrokePoint> points, double size) {
+    final half = size * nibScale / 2;
+    final nib = Offset(math.cos(nibAngle), math.sin(nibAngle)) * half;
+    final left = <Offset>[];
+    final right = <Offset>[];
+    for (var i = 0; i < points.length; i++) {
+      final p = Offset(points[i].x, points[i].y);
+      // Direction of travel here, for the sliver across it.
+      final a = Offset(points[math.max(0, i - 1)].x, points[math.max(0, i - 1)].y);
+      final b = Offset(points[math.min(points.length - 1, i + 1)].x,
+          points[math.min(points.length - 1, i + 1)].y);
+      final d = b - a;
+      final len = d.distance;
+      final across =
+          len == 0 ? Offset.zero : Offset(-d.dy, d.dx) / len * (size * 0.2);
+      left.add(p + nib + across);
+      right.add(p - nib - across);
+    }
+    return [...left, ...right.reversed];
+  }
 
   /// The paint a stroke of [kind] fills its outline with.
   static Paint paintFor(PenKind kind, int color, double opacity) {
     final base = Color(color);
     return switch (kind) {
-      PenKind.ballpoint || PenKind.fountain => Paint()
+      PenKind.ballpoint || PenKind.fountain || PenKind.calligraphy => Paint()
         ..color = base.withValues(alpha: base.a * opacity)
         ..style = PaintingStyle.fill,
+      PenKind.marker => Paint()
+        ..color = base.withValues(alpha: base.a * markerAlpha * opacity)
+        ..style = PaintingStyle.fill,
+      PenKind.shading => _pencilPaint(base, opacity * shadingAlpha / pencilAlpha),
       PenKind.highlighter => Paint()
         ..color = base.withValues(alpha: highlighterAlpha * opacity)
         ..style = PaintingStyle.fill,

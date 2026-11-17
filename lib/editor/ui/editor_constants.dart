@@ -36,6 +36,9 @@ const List<(PenKind, IconData, String)> kPenKinds = [
   (PenKind.ballpoint, Icons.edit_outlined, 'Pen'),
   (PenKind.fountain, Icons.history_edu_outlined, 'Fountain pen'),
   (PenKind.pencil, PhosphorIconsRegular.pencilSimple, 'Pencil'),
+  (PenKind.shading, Icons.gradient, 'Shading pencil'),
+  (PenKind.marker, Icons.brush_outlined, 'Marker'),
+  (PenKind.calligraphy, Icons.draw_outlined, 'Calligraphy'),
   (PenKind.highlighter, PhosphorIconsRegular.highlighter, 'Highlighter'),
 ];
 

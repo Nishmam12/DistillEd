@@ -130,8 +130,7 @@ class _VectorPdfWriter {
     if (outline.length < 2) return;
     final alpha = switch (e.penKind) {
       PenKind.highlighter => FreehandPath.highlighterAlpha * e.opacity,
-      PenKind.pencil => _alpha(e.color, e.opacity) * FreehandPath.pencilAlpha,
-      _ => _alpha(e.color, e.opacity),
+      _ => _alpha(e.color, e.opacity) * FreehandPath.alphaFactor(e.penKind),
     };
     _opacity(g, alpha);
     g.setFillColor(_color(e.color));

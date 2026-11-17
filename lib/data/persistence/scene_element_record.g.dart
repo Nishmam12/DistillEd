@@ -571,12 +571,18 @@ const _SceneElementRecordpenKindEnumValueMap = {
   'highlighter': 1,
   'fountain': 2,
   'pencil': 3,
+  'marker': 4,
+  'calligraphy': 5,
+  'shading': 6,
 };
 const _SceneElementRecordpenKindValueEnumMap = {
   0: PenKind.ballpoint,
   1: PenKind.highlighter,
   2: PenKind.fountain,
   3: PenKind.pencil,
+  4: PenKind.marker,
+  5: PenKind.calligraphy,
+  6: PenKind.shading,
 };
 const _SceneElementRecordshapeTypeEnumValueMap = {
   'line': 0,

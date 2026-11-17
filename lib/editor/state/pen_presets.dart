@@ -84,9 +84,20 @@ const List<PenStyle> kDefaultPenPresets = [
   PenStyle(kind: PenKind.highlighter, color: 0xFFFFD43B, size: 14, opacity: 1),
 ];
 
-/// The pen a [kind] starts as when it has never been used: its starter preset.
-PenStyle defaultPenFor(PenKind kind) =>
-    kDefaultPenPresets.firstWhere((p) => p.kind == kind);
+/// The pen a [kind] starts as when it has never been used: its starter preset,
+/// or for a kind not on the starter bar, a sensible first pen of that kind.
+PenStyle defaultPenFor(PenKind kind) => kDefaultPenPresets.firstWhere(
+      (p) => p.kind == kind,
+      orElse: () => switch (kind) {
+        PenKind.marker =>
+          const PenStyle(kind: PenKind.marker, color: 0xFF1F2933, size: 4, opacity: 1),
+        PenKind.calligraphy => const PenStyle(
+            kind: PenKind.calligraphy, color: 0xFF1F2933, size: 3, opacity: 1),
+        PenKind.shading =>
+          const PenStyle(kind: PenKind.shading, color: 0xFF495057, size: 4, opacity: 1),
+        _ => kDefaultPenPresets.first,
+      },
+    );
 
 /// Pens earlier builds handed out as defaults. A stored pen exactly equal to
 /// one of these was never chosen by the user, so it moves to the new default

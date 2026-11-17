@@ -272,9 +272,8 @@ class SceneExporter {
           // Match the canvas: a highlighter is see-through, pencil lighter.
           final opacity = switch (e.penKind) {
             PenKind.highlighter => FreehandPath.highlighterAlpha * e.opacity,
-            PenKind.pencil =>
-              _alpha(e.color, e.opacity) * FreehandPath.pencilAlpha,
-            _ => _alpha(e.color, e.opacity),
+            _ => _alpha(e.color, e.opacity) *
+                FreehandPath.alphaFactor(e.penKind),
           };
           b.writeln('<polyline points="$pts" fill="none" '
               'stroke="${_hex(e.color)}" stroke-opacity="${_n(opacity)}" '

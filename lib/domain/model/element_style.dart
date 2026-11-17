@@ -31,4 +31,13 @@ enum PenKind {
 
   /// Grainy, slightly lighter line, like graphite on paper.
   pencil,
+
+  /// Flat felt-tip: one width, nearly opaque, for bold headings and boxes.
+  marker,
+
+  /// A broad nib held at 45°: thick on the downstroke, thin across it.
+  calligraphy,
+
+  /// Wide, light, grainy pencil whose width follows pressure: for shading.
+  shading,
 }
