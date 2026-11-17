@@ -12,6 +12,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../note_cards_provider.dart';
 import '../notes_palette.dart';
 import 'organize_sheets.dart';
+import '../../domain/tag_tree.dart';
+import '../home_notifier.dart' show homeNotifierProvider;
+import '../tag_colors.dart';
 
 class HomeSidebar extends ConsumerWidget {
   const HomeSidebar({super.key, required this.onCollapse, this.onNavigate});
@@ -30,6 +33,7 @@ class HomeSidebar extends ConsumerWidget {
     final folderFilter = ref.watch(notesFolderFilterProvider);
     final folders = ref.watch(foldersProvider).value ?? const [];
     final tags = ref.watch(tagCountsProvider).value ?? const <String, int>{};
+    final tagColors = ref.watch(tagColorsProvider);
     final selectedTags = ref.watch(notesTagFilterProvider);
 
     final allSelected =
@@ -205,17 +209,28 @@ class HomeSidebar extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
-                for (final tag in tagNames)
+                // Nested: `physics/optics` under `physics`. Long-press to
+                // colour a tag.
+                for (final node in tagTree(
+                    [for (final n in ref.watch(homeNotifierProvider)) n.tags]))
                   _Entry(
-                    label: '#$tag',
+                    label: '#${node.label}',
                     small: true,
-                    selected: selectedTags.contains(tag),
-                    trailing: '${tags[tag]}',
+                    depth: node.depth,
+                    dot: switch (tagColors[node.path]) {
+                      final v? => Color(v),
+                      null => null,
+                    },
+                    selected: selectedTags.contains(node.path),
+                    trailing: '${node.notes}',
                     onTap: () {
                       final next = {...selectedTags};
-                      next.contains(tag) ? next.remove(tag) : next.add(tag);
+                      next.contains(node.path)
+                          ? next.remove(node.path)
+                          : next.add(node.path);
                       ref.read(notesTagFilterProvider.notifier).state = next;
                     },
+                    onLongPress: () => _pickTagColor(context, ref, node.path),
                   ),
               ],
             ],
@@ -226,6 +241,54 @@ class HomeSidebar extends ConsumerWidget {
   }
 }
 
+/// Long-press on a tag: a colour for it, or none.
+Future<void> _pickTagColor(BuildContext context, WidgetRef ref, String tag) =>
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Colour for #$tag'),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final color in [...kTagColors, null])
+                    InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () {
+                        ref.read(tagColorsProvider.notifier).set(tag, color);
+                        Navigator.of(context).pop();
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color == null ? null : Color(color),
+                          border: Border.all(
+                              color: context.colors.textSecondary
+                                  .withValues(alpha: 0.4)),
+                        ),
+                        child: color == null
+                            ? const Icon(Icons.block, size: 18)
+                            : null,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
 class _Entry extends StatelessWidget {
   const _Entry({
     required this.label,
@@ -234,11 +297,21 @@ class _Entry extends StatelessWidget {
     this.small = false,
     this.trailing,
     this.onTap,
+    this.onLongPress,
+    this.depth = 0,
+    this.dot,
   });
 
   final String label;
   final String? icon;
   final bool selected;
+
+  /// Nesting level of a tag under its parent; each step indents.
+  final int depth;
+
+  /// A tag's colour, shown as a dot before it.
+  final Color? dot;
+  final VoidCallback? onLongPress;
 
   /// Folder/tag rows: 26px glyph indented a further 12, 22 Regular type.
   /// Main entries: 24px glyph, 24 Medium type.
@@ -273,12 +346,23 @@ class _Entry extends StatelessWidget {
               child: InkWell(
                 borderRadius: BorderRadius.circular(40),
                 onTap: onTap,
+                onLongPress: onLongPress,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: 37),
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(small ? 23 : 11, 2, 12, 2),
+                    padding: EdgeInsets.fromLTRB(
+                        (small ? 23 : 11) + depth * 18.0, 2, 12, 2),
                     child: Row(
                       children: [
+                        if (dot != null) ...[
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                                color: dot, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         if (icon != null) ...[
                           AppIcon(icon!, size: glyph, color: ink),
                           const SizedBox(width: 11),

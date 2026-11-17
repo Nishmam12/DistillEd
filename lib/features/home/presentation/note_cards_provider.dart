@@ -20,6 +20,7 @@ import '../../../editor/state/page_notifier.dart';
 import '../../../editor/state/scene_controller.dart';
 import '../../../editor/state/scene_image_cache_provider.dart';
 import '../domain/models/folder.dart';
+import '../domain/tag_tree.dart';
 import 'home_notifier.dart';
 import 'models/note_card_data.dart';
 import 'widgets/note_scene_preview.dart';
@@ -182,7 +183,8 @@ final notebookFactsProvider = FutureProvider<NotebookFacts>((ref) async {
 /// carrying both, which is what stacking filters is normally taken to mean.
 bool _hasEveryTag(NoteCardData card, Set<String> tags) {
   if (tags.isEmpty) return true;
-  return tags.every(card.tags.contains);
+  // A parent tag takes in the notes under its children.
+  return tags.every((tag) => hasTagOrChild(card.tags, tag));
 }
 
 /// Which folder the list is scoped to.

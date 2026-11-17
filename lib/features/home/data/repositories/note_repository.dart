@@ -271,13 +271,21 @@ class NoteRepository {
 
   /// Trimmed, lowercased, de-duplicated, blanks dropped, sorted for a stable
   /// order. Public so the UI can show the same form it will store.
+  ///
+  /// A `/` nests a tag under another (Evernote's parent tags): "Physics /
+  /// Optics" is stored as `physics/optics`; empty steps are dropped.
   static List<String> normalizeTags(Iterable<String> tags) {
     final cleaned = <String>{
       for (final tag in tags)
-        if (tag.trim().isNotEmpty) tag.trim().toLowerCase(),
+        if (_path(tag) case final path when path.isNotEmpty) path,
     }.toList()..sort();
     return cleaned;
   }
+
+  static String _path(String tag) => [
+        for (final step in tag.toLowerCase().split('/'))
+          if (step.trim().isNotEmpty) step.trim(),
+      ].join('/');
 
   /// Every tag in use across live notebooks, with how many notes carry each.
   Future<Map<String, int>> tagCounts() async {
