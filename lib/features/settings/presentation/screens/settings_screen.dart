@@ -32,9 +32,17 @@ import '../../../ai/presentation/ai_providers.dart'
         embedderRolloutResumeProvider,
         embedderRolloutRunnerProvider,
         embedderRolloutStatusProvider,
+        learningMemoryProvider,
         localBackendProvider,
         modelConnectionTesterProvider,
         userConnectionsProvider;
+import '../../../ai/domain/context_engine/page_context.dart' show KnowledgeLevel;
+import '../../../ai/domain/features/explainer.dart' show ExplainMode, ExplainModeLabel;
+import '../../../ai/domain/memory/concept_mastery.dart' show ConceptMastery;
+import '../../../ai/domain/memory/learning_preferences.dart';
+import '../../../ai/domain/tutor/tutor_prompt.dart' show kMaxAboutMeChars;
+import '../../../ai/presentation/tutor_note_store.dart';
+import '../../../home/presentation/home_notifier.dart' show homeNotifierProvider;
 import '../../../ai/presentation/rag_corpus_export.dart';
 import '../../../audio/data/edge_ai_speech.dart';
 import '../../../audio/presentation/speech_model_notifier.dart';
@@ -56,6 +64,7 @@ part 'settings_maintenance.dart';
 part 'settings_backup.dart';
 part 'ai_models_screen.dart';
 part 'settings_cloud.dart';
+part 'tutor_memory_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -124,6 +133,17 @@ class SettingsScreen extends ConsumerWidget {
         _LectureTranscriptsRow(),
         _LectureSummaryRow(),
         _SearchByMeaningRow(),
+        _SettingsRow(
+          icon: AppIcons.flashCircle,
+          title: 'What the tutor knows about you',
+          subtitle: 'See, change or forget what it uses to pitch answers',
+          onTap: () => context.push('/settings/tutor'),
+          trailing: AppIcon(
+            AppIcons.arrowRight,
+            size: 20,
+            color: c.textSecondary,
+          ),
+        ),
         // The model downloads and the HuggingFace token live on their own screen.
         _SettingsRow(
           icon: AppIcons.flashCircle,

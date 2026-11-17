@@ -95,6 +95,20 @@ void main() {
     expect(context.profile.weakConcepts, ['entropy', 'Gibbs free energy']);
   });
 
+  test("the student's own note joins the profile, cleaned and quoted",
+      () async {
+    SharedPreferences.setMockInitialValues(
+        {'tutor.aboutMe': '  First-year "nursing"\n student  '});
+    final container = await _container(_Memory());
+    final context = await container.read(tutorContextProvider(7).future);
+    expect(context.profile.isEmpty, isFalse);
+    expect(
+        tutorTail(context,
+            windowTokens: 32000, allowCheckQuestion: true, grounded: true),
+        contains('- In their own words: "First-year nursing student"'));
+    expect(aboutMeLine('x' * 300).length, kMaxAboutMeChars);
+  });
+
   test('a concept the student has only seen is not called shaky', () async {
     // `weakConcepts` counts every concept below "practiced", which includes
     // one that merely appeared on a page. Telling a model the student is

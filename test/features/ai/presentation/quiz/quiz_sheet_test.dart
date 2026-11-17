@@ -21,6 +21,9 @@ import 'package:margo/features/ai/presentation/quiz/quiz_sheet.dart';
 /// Captures what the sheet files, so the durable side-effect is asserted
 /// without standing up Isar.
 class _FakeMemory implements LearningMemoryRepository {
+  @override
+  Future<void> forgetConcept(int notebookId, String conceptKey) async {}
+
   final recorded = <QuizAttempt>[];
 
   @override

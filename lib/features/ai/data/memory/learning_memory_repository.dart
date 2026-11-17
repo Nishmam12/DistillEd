@@ -64,6 +64,10 @@ abstract class LearningMemoryRepository {
   /// Concepts the learner is measurably struggling with, weakest first.
   Future<List<ConceptMastery>> weakConcepts(int notebookId);
 
+  /// Forgets one concept of a notebook: its mastery, misses and gap flags.
+  /// It comes back, fresh, if a page mentions it again.
+  Future<void> forgetConcept(int notebookId, String conceptKey);
+
   /// Concepts whose review interval has elapsed, most overdue first. Omit
   /// [notebookId] to sweep every notebook.
   Future<List<ConceptMastery>> dueForReview({int? notebookId, DateTime? now});
@@ -226,6 +230,14 @@ class IsarLearningMemoryRepository implements LearningMemoryRepository {
         await _concepts.filter().notebookIdEqualTo(notebookId).findAll();
     return [for (final r in rows) r.toDomain()];
   }
+
+  @override
+  Future<void> forgetConcept(int notebookId, String conceptKey) =>
+      _isar.writeTxn(() => _concepts
+          .filter()
+          .notebookIdEqualTo(notebookId)
+          .conceptKeyEqualTo(conceptKey)
+          .deleteAll());
 
   @override
   Future<List<ConceptMastery>> weakConcepts(int notebookId) async =>

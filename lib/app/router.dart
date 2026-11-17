@@ -111,6 +111,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const SettingsScreen(),
     ),
     GoRoute(
+      path: '/settings/tutor',
+      builder: (context, state) => const TutorMemoryScreen(),
+    ),
+    GoRoute(
       path: '/settings/models',
       builder: (context, state) => const AiModelsScreen(),
     ),

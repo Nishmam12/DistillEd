@@ -20,6 +20,9 @@ ConceptMastery _c(String name, MasteryLevel level) => ConceptMastery(
 
 /// Canned signals; only the read methods the planner uses are meaningful.
 class _FakeMemory implements LearningMemoryRepository {
+  @override
+  Future<void> forgetConcept(int notebookId, String conceptKey) async {}
+
   _FakeMemory({
     this.weak = const [],
     this.due = const [],

@@ -63,6 +63,21 @@ Future<void> main() async {
       expect(await namesOn(2), isEmpty, reason: 'other notebooks are not touched');
     }, skip: skip);
 
+    test('forgetting a concept removes it from that notebook only', () async {
+      await memory.observePageContext(
+          notebookId: 1, keyConcepts: ['Photosynthesis', 'Chlorophyll'], pageId: 7);
+      await memory.observePageContext(
+          notebookId: 2, keyConcepts: ['Photosynthesis'], pageId: 9);
+      final key = (await memory.allConcepts(1))
+          .firstWhere((c) => c.conceptName == 'Photosynthesis')
+          .conceptKey;
+
+      await memory.forgetConcept(1, key);
+
+      expect(await namesOn(1), {'Chlorophyll'});
+      expect(await namesOn(2), {'Photosynthesis'});
+    }, skip: skip);
+
     test('a concept counts toward the page it was last seen on', () async {
       await memory.observePageContext(
           notebookId: 1, keyConcepts: ['Cells'], pageId: 7);

@@ -162,6 +162,19 @@ List<String> sanitiseConceptNames(Iterable<String> names) {
   return out;
 }
 
+/// Longest "about you" note the tutor is told.
+const int kMaxAboutMeChars = 200;
+
+/// [raw] as one line for the profile: whitespace collapsed, double quotes
+/// dropped (it is quoted in the prompt), cut to [kMaxAboutMeChars].
+String aboutMeLine(String raw) {
+  var s = raw.replaceAll('"', '').replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (s.runes.length > kMaxAboutMeChars) {
+    s = String.fromCharCodes(s.runes.take(kMaxAboutMeChars)).trim();
+  }
+  return s;
+}
+
 /// What the app has learned about one student. Every field is optional, and an
 /// absent field is left out of the prompt, never guessed.
 class LearnerProfile {
@@ -177,10 +190,16 @@ class LearnerProfile {
   /// (`LearningPreferences.preferredExplainMode`).
   final ExplainMode? preferredMode;
 
+  /// What the student wrote about themselves on "What the tutor knows about
+  /// you" ("first-year nursing student"). Cleaned and capped by
+  /// [aboutMeLine] when the prompt is built.
+  final String aboutMe;
+
   const LearnerProfile({
     this.level,
     this.weakConcepts = const [],
     this.preferredMode,
+    this.aboutMe = '',
   });
 
   /// Nothing known yet.
@@ -190,6 +209,7 @@ class LearnerProfile {
   bool get isEmpty =>
       level == null &&
       preferredMode == null &&
+      aboutMeLine(aboutMe).isEmpty &&
       sanitiseConceptNames(weakConcepts).isEmpty;
 }
 
@@ -225,6 +245,8 @@ String _profileBlock(LearnerProfile profile) {
     if (weak.isNotEmpty) '- Still shaky on: ${weak.join(', ')}',
     if (profile.preferredMode != null)
       '- Usually picks explanations: ${_modePhrase(profile.preferredMode!)}',
+    if (aboutMeLine(profile.aboutMe) case final about when about.isNotEmpty)
+      '- In their own words: "$about"',
   ];
   return lines.isEmpty ? '' : '$kLearnerProfileHeader\n${lines.join('\n')}';
 }

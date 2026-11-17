@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../domain/tutor/tutor_prompt.dart';
 import 'ai_providers.dart' show learningMemoryProvider;
+import 'tutor_note_store.dart';
 
 /// The [TutorContext] for a notebook: the teaching style from Settings and a
 /// [LearnerProfile] from Learning Memory.
@@ -34,19 +35,18 @@ final tutorContextProvider = FutureProvider.autoDispose
   try {
     final weak = await memory.weakConcepts(notebookId);
     final preferences = await memory.loadPreferences();
+    final aboutMe = await TutorNoteStore.load();
     final shaky = [
       for (final c in weak)
         if (c.timesMissedInQuiz > 0 || c.timesFlaggedAsGap > 0) c.conceptName,
     ].take(kMaxProfileConcepts).toList();
-    if (shaky.isNotEmpty ||
-        preferences.preferredDifficulty != null ||
-        preferences.preferredExplainMode != null) {
-      profile = LearnerProfile(
-        level: preferences.preferredDifficulty,
-        weakConcepts: shaky,
-        preferredMode: preferences.preferredExplainMode,
-      );
-    }
+    final candidate = LearnerProfile(
+      level: preferences.preferredDifficulty,
+      weakConcepts: shaky,
+      preferredMode: preferences.preferredExplainMode,
+      aboutMe: aboutMe,
+    );
+    if (!candidate.isEmpty) profile = candidate;
   } catch (e) {
     debugPrint('tutorContextProvider: no learner profile ($e)');
   }
