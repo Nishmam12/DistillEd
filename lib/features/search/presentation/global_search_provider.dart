@@ -1,6 +1,8 @@
 // Loads every notebook's page text once for the home search, and answers the
 // current query from memory.
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/settings_provider.dart';
@@ -46,9 +48,17 @@ final meaningSearchProvider = FutureProvider.autoDispose
     return const [];
   }
   if (query.trim().length < 3) return const [];
+  // A newer query replaces this provider: its wait is cancelled, not left
+  // running.
   var replaced = false;
-  ref.onDispose(() => replaced = true);
-  await Future<void>.delayed(const Duration(milliseconds: 400));
+  final paused = Completer<void>();
+  final wait = Timer(const Duration(milliseconds: 400), paused.complete);
+  ref.onDispose(() {
+    replaced = true;
+    wait.cancel();
+    if (!paused.isCompleted) paused.complete();
+  });
+  await paused.future;
   if (replaced) return const [];
 
   final corpus = await ref.watch(globalSearchCorpusProvider.future);
