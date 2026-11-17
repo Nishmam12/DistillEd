@@ -127,9 +127,16 @@ class MainActivity : FlutterActivity() {
      */
     private fun isForeignContent(uri: android.net.Uri): Boolean {
         if (uri.scheme != "content") return false
+        // ContentResolver drops a "userId@" prefix when it opens the URI, so
+        // check the authority it will really use: "0@com.margo.margo.x" must
+        // not slip past as unknown.
+        val authority = (uri.authority ?: return false).substringAfterLast('@')
+        // Every provider Margo has (plugins' FileProviders, androidx-startup)
+        // is named after the application id.
+        if (authority == packageName || authority.startsWith("$packageName.")) return false
         // Null = a provider package visibility hides from us, so not ours;
         // our own always resolve.
-        val owner = packageManager.resolveContentProvider(uri.authority ?: return false, 0)
+        val owner = packageManager.resolveContentProvider(authority, 0)
         return owner?.packageName != packageName
     }
 
