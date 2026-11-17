@@ -95,7 +95,7 @@ class MainActivity : FlutterActivity() {
                 )
             } catch (e: Exception) {
                 // Unreadable (revoked grant, deleted file): skip it.
-                android.util.Log.w("MargoShare", "could not read $uri", e)
+                android.util.Log.w("MargoShare", "could not read shared item $i: ${e.javaClass.simpleName}")
                 null
             }
         }
