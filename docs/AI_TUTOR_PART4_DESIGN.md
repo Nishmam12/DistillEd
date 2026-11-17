@@ -815,3 +815,653 @@ constant in its own commit. Until that is done, leave 0.45.
   neighbours add prompt tokens and the on-device model pays for each one.
 - `flutter analyze` clean; full suite green apart from the known flaky
   `test/core/error_log_test.dart`.
+
+## 4. Part 4a: a conversation held in memory
+
+Not on the user's list for this document, but two things on it depend on it:
+
+- **Depth as a follow-up.** "Explain that in more detail" is the commonest way
+  a student asks for depth. Today that sentence is searched for on its own,
+  matches nothing, and returns "not in your notes".
+- **The guide style.** `kStyleGuide` says "give the full answer once they have
+  tried". A model that never sees the previous turn can never know they
+  tried. Until 4a is built the guide style gives a hint to every question and
+  nothing else, so **the "Guide me" control (plan 5.9 step 10) must not ship
+  before 4a.**
+
+No schema change: turns live in the notifier and are gone when the panel is
+reset or the app closes. Saved threads are 4b and need the user's approval.
+
+### 4.1 Turns
+
+```dart
+/// One finished exchange, kept for the next question.
+class FinishedTurn {
+  final String question;
+  final String answer;        // '' for a "not in your notes"
+  final AnswerDepth depth;
+
+  /// What the search ranked for it, before packing: reused when the next
+  /// question is about the same thing.
+  final List<RetrievedChunk> hits;
+  final List<Passage> passages;
+}
+```
+
+`AskNotesNotifier` holds `List<FinishedTurn> _thread`, cleared by `reset()`,
+by a change of notebook, and by a change of scope (an answer about one page
+must not colour a question about another). Keep at most the last six.
+
+### 4.2 What a follow-up searches for
+
+No model call rewrites the question. Three cases, decided by
+`followUpQuery(String question, FinishedTurn? previous)` in a new file
+`domain/rag/follow_up.dart`:
+
+1. **No previous turn:** search for the question, as now.
+2. **The question has its own subject:** search for the question plus the
+   previous question's terms: `'$question ${queryTerms(previous.question).join(' ')}'`.
+   One embedding call, one combined string.
+3. **The question only points back** ("explain that in more detail", "why?",
+   "give me an example", "what does that mean"): do not search. Reuse
+   `previous.hits`, and build passages again under the new plan. A detailed
+   follow-up to a standard answer then gets the same hits with a larger
+   reply, more neighbours, and on a larger window more of the ranked hits.
+
+A question "only points back" when fewer than two terms are left after taking
+`queryTerms(question)` and removing: every word of every depth phrase in 3.1,
+and the words `explain`, `explanation`, `again`, `more`, `example`,
+`examples`, `mean`, `means`, `meaning`, `simpler`, `simply`, `further`,
+`continue`, `go`, `on`, `tell`, `say`, `show`, `clarify`, `repeat`. If the
+previous turn found nothing, case 3 falls back to case 1.
+
+Tests, `test/features/ai/domain/rag/follow_up_test.dart`: each example above
+lands in case 3; "what about its entropy?" lands in case 2 and the search
+string holds the previous question's terms; a first question is case 1;
+"more detail on the Carnot cycle" is case 2 (two terms of its own).
+
+### 4.3 What the model is shown of earlier turns
+
+- Earlier turns go in `history` as user and assistant messages: the question
+  as asked and the answer as given. **Earlier passages are not sent again.**
+  The current turn's passages are in the new prompt, and they are what the
+  grounding contract refers to.
+- Budget: `plan.historyWords`. Walk back from the newest turn, adding whole
+  turns while they fit. The newest turn is always included; if it alone is
+  too long, cut its answer at the end and append ` …`. Passages are never
+  given up for history: `planAnswer` already took the history share out.
+- Citation numbers in an old answer refer to that turn's passages, which the
+  model no longer sees. Strip `[n]` markers from answers placed in history
+  (`stripCitations`, section 5.1), so the model cannot confuse them with this
+  turn's numbers.
+- The guard's cloud re-run passes the same history.
+
+The on-device provider replays history with `session.addTurn`, and each
+replayed token costs time. On the 4,096 window the quarter share is about
+395 words, roughly one exchange. Measure time to first word with one turn of
+history before raising anything.
+
+### 4.4 The panel
+
+One answer becomes a scrolling thread: earlier turns above, the live turn at
+the bottom, the composer under it. The states in `ask_notes_notifier.dart`
+keep their meaning and describe the **latest** turn. Earlier turns are
+exposed as `List<FinishedTurn> get thread` beside the state (a second
+`StateProvider`, or a field on a wrapper state; pick whichever keeps the
+existing state tests passing unchanged). "New chat" calls `reset()`.
+
+Source cards and the retry-on-cloud button belong to a turn. Earlier turns
+show their cards collapsed.
+
+### 4.5 Acceptance for 4a
+
+- "What is entropy?" then "explain that in more detail" gives a longer answer
+  about entropy from the same pages, not "not in your notes".
+- "And enthalpy?" searches for enthalpy with the first question's terms.
+- With the guide style on: a hint first; after the student answers, the next
+  reply responds to their attempt; "just tell me" gets the full answer.
+- Changing the scope or the notebook starts a new thread.
+- Time to first word with one turn of history, on the tablet, is recorded in
+  this file.
+
+## 5. Part 4d: citations
+
+The model already writes `[1]`. This piece makes the number something the
+student can tap, and catches a number that points at nothing.
+
+### 5.1 Parsing
+
+New file `domain/tutor/citations.dart`. Pure.
+
+```dart
+sealed class AnswerSpan {}
+class TextSpanPart extends AnswerSpan { final String text; }
+class CitationPart extends AnswerSpan {
+  final int number;      // as written, from 1
+  final bool known;      // 1 <= number <= passageCount
+}
+
+/// Splits [answer] into text and citations.
+List<AnswerSpan> parseCitations(String answer, {required int passageCount});
+
+/// The distinct numbers cited, in order of first use, known or not.
+List<int> citedNumbers(String answer);
+
+/// [answer] with every citation marker removed and the spacing tidied.
+String stripCitations(String answer);
+```
+
+Rules:
+
+- A citation is `[n]` with one to three digits, or a group: `[1, 2]`,
+  `[1,2]`, `[1][2]`, `[1-3]` and `[1–3]` (a range, expanded; a range wider
+  than 20 is left as text).
+- **Never inside mathematics.** Split the answer with `parseMathSegments`
+  (`presentation/widgets/math_text.dart`) first and look for citations only
+  in the segments that are not maths. `$[1]$` and a matrix row are not
+  citations. `parseMathSegments` lives in presentation; move it, or its pure
+  core, into `domain/` so `citations.dart` does not import a widget file.
+- `passageCount` counts the figure passage when there is one, since it is
+  numbered after the last passage.
+- A half-written marker at the end of streaming text (`…catalyst [2`) is
+  text. It becomes a citation when the bracket closes.
+- `[0]`, and any number above `passageCount`, parse as `CitationPart` with
+  `known: false`.
+
+Tests, `test/features/ai/domain/tutor/citations_test.dart`: each form above;
+maths is left alone (`'$a[1]$ and so [2]'` yields one citation, number 2);
+the streaming case; unknown numbers; `stripCitations('The rate doubles [2].')`
+is `'The rate doubles.'`; `stripCitations` leaves `$x[1]$` intact.
+
+### 5.2 Showing them
+
+In the answer view, a `known` citation renders as a small numbered chip in
+the accent colour, inline with the text. An unknown one renders as the plain
+characters the model wrote. The answer text otherwise goes through `MathText`
+as now.
+
+Tapping chip `n`:
+
+1. Scrolls the source cards to card `n` and flashes it.
+2. Calls `onJumpToSource(pageId)`, which already exists on `AiSidebar` and
+   opens the page.
+3. Tries to tint the passage on the page (5.3).
+
+Source cards whose number the answer cited are shown first and at full
+strength; the others are dimmed under a "Also read" label. This tells the
+student which passages the answer actually leaned on.
+
+"Insert as note" passes `stripCitations(text)`: `[2]` means nothing in a
+note.
+
+### 5.3 Tinting the passage on the page
+
+`SearchHighlightLayer` (`editor/ui/search_highlight_layer.dart`) tints the
+words matched by `matchWords(words, query)`
+(`domain/geometry/search_matches.dart`). Three facts limit what a citation
+can promise:
+
+- It only has word boxes for **page pictures**: imported PDF pages and
+  images. A handwritten or typed page has none, and the layer draws nothing.
+- `matchWords` is an **exact substring match** of the whole query,
+  case-folded, whitespace-collapsed. A 250-word passage will not match: the
+  stored text has figure descriptions and repeated words that are not on the
+  page picture.
+- With no match the layer shows nothing at all, which is the right failure.
+
+So the tint is best-effort, with a short anchor:
+
+```dart
+/// Short phrases from [passage] to try as a highlight, best first.
+List<String> citationAnchors(Passage passage);
+```
+
+Take the text of the passage's first hit chunk. If its ordinal is above 0,
+skip the first 30 words (they repeat the previous chunk). From what is left,
+offer the first 8 words, then the first 5, then words 9 to 16. Skip any
+anchor that contains `[Figure`.
+
+The editor screen tries each anchor against the page's words
+(`pageWordsProvider`, already used by the layer) and sets
+`searchHighlightProvider` to the first one `matchWords` finds. If none
+matches, it sets nothing. The page still opens. The chip under the page will
+read "1 match on this page", which is acceptable.
+
+Do not build character offsets into chunks to make this exact. That is a
+schema change for a cosmetic gain.
+
+### 5.4 A citation that points at nothing
+
+An answer that cites `[7]` when five passages were shown has invented a
+source. In a feature whose whole promise is "this came from your notes", that
+is a faithfulness failure and should be treated like one.
+
+`domain/quality/output_quality.dart`:
+
+- `QualityContext` gains `int passageCount = 0` (0 means "do not check").
+- `QualityIssue` gains `citesUnknownPassage`, added **last** in the enum.
+  It was checked on 2026-11-17 that `QualityIssue` is only referenced in
+  `output_quality.dart`, `ai_quality_guard.dart` and
+  `answer_tier_banner.dart`; confirm it is still not stored in Isar before
+  adding a value.
+- `checkQuality` reports it when `citedNumbers(output)` holds a number
+  outside `1..passageCount`, after every existing check.
+- The guard handles it as it handles `unsupportedClaim`: a cloud re-run when
+  the privacy setting allows, otherwise the low-confidence banner.
+
+`NotesQa.qualityContextForTurn` sets `passageCount`.
+
+An answer with **no** citations is not flagged. A one-sentence answer from a
+small model often omits them, and flagging that would escalate good answers.
+
+Tests: an answer citing `[6]` with five passages is flagged; `[6]` with five
+passages and a figure is not; no citations is not; `[3]` inside `$…$` is not
+counted.
+
+### 5.5 Acceptance for 4d
+
+- Chips appear while the answer streams and do not flicker as brackets close.
+- A chip on an answer from a PDF page opens the page and tints a phrase.
+- A chip on an answer from a handwritten page opens the page and tints
+  nothing, with no error.
+- An answer with a formula containing brackets renders the formula correctly.
+
+## 6. Part 4e: two engines behind one interface
+
+### 6.1 Why two
+
+A model that can call tools can decide for itself what to look up: search
+again with better words, or read the whole of a page it was shown a piece of.
+That is worth having for a capable cloud model. A 2B on-device model with a
+4,096-token window cannot do it: each tool round resends the whole
+conversation, and three rounds do not fit. Pretending otherwise would make
+every on-device answer slow and many of them wrong. So the fixed pipeline of
+sections 3 to 5 stays the on-device path, and the tool loop is a second path
+for models that can carry it.
+
+### 6.2 The interface
+
+New folder `domain/tutor/engine/`.
+
+```dart
+/// One question, with everything needed to answer it.
+class TutorTurn {
+  final String question;
+  final int notebookId;
+  final AiScope? scope;
+  final TutorContext context;
+  final List<FinishedTurn> thread;   // earlier turns, oldest first
+}
+
+sealed class TutorEvent {}
+class TutorSearching extends TutorEvent { final bool lookingAtFigure; }
+class TutorPassages extends TutorEvent {
+  final List<Passage> passages;      // the full list so far, numbered by index
+  final FigureAnswer? figure;
+}
+class TutorToolUsed extends TutorEvent {
+  final String tool;                 // 'search_notes', 'read_page', …
+  final String detail;               // what it looked for, for the panel
+}
+class TutorText extends TutorEvent { final String text; }  // the whole text so far
+class TutorDone extends TutorEvent {
+  final String text;
+  final AnswerTier tier;
+  final bool canRetryOnCloud;
+  final FinishedTurn finished;
+}
+class TutorNotFound extends TutorEvent {}
+
+abstract class TutorEngine {
+  Stream<TutorEvent> respond(TutorTurn turn);
+}
+```
+
+Errors are the stream's error, as with `NotesQa.answer` today, and the
+notifier's `_mapError` handles them unchanged.
+
+How events become the states the panel already knows:
+
+| Event | State |
+| --- | --- |
+| `TutorSearching` | `AskNotesSearching` |
+| `TutorPassages` then `TutorText` | `AskNotesAnswering(text, sources)` |
+| `TutorToolUsed` | `AskNotesAnswering` with a new nullable field `activity` ("Looking for: rate law") |
+| `TutorDone` | `AskNotesAnswered`, or `AskNotesNotFound` when the text is the refusal |
+| `TutorNotFound` | `AskNotesNotFound` |
+
+Consent is not an event. The notifier asks before it calls `respond`, as it
+asks before generating today, so an engine never starts without a yes.
+
+### 6.3 `PipelineEngine`
+
+A move, not a rewrite: the body of `AskNotesNotifier.ask` between "search"
+and "state = answered" becomes `PipelineEngine.respond`, using
+`NotesQa.prepare`, the figure look and the guard exactly as section 3.6
+leaves them. The notifier keeps commands, consent, model downloads, retry
+and error mapping.
+
+Do this move as its own commit with no behaviour change, and prove it with
+the existing notifier tests passing unchanged. Only then add the second
+engine.
+
+### 6.4 `AgentEngine`
+
+**When it is used.** All of: the route is `CloudDirect`; the picked model has
+`supportsTools`; its provider is a `ToolCallingClient`; its window is at
+least 16,000 tokens. Otherwise the pipeline answers. A model given the
+8,000-token fallback window stays on the pipeline: three tool rounds could
+overflow a window that small, and the true size is unknown.
+
+`tutorEngineProvider` makes the choice from `answerRouteProvider`, the same
+way `_PickedToolsClient` in `ai_model_providers.dart` decides for Research.
+
+**First call.** The engine starts exactly like the pipeline: depth, plan,
+search, passages. The first model call already holds those passages. Most
+questions are answered from them with no tool call, so the agent path costs
+nothing extra in the common case. If the first search finds nothing, the
+model is still called, with no passages and the tools, because it may find
+the answer with different words. This is the one place the "no passages, no
+model call" rule is relaxed, and it is safe only because of the refusal rule
+below.
+
+**Tools in the first version.** Three, each a `Tool`
+(`domain/tools/tool.dart`), built per turn so the turn's scope is closed over:
+
+| Tool | Arguments | Returns |
+| --- | --- | --- |
+| `search_notes` | `query` (string) | Up to 5 passages, at most 1,250 words, with headers |
+| `read_page` | `page_number` (integer) | The page's text, at most 1,500 words, as one passage |
+| `calculator` | as it is today | as it is today |
+
+Tool descriptions, exact text:
+
+```
+search_notes: Search the student's notes for passages about a topic. Use it
+when the passages you were given do not cover the question, with different
+words from the question's own.
+
+read_page: Read the whole of one page of the student's notes by its page
+number. Use it when a passage you were given is cut short and you need the
+rest of that page.
+```
+
+**Not in the first version, and why:**
+
+- Wikipedia and web search. Ask's promise is "only your notes". The labelled
+  "answer from general knowledge" of piece 4f is where outside knowledge
+  belongs, with a banner of its own. Research keeps its tools.
+- `make_quiz` and `make_flashcards`. They belong to piece 4h and write to
+  the student's data, which needs its own confirmation design.
+- `learner_profile`. The profile is already in the system prompt's tail.
+
+**Scope is enforced by the tools, not by the prompt.** `search_notes` passes
+the turn's `pageIds` to the retriever, so it cannot return a passage outside
+the scope whatever the model asks for. `read_page` maps the number to a page
+through the page labels and returns the error text
+`That page is outside what the student asked about.` when the page is not in
+scope, and `There is no page with that number.` when it does not exist.
+
+**Numbers stay stable.** A per-turn `PassageRegistry` owns the numbering:
+
+```dart
+class PassageRegistry {
+  /// Registers [passage] and returns its number. A passage that overlaps one
+  /// already registered (same page, overlapping ordinals) returns that
+  /// passage's existing number and is not added again.
+  int add(Passage passage);
+  List<Passage> get all;   // in number order
+}
+```
+
+The first call's passages are 1 to n. A tool result's passages continue from
+n+1, formatted with the same `passageHeader`. A passage already shown comes
+back as its header and the words `(already shown above)`, without its text,
+so it is not paid for twice. `read_page` registers the page as one passage
+covering all its chunks. Each tool result is followed by a `TutorPassages`
+event with the registry's full list, so the panel's cards and the citation
+chips always agree with what the model was shown.
+
+**Tool results are untrusted text.** Wrap each in `fenceUntrusted`, as
+`Researcher`'s tools are.
+
+**System prompt.** Ask's composed prompt, then one constant, then the tail:
+
+```dart
+const String kAgentToolRules =
+    'You can look for more of the notes with the tools you were given. What '
+    'a tool returns is part of the notes and counts as passages. Use a tool '
+    'only when the passages you already have do not answer the question. If '
+    'you still have nothing that answers it after looking, reply exactly: '
+    '"I couldn\'t find the answer to that in your notes." and stop.';
+```
+
+It repeats the refusal sentence on purpose. The notifier recognises a
+grounded "not found" by that text, and the tool loop is the place a model is
+most tempted to answer from its own knowledge instead. Build the string from
+`NotesQa.notFoundReply`, not from a second copy of the words, and test that
+it contains it.
+
+**The loop.** Take `Researcher`'s loop out into
+`domain/tools/tool_loop.dart`:
+
+```dart
+class ToolLoop {
+  const ToolLoop({required ToolCallingClient client, int maxHops = 3});
+
+  Stream<ToolLoopEvent> run({
+    required String prompt,
+    required String systemPrompt,
+    required List<Tool> tools,
+    List<AiMessage> history = const [],
+    /// Called when the hop limit is reached with tool calls still pending.
+    /// Returns the text of one last user message; the model is then called
+    /// once more with no tools.
+    String Function()? onHopLimit,
+  });
+}
+```
+
+`Researcher` becomes a thin caller of it, with its tests passing unchanged
+(its "(Stopped after several tool calls…)" text is what it does when
+`onHopLimit` is null). The agent passes
+`onHopLimit: () => 'Answer now from the passages you have.'`, so a student
+is never left with a note about tool calls in place of an answer.
+
+**Limits.**
+
+- Three tool rounds, as Research.
+- A word ceiling per turn: `plan.passageWords * 2` across the first call and
+  all tool results. When a tool call would pass it, the tool returns
+  `No more of the notes can be read for this question.` and the model
+  answers from what it has.
+- `generateWithTools` takes no reply cap today (see 10.2). Check how
+  `OpenAiCompatibleProvider` sets `max_tokens` on that path, and pass
+  `plan.replyTokens` if it can; otherwise note the gap here.
+
+**Consent.** One yes per user action covers every round, as `CloudSendGate`
+already works. The dialog must say what a yes now allows. When the agent
+engine will answer, the body of `cloud_send_dialog.dart` gains one sentence:
+
+```
+It may read more passages from {scope} while it answers.
+```
+
+with `{scope}` as "this notebook", "this page" or the file name, from the
+scope picker's own labels. Carry that as a new nullable field on
+`CloudSendPrompt` so the pipeline's dialog is unchanged.
+
+**Earlier turns.** `thread` goes in as history exactly as in 4.3. Tool calls
+and tool results from an earlier turn are not replayed; only the question
+and the answer are.
+
+**The guard.** Not run, as it is not run for any picked cloud model today.
+The citation check of 5.4 is still applied to the final text for display: an
+unknown number renders as plain text.
+
+### 6.5 Tests
+
+- `tool_loop_test.dart`: every existing `Researcher` test still passes; with
+  `onHopLimit`, the fourth call carries no tools and the supplied message.
+- `passage_registry_test.dart`: numbering continues across adds; an
+  overlapping passage returns the earlier number; `all` is in number order.
+- `agent_engine_test.dart`, with a scripted fake `ToolCallingClient`:
+  - No tool call: the events and final text equal the pipeline's for the
+    same passages.
+  - `search_notes` receives the turn's page ids; a scoped turn can never get
+    a passage from outside the scope (give the fake retriever an out-of-scope
+    chunk that matches perfectly).
+  - `read_page` for a page outside the scope returns the exact error text and
+    registers nothing.
+  - A passage returned twice keeps its first number and its text is sent
+    once.
+  - The word ceiling stops a fourth large result.
+  - An empty first search still calls the model, and the refusal text becomes
+    `TutorNotFound`.
+  - The system prompt contains `NotesQa.notFoundReply` twice: once in the
+    contract, once in `kAgentToolRules`.
+- `tutor_engine_choice_test.dart`: tools and a 128,000 window choose the
+  agent; tools and the 8,000 fallback choose the pipeline; no tools choose
+  the pipeline; the on-device route always chooses the pipeline.
+- Consent: with the agent engine and a declined dialog, the client is never
+  called.
+
+### 6.6 Acceptance for 4e
+
+- With the on-device model nothing is different from 4d.
+- With a cloud model that has tools: a question whose answer needs a second
+  search shows "Looking for: …" in the panel, more source cards appear, and
+  the citations in the answer open the right pages.
+- A question scoped to one page never shows a card from another page.
+- A question the notes do not cover ends in "not in your notes", not in an
+  answer from the model's own knowledge. Try ten such questions; this is the
+  check that matters most, and no unit test can make it.
+
+## 7. Files, in one place
+
+New:
+
+| File | Piece |
+| --- | --- |
+| `domain/tutor/answer_depth.dart` | 4c |
+| `domain/rag/answer_plan.dart` | 4c |
+| `domain/rag/passage.dart` | 4c |
+| `domain/rag/follow_up.dart` | 4a |
+| `domain/tutor/citations.dart` | 4d |
+| `domain/tutor/engine/tutor_engine.dart` | 4e |
+| `domain/tutor/engine/pipeline_engine.dart` | 4e |
+| `domain/tutor/engine/agent_engine.dart` | 4e |
+| `domain/tutor/engine/passage_registry.dart` | 4e |
+| `domain/tutor/engine/notes_tools.dart` (`search_notes`, `read_page`) | 4e |
+| `domain/tools/tool_loop.dart` | 4e |
+| A debug-only relevance screen under `presentation/` | 4c |
+
+Changed:
+
+| File | What | Piece |
+| --- | --- | --- |
+| `domain/tutor/tutor_prompt.dart` | `tutorTail` takes `depth` | 4c |
+| `domain/rag/rag_retriever.dart` | pool, spread, neighbours | 4c |
+| `domain/features/notes_qa.dart` | `AskTurn`, `prepare`, the contract sentence, the prompt label | 4c |
+| `presentation/ask_notes_notifier.dart` | uses `AskTurn`; later a thread; later an engine | 4c, 4a, 4e |
+| `presentation/ai_rag_providers.dart` | page-label loader, tutor context, engine choice | 4c, 4e |
+| `presentation/sidebar/ai_ask_view.dart` | source card label; thread; chips | 4c, 4a, 4d |
+| `domain/quality/output_quality.dart` | `citesUnknownPassage` | 4d |
+| `domain/features/researcher.dart` | calls `ToolLoop` | 4e |
+| `presentation/cloud_send_gate.dart`, `widgets/cloud_send_dialog.dart` | the extra sentence | 4e |
+| `notebook/presentation/notebook_editor_screen.dart` | tint a cited passage | 4d |
+
+## 8. Where an Isar change would help, and what the design does without one
+
+Nothing below is assumed. Each is a question for the user, and the design
+works as written if every answer is no.
+
+1. **The PDF's own page number.** `NotePage` stores the page's position in
+   the notebook, not its number in the file it came from. If a student
+   imports pages 40 to 60 of a textbook into a notebook that already has ten
+   pages, the header says "page 11", and the book says "page 40". Without a
+   change: headers use the notebook's page number, which is the number the
+   app shows and the one the student can jump to. With a change: one
+   nullable integer on `NotePage`, set at import, null for existing pages.
+   A migrator test is needed, and pages already imported would stay without
+   it.
+2. **Saved conversations (4b).** Two new collections. Without them, a
+   conversation lasts until the panel is reset or the app closes. This was
+   already flagged in the plan and is unchanged.
+3. **Exact passage tinting.** Storing where each chunk starts and ends in
+   the page's text would let a citation tint the exact passage. Without it:
+   a short anchor phrase, on PDF and image pages only (5.3). Recommended to
+   leave as it is.
+4. **A remembered depth per notebook.** Not needed. Depth is read from each
+   question. If a "always answer in detail" preference is wanted later, it
+   belongs in prefs like `teachingStyle`, not in Isar.
+
+## 9. Questions for the user
+
+1. **Order.** The agreed order is Part 2, then 4c, then Part 3. This design
+   recommends Part 2 wiring, 4c, then **4a** before Part 3: 4a needs no
+   schema change, and without it "explain that in more detail" and the guide
+   style do not work. Is that order acceptable?
+2. **Page numbers** in headers: the notebook's page number (no schema
+   change), or also the file's own page number (section 8, item 1)?
+3. **Depth chips.** Depth is read from the question's words. Should the
+   composer also have "Brief" and "In detail" chips for students who do not
+   think to type it? It is a small addition to 4c: a chip sets the depth for
+   the next question and overrides detection.
+4. **The agent engine's reach.** In this design a tool-using cloud model may
+   read further passages from the scope the student chose, after one yes.
+   Is one yes per question enough, or should each extra lookup ask again?
+   The design assumes one yes, with the dialog saying so.
+
+## 10. What was checked, and what was not
+
+### 10.1 Checked in the code on 2026-11-17
+
+- Everything in section 2.
+- `AiGenerationOptions` has `copyWith`.
+- `OpenAiCompatibleProvider` and `CloudGatewayProvider` implement
+  `ToolCallingClient`.
+- `SearchHighlightLayer` draws nothing when `matchWords` finds no match, and
+  only has words for image elements of a page.
+- `QualityIssue` is referenced in three files, none of them a record.
+- `CloudSendGate.confirm(model)` asks once per user action and remembers a
+  yes through `markConsented`.
+- The budget figures in 2.5 and 3.3 were produced by calling
+  `AiRouter.inputWordBudgetFor` on the real prompts, with the contract
+  sentence already replaced as in 3.6 and the depth lines as written in 3.2.
+
+### 10.2 Not checked; verify before relying on it
+
+- That the local provider reports the **lite** window (2,048) in
+  `capabilities` after a lite load. `local_gemma_provider.dart` builds
+  capabilities from `spec.maxTokens`; confirm the spec in use is the lite one
+  when the device loaded lite. If it reports 4,096 on a lite load, every
+  plan is built for a window twice the real size.
+- Whether `generateWithTools` sends a reply cap at all on either provider.
+- How long `session.addTurn` takes per replayed token on the tablet.
+- Whether the embedding model's `chunkOverlapWords` is 30 for every embedder
+  in the rollout list. `stitchChunks` does not depend on the number, only on
+  the overlap being a repeated suffix, but check that every chunker path
+  produces one.
+- That `parseMathSegments` can be moved into `domain/` without dragging a
+  Flutter import with it.
+- That no existing test pins the exact sentence replaced in 3.6 other than
+  through `NotesQa.systemPrompt` itself.
+- How the retriever tests that pin a fused order behave with a pool of 20.
+- `kMinRelevance`. Still 0.45, still unmeasured (3.7).
+- None of this has run on a tablet. Time to first word with neighbours and
+  with headers is unknown.
+
+## 11. Who builds what
+
+- **Opus** builds all of it. The wording and the numbers were the parts that
+  needed the strongest model, and they are fixed in this file.
+- Ask the advisor before: changing any sentence quoted here; changing a
+  number in the table in 3.3; relaxing "no passages, no model call" anywhere
+  but the one place 6.4 names; and before the commit that swaps the notifier
+  over to `AskTurn`.
+- The 20-question read from plan 5.8 should be run again after 4c, in all
+  three depths, on the on-device model and one cloud model. What to look
+  for: a brief answer is brief; a detailed one works through the steps and
+  is not cut off; citations are present and point at the right passage; a
+  question the notes do not cover gets the exact refusal at every depth.
