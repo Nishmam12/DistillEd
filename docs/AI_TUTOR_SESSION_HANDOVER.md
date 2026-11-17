@@ -7,15 +7,17 @@ short version of where things stand. The full design is
 
 ## 1. State in one paragraph
 
-Two branches, both local only. **`ai-own-key-models`** holds Part 1 (own-key
-cloud models, model picker, who-answers routing, ask-before-sending), 15
-commits, code-complete. **`ai-tutor-persona`**, cut from it, adds Part 2
-steps 1 to 3 (the teacher persona's text, the per-call tail, the learner
-profile, a `teachingStyle` setting and a provider) in `7431bb7` and `5aeebbe`,
-plus the Part 4 design in `285cb3d` and `8c91b6b`. **Nothing is pushed, merged
-or run on a tablet. The persona is not wired into any feature, so no prompt
-the app sends has changed.** `flutter analyze` is clean. Full suite on
-`ai-tutor-persona`: 3,446 pass, 44 skipped, 1 failure, which is the known
+**Everything is merged into the local `margo-device-fixes` branch, by
+fast-forward, on 2026-11-17.** That branch now holds Part 1 (own-key cloud
+models, model picker, who-answers routing, ask-before-sending), Part 2 steps
+1 to 3 (the teacher persona's text, the per-call tail, the learner profile, a
+`teachingStyle` setting and a provider) and the Part 4 design. It is 34
+commits ahead of `origin/margo-device-fixes`, which is an ancestor, so a push
+would be a plain fast-forward. The branches `ai-own-key-models` and
+`ai-tutor-persona` still exist and point inside or at the same history.
+**Nothing is pushed and nothing has run on a tablet. The persona is not wired
+into any feature, so no prompt the app sends has changed.** `flutter analyze`
+is clean. Full suite: 3,448 pass, 44 skipped, 1 failure, which is the known
 flaky `test/core/error_log_test.dart` ("once past 100 KB…"); it passes alone.
 
 ## 2. Do this first
@@ -24,8 +26,10 @@ flaky `test/core/error_log_test.dart` ("once past 100 KB…"); it passes alone.
 2. Read the "Progress" section of `docs/AI_TUTOR_PLAN.md`, then its section
    5.0 ("What was built"), then `docs/AI_TUTOR_PART4_DESIGN.md` sections 0
    and 9.
-3. `git status` and `git log --oneline -6`. Expect branch `ai-tutor-persona`
-   and a clean tree apart from the unrelated files in section 7 below.
+3. `git status` and `git log --oneline -6`. Expect branch
+   `margo-device-fixes` at or after `2491574`, and a clean tree apart from
+   the unrelated files in section 7 below. Cut a new branch from it for the
+   next piece of work.
 4. **Do not start any part unprompted.** Summarise what you would do and wait
    for a go-ahead, even on a bare "continue" (memory:
    `feedback_notepad_no_unprompted_phase_start`).
@@ -158,9 +162,14 @@ the user:
 
 ## 8. Before relying on anything above
 
-- Branch `ai-tutor-persona` sits on `ai-own-key-models`, which sits on
-  `margo-device-fixes`, itself unmerged. Ask the user how they want the
-  chain merged before any push.
+- The chain is merged locally into `margo-device-fixes` and **not pushed**.
+  A push needs the user's yes, and before it: a version bump in
+  `pubspec.yaml` (now `5.4.0+36`), a `CHANGELOG.md` entry and a
+  `TEAM_CHANGELOG.md` entry. The push would carry 34 commits, 12 of which
+  are earlier device fixes that were already waiting.
+- Afnan's `origin/iPadOS-build` (three commits, the iOS port) is not merged
+  in. A trial merge with it on 2026-11-17 had no conflicts. Whether and when
+  to merge it is the team's call.
 - Part 1's tablet check (plan section 8.2) is still the user's to do with a
   real key. An OpenRouter key on a free model costs nothing.
 - From the previous handover and not re-checked this session: the gateway

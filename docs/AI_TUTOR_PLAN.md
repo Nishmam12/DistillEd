@@ -35,10 +35,11 @@ merged, not tested on a tablet.
 the known flaky `test/core/error_log_test.dart` ("once past 100 KB…"); it passes
 alone.
 
-### Part 2 (teacher persona), on branch `ai-tutor-persona`
+### Part 2 (teacher persona), built on branch `ai-tutor-persona`
 
-Cut from `ai-own-key-models` on 2026-11-17. Not pushed, not merged, not tested
-on a tablet.
+Cut from `ai-own-key-models` on 2026-11-17. **Parts 1 and 2 were merged into
+local `margo-device-fixes` by fast-forward the same day.** Not pushed, not
+tested on a tablet.
 
 | Part 2 step (5.9) | State | Commit |
 | --- | --- | --- |
@@ -59,7 +60,7 @@ draft in 5.2 to 5.4, and the code is the truth.
 (retrieval depth), 4a (conversation in memory), 4d (citations) and 4e (the two
 engines). It replaces section 7 of this file for those pieces.
 
-Full suite on `ai-tutor-persona`: 3,446 pass, 44 skipped, 1 failure, the same
+Full suite after the merge into `margo-device-fixes`: 3,448 pass, 44 skipped, 1 failure, the same
 flaky `error_log_test`. `flutter analyze` clean.
 
 ### Part 1, on branch `ai-own-key-models`
