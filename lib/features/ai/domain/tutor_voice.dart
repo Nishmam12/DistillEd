@@ -41,6 +41,9 @@
 // said. A confident plain sentence and an invented one are different things,
 // and the instruction to drop hedging is scoped to claims the note supports.
 
+import 'tutor/tutor_prompt.dart'
+    show kTeachingRules, kTeachingRulesCompact, kTutorRole, kTutorRoleCompact;
+
 /// The register every prose-speaking feature adopts.
 ///
 /// Written as prohibitions plus positives, because a model given only "sound
@@ -107,12 +110,18 @@ const String kMathMarkupCompact =
 const int kCompactPromptWindowTokens = 2048;
 
 /// [systemPrompt] as it is actually sent to a model with a [windowTokens]
-/// context: on a small window the shared voice and maths paragraphs are
-/// swapped for their compact forms. [AiRouter.inputWordBudgetFor] and the
-/// local provider both apply it, so the budget is costed on the prompt sent.
+/// context: on a small window the shared voice, maths and teacher-persona
+/// paragraphs are swapped for their compact forms. [AiRouter.inputWordBudgetFor]
+/// and the local provider both apply it, so the budget is costed on the prompt
+/// sent.
+///
+/// The swap is by exact text. A constant that was edited, re-wrapped or
+/// interpolated into at a call site is silently left at full length.
 String compactForWindow(String systemPrompt, int windowTokens) =>
     windowTokens > kCompactPromptWindowTokens
         ? systemPrompt
         : systemPrompt
             .replaceAll(kTutorVoice, kTutorVoiceCompact)
-            .replaceAll(kMathMarkup, kMathMarkupCompact);
+            .replaceAll(kMathMarkup, kMathMarkupCompact)
+            .replaceAll(kTutorRole, kTutorRoleCompact)
+            .replaceAll(kTeachingRules, kTeachingRulesCompact);

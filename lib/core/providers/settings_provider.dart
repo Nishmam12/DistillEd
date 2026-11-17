@@ -56,6 +56,25 @@ enum AiProcessingMode {
       };
 }
 
+/// How the tutor teaches when the student asks something.
+///
+/// [explain] is the default and what every feature did before there was a
+/// choice: give the explanation. [guide] holds the full answer back and gives
+/// one hint or question first. The words each one puts in a prompt are in
+/// `features/ai/domain/tutor/tutor_prompt.dart`; the enum lives here for the
+/// same reason [CloudPrivacy] does.
+///
+/// Stored by name. A name this build does not know reads as [explain].
+enum TeachingStyle {
+  explain,
+  guide;
+
+  static TeachingStyle byName(String? name) => values.firstWhere(
+        (v) => v.name == name,
+        orElse: () => TeachingStyle.explain,
+      );
+}
+
 /// How often automatic backup runs. Stored by name.
 enum BackupFrequency {
   /// When the user leaves a note (and at least daily as a safety net).
@@ -134,6 +153,9 @@ class SettingsState {
   /// and whether the cloud may be used at all; this decides who ANSWERS. Folding
   /// the two together would make picking a model re-read every page.
   final String answerModelId;
+
+  /// Whether the tutor explains or guides. See [TeachingStyle].
+  final TeachingStyle teachingStyle;
 
   /// Hold the pen still at the end of a freehand stroke and a rectangle, ellipse,
   /// triangle or arrow snaps to the clean shape (ML Kit's shape model, a small
@@ -226,6 +248,7 @@ class SettingsState {
     this.cloudPrivacy = CloudPrivacy.askEachTime,
     this.hasSeenFirstCloudCall = false,
     this.answerModelId = 'auto',
+    this.teachingStyle = TeachingStyle.explain,
     this.recognitionLanguage = 'en',
     this.transcribeLectures = false,
     this.snapShapes = false,
@@ -263,6 +286,7 @@ class SettingsState {
     CloudPrivacy? cloudPrivacy,
     bool? hasSeenFirstCloudCall,
     String? answerModelId,
+    TeachingStyle? teachingStyle,
     String? recognitionLanguage,
     bool? transcribeLectures,
     bool? snapShapes,
@@ -288,6 +312,7 @@ class SettingsState {
       cloudPrivacy: cloudPrivacy ?? this.cloudPrivacy,
       hasSeenFirstCloudCall: hasSeenFirstCloudCall ?? this.hasSeenFirstCloudCall,
       answerModelId: answerModelId ?? this.answerModelId,
+      teachingStyle: teachingStyle ?? this.teachingStyle,
       recognitionLanguage: recognitionLanguage ?? this.recognitionLanguage,
       transcribeLectures: transcribeLectures ?? this.transcribeLectures,
       snapShapes: snapShapes ?? this.snapShapes,
@@ -325,6 +350,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kLegacyCloudAiEnabled = 'ai.cloudEnabled';
   static const _kCloudPrivacy = 'ai.cloudPrivacy';
   static const _kAnswerModelId = 'ai.answerModelId';
+  static const _kTeachingStyle = 'ai.teachingStyle';
   static const _kHasSeenFirstCloudCall = 'ai.hasSeenFirstCloudCall';
   static const _kRecognitionLanguage = 'ai.recognitionLanguage';
   static const _kTranscribeLectures = 'ai.transcribeLectures';
@@ -381,6 +407,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       ),
       hasSeenFirstCloudCall: prefs.getBool(_kHasSeenFirstCloudCall) ?? false,
       answerModelId: prefs.getString(_kAnswerModelId) ?? 'auto',
+      teachingStyle: TeachingStyle.byName(prefs.getString(_kTeachingStyle)),
       recognitionLanguage: prefs.getString(_kRecognitionLanguage) ?? 'en',
       transcribeLectures: prefs.getBool(_kTranscribeLectures) ?? false,
       snapShapes: prefs.getBool(_kSnapShapes) ?? false,
@@ -506,6 +533,14 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(answerModelId: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kAnswerModelId, value);
+  }
+
+  /// Stores whether the tutor explains or guides. Changes nothing about which
+  /// model answers or where it runs.
+  Future<void> setTeachingStyle(TeachingStyle value) async {
+    state = state.copyWith(teachingStyle: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kTeachingStyle, value.name);
   }
 
   /// Marks the first-cloud-call explainer as shown — every confirmation
