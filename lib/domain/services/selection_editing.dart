@@ -5,6 +5,7 @@ import 'dart:ui';
 
 import '../geometry/element_transformer.dart';
 import '../model/scene_element.dart';
+import 'eraser_service.dart';
 
 class SelectionEditing {
   SelectionEditing._();
@@ -83,6 +84,31 @@ class SelectionEditing {
   /// Whether [e] has a line thickness to change (ink and shapes).
   static bool hasThickness(SceneElement e) =>
       e is FreehandElement || e is SceneShapeElement;
+
+  /// [e]'s ink, line or text colour; null for one without (an image, a frame).
+  static int? colorOf(SceneElement e) => switch (e) {
+        FreehandElement(:final color) when !e.isEraser => color,
+        SceneShapeElement(:final color) => color,
+        TextElement(:final color) => color,
+        TapeElement(:final color) => color,
+        _ => null,
+      };
+
+  /// The eyedropper: the colour of the topmost ink, shape or text at [at]
+  /// (within [radius]), or null when there is none there.
+  static int? colorAt(
+    List<SceneElement> elements,
+    Offset at, {
+    double radius = 8,
+  }) {
+    final hits = EraserService.hitAlongSegment(
+        a: at, b: at, radius: radius, elements: elements);
+    final under = [
+      for (final e in elements)
+        if (hits.contains(e.id) && colorOf(e) != null) e,
+    ]..sort((a, b) => b.zOrder.compareTo(a.zOrder));
+    return under.isEmpty ? null : colorOf(under.first);
+  }
 
   /// [e] in [argb]: the ink, line or text colour. Others are returned as is.
   static SceneElement withColor(SceneElement e, int argb) => switch (e) {

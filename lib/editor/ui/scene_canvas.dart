@@ -44,7 +44,9 @@ import '../render/scene_preview_layer.dart';
 import '../render/scene_static_layer.dart';
 import '../render/selection_overlay_layer.dart';
 import '../render/text_selection_layer.dart';
+import '../../domain/services/selection_editing.dart';
 import '../state/editor_tool_controller.dart';
+import '../state/pen_presets.dart' show recentColorsProvider;
 import '../state/history_controller.dart';
 import '../state/inline_text_request.dart';
 import '../state/page_text_selection.dart';
@@ -189,6 +191,10 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   /// A pointer went down on the page while typing: its lift commits the text
   /// (unless it turns into a pinch, which keeps the text open).
   bool _tapToCommit = false;
+
+  /// This touch was the eyedropper's: it picked a colour and does nothing
+  /// else until it lifts.
+  bool _pickTouch = false;
 
   /// How far the page was scrolled up to keep the text above the keyboard;
   /// given back when the text closes.
@@ -337,6 +343,21 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       _tapToCommit = true;
       return;
     }
+    if (ref.read(eyedropperProvider)) {
+      ref.read(eyedropperProvider.notifier).state = false;
+      _pickTouch = true;
+      final picked = SelectionEditing.colorAt(
+          ref.read(sceneControllerProvider(_key)), _toScene(p),
+          radius: 12 / ref.read(viewportProvider).zoom);
+      if (picked != null) {
+        ref.read(editorToolProvider.notifier).setColor(picked);
+        ref.read(recentColorsProvider.notifier).use(picked);
+      } else {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
+            content: Text('No ink, shape or text there to take a colour from.')));
+      }
+      return;
+    }
     // Continuous layout: a touch on the page above or below makes that page
     // the one being written on.
     if (widget.continuous && widget.pageMode) {
@@ -390,7 +411,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   }
 
   void _onMove(PointerEvent _, StrokePoint p) {
-    if (_tapToCommit || _neighbourTouch) return;
+    if (_tapToCommit || _neighbourTouch || _pickTouch) return;
     final tool = _gestureTool();
     switch (tool.tool) {
       case EditorTool.select:
@@ -430,6 +451,10 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
       _neighbourTouch = false;
       return;
     }
+    if (_pickTouch) {
+      _pickTouch = false;
+      return;
+    }
     if (_tapToCommit) {
       _tapToCommit = false;
       _inlineKey.currentState?.commit();
@@ -461,6 +486,7 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
   void _cancel() {
     // A pinch or pan while typing keeps the text open.
     _tapToCommit = false;
+    _pickTouch = false;
     _neighbourTouch = false;
     _active.clear();
     _eraserGesture = false;

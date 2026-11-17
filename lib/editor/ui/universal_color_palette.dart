@@ -53,6 +53,19 @@ class _UniversalColorPaletteState extends ConsumerState<UniversalColorPalette> {
           open: _open,
           onTap: () => setState(() => _open = !_open),
         ),
+        // Armed: say what the next touch does, and let it be called off.
+        if (ref.watch(eyedropperProvider))
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: InputChip(
+              key: const ValueKey('eyedropperArmed'),
+              avatar: const Icon(Icons.colorize_outlined, size: 16),
+              label: const Text('Tap the page to pick a colour'),
+              onDeleted: () =>
+                  ref.read(eyedropperProvider.notifier).state = false,
+              deleteButtonTooltipMessage: 'Cancel',
+            ),
+          ),
         IgnorePointer(
           key: const ValueKey('universalColorPaletteIgnorePointer'),
           ignoring: !_open,
@@ -113,8 +126,18 @@ class _UniversalColorPaletteState extends ConsumerState<UniversalColorPalette> {
                       ],
                       const SizedBox(height: 6),
                       TextButton.icon(
-                        onPressed: () => _custom(color),
+                        key: const ValueKey('eyedropper'),
+                        // The next touch on the page takes its colour.
+                        onPressed: () {
+                          ref.read(eyedropperProvider.notifier).state = true;
+                          setState(() => _open = false);
+                        },
                         icon: const Icon(Icons.colorize_outlined, size: 18),
+                        label: const Text('Pick from page'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _custom(color),
+                        icon: const Icon(Icons.palette_outlined, size: 18),
                         label: const Text('Custom…'),
                       ),
                     ],

@@ -344,3 +344,7 @@ final editorToolProvider =
     return controller;
   },
 );
+
+/// The eyedropper is armed: the next touch on the page picks a colour rather
+/// than drawing. Kept out of the tool state, which is remembered.
+final eyedropperProvider = StateProvider<bool>((ref) => false);
