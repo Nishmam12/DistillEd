@@ -24,6 +24,7 @@ import '../../ai/domain/ai_scope.dart';
 import '../../ai/domain/page_content_extractor.dart' show kLocalImageReads;
 import '../../ai/presentation/ai_providers.dart';
 import '../../ai/presentation/notebook_index_notifier.dart';
+import '../../search/presentation/page_index_provider.dart';
 import '../../ai/presentation/sidebar/ai_sidebar.dart';
 import '../../ai/domain/features/explainer.dart' show ExplainMode;
 import '../../ai/presentation/explain_notifier.dart' show ExplainRequest;
@@ -253,6 +254,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     if (active != null) {
       unawaited(_container.read(provider.notifier).stop(active.pageId));
     }
+    // What was written here becomes searchable now, not at the next start.
+    unawaited(_container.read(pageIndexQueueProvider).run());
     // Per-page scene and undo state would otherwise live until the app dies.
     _container.read(pageProvider(widget.notebookId).notifier).release();
     // The search tint belongs to this visit. Cleared a moment later: a

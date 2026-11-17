@@ -11,6 +11,7 @@ import 'package:isar_community/isar.dart';
 import 'package:margo/data/persistence/isar_scene_element_store.dart';
 import 'package:margo/data/persistence/lecture_recording_record.dart';
 import 'package:margo/domain/model/scene_element.dart';
+import 'package:margo/data/persistence/page_index_task.dart';
 import 'package:margo/data/persistence/page_text_record.dart';
 import 'package:margo/data/persistence/scene_element_record.dart';
 import 'package:margo/features/ai/data/flashcards/flashcard_record.dart';
@@ -69,6 +70,7 @@ Future<void> main() async {
           FolderSchema,
           SceneElementRecordSchema,
           PageTextRecordSchema,
+          PageIndexTaskSchema,
           NoteChunkRecordSchema,
           LectureRecordingRecordSchema,
           SummaryCacheSchema,

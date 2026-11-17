@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
 import 'package:margo/data/persistence/isar_scene_element_store.dart';
+import 'package:margo/data/persistence/page_index_task.dart';
 import 'package:margo/data/persistence/scene_element_record.dart';
 import 'package:margo/domain/model/scene_element.dart';
 
@@ -38,7 +39,7 @@ Future<void> main() async {
     setUp(() async {
       dir = await Directory.systemTemp.createTemp('scene_store_test_');
       isar = await Isar.open(
-        [SceneElementRecordSchema, AppMetaSchema],
+        [SceneElementRecordSchema, AppMetaSchema, PageIndexTaskSchema],
         directory: dir.path,
         name: 'scene_store',
       );

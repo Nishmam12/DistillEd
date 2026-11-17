@@ -6,6 +6,7 @@ import 'package:isar_community/isar.dart';
 
 import '../../domain/model/scene_element.dart';
 import '../../shared/isar/isar_service.dart';
+import 'page_index_task.dart';
 import 'scene_element_record.dart';
 import 'scene_element_record_mapper.dart';
 import 'scene_element_store.dart';
@@ -37,7 +38,8 @@ class IsarSceneElementStore implements SceneElementStore {
     await _isar.writeTxn(() => _upsert(notebookId, pageId, elements));
   }
 
-  /// Must run inside a write transaction.
+  /// Must run inside a write transaction. Every write below goes through here
+  /// or marks the page itself, so search learns of every change.
   Future<void> _upsert(
     int notebookId,
     int pageId,
@@ -69,6 +71,7 @@ class IsarSceneElementStore implements SceneElementStore {
     }
 
     await _isar.sceneElementRecords.putAll(recordByElementId.values.toList());
+    await markPageForIndex(_isar, pageId);
   }
 
   @override
@@ -80,6 +83,7 @@ class IsarSceneElementStore implements SceneElementStore {
           .idProperty()
           .findAll();
       await _isar.sceneElementRecords.deleteAll(ids);
+      await markPageForIndex(_isar, pageId);
     });
   }
 
@@ -92,6 +96,7 @@ class IsarSceneElementStore implements SceneElementStore {
           .pageIdEqualTo(pageId)
           .anyOf(elementIds, (q, id) => q.elementIdEqualTo(id))
           .deleteAll();
+      await markPageForIndex(_isar, pageId);
     });
   }
 

@@ -17,6 +17,7 @@ import 'data/migration/launch_migration.dart';
 import 'data/persistence/library_repository.dart';
 import 'data/persistence/lecture_recording_record.dart';
 import 'data/persistence/page_text_record.dart';
+import 'data/persistence/page_index_task.dart';
 import 'data/persistence/scene_element_record.dart';
 import 'features/ai/data/device/device_health.dart';
 import 'features/ai/data/flashcards/flashcard_record.dart';
@@ -61,6 +62,8 @@ const _schemas = <CollectionSchema<dynamic>>[
   LectureRecordingRecordSchema,
   // A cache of vision reads.
   ReadCacheRecordSchema,
+  // Which pages' search text is out of date.
+  PageIndexTaskSchema,
 ];
 
 /// Debug only: prints how many rows each collection holds, so an Isar upgrade
