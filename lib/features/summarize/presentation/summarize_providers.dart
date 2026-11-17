@@ -5,6 +5,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../ai/domain/ai_router.dart';
+import '../../ai/domain/catalog/answer_route.dart';
 import '../../ai/presentation/ai_providers.dart';
 import '../data/cache/summary_store.dart';
 import '../domain/services/summarization_service.dart';
@@ -16,7 +17,8 @@ export '../../ai/presentation/ai_providers.dart'
         embedderDownloadManagerProvider,
         modelStorageCleanerProvider,
         huggingFaceTokenProvider,
-        huggingFaceIdentityProvider;
+        huggingFaceIdentityProvider,
+        confirmAnswerSendProvider;
 
 final aiRouterProvider = Provider<AiRouter>((ref) {
   final downloads = ref.watch(modelDownloadManagerProvider);
@@ -39,5 +41,11 @@ final summarizationServiceProvider = Provider<SummarizationService>((ref) {
     // and labelled low-confidence when it doesn't.
     guard: ref.watch(aiQualityGuardProvider),
     store: IsarSummaryStore(),
+    // A cloud model the student picked writes the summary. Read per request,
+    // so a new pick applies to the next summary.
+    directCloud: () => switch (ref.read(answerRouteProvider)()) {
+      CloudDirect(:final model) => ref.read(cloudProviderForProvider)(model),
+      LocalOnly() || LocalFirst() => null,
+    },
   );
 });

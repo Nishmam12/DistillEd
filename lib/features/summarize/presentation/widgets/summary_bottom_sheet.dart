@@ -162,7 +162,12 @@ class _SuccessView extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (state.tier != AnswerTier.local) ...[
-            AnswerTierBanner(tier: state.tier),
+            AnswerTierBanner(
+              tier: state.tier,
+              // A summary written by a cloud model the student picked names it.
+              modelName:
+                  state.tier == AnswerTier.cloud ? state.modelUsed : null,
+            ),
             const SizedBox(height: 12),
           ],
           // A recap of a maths note is full of formulas; MathText draws them

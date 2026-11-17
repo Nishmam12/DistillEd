@@ -83,6 +83,7 @@ class ScriptedService extends SummarizationService {
     required bool cloudEnabled,
     bool preferCloud = false,
     void Function(SummarizeStage stage)? onStage,
+    Future<bool> Function()? confirmSend,
   }) {
     return script[calls++](onStage);
   }

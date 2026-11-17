@@ -116,10 +116,15 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
   final ModelDownloadManager _downloads;
   final HandwritingRecognitionService _recognition;
 
+  /// Asked by the service once, just before a note is sent to a cloud model the
+  /// student picked. Null never asks.
+  final Future<bool> Function()? _confirmSend;
+
   SummarizeNotifier({
     required this._service,
     required this._downloads,
     required this._recognition,
+    this._confirmSend,
   })  : super(const SummarizeIdle());
 
   SummarizeRequest? _lastRequest;
@@ -147,6 +152,7 @@ class SummarizeNotifier extends StateNotifier<SummarizeState> {
         languageCode: request.languageCode,
         cloudEnabled: request.cloudEnabled,
         preferCloud: request.preferCloud,
+        confirmSend: _confirmSend,
         onStage: (stage) {
           if (!mounted) return;
           state = switch (stage) {
@@ -245,5 +251,6 @@ final summarizeNotifierProvider =
     service: ref.watch(summarizationServiceProvider),
     downloads: ref.watch(modelDownloadManagerProvider),
     recognition: ref.watch(handwritingRecognitionServiceProvider),
+    confirmSend: ref.watch(confirmAnswerSendProvider),
   );
 });
