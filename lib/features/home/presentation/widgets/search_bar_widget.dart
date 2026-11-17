@@ -37,19 +37,23 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   void initState() {
     super.initState();
     _hasText = _controller.text.isNotEmpty;
+    // Text can also be set from outside (a recent search picked).
+    _controller.addListener(_sync);
+  }
+
+  void _sync() {
+    final hasText = _controller.text.isNotEmpty;
+    if (hasText != _hasText) setState(() => _hasText = hasText);
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_sync);
     _owned?.dispose();
     super.dispose();
   }
 
-  void _handleChanged(String value) {
-    final hasText = value.isNotEmpty;
-    if (hasText != _hasText) setState(() => _hasText = hasText);
-    widget.onChanged?.call(value);
-  }
+  void _handleChanged(String value) => widget.onChanged?.call(value);
 
   void _clear() {
     _controller.clear();

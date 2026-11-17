@@ -123,3 +123,54 @@ void applySavedSearch(WidgetRef ref, SavedSearch search) {
 final savedSearchesProvider =
     StateNotifierProvider<SavedSearchesNotifier, List<SavedSearch>>(
         (ref) => SavedSearchesNotifier());
+
+/// The last few searches whose result was opened, newest first: shown under
+/// the empty search field to run again in one tap. Kept in shared_preferences.
+class RecentSearchesNotifier extends StateNotifier<List<String>> {
+  RecentSearchesNotifier() : super(const []) {
+    _load();
+  }
+
+  static const _key = 'home.recentSearches';
+  static const max = 8;
+
+  Future<void> _load() async {
+    try {
+      final saved =
+          (await SharedPreferences.getInstance()).getStringList(_key);
+      // Something added before the load finished stays first.
+      if (saved != null && mounted) state = _merged(state, saved);
+    } catch (_) {}
+  }
+
+  static List<String> _merged(List<String> first, List<String> then) {
+    final out = <String>[];
+    for (final q in [...first, ...then]) {
+      if (out.length == max) break;
+      if (!out.any((o) => o.toLowerCase() == q.toLowerCase())) out.add(q);
+    }
+    return out;
+  }
+
+  Future<void> add(String query) async {
+    final q = query.trim();
+    if (q.isEmpty) return;
+    state = _merged([q], state);
+    await _store();
+  }
+
+  Future<void> clear() async {
+    state = const [];
+    await _store();
+  }
+
+  Future<void> _store() async {
+    try {
+      await (await SharedPreferences.getInstance()).setStringList(_key, state);
+    } catch (_) {}
+  }
+}
+
+final recentSearchesProvider =
+    StateNotifierProvider<RecentSearchesNotifier, List<String>>(
+        (ref) => RecentSearchesNotifier());

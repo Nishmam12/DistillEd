@@ -6,6 +6,7 @@
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:margo/data/persistence/scene_element_store.dart';
@@ -73,8 +74,10 @@ Future<ProviderContainer> _scene(
   Widget Function(ProviderContainer) child, {
   PageLinks links = _links,
   PageWords? words,
+  List<Override> overrides = const [],
 }) async {
   final container = ProviderContainer(retry: (_, _) => null, overrides: [
+    ...overrides,
     sceneElementStoreProvider.overrideWithValue(InMemorySceneElementStore()),
     pageLinksServiceProvider.overrideWithValue(_FakeLinks(links)),
     if (words != null)
@@ -363,6 +366,31 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(find.byKey(const Key('searchHighlightChip')), findsNothing);
+    });
+
+    testWidgets('tints handwriting lines too, a phrase across two lines '
+        'included', (tester) async {
+      final c = await _scene(
+        tester,
+        (_) => const SearchHighlightLayer(pageKey: _key),
+        words: PageWords.empty,
+        overrides: [
+          searchInkLinesProvider.overrideWith((ref, key) async => const [
+                (bounds: Rect.fromLTWH(10, 10, 200, 30), text: 'The cell'),
+                (bounds: Rect.fromLTWH(10, 50, 200, 30), text: 'membrane'),
+                (bounds: Rect.fromLTWH(10, 90, 200, 30), text: 'is thin'),
+              ]),
+        ],
+      );
+      c.read(searchHighlightProvider.notifier).state =
+          const SearchHighlight(pageId: 0, query: 'cell membrane');
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('1 match on this page'), findsOneWidget);
+      final paint = tester.widget<CustomPaint>(
+          find.byKey(const Key('searchHighlightPaint')));
+      // The two lines the phrase spans, not the third.
+      expect((paint.painter as dynamic).polygons.length, 2);
     });
   });
 

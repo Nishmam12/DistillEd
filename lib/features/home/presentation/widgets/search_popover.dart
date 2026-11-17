@@ -16,6 +16,7 @@ import '../../../search/presentation/global_search_provider.dart';
 import '../models/note_card_data.dart';
 import '../note_cards_provider.dart';
 import '../notes_palette.dart';
+import '../saved_searches.dart';
 import 'search_bar_widget.dart';
 
 class SearchPopoverButton extends ConsumerStatefulWidget {
@@ -39,11 +40,13 @@ class SearchPopoverButton extends ConsumerStatefulWidget {
 class _SearchPopoverButtonState extends ConsumerState<SearchPopoverButton> {
   final _portal = OverlayPortalController();
   final _results = ScrollController();
+  final _field = TextEditingController();
   String _query = '';
 
   @override
   void dispose() {
     _results.dispose();
+    _field.dispose();
     super.dispose();
   }
 
@@ -53,12 +56,16 @@ class _SearchPopoverButtonState extends ConsumerState<SearchPopoverButton> {
     if (_portal.isShowing) {
       _close();
     } else {
+      _field.clear();
       setState(() => _query = '');
       _portal.show();
     }
   }
 
   void _close() => setState(_portal.hide);
+
+  /// A result was opened: what was typed is worth offering again.
+  void _remember() => ref.read(recentSearchesProvider.notifier).add(_query);
 
   @override
   Widget build(BuildContext context) {
@@ -107,9 +114,11 @@ class _SearchPopoverButtonState extends ConsumerState<SearchPopoverButton> {
                       margin,
                 ),
                 query: _query,
+                controller: _field,
                 scrollController: _results,
                 onChanged: (v) => setState(() => _query = v),
                 onOpen: (note) {
+                  _remember();
                   _close();
                   widget.onOpenNote(note);
                 },
@@ -117,6 +126,7 @@ class _SearchPopoverButtonState extends ConsumerState<SearchPopoverButton> {
                     ? null
                     : (hit) {
                         final q = _query.trim();
+                        _remember();
                         _close();
                         widget.onOpenHit!(hit, q);
                       },
@@ -144,6 +154,7 @@ class _Panel extends ConsumerWidget {
     required this.width,
     required this.maxHeight,
     required this.query,
+    required this.controller,
     required this.scrollController,
     required this.onChanged,
     required this.onOpen,
@@ -153,6 +164,7 @@ class _Panel extends ConsumerWidget {
   final double width;
   final double maxHeight;
   final String query;
+  final TextEditingController controller;
   final ScrollController scrollController;
   final ValueChanged<String> onChanged;
   final ValueChanged<NoteCardData> onOpen;
@@ -210,9 +222,21 @@ class _Panel extends ConsumerWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(13, 0, 13, 6),
-                child: SearchBarWidget(autofocus: true, onChanged: onChanged),
+                child: SearchBarWidget(
+                  controller: controller,
+                  autofocus: true,
+                  onChanged: onChanged,
+                ),
               ),
               const _Rule(),
+              if (query.trim().isEmpty)
+                _Recent(onPick: (q) {
+                  controller.value = TextEditingValue(
+                    text: q,
+                    selection: TextSelection.collapsed(offset: q.length),
+                  );
+                  onChanged(q);
+                }),
               if (hits.isEmpty && pageHits.isEmpty && meaningHits.isEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(13, 12, 13, 2),
@@ -312,6 +336,68 @@ class _Panel extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The last searches whose results were opened, as chips, with Clear.
+/// Nothing at all when there are none.
+class _Recent extends ConsumerWidget {
+  const _Recent({required this.onPick});
+
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recent = ref.watch(recentSearchesProvider);
+    if (recent.isEmpty) return const SizedBox.shrink();
+    final c = context.colors;
+    final small = TextStyle(
+      fontFamily: 'ModulusPro',
+      fontSize: 12,
+      color: c.textPrimary.withValues(alpha: 0.6),
+    );
+    return Padding(
+      key: const ValueKey('recentSearches'),
+      padding: const EdgeInsets.fromLTRB(13, 6, 13, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('Recent', style: small)),
+              TextButton(
+                onPressed: ref.read(recentSearchesProvider.notifier).clear,
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                child: Text('Clear', style: small),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final q in recent)
+                ActionChip(
+                  label: Text(q, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  labelStyle: TextStyle(
+                    fontFamily: 'ModulusPro',
+                    fontSize: 13,
+                    color: c.textPrimary,
+                  ),
+                  backgroundColor: c.surfaceSubtle,
+                  side: BorderSide(color: c.textPrimary.withValues(alpha: 0.2)),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => onPick(q),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
