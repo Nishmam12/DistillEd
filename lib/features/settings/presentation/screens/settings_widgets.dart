@@ -309,6 +309,24 @@ class _InkGestureRow extends ConsumerWidget {
   }
 }
 
+/// "Search by meaning": the home search's "Matched by meaning" section.
+class _SearchByMeaningRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = ref.watch(settingsProvider.select((s) => s.searchByMeaning));
+    return _SettingsRow(
+      icon: AppIcons.search,
+      title: 'Search by meaning',
+      subtitle: 'Search also lists pages about what you typed, found on this '
+          'device',
+      trailing: Switch(
+        value: on,
+        onChanged: ref.read(settingsProvider.notifier).setSearchByMeaning,
+      ),
+    );
+  }
+}
+
 /// "Summarise lectures": after a transcript, a study summary of its page, made
 /// on the device. Only means something while transcripts are on.
 class _LectureSummaryRow extends ConsumerWidget {

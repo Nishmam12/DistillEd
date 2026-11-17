@@ -181,6 +181,11 @@ class _Panel extends ConsumerWidget {
         ? const <GlobalSearchHit>[]
         : searchAcrossNotebooks(
             ref.watch(globalSearchCorpusProvider).value ?? const [], query);
+    // Pages that mean what was typed without containing it, a moment later.
+    final meaningHits = onOpenHit == null || query.trim().isEmpty
+        ? const <GlobalSearchHit>[]
+        : ref.watch(meaningSearchProvider(query.trim())).value ??
+            const <GlobalSearchHit>[];
 
     // Sage panel. The design is #C9D6C3 at 40% over a background blur; the
     // blur was dropped for its per-frame cost, and without it 40% leaves the
@@ -208,7 +213,7 @@ class _Panel extends ConsumerWidget {
                 child: SearchBarWidget(autofocus: true, onChanged: onChanged),
               ),
               const _Rule(),
-              if (hits.isEmpty && pageHits.isEmpty)
+              if (hits.isEmpty && pageHits.isEmpty && meaningHits.isEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(13, 12, 13, 2),
                   child: Text(
@@ -271,6 +276,34 @@ class _Panel extends ConsumerWidget {
                       itemBuilder: (context, i) => _HitRow(
                         hit: pageHits[i],
                         onTap: () => onOpenHit!(pageHits[i]),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              if (meaningHits.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(13, 8, 13, 4),
+                  child: Text(
+                    'Matched by meaning',
+                    style: TextStyle(
+                      fontFamily: 'ModulusPro',
+                      fontSize: 12,
+                      color: c.textPrimary.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 54 * 3.5),
+                    child: ListView.builder(
+                      key: const ValueKey('meaningHits'),
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: meaningHits.length,
+                      itemBuilder: (context, i) => _HitRow(
+                        hit: meaningHits[i],
+                        onTap: () => onOpenHit!(meaningHits[i]),
                       ),
                     ),
                   ),

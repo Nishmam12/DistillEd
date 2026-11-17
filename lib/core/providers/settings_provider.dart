@@ -221,6 +221,10 @@ class SettingsState {
   /// on-device model is not installed.
   final bool summarizeLectures;
 
+  /// The home search also lists pages that mean what was typed ("Matched by
+  /// meaning"), from the on-device search model.
+  final bool searchByMeaning;
+
   /// ML Kit digital-ink model for handwriting recognition: 'en', 'bn' (Bangla
   /// script) or 'bn-Latn' (Bangla written in English letters).
   final String recognitionLanguage;
@@ -273,6 +277,7 @@ class SettingsState {
     this.recognitionLanguage = 'en',
     this.transcribeLectures = false,
     this.summarizeLectures = true,
+    this.searchByMeaning = true,
     this.snapShapes = false,
     this.scribbleErase = false,
     this.straightenLines = false,
@@ -330,6 +335,7 @@ class SettingsState {
     String? recognitionLanguage,
     bool? transcribeLectures,
     bool? summarizeLectures,
+    bool? searchByMeaning,
     bool? snapShapes,
     bool? scribbleErase,
     bool? straightenLines,
@@ -362,6 +368,7 @@ class SettingsState {
       recognitionLanguage: recognitionLanguage ?? this.recognitionLanguage,
       transcribeLectures: transcribeLectures ?? this.transcribeLectures,
       summarizeLectures: summarizeLectures ?? this.summarizeLectures,
+      searchByMeaning: searchByMeaning ?? this.searchByMeaning,
       snapShapes: snapShapes ?? this.snapShapes,
       scribbleErase: scribbleErase ?? this.scribbleErase,
       straightenLines: straightenLines ?? this.straightenLines,
@@ -407,6 +414,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kRecognitionLanguage = 'ai.recognitionLanguage';
   static const _kTranscribeLectures = 'ai.transcribeLectures';
   static const _kSummarizeLectures = 'ai.summarizeLectures';
+  static const _kSearchByMeaning = 'ai.searchByMeaning';
   static const _kSnapShapes = 'ui.snapShapes';
   static const _kScribbleErase = 'ui.scribbleErase';
   static const _kStraightenLines = 'ui.straightenLines';
@@ -477,6 +485,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       recognitionLanguage: prefs.getString(_kRecognitionLanguage) ?? 'en',
       transcribeLectures: prefs.getBool(_kTranscribeLectures) ?? false,
       summarizeLectures: prefs.getBool(_kSummarizeLectures) ?? true,
+      searchByMeaning: prefs.getBool(_kSearchByMeaning) ?? true,
       snapShapes: prefs.getBool(_kSnapShapes) ?? false,
       scribbleErase: prefs.getBool(_kScribbleErase) ?? false,
       straightenLines: prefs.getBool(_kStraightenLines) ?? false,
@@ -702,6 +711,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(aiPanelWidth: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_kAiPanelWidth, value);
+  }
+
+  Future<void> setSearchByMeaning(bool value) async {
+    state = state.copyWith(searchByMeaning: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kSearchByMeaning, value);
   }
 
   Future<void> setSummarizeLectures(bool value) async {

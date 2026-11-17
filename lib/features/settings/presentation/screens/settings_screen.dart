@@ -123,6 +123,7 @@ class SettingsScreen extends ConsumerWidget {
         // stops.
         _LectureTranscriptsRow(),
         _LectureSummaryRow(),
+        _SearchByMeaningRow(),
         // The model downloads and the HuggingFace token live on their own screen.
         _SettingsRow(
           icon: AppIcons.flashCircle,
