@@ -24,6 +24,8 @@ import '../../domain/handwriting_conversion.dart';
 import 'handwriting_convert_sheet.dart';
 import 'link_picker_sheet.dart';
 import 'selection_actions.dart';
+import '../../domain/solve.dart';
+import '../../../ai/domain/recognition_result.dart' show RecognizedInkLine;
 import '../../../ai/presentation/ai_providers.dart';
 import '../../../audio/presentation/recording_notifier.dart';
 import '../../../../editor/import/ocr_layout.dart';
@@ -193,6 +195,12 @@ class SelectionBar extends ConsumerWidget {
               tooltip: 'Convert to text',
               icon: const Icon(Icons.text_fields),
               onPressed: () => _convertHandwriting(context, ref),
+            ),
+            IconButton(
+              key: const ValueKey('solveHandwriting'),
+              tooltip: 'Solve',
+              icon: const Icon(Icons.calculate_outlined),
+              onPressed: () => _solve(context, ref),
             ),
             IconButton(
               key: const ValueKey('levelHandwriting'),
@@ -721,6 +729,65 @@ class SelectionBar extends ConsumerWidget {
     ref
         .read(selectionProvider.notifier)
         .selectMany(result.added.map((t) => t.id));
+  }
+
+  /// Reads the selected handwriting as a sum, works it out with the tutor's
+  /// calculator, and writes "= answer" just after it: one undo step.
+  Future<void> _solve(BuildContext context, WidgetRef ref) async {
+    final ink = _ink(ref);
+    if (ink.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final recognition = ref.read(handwritingRecognitionServiceProvider);
+    final language = ref.read(settingsProvider).recognitionLanguage;
+    final List<RecognizedInkLine> lines;
+    try {
+      await recognition.ensureModelDownloaded(language);
+      lines = [
+        for (final l in await recognition.recognizeInkLines(ink, language))
+          if (l.text.trim().isNotEmpty) l,
+      ];
+    } on RecognitionException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    }
+    if (!context.mounted) return;
+    final outcome = lines.isEmpty
+        ? const NoSum()
+        : await solveWritten(lines.map((l) => l.text).join(' '));
+    if (!context.mounted) return;
+    switch (outcome) {
+      case NoSum():
+        messenger.showSnackBar(const SnackBar(
+            content: Text('No sum found in the selected handwriting.')));
+      case OutOfRange():
+        messenger.showSnackBar(const SnackBar(
+            content: Text("That can't be worked out (out of range).")));
+      case Solved(:final answer):
+        final last = lines.last.bounds;
+        final scene = ref.read(sceneControllerProvider(pageKey).notifier);
+        final probe = TextElement(
+          id: editorNewId(),
+          zOrder: scene.nextZOrder(),
+          geometryData: [last.right, last.top, last.right, last.bottom],
+          text: '= $answer',
+          color: ink.last.color,
+          fontSize: fontSizeForLine(last.height),
+        );
+        final width =
+            SceneElementPainter.layOutText(probe, double.infinity)
+                    .maxIntrinsicWidth +
+                4;
+        final left = last.right + last.height * 0.3;
+        final answerBox = probe.copyWith(geometryData: [
+          left,
+          last.top,
+          left + width,
+          last.top + SceneElementPainter.layOutText(probe, width).height,
+        ]);
+        ref
+            .read(historyProvider(pageKey).notifier)
+            .push(AddElementsCommand([answerBox]));
+    }
   }
 
   /// Turns each slanted line of the selected handwriting level: one undo step.
