@@ -153,6 +153,19 @@ class SceneImportService {
     ];
   }
 
+  /// Stores image files already on the device (shared into Margo) the way
+  /// [importPhotos] stores picked ones.
+  ///
+  /// Throws [ImportException] when a file cannot be decoded.
+  Future<List<ImportedImage>> importImageFiles(
+      List<String> paths, String notebookId) async {
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    return [
+      for (var i = 0; i < paths.length; i++)
+        await _store(XFile(paths[i]), notebookId, '${stamp}_s$i'),
+    ];
+  }
+
   /// Downscales and re-encodes [picked] off the main thread into the
   /// notebook's imports directory under [id].
   Future<ImportedImage> _store(XFile picked, String notebookId, String id) async {

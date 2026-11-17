@@ -44,6 +44,7 @@ import '../../search/presentation/note_search_sheet.dart';
 import '../../../editor/import/fit_image_rect.dart';
 import '../../../editor/import/ml_kit_document_scanner.dart';
 import '../../../editor/import/scene_import_service.dart';
+import '../../share/share_intake.dart' show SharedPayload;
 import '../../../editor/state/page_notifier.dart';
 import '../../home/data/repositories/note_repository.dart';
 import '../../home/domain/models/notebook.dart';
@@ -162,11 +163,15 @@ class NotebookEditorScreen extends ConsumerStatefulWidget {
   final int? initialPageIndex;
   final String? searchQuery;
 
+  /// What was shared into Margo for this note; imported once the page is ready.
+  final SharedPayload? pendingShare;
+
   const NotebookEditorScreen({
     super.key,
     required this.notebookId,
     this.initialPageIndex,
     this.searchQuery,
+    this.pendingShare,
   });
 
   @override
@@ -272,6 +277,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       }
       await ref.read(libraryProvider.notifier).load();
       if (mounted) setState(() => _notebook = nb);
+      final share = widget.pendingShare;
+      if (share != null && mounted) unawaited(_receiveShare(share));
     } catch (e, st) {
       unawaited(ErrorLog.record(e, st));
       if (mounted) setState(() => _unavailable = true);
@@ -933,6 +940,44 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
   // ---- import ---------------------------------------------------------------
 
+  /// Brings in what was shared into Margo: pictures onto the current page (or
+  /// a page each, as the photo import offers), each PDF as its own document,
+  /// and text as a note on the page.
+  Future<void> _receiveShare(SharedPayload share) async {
+    // The page's size latches on the canvas's first layout, and the PDF and
+    // note paths need it: wait a few frames for it.
+    for (var i = 0; i < 20 && (_pageSheet?.isEmpty ?? true); i++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+    final state = ref.read(pageProvider(widget.notebookId));
+    if (state.pages.isEmpty) return;
+    final page =
+        state.pages[state.currentPageIndex.clamp(0, state.pages.length - 1)];
+    final key = (notebookId: widget.notebookId, pageId: page.id);
+
+    final images = [for (final f in share.files) if (f.isImage) f.path];
+    final pdfs = [for (final f in share.files) if (f.isPdf) f.path];
+    final skipped = [
+      for (final f in share.files) if (!f.isImage && !f.isPdf) f.name
+    ];
+    try {
+      if (images.isNotEmpty) await _importPhotos(key, paths: images);
+      for (final pdf in pdfs) {
+        if (!mounted) return;
+        await _importPdf(given: pdf);
+      }
+    } on ImportException catch (e) {
+      _toast(e.message);
+    }
+    if (!mounted) return;
+    final text = share.text;
+    if (text != null) _insertNote(key, text);
+    if (skipped.isNotEmpty) {
+      _toast('Margo can\'t open ${skipped.join(', ')} yet.');
+    }
+  }
+
   /// Offers the import sources. Photos land on the current page, selected and
   /// ready to place (with an "Own page" button for a whiteboard shot to write
   /// over); scans and PDFs become pages of their own.
@@ -988,8 +1033,10 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     }
   }
 
-  Future<void> _importPhotos(ScenePageKey key) async {
-    final imported = await _import.importPhotos('${widget.notebookId}');
+  Future<void> _importPhotos(ScenePageKey key, {List<String>? paths}) async {
+    final imported = paths == null
+        ? await _import.importPhotos('${widget.notebookId}')
+        : await _import.importImageFiles(paths, '${widget.notebookId}');
     if (imported.isEmpty || !mounted) return;
 
     // More pictures than the AI reads on one page in one go: say so first,
@@ -1044,8 +1091,9 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     }
   }
 
-  Future<void> _importPdf() async {
-    final path = await _import.pickPdfPath();
+  /// Imports the PDF at [given], or one the user picks.
+  Future<void> _importPdf({String? given}) async {
+    final path = given ?? await _import.pickPdfPath();
     if (path == null || !mounted) return;
     // Every page needs a sheet to be fitted to, so fail up front rather than
     // rendering the whole document and silently dropping each page.

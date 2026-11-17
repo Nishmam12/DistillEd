@@ -45,8 +45,118 @@ class MainActivity : FlutterActivity() {
     private val backupIo = Executors.newSingleThreadExecutor()
     private val mainThread = Handler(Looper.getMainLooper())
 
+    // "Share to Margo" / "Open with Margo". The intent is held until Dart asks
+    // for it ("take"), so a cold start loses nothing; a share that arrives while
+    // the app is open is announced with "arrived". Files are copied into the
+    // cache because Dart cannot read content:// URIs.
+    private val shareChannelName = "com.margo.margo/share"
+    private var shareChannel: MethodChannel? = null
+    @Volatile private var pendingShare: Intent? = null // set on main, taken on backupIo
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (isShare(intent)) {
+            pendingShare = intent
+            shareChannel?.invokeMethod("arrived", null)
+        }
+    }
+
+    private fun isShare(intent: Intent?): Boolean = when (intent?.action) {
+        Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE -> true
+        Intent.ACTION_VIEW -> intent.data != null
+        else -> false
+    }
+
+    /** The pending share as {text, files: [{path, mimeType, name}]}, or null. */
+    private fun takeShare(): Map<String, Any?>? {
+        val intent = pendingShare ?: return null
+        pendingShare = null
+        val uris = mutableListOf<android.net.Uri>()
+        when (intent.action) {
+            Intent.ACTION_VIEW -> intent.data?.let { uris.add(it) }
+            Intent.ACTION_SEND -> intentStream(intent)?.let { uris.add(it) }
+            Intent.ACTION_SEND_MULTIPLE -> uris.addAll(intentStreams(intent))
+        }
+        // Each share replaces the last one's copies: the importer has already
+        // copied or rendered them into the notebook by then.
+        val dir = File(cacheDir, "shared").apply { deleteRecursively(); mkdirs() }
+        val files = uris.filter(::isForeignContent).mapIndexedNotNull { i, uri ->
+            try {
+                val name = displayName(uri) ?: "shared_$i"
+                // A folder per file keeps two "image.jpg"s apart and the name
+                // intact (the PDF importer shows it as the source).
+                val target = File(File(dir, "$i").apply { mkdirs() }, name.replace('/', '_'))
+                (contentResolver.openInputStream(uri) ?: return@mapIndexedNotNull null)
+                    .use { input -> target.outputStream().use { input.copyTo(it) } }
+                mapOf(
+                    "path" to target.absolutePath,
+                    "mimeType" to (contentResolver.getType(uri) ?: intent.type ?: ""),
+                    "name" to name,
+                )
+            } catch (e: Exception) {
+                null // unreadable (revoked grant, deleted file): skip it
+            }
+        }
+        val text = if (intent.action == Intent.ACTION_SEND && uris.isEmpty())
+            intent.getStringExtra(Intent.EXTRA_TEXT) else null
+        if (files.isEmpty() && text.isNullOrBlank()) return null
+        return mapOf(
+            "text" to text,
+            "subject" to intent.getStringExtra(Intent.EXTRA_SUBJECT),
+            "files" to files,
+        )
+    }
+
+    @Suppress("DEPRECATION")
+    private fun intentStream(intent: Intent): android.net.Uri? =
+        if (Build.VERSION.SDK_INT >= 33)
+            intent.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java)
+        else intent.getParcelableExtra(Intent.EXTRA_STREAM)
+
+    @Suppress("DEPRECATION")
+    private fun intentStreams(intent: Intent): List<android.net.Uri> =
+        (if (Build.VERSION.SDK_INT >= 33)
+            intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java)
+        else intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)) ?: emptyList()
+
+    /**
+     * Only content:// from another app's provider. A file:// URI or one of
+     * Margo's own providers would let a sender make Margo copy its private
+     * files (database, keys) into a note. Senders can't share file:// since
+     * Android 7 anyway.
+     */
+    private fun isForeignContent(uri: android.net.Uri): Boolean {
+        if (uri.scheme != "content") return false
+        // Null = a provider package visibility hides from us, so not ours;
+        // our own always resolve.
+        val owner = packageManager.resolveContentProvider(uri.authority ?: return false, 0)
+        return owner?.packageName != packageName
+    }
+
+    private fun displayName(uri: android.net.Uri): String? {
+        contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { c -> if (c.moveToFirst()) return c.getString(0) }
+        return null
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        if (isShare(intent)) pendingShare = intent
+        shareChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, shareChannelName)
+            .apply {
+                setMethodCallHandler { call, result ->
+                    if (call.method != "take") return@setMethodCallHandler result.notImplemented()
+                    // Copying can take a moment for a big PDF: off the main thread.
+                    backupIo.execute {
+                        try {
+                            val share = takeShare()
+                            mainThread.post { result.success(share) }
+                        } catch (e: Exception) {
+                            mainThread.post { result.error("SHARE_ERROR", e.message, null) }
+                        }
+                    }
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, recordingChannel)
             .setMethodCallHandler { call, result ->
                 try {

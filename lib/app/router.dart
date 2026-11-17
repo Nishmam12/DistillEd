@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart' show GlobalKey, NavigatorState;
 import 'package:go_router/go_router.dart';
 
 import '../features/home/presentation/screens/notes_screen.dart';
+import '../features/share/share_intake.dart' show SharedPayload;
 import '../features/home/presentation/screens/trash_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/settings/presentation/screens/about_screen.dart';
@@ -45,6 +46,9 @@ final GoRouter appRouter = GoRouter(
           notebookId: id,
           initialPageIndex: page,
           searchQuery: state.uri.queryParameters['q'],
+          // From "Share to Margo": import this once the page is ready.
+          pendingShare:
+              state.extra is SharedPayload ? state.extra as SharedPayload : null,
         );
       },
       routes: [
