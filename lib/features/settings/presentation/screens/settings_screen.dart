@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
@@ -16,6 +17,9 @@ import '../../../../widgets/app_segmented_control.dart';
 import '../../../ai/data/embeddings/embedder_spec.dart';
 import '../../../ai/data/rag/embedder_mobile_data_choice.dart';
 import '../../../ai/data/llm/hf_token_check.dart';
+import '../../../ai/data/providers/model_connection_tester.dart';
+import '../../../ai/domain/catalog/provider_preset.dart';
+import '../../../ai/domain/catalog/user_connection.dart';
 import '../../../ai/data/llm/llm_exceptions.dart';
 import '../../../ai/data/llm/llm_model_spec.dart';
 import '../../../ai/data/llm/model_storage_cleaner.dart';
@@ -25,7 +29,9 @@ import '../../../ai/presentation/ai_providers.dart'
         embedderRolloutResumeProvider,
         embedderRolloutRunnerProvider,
         embedderRolloutStatusProvider,
-        localBackendProvider;
+        localBackendProvider,
+        modelConnectionTesterProvider,
+        userConnectionsProvider;
 import '../../../ai/presentation/rag_corpus_export.dart';
 import '../../../audio/data/edge_ai_speech.dart';
 import '../../../audio/presentation/speech_model_notifier.dart';
@@ -42,6 +48,7 @@ import '../../../summarize/presentation/summarize_providers.dart';
 
 part 'settings_widgets.dart';
 part 'settings_ai_models.dart';
+part 'settings_cloud_models.dart';
 part 'settings_maintenance.dart';
 part 'settings_backup.dart';
 part 'ai_models_screen.dart';

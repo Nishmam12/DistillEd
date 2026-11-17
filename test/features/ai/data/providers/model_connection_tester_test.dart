@@ -56,6 +56,44 @@ void main() {
     expect((result as ConnectionOk).modelIds, ['alpha', 'zeta']);
   });
 
+  test('reads each model\'s context size when the provider reports one',
+      () async {
+    final adapter = _FakeAdapter(jsonEncode({
+      'data': [
+        {'id': 'a', 'context_length': 128000},
+        {'id': 'b', 'context_window': 32768},
+        {'id': 'c'},
+        {'id': 'd', 'context_length': 'lots'},
+      ],
+    }));
+
+    final result = await _tester(adapter)
+        .listModels(baseUrl: _base, apiKey: _key) as ConnectionOk;
+
+    expect(result.contextWindows, {'a': 128000, 'b': 32768});
+  });
+
+  test('knows which models can call tools when the provider says', () async {
+    final adapter = _FakeAdapter(jsonEncode({
+      'data': [
+        {
+          'id': 'with-tools',
+          'supported_parameters': ['temperature', 'tools'],
+        },
+        {
+          'id': 'without',
+          'supported_parameters': ['temperature'],
+        },
+        {'id': 'unknown'},
+      ],
+    }));
+
+    final result = await _tester(adapter)
+        .listModels(baseUrl: _base, apiKey: _key) as ConnectionOk;
+
+    expect(result.toolModels, {'with-tools'});
+  });
+
   test('asks the models address with the key as a bearer header', () async {
     final adapter = _FakeAdapter('{"data":[]}');
 

@@ -18,7 +18,21 @@ sealed class ConnectionTestResult {
 /// The key works. [modelIds] are the models it can use, in name order.
 class ConnectionOk extends ConnectionTestResult {
   final List<String> modelIds;
-  const ConnectionOk(this.modelIds);
+
+  /// The context size of the models whose provider reported one. A model not
+  /// in here keeps the conservative default: a prompt budgeted to a window
+  /// larger than the real one overflows it.
+  final Map<String, int> contextWindows;
+
+  /// The models the provider says can call tools. A provider that does not
+  /// say leaves this empty, and the student ticks it themselves.
+  final Set<String> toolModels;
+
+  const ConnectionOk(
+    this.modelIds, {
+    this.contextWindows = const {},
+    this.toolModels = const {},
+  });
 }
 
 /// The provider answered, but offers no list of models. The student types a
@@ -58,8 +72,7 @@ class ModelConnectionTester {
         '$base/models',
         options: Options(headers: {'Authorization': 'Bearer ${apiKey.trim()}'}),
       );
-      final ids = _modelIds(response.data);
-      return ids == null ? const ConnectionNoModelList() : ConnectionOk(ids);
+      return _parseModelList(response.data) ?? const ConnectionNoModelList();
     } on DioException catch (e) {
       return switch (e.response?.statusCode) {
         401 || 403 => const ConnectionFailed(
@@ -107,16 +120,29 @@ class ModelConnectionTester {
     }
   }
 
-  /// The ids in an OpenAI-style model list (`{"data": [{"id": …}]}`), or null
-  /// when [data] is not one.
-  static List<String>? _modelIds(Object? data) {
+  /// Reads an OpenAI-style model list (`{"data": [{"id": …}]}`), or null when
+  /// [data] is not one.
+  ///
+  /// Beyond the id, two things are picked up when a provider offers them, under
+  /// the names providers actually use: the context size (`context_length` or
+  /// `context_window`) and whether `tools` is among `supported_parameters`.
+  static ConnectionOk? _parseModelList(Object? data) {
     final list = data is Map<String, dynamic> ? data['data'] : data;
     if (list is! List) return null;
-    final ids = <String>[
-      for (final item in list)
-        if (item is Map<String, dynamic> && item['id'] is String)
-          item['id'] as String,
-    ]..sort();
-    return ids;
+    final ids = <String>[];
+    final windows = <String, int>{};
+    final tools = <String>{};
+    for (final item in list) {
+      if (item is! Map<String, dynamic>) continue;
+      final id = item['id'];
+      if (id is! String) continue;
+      ids.add(id);
+      final window = item['context_length'] ?? item['context_window'];
+      if (window is int && window > 0) windows[id] = window;
+      final supported = item['supported_parameters'];
+      if (supported is List && supported.contains('tools')) tools.add(id);
+    }
+    ids.sort();
+    return ConnectionOk(ids, contextWindows: windows, toolModels: tools);
   }
 }

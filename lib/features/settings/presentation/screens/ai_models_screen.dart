@@ -51,6 +51,8 @@ class AiModelsScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
+                const _CloudModelsCard(),
+                const SizedBox(height: 24),
                 const SettingsSavedFooter(),
               ],
             ),

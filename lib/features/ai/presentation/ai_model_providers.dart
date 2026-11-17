@@ -14,6 +14,11 @@ final userConnectionsProvider =
       (ref) => UserConnectionsNotifier(ref.watch(userConnectionStoreProvider)),
     );
 
+/// Checks a key the student has just typed and lists the models it can use.
+final modelConnectionTesterProvider = Provider<ModelConnectionTester>(
+  (ref) => ModelConnectionTester(),
+);
+
 /// Margo's own cloud models. All "coming soon" until the gateway serves a
 /// catalogue.
 final margoCatalogProvider = Provider<List<AiModelEntry>>(

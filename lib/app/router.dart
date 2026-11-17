@@ -111,6 +111,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AiModelsScreen(),
     ),
     GoRoute(
+      path: '/settings/models/add',
+      builder: (context, state) => const AddConnectionScreen(),
+    ),
+    GoRoute(
       path: '/about',
       builder: (context, state) => const AboutScreen(),
     ),

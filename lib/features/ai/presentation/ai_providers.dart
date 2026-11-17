@@ -42,6 +42,7 @@ import '../data/ocr/image_text_recognition_service.dart';
 import '../data/ocr/isar_read_cache.dart';
 import '../data/providers/cloud_gateway_provider.dart';
 import '../data/providers/local_gemma_provider.dart';
+import '../data/providers/model_connection_tester.dart';
 import '../data/providers/openai_compatible_provider.dart';
 import '../domain/catalog/ai_model_entry.dart';
 import '../domain/catalog/answer_route.dart';
