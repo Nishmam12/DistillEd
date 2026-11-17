@@ -29,6 +29,66 @@ Commits: <first>..<last>
 ## Push log
 
 ### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `d76552d`..`01d9409` (2 commits), plus this changelog commit
+
+**What changed** (phase 3 items 5 and 6 of `docs/COMPETITOR_UPGRADE_PLAN.md`;
+phase 3 is now finished):
+- **Recent searches.** The home search shows the last 8 searches whose result
+  was opened, as chips under the empty field, with Clear. Tap one to run it
+  again. Kept in shared_preferences.
+- **Search tint on handwriting.** A page opened from search now also tints
+  the handwritten lines holding the match (before, only words on page
+  pictures were tinted). The ink is read again with ML Kit while the tint is
+  shown; no model download is started for it.
+- **Search text kept current, with retry.** Before, a page's search text was
+  only saved when the AI panel analysed it or a PDF import indexed it, so
+  handwriting on a page nobody opened the panel on could never be found. Now
+  every element write marks the page in a new queue, and a background worker
+  reads marked pages on the device (ML Kit only, no vision model, no cloud)
+  and saves their search text. Runs 5 s after start, on resume and when a
+  notebook is closed; waits when the device is hot or low on battery. No
+  handwriting model: the page waits, no attempt used. Other failures: 3 tries,
+  then it waits for the next edit. Pages that already had search text are
+  left as they are at first, so earlier deeper reads are kept.
+
+**What you need to do:** pull. **Database change:** a new Isar collection,
+`PageIndexTask` (additive, approved for phase 3; nothing to migrate). On the
+first launch the app reads every page that has no search text yet, in the
+background. No new dependencies.
+
+**Tested:** `flutter analyze` clean (no errors or warnings); full suite
+3,606 passing. On the Pixel Tablet emulator: a word typed on a new page was
+found under "On pages" right after closing the note, without the AI panel;
+recent chip shown after opening the result, and tapping it re-ran the search.
+The handwriting tint is covered by a widget test, not tried on a device.
+
+### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `f728c39`..`5f0e993` (5 commits). *Added from the git history by
+Afnan's Claude: these were pushed without an entry.*
+
+**What changed** (phase 3 items 1 to 4):
+- **Links between pages.** Select something and link it to another page, a
+  notebook or a web address; "Open link" follows it. A page that others link
+  to shows a "Linked from" chip (backlinks).
+- **"Matched by meaning" in the home search.** Pages that mean what was typed
+  without containing it, from the embeddings the tutor already keeps, on the
+  device and offline. A setting hides it. Empty until the on-device search
+  model is downloaded.
+- **Filters and saved searches.** The sort button opens one sort & filter
+  sheet: date, "has handwriting", "has a lecture recording", plus folder,
+  tags and favourites. "Save this view…" names it. Saved in
+  shared_preferences.
+- **Nested tags and tag colours.** "Physics / Optics" nests a tag; the
+  sidebar shows the tree. Long-press a tag for a colour (shared_preferences,
+  so colours don't travel in backups).
+
+**What you need to do:** pull. **Database change:** one additive field on
+`SceneElementRecord` (the element's link target). No new dependencies.
+
+**Tested** (from the commit messages): analyze clean, tests passing; tried on
+the Pixel Tablet emulator.
+
+### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
 Commits: `c0f8376`..`8fd36a2` (7 commits), plus this changelog commit
 
 **What changed** (phases 1 and 2 of `docs/COMPETITOR_UPGRADE_PLAN.md`):
