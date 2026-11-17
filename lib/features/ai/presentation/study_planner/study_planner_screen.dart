@@ -13,6 +13,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../domain/study_planner/note_deadlines.dart';
 import '../../domain/study_planner/study_plan.dart';
 import '../ai_providers.dart';
+import 'pinned_deadlines.dart';
 
 /// Task kind → colour. Distinct from the graph's mastery palette on purpose —
 /// here the colour means the KIND of work, not how well a concept is known.
@@ -242,6 +243,13 @@ class _NoteDatesState extends ConsumerState<_NoteDates> {
                     selected: widget.chosen != null &&
                         DateUtils.isSameDay(widget.chosen, d.date),
                     onTap: () => widget.onChoose(d.date),
+                    onRemove: d.pinned
+                        ? () async {
+                            await PinnedDeadlines.remove(widget.notebookId, d);
+                            ref.invalidate(
+                                noteDeadlinesProvider(widget.notebookId));
+                          }
+                        : null,
                   ),
               ],
             ),
@@ -276,10 +284,14 @@ class _DeadlineTile extends StatelessWidget {
   final NoteDeadline deadline;
   final bool selected;
   final VoidCallback onTap;
+
+  /// Removes a date the student added; null for one found in the notes.
+  final VoidCallback? onRemove;
   const _DeadlineTile({
     required this.deadline,
     required this.selected,
     required this.onTap,
+    this.onRemove,
   });
 
   @override
@@ -300,16 +312,29 @@ class _DeadlineTile extends StatelessWidget {
               width: selected ? 1.5 : 1,
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Text(deadline.label,
-                  style: TextStyle(
-                      fontSize: 14, color: context.colors.textPrimary)),
-              const SizedBox(height: 2),
-              Text(_formatDate(deadline.date),
-                  style: TextStyle(
-                      fontSize: 12, color: context.colors.textSecondary)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(deadline.label,
+                        style: TextStyle(
+                            fontSize: 14, color: context.colors.textPrimary)),
+                    const SizedBox(height: 2),
+                    Text(_formatDate(deadline.date),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: context.colors.textSecondary)),
+                  ],
+                ),
+              ),
+              if (onRemove != null)
+                IconButton(
+                  tooltip: 'Remove this date',
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: onRemove,
+                ),
             ],
           ),
         ),

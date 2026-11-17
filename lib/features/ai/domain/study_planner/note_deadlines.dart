@@ -42,10 +42,15 @@ class NoteDeadline {
   /// The page it was found on.
   final int pageId;
 
+  /// Added by the student from a selection ("Add to study plan"), not found
+  /// by looking through the notes; can be removed.
+  final bool pinned;
+
   const NoteDeadline({
     required this.date,
     required this.label,
     required this.pageId,
+    this.pinned = false,
   });
 }
 

@@ -101,6 +101,7 @@ import '../domain/tools/tool_generation_event.dart';
 import '../data/tools/wikipedia_tool.dart';
 import 'ask_notes_notifier.dart';
 import 'study_planner_notifier.dart';
+import 'study_planner/pinned_deadlines.dart';
 import 'context_engine_notifier.dart';
 import 'page_figures.dart';
 import 'explain_notifier.dart';
@@ -805,11 +806,21 @@ final noteDeadlinesProvider = FutureProvider.autoDispose
       final pages = await ref
           .read(pageTextStoreProvider)
           .forNotebook(notebookId);
-      return findNoteDeadlines(
-        pageTexts: {for (final p in pages) p.pageId: p.text},
-        finder: ref.read(dateFinderProvider),
-        now: DateTime.now(),
-      );
+      final now = DateTime.now();
+      final pinned = await PinnedDeadlines.load(notebookId);
+      List<NoteDeadline> found;
+      try {
+        found = await findNoteDeadlines(
+          pageTexts: {for (final p in pages) p.pageId: p.text},
+          finder: ref.read(dateFinderProvider),
+          now: now,
+        );
+      } on DateFinderUnavailable {
+        // The dates the student added still stand without the model.
+        if (pinned.isEmpty) rethrow;
+        found = const [];
+      }
+      return mergeDeadlines(found, pinned, now: now);
     });
 
 /// Session cache of the last suggestions per page (see [pageContextCacheProvider]).

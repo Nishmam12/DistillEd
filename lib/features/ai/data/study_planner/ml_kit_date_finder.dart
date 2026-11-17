@@ -39,14 +39,14 @@ class MlKitDateFinder implements DateFinder {
     return [
       for (final annotation in annotations)
         for (final entity in annotation.entities)
-          if (entity is mlkit.DateTimeEntity && _isDayOrFiner(entity))
+          if (entity is mlkit.DateTimeEntity && isDayOrFiner(entity))
             DateTime.fromMillisecondsSinceEpoch(entity.timestamp),
     ];
   }
 
   /// "In October", "next week" and "2027" resolve to the first instant of their
   /// period — a date that was never written. Only a day or finer is a date.
-  static bool _isDayOrFiner(mlkit.DateTimeEntity entity) =>
+  static bool isDayOrFiner(mlkit.DateTimeEntity entity) =>
       switch (entity.dateTimeGranularity) {
         mlkit.DateTimeGranularity.day ||
         mlkit.DateTimeGranularity.hour ||

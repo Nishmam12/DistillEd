@@ -23,6 +23,7 @@ import '../../../ai/data/ocr/image_text_recognition_service.dart';
 import '../../domain/handwriting_conversion.dart';
 import 'handwriting_convert_sheet.dart';
 import 'link_picker_sheet.dart';
+import 'selection_actions.dart';
 import '../../../ai/presentation/ai_providers.dart';
 import '../../../audio/presentation/recording_notifier.dart';
 import '../../../../editor/import/ocr_layout.dart';
@@ -73,6 +74,12 @@ class SelectionBar extends ConsumerWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
+          // Things the selection says to do: open, email, call, map, plan.
+          SelectionActionChips(
+            pageKey: pageKey,
+            selectedIds: ids,
+            onOpenLink: onOpenLink,
+          ),
           IconButton(
             tooltip: 'Delete',
             icon: const Icon(Icons.delete_outline),
