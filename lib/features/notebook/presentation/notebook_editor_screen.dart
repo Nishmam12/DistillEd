@@ -260,11 +260,20 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     unawaited(_container.read(pageIndexQueueProvider).run());
     // Per-page scene and undo state would otherwise live until the app dies.
     _container.read(pageProvider(widget.notebookId).notifier).release();
-    // The search tint belongs to this visit. Cleared a moment later: a
-    // provider is not changed while the tree is being torn down.
+    // The search tint, reading mode and the canvas lock belong to this visit:
+    // the next notebook opens untinted, with its tools, moving freely. Cleared
+    // a moment later: a provider is not changed while the tree is being torn
+    // down.
     final container = _container;
-    Future.microtask(
-        () => container.read(searchHighlightProvider.notifier).state = null);
+    Future.microtask(() {
+      container.read(searchHighlightProvider.notifier).state = null;
+      final readingFrom = container.read(readingModeProvider);
+      if (readingFrom != null) {
+        container.read(readingModeProvider.notifier).state = null;
+        container.read(editorToolProvider.notifier).useTool(readingFrom);
+      }
+      container.read(canvasLockedProvider.notifier).state = false;
+    });
     // Leaving a note is when "back up after each note" runs. The backup waits
     // for this page's queued writes itself (see AppBackupLibrary.snapshot).
     if (_container.read(settingsProvider).autoBackup) {
@@ -353,6 +362,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final pageState = ref.watch(pageProvider(widget.notebookId));
+    // Reading mode hides the toolbars; see toggleReadingMode.
+    final reading = ref.watch(readingModeProvider) != null;
 
     // Opened from a search result: go to the page once the pages are in.
     final openAt = widget.initialPageIndex;
@@ -526,12 +537,14 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
               children: [
                 // Tool bar docked directly under the app bar, with a hairline
                 // divider separating it from the canvas below.
-                EditorBottomBar(
-                  pageKey: key,
-                  onImport: () => _showImportSheet(key),
-                  onOpenLink: (link) => unawaited(_followElementLink(link)),
-                ),
-                const Divider(height: 1, thickness: 1),
+                if (!reading) ...[
+                  EditorBottomBar(
+                    pageKey: key,
+                    onImport: () => _showImportSheet(key),
+                    onOpenLink: (link) => unawaited(_followElementLink(link)),
+                  ),
+                  const Divider(height: 1, thickness: 1),
+                ],
                 Expanded(
                   child: LayoutBuilder(builder: (context, constraints) {
                     // The page's size is latched here rather than inside the
@@ -593,15 +606,26 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                         // Zoom level and the universal colour palette, both
                         // top-right under the toolbar; tap the pill to reset
                         // the view, tap the swatch to open the colour grid.
-                        const Positioned(
+                        Positioned(
                           right: 16,
                           top: 12,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              ZoomPill(),
-                              SizedBox(height: 8),
-                              UniversalColorPalette(),
+                              const ZoomPill(),
+                              if (!reading) ...const [
+                                SizedBox(height: 8),
+                                UniversalColorPalette(),
+                              ] else ...[
+                                const SizedBox(height: 8),
+                                ActionChip(
+                                  key: const ValueKey('exitReading'),
+                                  avatar: const Icon(Icons.edit_outlined,
+                                      size: 16),
+                                  label: const Text('Done reading'),
+                                  onPressed: () => toggleReadingMode(ref),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -609,15 +633,16 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                         // rather than sitting in the toolbar's own layout, so
                         // opening/closing it never resizes (and so never
                         // shifts) the page underneath a mid-stroke drawing.
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          right: 8,
-                          child: Align(
-                            alignment: Alignment.topLeft,
-                            child: EditorToolOptionsOverlay(pageKey: key),
+                        if (!reading)
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            right: 8,
+                            child: Align(
+                              alignment: Alignment.topLeft,
+                              child: EditorToolOptionsOverlay(pageKey: key),
+                            ),
                           ),
-                        ),
                         if (_placing case final placing?
                             when placing.key.pageId == page.id)
                           Positioned(

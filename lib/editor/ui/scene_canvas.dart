@@ -634,7 +634,8 @@ class _SceneCanvasState extends ConsumerState<SceneCanvas>
         onPointerMove: _onMove,
         onPointerUp: _onUp,
         onStrokeCancel: _cancel,
-        onViewportUpdate: _onViewportUpdate,
+        onViewportUpdate:
+            ref.watch(canvasLockedProvider) ? null : _onViewportUpdate,
         child: ClipRect(
           child: Stack(
             fit: StackFit.expand,

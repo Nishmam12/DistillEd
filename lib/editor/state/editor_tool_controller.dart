@@ -7,6 +7,7 @@
 // last pen ([EditorToolState.penMemory]), so switching kind never turns a
 // ballpoint into a yellow 18 px one.
 
+import 'package:flutter_riverpod/flutter_riverpod.dart' show WidgetRef;
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../domain/model/scene_element.dart';
@@ -348,3 +349,26 @@ final editorToolProvider =
 /// The eyedropper is armed: the next touch on the page picks a colour rather
 /// than drawing. Kept out of the tool state, which is remembered.
 final eyedropperProvider = StateProvider<bool>((ref) => false);
+
+/// Lock canvas: nothing pans or zooms the page, so a resting hand cannot
+/// move it. Pages still turn with the page buttons. For this session.
+final canvasLockedProvider = StateProvider<bool>((ref) => false);
+
+/// Reading mode: the toolbars are hidden and touches only scroll and follow
+/// links (the hand tool). Holds the tool to go back to; null when not reading.
+final readingModeProvider = StateProvider<EditorTool?>((ref) => null);
+
+/// Turns reading mode on or off, putting the student's tool back after.
+void toggleReadingMode(WidgetRef ref) {
+  final tools = ref.read(editorToolProvider.notifier);
+  final previous = ref.read(readingModeProvider);
+  if (previous == null) {
+    ref.read(readingModeProvider.notifier).state =
+        ref.read(editorToolProvider).tool;
+    tools.useTool(EditorTool.hand);
+  } else {
+    ref.read(readingModeProvider.notifier).state = null;
+    tools.useTool(previous);
+  }
+}
+

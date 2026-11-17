@@ -27,6 +27,7 @@ import '../../../ai/presentation/ai_providers.dart'
 import '../../../../core/providers/settings_provider.dart';
 import '../../../home/presentation/home_notifier.dart';
 import '../../../../editor/state/clipboard_service.dart';
+import '../../../../editor/state/editor_tool_controller.dart';
 import '../../../../editor/state/history_controller.dart';
 import '../../../../editor/state/page_notifier.dart';
 import '../../../../editor/state/scene_controller.dart';
@@ -82,6 +83,10 @@ class EditorAppBarActions extends ConsumerWidget {
             onSummarize?.call();
           case 'index':
             onIndexNotebook?.call();
+          case 'lock':
+            ref.read(canvasLockedProvider.notifier).update((v) => !v);
+          case 'reading':
+            toggleReadingMode(ref);
           case 'paste':
             _paste(ref);
           case 'library':
@@ -136,6 +141,17 @@ class EditorAppBarActions extends ConsumerWidget {
           ),
         if (onChangeBackground != null || onSummarize != null)
           const PopupMenuDivider(),
+        CheckedPopupMenuItem(
+          value: 'lock',
+          checked: ref.read(canvasLockedProvider),
+          child: const Text('Lock canvas'),
+        ),
+        CheckedPopupMenuItem(
+          value: 'reading',
+          checked: ref.read(readingModeProvider) != null,
+          child: const Text('Reading mode'),
+        ),
+        const PopupMenuDivider(),
         const PopupMenuItem(value: 'paste', child: Text('Paste')),
         const PopupMenuItem(value: 'library', child: Text('Element library…')),
         const PopupMenuDivider(),
