@@ -29,6 +29,45 @@ Commits: <first>..<last>
 ## Push log
 
 ### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `6e3d2b7`..`c88fc0c` (5 commits), plus this changelog commit
+
+**What changed** (phase 4 of `docs/COMPETITOR_UPGRADE_PLAN.md`):
+- **Action chips.** Select handwriting or a text box and the selection bar
+  starts with chips for what it says (ML Kit on the device): Open a web
+  address (asks first), Email, Call, Map, "Add 3 Dec to study plan". A
+  date added this way shows among the study planner's exam dates, with a
+  remove button.
+- **Solve.** Selected handwriting gets a calculator button: the sum is read
+  and "= answer" is written beside it in the same ink. Two messages: no
+  sum found, out of range (e.g. dividing by zero).
+- **Suggested titles and tags.** Editing a note's title shows up to three
+  suggestions beside it; the tags dialog has "Suggested from this note".
+  From the notebook's key concepts and repeated words; nothing is saved
+  unless picked.
+- **Study recipes** in Ask: /cornell, /flashcards, /key-terms,
+  /new-to-this run over this page, this PDF or the notebook ("/flashcards
+  enzymes" adds a focus). /recipe name what to do saves your own,
+  /recipes lists them, /recipe remove name drops one. Same answer path as
+  a question, so the model picker and cloud send prompt still apply.
+- **"What the tutor knows about you"** in Settings: a short note about
+  yourself, preferred level and kind of explanation, and the concepts you
+  find tricky, each with Forget.
+- **Fix:** messages in the floating Ask panel scroll instead of
+  overflowing.
+
+**What you need to do:** pull. No database change and no new dependency.
+Recipes, the tutor note and dates added to the plan are kept in
+shared_preferences, so they don't travel in backups.
+
+**Tested:** `flutter analyze` clean (no errors or warnings); full suite
+3,627 passing. On the Pixel Tablet emulator: action chips, the planner
+date, the "Open this link?" prompt, Solve (2+3 = 5), a suggested title,
+/recipes, and the tutor note being kept. Not tried on a device: a recipe's
+actual answer (the emulator has no on-device model; covered by a unit
+test), the suggested-tags row, and Forget (no quiz history; covered by a
+real-database test).
+
+### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
 Commits: `d76552d`..`01d9409` (2 commits), plus this changelog commit
 
 **What changed** (phase 3 items 5 and 6 of `docs/COMPETITOR_UPGRADE_PLAN.md`;
