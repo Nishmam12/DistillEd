@@ -27,6 +27,7 @@ import '../../../ai/presentation/ai_providers.dart'
 import '../../../../core/providers/settings_provider.dart';
 import '../../../home/presentation/home_notifier.dart';
 import '../../../../editor/state/clipboard_service.dart';
+import 'toolbar_customiser_sheet.dart';
 import '../../../../editor/state/editor_tool_controller.dart';
 import '../../../../editor/state/history_controller.dart';
 import '../../../../editor/state/page_notifier.dart';
@@ -87,6 +88,8 @@ class EditorAppBarActions extends ConsumerWidget {
             ref.read(canvasLockedProvider.notifier).update((v) => !v);
           case 'reading':
             toggleReadingMode(ref);
+          case 'toolbar':
+            showToolbarCustomiser(context);
           case 'paste':
             _paste(ref);
           case 'library':
@@ -151,6 +154,8 @@ class EditorAppBarActions extends ConsumerWidget {
           checked: ref.read(readingModeProvider) != null,
           child: const Text('Reading mode'),
         ),
+        const PopupMenuItem(
+            value: 'toolbar', child: Text('Customise toolbar…')),
         const PopupMenuDivider(),
         const PopupMenuItem(value: 'paste', child: Text('Paste')),
         const PopupMenuItem(value: 'library', child: Text('Element library…')),

@@ -15,6 +15,7 @@ import '../../../../editor/state/editor_tool_controller.dart';
 import '../../../../editor/state/pen_presets.dart';
 import '../../../../editor/state/scene_controller.dart';
 import '../../../../editor/state/selection_controller.dart';
+import '../../../../editor/state/toolbar_layout.dart';
 import 'selection_bar.dart';
 
 /// Below this width the tool row packs its buttons closer and shows a
@@ -95,26 +96,30 @@ class _EditorBottomBarState extends ConsumerState<EditorBottomBar> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      for (final (t, icon) in kEditorTools) ...[
-                        if (t == EditorTool.pen)
-                          _PenToolButton(
-                            state: tool,
-                            onTap: () => toolCtl.setTool(t),
-                          )
-                        else
-                          _ToolIconButton(
-                            tool: t,
-                            icon: icon,
-                            state: tool,
-                            onTap: () => toolCtl.setTool(t),
-                          ),
-                        // The arrow tool rides right beside the general shape
-                        // tool it's a variant of, rather than off at the end
-                        // near Import.
-                        if (t == EditorTool.shape) _ArrowToolButton(state: tool),
-                        // Saved pens ride beside the pen they set up.
-                        if (t == EditorTool.pen) _PenPresetsRow(state: tool),
-                      ],
+                      // The tools the student keeps on the bar, in their
+                      // order (see toolbar_layout.dart).
+                      for (final id in ref.watch(toolbarLayoutProvider).shown)
+                        if (id == 'arrow')
+                          _ArrowToolButton(state: tool)
+                        else if (kEditorTools
+                                .where((e) => e.$1.name == id)
+                                .firstOrNull
+                            case (final t, final icon)) ...[
+                          if (t == EditorTool.pen)
+                            _PenToolButton(
+                              state: tool,
+                              onTap: () => toolCtl.setTool(t),
+                            )
+                          else
+                            _ToolIconButton(
+                              tool: t,
+                              icon: icon,
+                              state: tool,
+                              onTap: () => toolCtl.setTool(t),
+                            ),
+                          // Saved pens ride beside the pen they set up.
+                          if (t == EditorTool.pen) _PenPresetsRow(state: tool),
+                        ],
                       // One clear switch for "does a finger draw?". The same
                       // setting as Settings > Pen, so the two always agree.
                       IconButton(
