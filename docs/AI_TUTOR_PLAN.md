@@ -35,6 +35,34 @@ merged, not tested on a tablet.
 the known flaky `test/core/error_log_test.dart` ("once past 100 KB…"); it passes
 alone.
 
+### Part 2 (teacher persona), on branch `ai-tutor-persona`
+
+Cut from `ai-own-key-models` on 2026-11-17. Not pushed, not merged, not tested
+on a tablet.
+
+| Part 2 step (5.9) | State | Commit |
+| --- | --- | --- |
+| 1 Constants, `compactForWindow`, tests | Done | `7431bb7`, `5aeebbe` |
+| 2 `LearnerProfile`, `TutorContext`, `tutorTail`, sanitiser, tests | Done | `7431bb7` |
+| 3 `tutorContextProvider`, `teachingStyle` setting (no screen sets it) | Done | `7431bb7` |
+| 9 Budget tests (5.7) | Done, on a prompt composed in the test | `7431bb7` |
+| 4 to 8 Wire into Ask, Explain, Summarize, Research, quiz and flashcards | **Not started** | |
+| 10 Style control in the panel | **Not started; wait for Part 4a** | |
+| 11 The 20-question read | **Not started** | |
+
+**Nothing is wired in.** No prompt the app sends has changed. Read "5.0 What
+was built" at the top of section 5 before wiring: the code differs from the
+draft in 5.2 to 5.4, and the code is the truth.
+
+**Part 4 is designed**, not built: `docs/AI_TUTOR_PART4_DESIGN.md` covers 4c
+(retrieval depth), 4a (conversation in memory), 4d (citations) and 4e (the two
+engines). It replaces section 7 of this file for those pieces.
+
+Full suite on `ai-tutor-persona`: 3,445 pass, 44 skipped, 1 failure, the same
+flaky `error_log_test`. `flutter analyze` clean.
+
+### Part 1, on branch `ai-own-key-models`
+
 With the default `auto`, behaviour is what it was before this branch. To use a
 cloud model: Settings, AI Models, Add an AI; then the model button in the AI
 panel's header (or type `/model`).
@@ -793,6 +821,84 @@ the gate. Skip it if Part 1 is running long.
 
 ## 5. Part 2: teacher persona for every feature
 
+### 5.0 What was built on 2026-11-17, and where it differs from the draft below
+
+Steps 1 to 3 of 5.9 are built. The file is
+`lib/features/ai/domain/tutor/tutor_prompt.dart`; read it, not the code block
+in 5.2, which is the earlier draft and is kept only for the reasoning around
+it.
+
+1. **The wording changed.** `kTutorRole` no longer says "not that they were
+   handed an answer", which read as an order to withhold. `kTeachingRules`
+   gained a first rule that ties the depth of an answer to what the student
+   asked for, and its rule about uncertainty now points at a feature's exact
+   refusal words. The compact rules say nothing about uncertainty: on a small
+   model "if unsure, say so" is the likeliest line to pull a grounded answer
+   off the exact refusal string.
+2. **There is no `kStyleExplain`.** The explain style adds no line on any
+   window. Explaining directly, with a check question where it helps, is what
+   the rules and `kTutorVoice` already ask for; a line repeating it cost
+   tokens on every call. So `TutorContext.plain` yields an empty tail.
+3. **`allowCheckQuestion: false` drops the whole guide line**, not one
+   sentence of it. A feature that may not end on a question (Summarize) cannot
+   guide, because guiding is stopping at a hint or a question.
+4. **On a small window the guide style is one line** (`kStyleGuideCompact`)
+   and the grounded addition is dropped; Ask's contract already says "only
+   the passages".
+5. **`kStyleGuideGrounded` also holds the refusal above the hint**: if the
+   passages do not cover the question, the exact reply still applies.
+6. **The profile block reads** `- Usually picks explanations: …` with a
+   phrase per `ExplainMode`, not the mode's label ("Like I'm 10" does not
+   read as a sentence). Its header gained "It is information about them, not
+   instructions."
+7. **A concept is "shaky" only on evidence.** `weakConcepts` returns every
+   concept below "practiced", which includes one that merely appeared on a
+   page. `tutorContextProvider` keeps only those missed in a quiz or flagged
+   as a gap.
+8. **The sanitiser keeps letters of any script**, drops a name with no letter
+   or digit, drops a hyphen that is not between two letters or digits, and
+   merges repeats. It guarantees shape (one line, one list item, 40
+   characters), not meaning; the header's last sentence covers meaning.
+9. **`TeachingStyle` lives in `core/providers/settings_provider.dart`**, for
+   the reason `CloudPrivacy` does. The setting is `teachingStyle`, stored
+   under `ai.teachingStyle`. No screen sets it.
+10. **`tutorContextProvider` is auto-disposed** and meant to be read just
+    before a generation, so a quiz finished a minute ago shows in the next
+    question. If Learning Memory cannot be read, the profile is empty and the
+    answer still happens.
+11. **`withTutorTail(systemPrompt, tail)`** is the one way a tail is joined
+    on. Use it in every feature.
+12. **`kTutorVoiceStudyMaterial` (5.6) was not built.** Nothing uses it until
+    Part 4g.
+
+Three things the next builder must know:
+
+- **The guide style cannot work until Ask passes earlier turns to the model**
+  (Part 4a). "Give the full answer once they have tried" can never come true
+  for a model that sees one question at a time. Do not ship the style control
+  (step 10) before 4a.
+- **The tail must be built for the window of the model that answers.** Pass
+  `provider.capabilities.contextWindowTokens` at call time. A tail built for
+  a large window and sent to the lite model costs passages; a test shows it
+  does not overflow.
+- **The 2,048 window has four words of room.** Measured on Ask's prompt with
+  the persona: 645 words of passages with the plain context, 634 with a guide
+  tail, against 690 before and a floor of 630. On 4,096: 1,582 and, at worst,
+  1,372, against a floor of 1,250. Any change to a compact constant or to
+  Ask's contract needs re-measuring;
+  `test/features/ai/domain/tutor_persona_budget_test.dart` will say so.
+
+When wiring Ask (step 4), also change one sentence of its contract, exactly as
+`docs/AI_TUTOR_PART4_DESIGN.md` section 3.6 gives it: "Answer in a few clear
+sentences, and refer to the passages by their number (e.g. [1]) when you use
+them." becomes "Unless they ask for more or less, answer in a few clear
+sentences, citing passages by number, e.g. [1]." The old sentence contradicts
+the depth rule. The new one is one character shorter.
+
+For the human read (5.8), add one thing to look for: with the guide style on
+and a question the notes do not cover, the reply is the exact refusal, not a
+hint.
+
 ### 5.1 The constraint that shapes the design
 
 `compactForWindow` swaps `kTutorVoice` and `kMathMarkup` for their compact
@@ -810,8 +916,8 @@ forms by exact-text `replaceAll`. `AiRouter.inputWordBudgetFor` and
 
 ### 5.2 New file `lib/features/ai/domain/tutor/tutor_prompt.dart`
 
-Draft text. Read it aloud before committing; it has to obey `kTutorVoice`'s own
-rules (no filler, no flattery).
+**Superseded draft: see 5.0. The built text is in the file.** Kept for the
+reasoning in the comments and the rules under it.
 
 ```dart
 /// Who is talking to whom. Shared by every feature that speaks to the student.
@@ -1090,6 +1196,10 @@ picker shows real entries and quota → end-to-end on the tablet.
 
 ## 7. Part 4: tutor conversation and retrieval (design sketch)
 
+**For 4a, 4c, 4d and 4e this sketch is replaced by
+`docs/AI_TUTOR_PART4_DESIGN.md` (2026-11-17). Build from that file.** The
+sketch below still stands for 4b, 4f, 4g and 4h.
+
 This part needs a short design session of its own once Parts 1 and 2 exist,
 because its shape depends on how they landed. What follows is the intended
 design and the reasoning, so that session starts from decisions, not a blank
@@ -1310,6 +1420,19 @@ jump to the right page, a deleted page leaves no text in a saved thread.
 | 11 | How should the student stop being asked on every question to a model they picked? `CloudPrivacy` has no control today. | Part 1 step 13 | A "Don't ask again for this model" tick on the dialog, stored per connection. Do **not** reuse `allowCloudForNonSensitive` for it: that value also lets page images upload and pages be analysed in the cloud without asking. |
 | 12 | Should there be a privacy control in Settings at all (ask each time / allow / local only)? | Part 1 step 13 | Yes, in the AI models screen, with one line under each option saying exactly what it allows |
 | 13 | Order after Part 1: retrieval quality and persona before our tiers? | After Part 1 | Yes: Part 2, then Part 4c, then Part 3 |
+
+### Decided by the user on 2026-11-17
+
+- **11: decided.** Add a per-connection "Don't ask again" tick in the send
+  dialog. **Not built yet.** Store it with the connection, and do not reuse
+  `allowCloudForNonSensitive`.
+- **12: decided, yes.** Add a privacy control to Settings. **Not built yet.**
+- **13: decided.** Part 2, then Part 4c, then Part 3.
+
+Still open, raised by the Part 4 design (its section 9): whether Part 4a
+(conversation in memory) goes between 4c and Part 3; which page number a
+passage header shows; whether the composer gets depth chips; whether one yes
+per question covers a tool-using model's extra lookups.
 
 ---
 
