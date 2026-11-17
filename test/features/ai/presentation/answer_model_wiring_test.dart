@@ -13,13 +13,29 @@ import 'package:margo/features/ai/domain/ai_provider.dart';
 import 'package:margo/features/ai/domain/catalog/ai_model_entry.dart';
 import 'package:margo/features/ai/domain/catalog/answer_route.dart';
 import 'package:margo/features/ai/domain/catalog/user_connection.dart';
+import 'package:margo/features/ai/domain/features/researcher.dart';
+import 'package:margo/features/ai/domain/tools/tool.dart';
+import 'package:margo/features/ai/domain/tools/tool_generation_event.dart';
+import 'package:margo/features/ai/presentation/research_notifier.dart';
 import 'package:margo/features/ai/presentation/ai_providers.dart';
 
-class _FakeProvider implements AiProvider {
+class _FakeProvider implements AiProvider, ToolCallingClient {
   final String name;
   final int window;
   final calls = <String>[];
+  final toolCalls = <List<String>>[];
   _FakeProvider(this.name, this.window);
+
+  @override
+  Stream<ToolGenerationEvent> generateWithTools({
+    required String prompt,
+    String? systemPrompt,
+    List<AiMessage>? history,
+    required List<Tool> tools,
+  }) async* {
+    toolCalls.add([for (final tool in tools) tool.name]);
+    yield ToolTextChunk('researched by $name');
+  }
 
   @override
   AiCapabilities get capabilities => AiCapabilities(
@@ -223,6 +239,68 @@ void main() {
 
       expect(await explain.generate(prompt: 'entropy').join(), 'from local');
       expect(cloud.calls, isEmpty);
+    });
+  });
+
+  group('Research', () {
+    Future<List<ResearchEvent>> research() =>
+        container.read(researcherProvider).research('a question').toList();
+
+    test('runs on a picked model that supports tools', () async {
+      await addConnectionAndPick(_bigId);
+
+      final events = await research();
+
+      expect((events.single as ResearchTextChunk).text, 'researched by cloud');
+    });
+
+    test('says so plainly when the picked model cannot use tools', () async {
+      await addConnectionAndPick('user:c1:plain');
+
+      await expectLater(
+        research(),
+        throwsA(
+          isA<AiUnavailableException>().having(
+            (e) => e.message,
+            'message',
+            contains("can't use tools"),
+          ),
+        ),
+      );
+      expect(cloud.toolCalls, isEmpty);
+    });
+
+    test('is not offered web search while Margo cloud is not available, since '
+        'web search goes through it', () async {
+      await addConnectionAndPick(_bigId);
+
+      await research();
+
+      expect(cloud.toolCalls.single, isNot(contains('web_search')));
+      expect(cloud.toolCalls.single, contains('calculator'));
+    });
+
+    test('with the on-device model picked, Research says it needs the cloud',
+        () async {
+      await addConnectionAndPick(kAnswerLocal);
+      final notifier = container.read(researchNotifierProvider.notifier);
+
+      await notifier.ask('a question');
+
+      expect(container.read(researchNotifierProvider),
+          isA<ResearchUnavailable>());
+    });
+
+    test('its send-this step names the picked model', () async {
+      await addConnectionAndPick(_bigId);
+      final notifier = container.read(researchNotifierProvider.notifier);
+
+      await notifier.ask('a question');
+
+      final confirm =
+          container.read(researchNotifierProvider) as ResearchConfirmCloud;
+      expect(confirm.modelName, 'My AI · Big');
+      expect(confirm.host, 'api.example.com');
     });
   });
 

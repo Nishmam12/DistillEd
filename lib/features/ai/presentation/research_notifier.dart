@@ -37,7 +37,16 @@ class ResearchComposing extends ResearchState {
 /// every Research request needs this gate, since there is no local route.
 class ResearchConfirmCloud extends ResearchState {
   final bool isFirstEver;
-  const ResearchConfirmCloud({required this.isFirstEver});
+
+  /// The cloud model the student picked, and where it is. Null when no model
+  /// is picked and the question goes to Margo's own cloud.
+  final String? modelName;
+  final String? host;
+  const ResearchConfirmCloud({
+    required this.isFirstEver,
+    this.modelName,
+    this.host,
+  });
 }
 
 class ResearchStreaming extends ResearchState {
@@ -71,11 +80,21 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
   final bool Function() _hasSeenFirstCloudCall;
   final Future<void> Function() _markFirstCloudCallSeen;
 
+  /// Whether this question has to wait for a yes. Null always asks, which is
+  /// what Research did before there was a model picker; with a model the
+  /// student picked and has already agreed to, it can say no.
+  final bool Function()? _needsConfirm;
+
+  /// The cloud model the student picked, for the wording of the question.
+  final ({String name, String? host})? Function()? _pickedModel;
+
   ResearchNotifier({
     required this._researcher,
     required this._privacy,
     bool Function()? hasSeenFirstCloudCall,
     Future<void> Function()? markFirstCloudCallSeen,
+    this._needsConfirm,
+    this._pickedModel,
   })  : _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
         _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
         super(const ResearchIdle());
@@ -104,8 +123,13 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
       return;
     }
 
-    if (!cloudConfirmed) {
-      state = ResearchConfirmCloud(isFirstEver: !_hasSeenFirstCloudCall());
+    if (!cloudConfirmed && (_needsConfirm?.call() ?? true)) {
+      final picked = _pickedModel?.call();
+      state = ResearchConfirmCloud(
+        isFirstEver: !_hasSeenFirstCloudCall(),
+        modelName: picked?.name,
+        host: picked?.host,
+      );
       return;
     }
 

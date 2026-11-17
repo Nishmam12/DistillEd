@@ -96,6 +96,7 @@ import '../domain/study_planner/note_deadlines.dart';
 import '../domain/study_planner/study_plan.dart';
 import '../domain/tools/calculator_tool.dart';
 import '../domain/tools/tool.dart';
+import '../domain/tools/tool_generation_event.dart';
 import '../data/tools/web_search_tool.dart';
 import '../data/tools/wikipedia_tool.dart';
 import 'ask_notes_notifier.dart';
@@ -595,12 +596,16 @@ final toolsProvider = Provider<List<Tool>>(
       ),
       isCloudAllowed: () => _mayUseCloud(ref),
     ),
-    WebSearchTool(
-      baseUrl: cloudGatewayBaseUrl,
-      deviceKey: sessionDeviceKey,
-      dio: gatewayDio(cloudGatewayBaseUrl),
-      isCloudAllowed: () => _mayUseCloud(ref),
-    ),
+    // Web search goes through Margo's gateway, so it is offered only while the
+    // gateway can answer. Offering it otherwise makes the model spend a round
+    // trip on a tool that can only fail.
+    if (ref.watch(margoCloudAvailableProvider))
+      WebSearchTool(
+        baseUrl: cloudGatewayBaseUrl,
+        deviceKey: sessionDeviceKey,
+        dio: gatewayDio(cloudGatewayBaseUrl),
+        isCloudAllowed: () => _mayUseCloud(ref),
+      ),
   ],
 );
 
@@ -609,7 +614,11 @@ final toolsProvider = Provider<List<Tool>>(
 /// (see `researcher.dart`'s header for why on-device is skipped this loop).
 final researcherProvider = Provider<Researcher>(
   (ref) => Researcher(
-    client: ref.watch(cloudGatewayMidProvider),
+    client: _PickedToolsClient(
+      ref.watch(answerRouteProvider),
+      ref.watch(cloudProviderForProvider),
+      ref.watch(cloudGatewayMidProvider),
+    ),
     tools: ref.watch(toolsProvider),
   ),
 );
@@ -622,15 +631,39 @@ final researchNotifierProvider =
       return ResearchNotifier(
         researcher: ref.watch(researcherProvider),
         // Cloud switched off (header toggle / on-device mode) reads as localOnly:
-        // no cloud offer is made at all.
-        privacy: () {
-          final s = ref.read(settingsProvider);
-          return s.cloudAiEnabled ? s.cloudPrivacy : CloudPrivacy.localOnly;
-        },
+        // no cloud offer is made at all. So does picking the on-device model:
+        // Research has no on-device route, and must not go to the cloud for a
+        // student who chose to stay on the device.
+        privacy: () => ref.read(answerRouteProvider)() is LocalOnly
+            ? CloudPrivacy.localOnly
+            : ref.read(settingsProvider).cloudPrivacy,
         hasSeenFirstCloudCall: () =>
             ref.read(settingsProvider).hasSeenFirstCloudCall,
-        markFirstCloudCallSeen: () =>
-            ref.read(settingsProvider.notifier).markFirstCloudCallSeen(),
+        // A yes on Research's step counts for the picked model everywhere.
+        markFirstCloudCallSeen: () {
+          final route = ref.read(answerRouteProvider)();
+          return route is CloudDirect
+              ? ref
+                    .read(cloudSendGateProvider.notifier)
+                    .markConsented(route.model)
+              : ref.read(settingsProvider.notifier).markFirstCloudCallSeen();
+        },
+        // With no model picked Research asks every time, as before. A model
+        // the student picked is asked about only until they have agreed to it.
+        needsConfirm: () {
+          final route = ref.read(answerRouteProvider)();
+          return route is! CloudDirect ||
+              ref
+                  .read(cloudSendGateProvider.notifier)
+                  .needsConfirmation(route.model);
+        },
+        pickedModel: () => switch (ref.read(answerRouteProvider)()) {
+          CloudDirect(:final model) => (
+            name: model.displayName,
+            host: model.host,
+          ),
+          LocalOnly() || LocalFirst() => null,
+        },
       );
     });
 

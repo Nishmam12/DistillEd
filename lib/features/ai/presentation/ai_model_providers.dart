@@ -127,6 +127,60 @@ final answerAiProvider = Provider<AiProvider>(
   ),
 );
 
+/// Whether Margo's own cloud can answer right now. False until the gateway
+/// serves a catalogue; anything that goes through the gateway (web search)
+/// follows this.
+final margoCloudAvailableProvider = Provider<bool>(
+  (ref) => ref.watch(margoCatalogProvider).any((entry) => entry.pickable),
+);
+
+/// The model Research talks to, decided per question.
+///
+/// Research needs a model that can call tools. A cloud model the student picked
+/// is used when it can; when it cannot, Research says so instead of quietly
+/// sending the question to a different service. With nothing picked it goes to
+/// Margo's cloud, as it did before there was a picker.
+class _PickedToolsClient implements ToolCallingClient {
+  final AnswerRoute Function() _route;
+  final AiProvider Function(AiModelEntry) _cloudFor;
+  final ToolCallingClient _margo;
+
+  const _PickedToolsClient(this._route, this._cloudFor, this._margo);
+
+  @override
+  Stream<ToolGenerationEvent> generateWithTools({
+    required String prompt,
+    String? systemPrompt,
+    List<AiMessage>? history,
+    required List<Tool> tools,
+  }) {
+    final route = _route();
+    if (route is! CloudDirect) {
+      return _margo.generateWithTools(
+        prompt: prompt,
+        systemPrompt: systemPrompt,
+        history: history,
+        tools: tools,
+      );
+    }
+    final provider = _cloudFor(route.model);
+    if (!route.model.supportsTools || provider is! ToolCallingClient) {
+      return Stream.error(
+        AiUnavailableException(
+          "${route.model.displayName} can't use tools, which Research needs. "
+          'Pick another model for Research.',
+        ),
+      );
+    }
+    return (provider as ToolCallingClient).generateWithTools(
+      prompt: prompt,
+      systemPrompt: systemPrompt,
+      history: history,
+      tools: tools,
+    );
+  }
+}
+
 /// Whether the model that would answer now can call tools.
 final answerSupportsToolsProvider = Provider<bool Function()>(
   (ref) => () => switch (ref.read(answerRouteProvider)()) {

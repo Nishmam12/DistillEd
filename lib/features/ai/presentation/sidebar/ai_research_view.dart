@@ -388,14 +388,25 @@ class _ConfirmCloudBody extends ConsumerWidget {
             "you'll see this prompt every time unless you change it in "
             'Settings.'
         : 'This question would be sent to the cloud to answer.';
+    // A model the student picked themselves: say which, and whose servers.
+    final picked = state.modelName;
+    final destination =
+        (state.host ?? '').isEmpty ? 'a cloud service' : state.host!;
+    final pickedSubtitle = state.isFirstEver
+        ? 'This question would go to $destination to be answered. That text '
+            'leaves this device. Nothing else about your notebook does, and '
+            'you can switch cloud AI off at any time.'
+        : 'This question would go to $destination.';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _Centered(
           icon: Icons.cloud_outlined,
-          title: 'Use the cloud for this?',
-          subtitle: subtitle,
+          title: picked == null
+              ? 'Use the cloud for this?'
+              : 'Send this to $picked?',
+          subtitle: picked == null ? subtitle : pickedSubtitle,
         ),
         const SizedBox(height: 14),
         Row(
