@@ -29,6 +29,7 @@ import '../quiz_notifier.dart';
 import '../quiz/quiz_sheet.dart';
 import '../research_notifier.dart';
 import '../widgets/ai_scope_picker.dart';
+import '../widgets/model_picker_sheet.dart';
 import 'ai_ask_view.dart';
 import 'ai_context_view.dart';
 import 'ai_explain_view.dart';
@@ -709,6 +710,7 @@ class _SidebarHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          const AnswerModelButton(),
           const CloudModelToggle(),
           if (onToggleFloating case final toggle?)
             IconButton(

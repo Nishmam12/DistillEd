@@ -34,6 +34,22 @@ void main() {
     });
   });
 
+  group('/model', () {
+    test('opens the model picker', () {
+      expect(parseChatCommand('/model'), isA<ModelPickerCommand>());
+      expect(parseChatCommand('  /MODEL  '), isA<ModelPickerCommand>());
+    });
+
+    test('takes no argument, so a typo is reported instead of guessed at', () {
+      expect(parseChatCommand('/model gpt'), isA<UnknownSlashCommand>());
+    });
+
+    test('a question about models is still a question', () {
+      expect(parseChatCommand('what is the Bohr model'), isNull);
+      expect(parseChatCommand('model'), isNull);
+    });
+  });
+
   group('unknown slash commands', () {
     test('are recognised as commands so they are not asked as questions', () {
       // Sending "/clod on" to the model would produce a confident answer about

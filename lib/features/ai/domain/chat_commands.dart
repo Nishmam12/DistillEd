@@ -29,6 +29,11 @@ class CloudModelCommand extends ChatCommand {
   const CloudModelCommand(this.enable);
 }
 
+/// Open the model picker (`/model`), to choose who answers.
+class ModelPickerCommand extends ChatCommand {
+  const ModelPickerCommand();
+}
+
 /// A `/`-prefixed word that isn't a command we know. Recognised so the app can
 /// say so, rather than sending `/clod on` to the model as a question.
 class UnknownSlashCommand extends ChatCommand {
@@ -50,6 +55,13 @@ ChatCommand? _parseSlash(String input) {
   final name = parts.first.toLowerCase();
   final argument = parts.length > 1 ? parts[1].toLowerCase() : '';
 
+  // Exact, like every slash command: `/model` and nothing after it. A model is
+  // chosen from the list the picker shows, not by typing a name here.
+  if (name == 'model') {
+    return argument.isEmpty
+        ? const ModelPickerCommand()
+        : UnknownSlashCommand(input);
+  }
   if (name != 'cloud') return UnknownSlashCommand(input);
 
   return switch (argument) {

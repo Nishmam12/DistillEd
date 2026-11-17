@@ -299,7 +299,15 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     switch (command) {
       case UnknownSlashCommand(:final raw):
         state = AskNotesNotice(
-            "I don't know the command \"$raw\". Try /cloud on or /cloud off.");
+            "I don't know the command \"$raw\". Try /cloud on, /cloud off "
+            'or /model.');
+
+      case ModelPickerCommand():
+        // The panel opens the picker itself when it sees this command; this is
+        // the reply for a surface that cannot.
+        state = const AskNotesNotice(
+            'Tap the model button at the top of the panel to choose who '
+            'answers.');
 
       case CloudModelCommand(:final enable):
         final read = _cloudEnabled;

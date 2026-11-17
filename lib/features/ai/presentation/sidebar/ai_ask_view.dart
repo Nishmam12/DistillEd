@@ -20,6 +20,7 @@ import '../../../audio/presentation/recording_notifier.dart';
 import '../../data/embeddings/embedder_spec.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/ai_scope.dart';
+import '../../domain/chat_commands.dart';
 import '../../domain/features/figure_qa.dart';
 import '../../domain/quality/ai_quality_guard.dart';
 import '../../domain/rag/rag_retriever.dart';
@@ -29,6 +30,7 @@ import '../widgets/ai_scope_picker.dart';
 import '../widgets/answer_tier_banner.dart';
 import '../widgets/math_text.dart';
 import '../widgets/model_download_progress.dart';
+import '../widgets/model_picker_sheet.dart';
 
 class AiAskView extends ConsumerStatefulWidget {
   /// Hands an answer to the editor's text-insertion path ("insert as note").
@@ -99,6 +101,13 @@ class _AiAskViewState extends ConsumerState<AiAskView> {
   Future<void> _submit() async {
     final q = _controller.text.trim();
     if (q.isEmpty || _submitting) return;
+    // `/model` is an instruction to the app, not a question: open the picker
+    // here, where there is a screen to open it on.
+    if (parseChatCommand(q) is ModelPickerCommand) {
+      _controller.clear();
+      await showModelPicker(context);
+      return;
+    }
     _submitting = true;
     try {
       await _resolveAndAsk(q);
