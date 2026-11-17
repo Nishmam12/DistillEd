@@ -46,6 +46,16 @@ class SelectionEditing {
     }
   }
 
+  /// [e] linking to [link] (`element_link.dart`; '' for none).
+  static SceneElement withLink(SceneElement e, String link) => switch (e) {
+        FreehandElement() => e.copyWith(link: link),
+        SceneShapeElement() => e.copyWith(link: link),
+        TextElement() => e.copyWith(link: link),
+        ImageElement() => e.copyWith(link: link),
+        FrameElement() => e.copyWith(link: link),
+        TapeElement() => e.copyWith(link: link),
+      };
+
   static SceneElement withGroup(SceneElement e, String groupId) {
     switch (e) {
       case FreehandElement():

@@ -93,6 +93,10 @@ class FakePageRepository implements PageRepository {
   @override
   Future<List<NotePage>> getPagesForNotebook(int notebookId) async =>
       List.of(pages);
+
+  @override
+  Future<NotePage?> getPage(int id) async =>
+      pages.where((p) => p.id == id).firstOrNull;
 }
 
 FreehandElement _stroke(String id, {int zOrder = 0, String groupId = ''}) {

@@ -109,4 +109,19 @@ class IsarSceneElementStore implements SceneElementStore {
       await _upsert(notebookId, pageId, elements);
     });
   }
+
+  @override
+  Future<Set<int>> pagesLinkingTo({
+    required int pageId,
+    required int notebookId,
+  }) async {
+    final pages = await _isar.sceneElementRecords
+        .filter()
+        .linkTargetEqualTo('page:$pageId')
+        .or()
+        .linkTargetEqualTo('notebook:$notebookId')
+        .pageIdProperty()
+        .findAll();
+    return pages.toSet()..remove(pageId);
+  }
 }

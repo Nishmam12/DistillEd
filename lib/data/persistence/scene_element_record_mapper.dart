@@ -22,7 +22,8 @@ class SceneElementRecordMapper {
       ..rotation = element.rotation
       ..opacity = element.opacity
       ..isLocked = element.isLocked
-      ..groupId = element.groupId;
+      ..groupId = element.groupId
+      ..linkTarget = element.link;
 
     switch (element) {
       case FreehandElement():
@@ -108,6 +109,7 @@ class SceneElementRecordMapper {
           opacity: r.opacity,
           isLocked: r.isLocked,
           groupId: r.groupId,
+          link: r.linkTarget,
           points: points,
           color: r.color,
           size: r.strokeWidth,
@@ -124,6 +126,7 @@ class SceneElementRecordMapper {
           opacity: r.opacity,
           isLocked: r.isLocked,
           groupId: r.groupId,
+          link: r.linkTarget,
           shapeType: r.shapeType,
           geometryData: List<double>.from(r.geometryData),
           color: r.color,
@@ -149,6 +152,7 @@ class SceneElementRecordMapper {
           opacity: r.opacity,
           isLocked: r.isLocked,
           groupId: r.groupId,
+          link: r.linkTarget,
           geometryData: List<double>.from(r.geometryData),
           text: r.text,
           color: r.color,
@@ -167,6 +171,7 @@ class SceneElementRecordMapper {
           opacity: r.opacity,
           isLocked: r.isLocked,
           groupId: r.groupId,
+          link: r.linkTarget,
           geometryData: List<double>.from(r.geometryData),
           relativeImagePath: r.relativeImagePath,
           sourceDescription: r.sourceDescription,
@@ -179,6 +184,7 @@ class SceneElementRecordMapper {
           opacity: r.opacity,
           isLocked: r.isLocked,
           groupId: r.groupId,
+          link: r.linkTarget,
           geometryData: List<double>.from(r.geometryData),
           name: r.text,
         );
@@ -190,6 +196,7 @@ class SceneElementRecordMapper {
           opacity: r.opacity,
           isLocked: r.isLocked,
           groupId: r.groupId,
+          link: r.linkTarget,
           geometryData: List<double>.from(r.geometryData),
           color: r.color,
           revealed: r.tapeRevealed,

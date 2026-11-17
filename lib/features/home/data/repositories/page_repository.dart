@@ -248,6 +248,9 @@ class PageRepository {
   }
 
   /// Returns all pages for [notebookId] sorted by pageIndex ascending.
+  /// The page with [id], or null when it no longer exists.
+  Future<NotePage?> getPage(int id) => _isar.notePages.get(id);
+
   Future<List<NotePage>> getPagesForNotebook(int notebookId) async {
     return _isar.notePages
         .filter()

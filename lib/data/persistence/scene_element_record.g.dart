@@ -90,97 +90,102 @@ const SceneElementRecordSchema = CollectionSchema(
       type: IsarType.byte,
       enumMap: _SceneElementRecordkindEnumValueMap,
     ),
-    r'notebookId': PropertySchema(
+    r'linkTarget': PropertySchema(
       id: 20,
+      name: r'linkTarget',
+      type: IsarType.string,
+    ),
+    r'notebookId': PropertySchema(
+      id: 21,
       name: r'notebookId',
       type: IsarType.long,
     ),
-    r'opacity': PropertySchema(id: 21, name: r'opacity', type: IsarType.double),
-    r'pageId': PropertySchema(id: 22, name: r'pageId', type: IsarType.long),
+    r'opacity': PropertySchema(id: 22, name: r'opacity', type: IsarType.double),
+    r'pageId': PropertySchema(id: 23, name: r'pageId', type: IsarType.long),
     r'penKind': PropertySchema(
-      id: 23,
+      id: 24,
       name: r'penKind',
       type: IsarType.byte,
       enumMap: _SceneElementRecordpenKindEnumValueMap,
     ),
     r'pointSim': PropertySchema(
-      id: 24,
+      id: 25,
       name: r'pointSim',
       type: IsarType.boolList,
     ),
-    r'pointT': PropertySchema(id: 25, name: r'pointT', type: IsarType.longList),
+    r'pointT': PropertySchema(id: 26, name: r'pointT', type: IsarType.longList),
     r'points': PropertySchema(
-      id: 26,
+      id: 27,
       name: r'points',
       type: IsarType.doubleList,
     ),
     r'recordingId': PropertySchema(
-      id: 27,
+      id: 28,
       name: r'recordingId',
       type: IsarType.long,
     ),
     r'relativeImagePath': PropertySchema(
-      id: 28,
+      id: 29,
       name: r'relativeImagePath',
       type: IsarType.string,
     ),
     r'rotation': PropertySchema(
-      id: 29,
+      id: 30,
       name: r'rotation',
       type: IsarType.double,
     ),
     r'roughness': PropertySchema(
-      id: 30,
+      id: 31,
       name: r'roughness',
       type: IsarType.double,
     ),
-    r'seed': PropertySchema(id: 31, name: r'seed', type: IsarType.long),
+    r'seed': PropertySchema(id: 32, name: r'seed', type: IsarType.long),
     r'shapeType': PropertySchema(
-      id: 32,
+      id: 33,
       name: r'shapeType',
       type: IsarType.byte,
       enumMap: _SceneElementRecordshapeTypeEnumValueMap,
     ),
     r'sourceDescription': PropertySchema(
-      id: 33,
+      id: 34,
       name: r'sourceDescription',
       type: IsarType.string,
     ),
     r'startArrowhead': PropertySchema(
-      id: 34,
+      id: 35,
       name: r'startArrowhead',
       type: IsarType.byte,
       enumMap: _SceneElementRecordstartArrowheadEnumValueMap,
     ),
     r'startBindingId': PropertySchema(
-      id: 35,
+      id: 36,
       name: r'startBindingId',
       type: IsarType.string,
     ),
     r'strokeStyle': PropertySchema(
-      id: 36,
+      id: 37,
       name: r'strokeStyle',
       type: IsarType.byte,
       enumMap: _SceneElementRecordstrokeStyleEnumValueMap,
     ),
     r'strokeWidth': PropertySchema(
-      id: 37,
+      id: 38,
       name: r'strokeWidth',
       type: IsarType.double,
     ),
     r'tapeRevealed': PropertySchema(
-      id: 38,
+      id: 39,
       name: r'tapeRevealed',
       type: IsarType.bool,
     ),
-    r'text': PropertySchema(id: 39, name: r'text', type: IsarType.string),
+    r'text': PropertySchema(id: 40, name: r'text', type: IsarType.string),
     r'textAlign': PropertySchema(
-      id: 40,
+      id: 41,
       name: r'textAlign',
       type: IsarType.byte,
       enumMap: _SceneElementRecordtextAlignEnumValueMap,
     ),
-    r'zOrder': PropertySchema(id: 41, name: r'zOrder', type: IsarType.long),
+    r'zOrder': PropertySchema(id: 42, name: r'zOrder', type: IsarType.long),
   },
 
   estimateSize: _sceneElementRecordEstimateSize,
@@ -237,6 +242,7 @@ int _sceneElementRecordEstimateSize(
   bytesCount += 3 + object.fontFamily.length * 3;
   bytesCount += 3 + object.geometryData.length * 8;
   bytesCount += 3 + object.groupId.length * 3;
+  bytesCount += 3 + object.linkTarget.length * 3;
   bytesCount += 3 + object.pointSim.length;
   bytesCount += 3 + object.pointT.length * 8;
   bytesCount += 3 + object.points.length * 8;
@@ -273,28 +279,29 @@ void _sceneElementRecordSerialize(
   writer.writeBool(offsets[17], object.isItalic);
   writer.writeBool(offsets[18], object.isLocked);
   writer.writeByte(offsets[19], object.kind.index);
-  writer.writeLong(offsets[20], object.notebookId);
-  writer.writeDouble(offsets[21], object.opacity);
-  writer.writeLong(offsets[22], object.pageId);
-  writer.writeByte(offsets[23], object.penKind.index);
-  writer.writeBoolList(offsets[24], object.pointSim);
-  writer.writeLongList(offsets[25], object.pointT);
-  writer.writeDoubleList(offsets[26], object.points);
-  writer.writeLong(offsets[27], object.recordingId);
-  writer.writeString(offsets[28], object.relativeImagePath);
-  writer.writeDouble(offsets[29], object.rotation);
-  writer.writeDouble(offsets[30], object.roughness);
-  writer.writeLong(offsets[31], object.seed);
-  writer.writeByte(offsets[32], object.shapeType.index);
-  writer.writeString(offsets[33], object.sourceDescription);
-  writer.writeByte(offsets[34], object.startArrowhead.index);
-  writer.writeString(offsets[35], object.startBindingId);
-  writer.writeByte(offsets[36], object.strokeStyle.index);
-  writer.writeDouble(offsets[37], object.strokeWidth);
-  writer.writeBool(offsets[38], object.tapeRevealed);
-  writer.writeString(offsets[39], object.text);
-  writer.writeByte(offsets[40], object.textAlign.index);
-  writer.writeLong(offsets[41], object.zOrder);
+  writer.writeString(offsets[20], object.linkTarget);
+  writer.writeLong(offsets[21], object.notebookId);
+  writer.writeDouble(offsets[22], object.opacity);
+  writer.writeLong(offsets[23], object.pageId);
+  writer.writeByte(offsets[24], object.penKind.index);
+  writer.writeBoolList(offsets[25], object.pointSim);
+  writer.writeLongList(offsets[26], object.pointT);
+  writer.writeDoubleList(offsets[27], object.points);
+  writer.writeLong(offsets[28], object.recordingId);
+  writer.writeString(offsets[29], object.relativeImagePath);
+  writer.writeDouble(offsets[30], object.rotation);
+  writer.writeDouble(offsets[31], object.roughness);
+  writer.writeLong(offsets[32], object.seed);
+  writer.writeByte(offsets[33], object.shapeType.index);
+  writer.writeString(offsets[34], object.sourceDescription);
+  writer.writeByte(offsets[35], object.startArrowhead.index);
+  writer.writeString(offsets[36], object.startBindingId);
+  writer.writeByte(offsets[37], object.strokeStyle.index);
+  writer.writeDouble(offsets[38], object.strokeWidth);
+  writer.writeBool(offsets[39], object.tapeRevealed);
+  writer.writeString(offsets[40], object.text);
+  writer.writeByte(offsets[41], object.textAlign.index);
+  writer.writeLong(offsets[42], object.zOrder);
 }
 
 SceneElementRecord _sceneElementRecordDeserialize(
@@ -337,48 +344,49 @@ SceneElementRecord _sceneElementRecordDeserialize(
   object.kind =
       _SceneElementRecordkindValueEnumMap[reader.readByteOrNull(offsets[19])] ??
       SceneElementKind.freehand;
-  object.notebookId = reader.readLong(offsets[20]);
-  object.opacity = reader.readDouble(offsets[21]);
-  object.pageId = reader.readLong(offsets[22]);
+  object.linkTarget = reader.readString(offsets[20]);
+  object.notebookId = reader.readLong(offsets[21]);
+  object.opacity = reader.readDouble(offsets[22]);
+  object.pageId = reader.readLong(offsets[23]);
   object.penKind =
       _SceneElementRecordpenKindValueEnumMap[reader.readByteOrNull(
-        offsets[23],
+        offsets[24],
       )] ??
       PenKind.ballpoint;
-  object.pointSim = reader.readBoolList(offsets[24]) ?? [];
-  object.pointT = reader.readLongList(offsets[25]) ?? [];
-  object.points = reader.readDoubleList(offsets[26]) ?? [];
-  object.recordingId = reader.readLongOrNull(offsets[27]);
-  object.relativeImagePath = reader.readString(offsets[28]);
-  object.rotation = reader.readDouble(offsets[29]);
-  object.roughness = reader.readDouble(offsets[30]);
-  object.seed = reader.readLong(offsets[31]);
+  object.pointSim = reader.readBoolList(offsets[25]) ?? [];
+  object.pointT = reader.readLongList(offsets[26]) ?? [];
+  object.points = reader.readDoubleList(offsets[27]) ?? [];
+  object.recordingId = reader.readLongOrNull(offsets[28]);
+  object.relativeImagePath = reader.readString(offsets[29]);
+  object.rotation = reader.readDouble(offsets[30]);
+  object.roughness = reader.readDouble(offsets[31]);
+  object.seed = reader.readLong(offsets[32]);
   object.shapeType =
       _SceneElementRecordshapeTypeValueEnumMap[reader.readByteOrNull(
-        offsets[32],
+        offsets[33],
       )] ??
       ShapeType.line;
-  object.sourceDescription = reader.readString(offsets[33]);
+  object.sourceDescription = reader.readString(offsets[34]);
   object.startArrowhead =
       _SceneElementRecordstartArrowheadValueEnumMap[reader.readByteOrNull(
-        offsets[34],
+        offsets[35],
       )] ??
       Arrowhead.none;
-  object.startBindingId = reader.readString(offsets[35]);
+  object.startBindingId = reader.readString(offsets[36]);
   object.strokeStyle =
       _SceneElementRecordstrokeStyleValueEnumMap[reader.readByteOrNull(
-        offsets[36],
+        offsets[37],
       )] ??
       StrokeStyle.solid;
-  object.strokeWidth = reader.readDouble(offsets[37]);
-  object.tapeRevealed = reader.readBool(offsets[38]);
-  object.text = reader.readString(offsets[39]);
+  object.strokeWidth = reader.readDouble(offsets[38]);
+  object.tapeRevealed = reader.readBool(offsets[39]);
+  object.text = reader.readString(offsets[40]);
   object.textAlign =
       _SceneElementRecordtextAlignValueEnumMap[reader.readByteOrNull(
-        offsets[40],
+        offsets[41],
       )] ??
       TextAlignKind.left;
-  object.zOrder = reader.readLong(offsets[41]);
+  object.zOrder = reader.readLong(offsets[42]);
   return object;
 }
 
@@ -446,67 +454,69 @@ P _sceneElementRecordDeserializeProp<P>(
               SceneElementKind.freehand)
           as P;
     case 20:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 21:
-      return (reader.readDouble(offset)) as P;
-    case 22:
       return (reader.readLong(offset)) as P;
+    case 22:
+      return (reader.readDouble(offset)) as P;
     case 23:
+      return (reader.readLong(offset)) as P;
+    case 24:
       return (_SceneElementRecordpenKindValueEnumMap[reader.readByteOrNull(
                 offset,
               )] ??
               PenKind.ballpoint)
           as P;
-    case 24:
-      return (reader.readBoolList(offset) ?? []) as P;
     case 25:
-      return (reader.readLongList(offset) ?? []) as P;
+      return (reader.readBoolList(offset) ?? []) as P;
     case 26:
-      return (reader.readDoubleList(offset) ?? []) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 27:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readDoubleList(offset) ?? []) as P;
     case 28:
-      return (reader.readString(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 29:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 30:
       return (reader.readDouble(offset)) as P;
     case 31:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 32:
+      return (reader.readLong(offset)) as P;
+    case 33:
       return (_SceneElementRecordshapeTypeValueEnumMap[reader.readByteOrNull(
                 offset,
               )] ??
               ShapeType.line)
           as P;
-    case 33:
-      return (reader.readString(offset)) as P;
     case 34:
+      return (reader.readString(offset)) as P;
+    case 35:
       return (_SceneElementRecordstartArrowheadValueEnumMap[reader
                   .readByteOrNull(offset)] ??
               Arrowhead.none)
           as P;
-    case 35:
-      return (reader.readString(offset)) as P;
     case 36:
+      return (reader.readString(offset)) as P;
+    case 37:
       return (_SceneElementRecordstrokeStyleValueEnumMap[reader.readByteOrNull(
                 offset,
               )] ??
               StrokeStyle.solid)
           as P;
-    case 37:
-      return (reader.readDouble(offset)) as P;
     case 38:
-      return (reader.readBool(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 39:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 40:
+      return (reader.readString(offset)) as P;
+    case 41:
       return (_SceneElementRecordtextAlignValueEnumMap[reader.readByteOrNull(
                 offset,
               )] ??
               TextAlignKind.left)
           as P;
-    case 41:
+    case 42:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2356,6 +2366,147 @@ extension SceneElementRecordQueryFilter
           upper: upper,
           includeUpper: includeUpper,
         ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  linkTargetEqualTo(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'linkTarget',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  linkTargetGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'linkTarget',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  linkTargetLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'linkTarget',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  linkTargetBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'linkTarget',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  linkTargetStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'linkTarget',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  linkTargetEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'linkTarget',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  linkTargetContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'linkTarget',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  linkTargetMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'linkTarget',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  linkTargetIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'linkTarget', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterFilterCondition>
+  linkTargetIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'linkTarget', value: ''),
       );
     });
   }
@@ -4375,6 +4526,20 @@ extension SceneElementRecordQuerySortBy
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  sortByLinkTarget() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'linkTarget', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  sortByLinkTargetDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'linkTarget', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
   sortByNotebookId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notebookId', Sort.asc);
@@ -4924,6 +5089,20 @@ extension SceneElementRecordQuerySortThenBy
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  thenByLinkTarget() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'linkTarget', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
+  thenByLinkTargetDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'linkTarget', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QAfterSortBy>
   thenByNotebookId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'notebookId', Sort.asc);
@@ -5333,6 +5512,13 @@ extension SceneElementRecordQueryWhereDistinct
   }
 
   QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
+  distinctByLinkTarget({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'linkTarget', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, SceneElementRecord, QDistinct>
   distinctByNotebookId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'notebookId');
@@ -5632,6 +5818,13 @@ extension SceneElementRecordQueryProperty
   kindProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'kind');
+    });
+  }
+
+  QueryBuilder<SceneElementRecord, String, QQueryOperations>
+  linkTargetProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'linkTarget');
     });
   }
 

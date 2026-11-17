@@ -163,6 +163,7 @@ class ScenePixelEraserService {
           size: size,
           opacity: shape.opacity,
           groupId: shape.groupId,
+          link: shape.link,
           points: [
             for (final o in run) StrokePoint(x: o.dx, y: o.dy, pressure: 0.5),
           ],

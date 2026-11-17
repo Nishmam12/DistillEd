@@ -204,4 +204,38 @@ void main() {
     expect(s.fillStyle, FillStyle.hachure);
     expect(s.opacity, 1.0);
   });
+
+  test('an element link survives JSON, and old JSON reads as no link', () {
+    const f = FreehandElement(
+      id: 'f',
+      zOrder: 0,
+      color: 0xFF000000,
+      size: 2,
+      link: 'page:12',
+      points: [StrokePoint(x: 0, y: 0), StrokePoint(x: 9, y: 0)],
+    );
+    const t = TextElement(
+      id: 't',
+      zOrder: 1,
+      geometryData: [0, 0, 10, 10],
+      text: 'x',
+      color: 0xFF000000,
+      fontSize: 18,
+      link: 'url:https://example.com',
+    );
+    final back = SceneElementCodec.decodeList(
+        jsonDecode(jsonEncode(SceneElementCodec.encodeList([f, t]))) as List);
+    expect(back[0].link, 'page:12');
+    expect(back[1].link, 'url:https://example.com');
+
+    final old = SceneElementCodec.decode({
+      'id': 'legacy',
+      'kind': 'freehand',
+      'zOrder': 0,
+      'points': [1.0, 2.0, 0.5],
+      'color': 0xFF000000,
+      'size': 2.0,
+    });
+    expect(old.link, '');
+  });
 }

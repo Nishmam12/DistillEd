@@ -49,6 +49,11 @@ sealed class SceneElement {
   /// groupId select and transform together.
   final String groupId;
 
+  /// Where tapping this element's link chip goes: `page:<pageId>`,
+  /// `notebook:<notebookId>` or `url:<https address>`; empty for none. See
+  /// `element_link.dart`.
+  final String link;
+
   const SceneElement({
     required this.id,
     required this.zOrder,
@@ -56,6 +61,7 @@ sealed class SceneElement {
     this.opacity = 1.0,
     this.isLocked = false,
     this.groupId = '',
+    this.link = '',
   });
 
   SceneElementKind get kind;
@@ -96,6 +102,7 @@ final class FreehandElement extends SceneElement {
     super.opacity,
     super.isLocked,
     super.groupId,
+    super.link,
   });
 
   /// Whether tapping this stroke can seek audio.
@@ -111,6 +118,7 @@ final class FreehandElement extends SceneElement {
     double? opacity,
     bool? isLocked,
     String? groupId,
+    String? link,
     List<StrokePoint>? points,
     int? color,
     double? size,
@@ -126,6 +134,7 @@ final class FreehandElement extends SceneElement {
       opacity: opacity ?? this.opacity,
       isLocked: isLocked ?? this.isLocked,
       groupId: groupId ?? this.groupId,
+      link: link ?? this.link,
       points: points ?? this.points,
       color: color ?? this.color,
       size: size ?? this.size,
@@ -189,6 +198,7 @@ final class SceneShapeElement extends SceneElement {
     super.opacity,
     super.isLocked,
     super.groupId,
+    super.link,
   });
 
   @override
@@ -217,6 +227,7 @@ final class SceneShapeElement extends SceneElement {
     Arrowhead? endArrowhead,
     bool? elbowed,
     String? groupId,
+    String? link,
   }) {
     return SceneShapeElement(
       id: id ?? this.id,
@@ -225,6 +236,7 @@ final class SceneShapeElement extends SceneElement {
       opacity: opacity ?? this.opacity,
       isLocked: isLocked ?? this.isLocked,
       groupId: groupId ?? this.groupId,
+      link: link ?? this.link,
       shapeType: shapeType ?? this.shapeType,
       geometryData: geometryData ?? List<double>.from(this.geometryData),
       color: color ?? this.color,
@@ -276,6 +288,7 @@ final class TextElement extends SceneElement {
     super.opacity,
     super.isLocked,
     super.groupId,
+    super.link,
   });
 
   @override
@@ -297,6 +310,7 @@ final class TextElement extends SceneElement {
     TextAlignKind? align,
     String? containerId,
     String? groupId,
+    String? link,
   }) {
     return TextElement(
       id: id ?? this.id,
@@ -305,6 +319,7 @@ final class TextElement extends SceneElement {
       opacity: opacity ?? this.opacity,
       isLocked: isLocked ?? this.isLocked,
       groupId: groupId ?? this.groupId,
+      link: link ?? this.link,
       geometryData: geometryData ?? List<double>.from(this.geometryData),
       text: text ?? this.text,
       color: color ?? this.color,
@@ -341,6 +356,7 @@ final class ImageElement extends SceneElement {
     super.opacity,
     super.isLocked,
     super.groupId,
+    super.link,
   });
 
   @override
@@ -363,6 +379,7 @@ final class ImageElement extends SceneElement {
     String? relativeImagePath,
     String? sourceDescription,
     String? groupId,
+    String? link,
   }) {
     return ImageElement(
       id: id ?? this.id,
@@ -371,6 +388,7 @@ final class ImageElement extends SceneElement {
       opacity: opacity ?? this.opacity,
       isLocked: isLocked ?? this.isLocked,
       groupId: groupId ?? this.groupId,
+      link: link ?? this.link,
       geometryData: geometryData ?? List<double>.from(this.geometryData),
       relativeImagePath: relativeImagePath ?? this.relativeImagePath,
       sourceDescription: sourceDescription ?? this.sourceDescription,
@@ -398,6 +416,7 @@ final class FrameElement extends SceneElement {
     super.opacity,
     super.isLocked,
     super.groupId,
+    super.link,
   });
 
   @override
@@ -419,6 +438,7 @@ final class FrameElement extends SceneElement {
     List<double>? geometryData,
     String? name,
     String? groupId,
+    String? link,
   }) {
     return FrameElement(
       id: id ?? this.id,
@@ -427,6 +447,7 @@ final class FrameElement extends SceneElement {
       opacity: opacity ?? this.opacity,
       isLocked: isLocked ?? this.isLocked,
       groupId: groupId ?? this.groupId,
+      link: link ?? this.link,
       geometryData: geometryData ?? List<double>.from(this.geometryData),
       name: name ?? this.name,
     );
@@ -456,6 +477,7 @@ final class TapeElement extends SceneElement {
     super.opacity,
     super.isLocked,
     super.groupId,
+    super.link,
   });
 
   @override
@@ -475,6 +497,7 @@ final class TapeElement extends SceneElement {
     double? opacity,
     bool? isLocked,
     String? groupId,
+    String? link,
     List<double>? geometryData,
     int? color,
     bool? revealed,
@@ -486,6 +509,7 @@ final class TapeElement extends SceneElement {
       opacity: opacity ?? this.opacity,
       isLocked: isLocked ?? this.isLocked,
       groupId: groupId ?? this.groupId,
+      link: link ?? this.link,
       geometryData: geometryData ?? List<double>.from(this.geometryData),
       color: color ?? this.color,
       revealed: revealed ?? this.revealed,

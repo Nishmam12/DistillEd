@@ -1,5 +1,6 @@
-// Links of an imported PDF page, tappable while the hand tool, or the select
-// tool's Text mode, is in use.
+// Links of an imported PDF page, and of elements linked to another page,
+// notebook or web address (`SceneElement.link`), tappable while the hand tool,
+// or the select tool's Text mode, is in use.
 //
 // A layer over the page, not part of the pointer pipeline: one translucent
 // listener sees every touch and still lets it through, so the pen, panning and
@@ -14,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../domain/geometry/element_bounds.dart';
 import '../../domain/geometry/word_geometry.dart';
 import '../../domain/model/page_links.dart';
 import '../../domain/model/scene_element.dart';
@@ -66,7 +68,15 @@ class PdfLinkLayer extends ConsumerStatefulWidget {
   /// Called with the link tapped and the picture it is on.
   final void Function(PageLink link, String imagePath) onFollow;
 
-  const PdfLinkLayer({super.key, required this.pageKey, required this.onFollow});
+  /// Called with the stored link of a linked element that was tapped.
+  final void Function(String link)? onFollowElement;
+
+  const PdfLinkLayer({
+    super.key,
+    required this.pageKey,
+    required this.onFollow,
+    this.onFollowElement,
+  });
 
   /// Whether the tool in use is one that follows links.
   static bool followsLinks(EditorToolState tool) =>
@@ -77,7 +87,7 @@ class PdfLinkLayer extends ConsumerStatefulWidget {
   ConsumerState<PdfLinkLayer> createState() => _PdfLinkLayerState();
 }
 
-typedef _Target = ({Rect box, PageLink link, String imagePath});
+typedef _Target = ({Rect box, VoidCallback follow});
 
 class _PdfLinkLayerState extends ConsumerState<PdfLinkLayer> {
   List<_Target> _targets = const [];
@@ -96,8 +106,17 @@ class _PdfLinkLayerState extends ConsumerState<PdfLinkLayer> {
     }
     final viewport = ref.watch(viewportProvider);
     final targets = <_Target>[];
-    for (final image
-        in ref.watch(sceneControllerProvider(widget.pageKey)).whereType<ImageElement>()) {
+    final elements = ref.watch(sceneControllerProvider(widget.pageKey));
+    final followElement = widget.onFollowElement;
+    if (followElement != null) {
+      for (final e in elements) {
+        if (e.link.isEmpty) continue;
+        final box = viewport.toViewportRect(ElementBounds.of(e));
+        if (box.width == 0 && box.height == 0) continue; // a dot-sized nothing
+        targets.add((box: box, follow: () => followElement(e.link)));
+      }
+    }
+    for (final image in elements.whereType<ImageElement>()) {
       // Only pictures of PDF pages can have links.
       if (siblingPdfPagePath(image.relativeImagePath, 1) == null) continue;
       final links = ref.watch(pageLinksProvider(image.relativeImagePath)).value;
@@ -110,7 +129,8 @@ class _PdfLinkLayerState extends ConsumerState<PdfLinkLayer> {
               : box.expandToInclude(Rect.fromPoints(p, p));
         }
         if (box == null) continue;
-        targets.add((box: box, link: link, imagePath: image.relativeImagePath));
+        final imagePath = image.relativeImagePath;
+        targets.add((box: box, follow: () => widget.onFollow(link, imagePath)));
       }
     }
     _targets = targets;
@@ -177,7 +197,7 @@ class _PdfLinkLayerState extends ConsumerState<PdfLinkLayer> {
     }
     final hit = resolveLinkTap([for (final t in _targets) t.box], e.localPosition);
     if (hit == null) return;
-    widget.onFollow(_targets[hit].link, _targets[hit].imagePath);
+    _targets[hit].follow();
   }
 }
 

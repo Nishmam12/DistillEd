@@ -31,6 +31,13 @@ abstract class SceneElementStore {
     int pageId,
     List<SceneElement> elements,
   );
+
+  /// Backlinks: the pages (other than [pageId]) holding an element linked to
+  /// page [pageId] or to its whole notebook [notebookId]. No order.
+  Future<Set<int>> pagesLinkingTo({
+    required int pageId,
+    required int notebookId,
+  });
 }
 
 /// In-memory store for tests and migration without a live database.
@@ -76,5 +83,18 @@ class InMemorySceneElementStore implements SceneElementStore {
     List<SceneElement> elements,
   ) async {
     _byPage[pageId] = {for (final e in elements) e.id: e};
+  }
+
+  @override
+  Future<Set<int>> pagesLinkingTo({
+    required int pageId,
+    required int notebookId,
+  }) async {
+    final wanted = {'page:$pageId', 'notebook:$notebookId'};
+    return {
+      for (final MapEntry(key: page, :value) in _byPage.entries)
+        if (page != pageId && value.values.any((e) => wanted.contains(e.link)))
+          page,
+    };
   }
 }

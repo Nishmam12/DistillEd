@@ -4,6 +4,37 @@ import 'package:margo/domain/model/scene_element.dart';
 
 void main() {
   group('SceneElementRecordMapper round-trips', () {
+    test('link survives, and a fresh record reads as no link', () {
+      const f = FreehandElement(
+        id: 'f',
+        zOrder: 0,
+        color: 0xFF000000,
+        size: 2,
+        link: 'page:12',
+        points: [StrokePoint(x: 0, y: 0), StrokePoint(x: 9, y: 0)],
+      );
+      const t = TextElement(
+        id: 't',
+        zOrder: 1,
+        geometryData: [0, 0, 10, 10],
+        text: 'x',
+        color: 0xFF000000,
+        fontSize: 18,
+        link: 'notebook:3',
+      );
+      for (final e in [f, t]) {
+        final r =
+            SceneElementRecordMapper.toRecord(e, notebookId: 1, pageId: 2);
+        expect(r.linkTarget, e.link);
+        expect(SceneElementRecordMapper.fromRecord(r).link, e.link);
+      }
+      final plain = SceneElementRecordMapper.toRecord(
+          const FrameElement(id: 'x', zOrder: 0, geometryData: [0, 0, 1, 1]),
+          notebookId: 1,
+          pageId: 2);
+      expect(SceneElementRecordMapper.fromRecord(plain).link, '');
+    });
+
     test('freehand preserves points, pressure and per-point sim', () {
       const e = FreehandElement(
         id: 'f1',

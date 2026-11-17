@@ -32,6 +32,7 @@ class SceneElementCodec {
       'opacity': e.opacity,
       'isLocked': e.isLocked,
       'groupId': e.groupId,
+      'link': e.link,
     };
     switch (e) {
       case FreehandElement():
@@ -109,6 +110,7 @@ class SceneElementCodec {
     final opacity = _d(m['opacity'], 1.0);
     final isLocked = m['isLocked'] as bool? ?? false;
     final groupId = m['groupId'] as String? ?? '';
+    final link = m['link'] as String? ?? '';
     final geometry = _doubles(m['geometryData']);
 
     switch (kind) {
@@ -120,6 +122,7 @@ class SceneElementCodec {
           opacity: opacity,
           isLocked: isLocked,
           groupId: groupId,
+          link: link,
           points: _points(m['points'], m['pointSim'], m['pointT']),
           color: (m['color'] as num).toInt(),
           size: _d(m['size'], 1.0),
@@ -137,6 +140,7 @@ class SceneElementCodec {
           opacity: opacity,
           isLocked: isLocked,
           groupId: groupId,
+          link: link,
           shapeType:
               _enumByName(ShapeType.values, m['shapeType'] as String?, ShapeType.rectangle),
           geometryData: geometry,
@@ -166,6 +170,7 @@ class SceneElementCodec {
           opacity: opacity,
           isLocked: isLocked,
           groupId: groupId,
+          link: link,
           geometryData: geometry,
           text: m['text'] as String? ?? '',
           color: (m['color'] as num).toInt(),
@@ -184,6 +189,7 @@ class SceneElementCodec {
           opacity: opacity,
           isLocked: isLocked,
           groupId: groupId,
+          link: link,
           geometryData: geometry,
           relativeImagePath: m['relativeImagePath'] as String? ?? '',
           sourceDescription: m['sourceDescription'] as String? ?? '',
@@ -196,6 +202,7 @@ class SceneElementCodec {
           opacity: opacity,
           isLocked: isLocked,
           groupId: groupId,
+          link: link,
           geometryData: geometry,
           name: m['name'] as String? ?? 'Frame',
         );
@@ -207,6 +214,7 @@ class SceneElementCodec {
           opacity: opacity,
           isLocked: isLocked,
           groupId: groupId,
+          link: link,
           geometryData: geometry,
           color: (m['color'] as num?)?.toInt() ?? kDefaultTapeColor,
           revealed: m['revealed'] as bool? ?? false,

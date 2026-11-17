@@ -36,6 +36,7 @@ class SceneElementRecord {
   double opacity = 1.0;
   bool isLocked = false;
   String groupId = '';
+  String linkTarget = '';
 
   // Stroke/shape colour (ARGB) and width/size (freehand reuses these).
   int color = 0xFF000000;

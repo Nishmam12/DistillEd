@@ -22,6 +22,7 @@ import '../../../ai/data/handwriting/handwriting_recognition_service.dart';
 import '../../../ai/data/ocr/image_text_recognition_service.dart';
 import '../../domain/handwriting_conversion.dart';
 import 'handwriting_convert_sheet.dart';
+import 'link_picker_sheet.dart';
 import '../../../ai/presentation/ai_providers.dart';
 import '../../../audio/presentation/recording_notifier.dart';
 import '../../../../editor/import/ocr_layout.dart';
@@ -50,7 +51,11 @@ const List<(String, double)> kThicknessChoices = [
 
 class SelectionBar extends ConsumerWidget {
   final ScenePageKey pageKey;
-  const SelectionBar({super.key, required this.pageKey});
+
+  /// Follows a link the selection shares; null hides "Open link".
+  final void Function(String link)? onOpenLink;
+
+  const SelectionBar({super.key, required this.pageKey, this.onOpenLink});
 
   List<SceneElement> _sel(WidgetRef ref) => editorSelection(ref, pageKey);
 
@@ -200,6 +205,36 @@ class SelectionBar extends ConsumerWidget {
             tooltip: 'Save to library',
             icon: const Icon(Icons.bookmark_add_outlined),
             onPressed: () => _saveToLibrary(context, ref),
+          ),
+          // Everything selected links to the same place: go there.
+          if ((onOpenLink, _sel(ref).map((e) => e.link).toSet())
+              case (final open?, final links)
+              when links.length == 1 && links.single.isNotEmpty)
+            IconButton(
+              tooltip: 'Open link',
+              icon: const Icon(Icons.open_in_new),
+              onPressed: () => open(links.single),
+            ),
+          // Links the selection to another page or notebook; tapping it with
+          // the hand tool then goes there (see PdfLinkLayer).
+          IconButton(
+            tooltip: 'Link',
+            icon: const Icon(Icons.link),
+            onPressed: () async {
+              final before = _sel(ref);
+              if (before.isEmpty) return;
+              final link = await showLinkPicker(
+                context,
+                currentNotebookId: pageKey.notebookId,
+                currentPageId: pageKey.pageId,
+                hasLink: before.any((e) => e.link.isNotEmpty),
+              );
+              if (link == null) return;
+              history.push(UpdateElementsCommand(
+                before: before,
+                after: [for (final e in before) SelectionEditing.withLink(e, link)],
+              ));
+            },
           ),
           IconButton(
             tooltip: 'Group',

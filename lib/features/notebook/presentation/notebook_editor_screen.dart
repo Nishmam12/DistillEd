@@ -64,12 +64,14 @@ import '../../../editor/state/page_text_selection.dart';
 import '../../../editor/state/search_highlight.dart';
 import '../../../editor/ui/pdf_link_layer.dart';
 import '../../../editor/ui/search_highlight_layer.dart';
+import '../../../domain/model/element_link.dart';
 import '../../../domain/model/page_links.dart';
 import '../../../core/utils/external_links.dart';
 import '../../import/link_target.dart';
 import '../../../editor/state/selection_controller.dart';
 import '../../../editor/state/viewport_controller.dart';
 import '../../../editor/ui/editable_note_title.dart';
+import 'controls/backlinks_chip.dart';
 import 'controls/editor_app_bar_actions.dart';
 import 'controls/editor_bottom_bar.dart';
 import '../../../editor/ui/controls/editor_tool_options_overlay.dart';
@@ -516,6 +518,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                 EditorBottomBar(
                   pageKey: key,
                   onImport: () => _showImportSheet(key),
+                  onOpenLink: (link) => unawaited(_followElementLink(link)),
                 ),
                 const Divider(height: 1, thickness: 1),
                 Expanded(
@@ -572,7 +575,10 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                             child: SearchHighlightLayer(pageKey: key)),
                         Positioned.fill(
                             child: PdfLinkLayer(
-                                pageKey: key, onFollow: _followLink)),
+                                pageKey: key,
+                                onFollow: _followLink,
+                                onFollowElement: (link) =>
+                                    unawaited(_followElementLink(link)))),
                         // Zoom level and the universal colour palette, both
                         // top-right under the toolbar; tap the pill to reset
                         // the view, tap the swatch to open the colour grid.
@@ -619,6 +625,19 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                               ),
                             ),
                           ),
+                        // "Linked from": pages that link here.
+                        Positioned(
+                          top: 12,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: BacklinksChip(
+                              pageKey: key,
+                              onOpen: (link) => unawaited(_followElementLink(
+                                  LinkToPage(link.pageId).encoded)),
+                            ),
+                          ),
+                        ),
                         // The lecture player, above the bars that share
                         // the bottom edge.
                         Positioned(
@@ -804,9 +823,47 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       _switchTo(index);
       return;
     }
-    final url = link.url;
-    // The address comes from a file that can arrive inside someone else's
-    // backup: only web and email addresses are ever opened.
+    await _openWebLink(link.url);
+  }
+
+  /// A tap on a linked element: to a page (here or in another notebook), a
+  /// whole notebook, or the web after asking.
+  Future<void> _followElementLink(String raw) async {
+    switch (ElementLink.parse(raw)) {
+      case null:
+        _toast("That link can't be opened.");
+      case LinkToWeb(:final url):
+        await _openWebLink(url);
+      case LinkToNotebook(:final notebookId):
+        if (notebookId == widget.notebookId) {
+          _switchTo(0);
+        } else if (await ref.read(noteRepositoryProvider).getNotebook(notebookId) ==
+            null) {
+          _toast('That notebook is no longer there.');
+        } else if (mounted) {
+          unawaited(context.push('/note2/$notebookId'));
+        }
+      case LinkToPage(:final pageId):
+        final pages = ref.read(pageProvider(widget.notebookId)).pages;
+        final here = pages.indexWhere((p) => p.id == pageId);
+        if (here >= 0) {
+          _switchTo(here);
+          return;
+        }
+        final page = await ref.read(pageRepositoryProvider).getPage(pageId);
+        if (!mounted) return;
+        if (page == null) {
+          _toast('That page is no longer there.');
+          return;
+        }
+        unawaited(
+            context.push('/note2/${page.notebookId}?page=${page.pageIndex}'));
+    }
+  }
+
+  /// Opens [url] in the browser after asking. The address can come from a file
+  /// inside someone else's backup: only web addresses are ever opened.
+  Future<void> _openWebLink(String? url) async {
     if (url == null || !isSafeLinkUrl(url)) {
       _toast('Margo only opens web links.');
       return;
@@ -883,7 +940,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// as a [TextElement] through the same undoable history path a manual text
   /// box uses (never bypassing it), sized to the wrapped text and placed in the
   /// first clear spot inside the part of the page currently on screen.
-  void _insertNote(ScenePageKey key, String text) {
+  void _insertNote(ScenePageKey key, String text, {String link = ''}) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
@@ -944,6 +1001,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
             text: trimmed,
             color: 0xFF1A1A1A,
             fontSize: fontSize,
+            link: link,
           ),
         ]));
 
@@ -993,7 +1051,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     }
     if (!mounted) return;
     final note = share.noteText;
-    if (note != null) _insertNote(key, note);
+    final web = share.link;
+    // A shared web address is a card that opens it (hand tool, after asking).
+    if (note != null) {
+      _insertNote(key, note,
+          link: web == null ? '' : LinkToWeb(web.toString()).encoded);
+    }
     if (skipped.isNotEmpty) {
       _toast('Margo can\'t open ${skipped.join(', ')} yet.');
     }

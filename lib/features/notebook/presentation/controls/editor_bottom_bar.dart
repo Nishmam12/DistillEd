@@ -30,10 +30,14 @@ class EditorBottomBar extends ConsumerStatefulWidget {
   /// omitted from the tool row.
   final VoidCallback? onImport;
 
+  /// Follows an element's link (selection bar's "Open link").
+  final void Function(String link)? onOpenLink;
+
   const EditorBottomBar({
     super.key,
     required this.pageKey,
     this.onImport,
+    this.onOpenLink,
   });
 
   @override
@@ -65,7 +69,8 @@ class _EditorBottomBarState extends ConsumerState<EditorBottomBar> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (selectedIds.isNotEmpty) SelectionBar(pageKey: pageKey),
+          if (selectedIds.isNotEmpty)
+            SelectionBar(pageKey: pageKey, onOpenLink: widget.onOpenLink),
           Row(
             children: [
               Expanded(
