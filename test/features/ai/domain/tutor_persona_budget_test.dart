@@ -84,9 +84,9 @@ void main() {
     // part of that constant, measuring "today" here would compare the persona
     // with itself and pass whatever it cost.
     //
-    // Measured the same day: 644 with the plain context, 631 with a guide
-    // tail. One word of room, so re-measure after any change to a compact
-    // constant.
+    // Measured the same day: 645 with the plain context, 634 with a guide
+    // tail. Four words of room, so re-measure after any change to a compact
+    // constant or to Ask's contract.
     const beforePersona = 690;
     const window = kCompactPromptWindowTokens;
     for (final context in [TutorContext.plain, _worstCase]) {

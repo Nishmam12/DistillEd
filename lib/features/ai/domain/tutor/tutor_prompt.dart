@@ -69,8 +69,7 @@ const String kTutorRoleCompact =
 /// the likeliest line to pull an answer off the exact refusal string.
 const String kTeachingRulesCompact =
     'Build on what they wrote, one idea at a time, at their level and the '
-    'depth they asked for. Say what they got right before what they got '
-    'wrong.';
+    'depth they asked for. Say what they got right before what is wrong.';
 
 /// The guide style: hints first, the answer when they have tried or asked.
 ///
@@ -91,7 +90,7 @@ const String kStyleGuideGrounded =
 
 /// The guide style on a small window: one line.
 const String kStyleGuideCompact =
-    'Give one hint first; the full answer once they try or ask.';
+    'One hint first; the full answer once they try or ask.';
 
 /// Opens the learner-profile block.
 ///
@@ -135,7 +134,7 @@ List<String> sanitiseConceptNames(Iterable<String> names) {
   final seen = <String>{};
   for (final raw in names) {
     var name = raw
-        .replaceAll(RegExp('[‘’]'), "'")
+        .replaceAll(RegExp('[\u2018\u2019]'), "'")
         .replaceAll(_whitespace, ' ')
         .replaceAll(_notNameChar, '')
         .replaceAll(_looseHyphen, '')
