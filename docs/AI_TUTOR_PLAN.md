@@ -7,8 +7,98 @@ session (Opus) to build from without the author present.
 "write this up in a .md file, we will be touching on that later", then "create
 a fully detailed plan so that … Opus can fully work on it."
 
-This file lives at `docs/AI_TUTOR_PLAN.md`. It is not committed yet. Each part
-waits for its own go-ahead.
+Each part waits for its own go-ahead.
+
+## Progress (updated 2026-11-17)
+
+Branch **`ai-own-key-models`**, cut from `margo-device-fixes`. Not pushed, not
+merged, not tested on a tablet.
+
+| Part 1 step | State | Commit |
+| --- | --- | --- |
+| 1–2 Catalogue types, connection store | Done | `a8d21d0` |
+| 3–4 OpenAI-compatible provider, tool calls | Done | `096e956` |
+| 5–6 Key check, `resolveAnswerRoute`, consent rule | Done | `9f0e0d3` |
+| 7 `SelectedAnswerProvider`, `CloudSendGate` | Done | `c9da08b` |
+| 6 `answerModelId` setting (+ `setCloudPrivacy`) | Done | `502506e` |
+| 7 Riverpod wiring (`ai_model_providers.dart`) | Done | `e0528b2` |
+| 8 Ask, confirm dialog | Done | see `git log` |
+| 8–9 Explain, quiz, flashcards | Done | see `git log` |
+| 10 Summarize | Done | see `git log` |
+| 11 Research | Done | see `git log` |
+| 12 Key scrubbing in the error log | Done | `024d7ad` |
+| 13 Settings section, add screen, picker, `/model` | **Not started** | |
+| 14 Tablet check with a real key | **Not started** | |
+
+`flutter analyze` clean. Full suite: 3,374 pass, 44 skipped, 1 failure, which is
+the known flaky `test/core/error_log_test.dart` ("once past 100 KB…"); it passes
+alone.
+
+**Until step 13 exists there is no way to add a key or pick a model in the app.**
+Everything is driven by `SettingsNotifier.setAnswerModelId` and
+`userConnectionsProvider.notifier.save`, which only tests call today. With the
+default `auto`, behaviour is what it was before this branch.
+
+### Where the build differs from the design below
+
+Read these before trusting sections 4.6–4.9; the code is the truth.
+
+1. **Summarize asks from inside the service, not the notifier.**
+   `summarizeScope` takes `confirmSend` and calls it only when a note is really
+   about to be sent: after the page is read, the gate passes and the cache
+   misses. A no throws `SummarizeCancelledException`, shown in the sheet as
+   "Nothing was sent…".
+2. **Explain and Research carry "does this need a yes" in data, not a callback
+   on the notifier.** `CloudRouteDecision` gained `modelName`, `host` and
+   `needsConfirm`. `ResearchNotifier` gained `needsConfirm` and `pickedModel`.
+3. **`RoutedAiProvider.forcedCloud`** is how a pick overrides Explain's router.
+4. **Quiz and flashcard notifiers take a plain `Future<bool> Function()
+   confirmSend`**; `confirmAnswerSendProvider` supplies it.
+5. **`CloudSendGate` has `needsConfirmation(model)` and `markConsented(model)`**
+   so Explain's and Research's own confirm steps share its memory of what the
+   student agreed to.
+6. **The adapter adapts.** A 400 that names `max_tokens` is retried with
+   `max_completion_tokens`, one that names `temperature` is retried without it,
+   and the answer is remembered per connection. `ProviderPreset` therefore has
+   no `maxTokensParam` or `sendsTemperature` fields.
+7. **Web search is dropped from the tool list** while
+   `margoCloudAvailableProvider` is false, for every route, not only a picked
+   model.
+8. **`AnswerTier.cloud`** exists and is not stored in Isar (checked).
+9. The confirm dialog lives in `presentation/widgets/cloud_send_dialog.dart`
+   and is started from `notebook_editor_screen.dart`'s `build`.
+
+### Found while building (needs a decision; see section 10, items 11–13)
+
+- **Nothing in the app can change `CloudPrivacy`.** There was no setter and
+  there is no control, so every install has `askEachTime`. Consequences:
+  `mayUploadImages` and `mayAnalyzeInCloud` are always false, so "cloud first"
+  never actually reads a page in the cloud; and with a picked model, **every
+  question will show the "send this?" dialog**. A setter now exists
+  (`setCloudPrivacy`) but no screen calls it.
+- A cached notebook summary shows no model badge even when a cloud model wrote
+  it, because the cache returns with the default tier.
+
+### The user's emphasis on RAG and depth (2026-11-16, when starting Part 1)
+
+"Proper RAG is needed since we're sending the on-device data and questions to
+the cloud or on-device AI, and the model needs to … think as an on-device
+tutor, like an actual tutor who will explain the contents in detail or the
+levels of detail the student is asking for. So the optimization and proper RAG
+is needed."
+
+What that means for the order of work:
+
+- **Part 4c (retrieval quality) and Part 2 (teacher persona) are the user's
+  priority after Part 1**, ahead of Part 3 (our tiers).
+- Today a picked model with a large window still gets only `kRetrievalTopK = 5`
+  passages and `NotesQa.answerOptions.maxTokens = 512`, and the Ask contract
+  says "answer in a few clear sentences". A capable cloud model is therefore
+  held to the on-device model's limits. Fixing that is small and belongs at the
+  start of Part 4c: scale top-K and the reply cap to
+  `provider.capabilities.contextWindowTokens`, and let the depth of an answer
+  follow what the student asked for ("briefly", "in detail", "step by step")
+  through the persona's style block in Part 2.
 
 ---
 
@@ -1207,6 +1297,9 @@ jump to the right page, a deleted page leaves no text in a saved thread.
 | 8 | Local-network servers (Ollama, LM Studio) as connections | After Part 1 | Later; needs Android cleartext rules |
 | 9 | A setting to let vision use a chosen model | After Part 3 | Later |
 | 10 | Billing for premium | After Part 3 | Its own project |
+| 11 | How should the student stop being asked on every question to a model they picked? `CloudPrivacy` has no control today. | Part 1 step 13 | A "Don't ask again for this model" tick on the dialog, stored per connection. Do **not** reuse `allowCloudForNonSensitive` for it: that value also lets page images upload and pages be analysed in the cloud without asking. |
+| 12 | Should there be a privacy control in Settings at all (ask each time / allow / local only)? | Part 1 step 13 | Yes, in the AI models screen, with one line under each option saying exactly what it allows |
+| 13 | Order after Part 1: retrieval quality and persona before our tiers? | After Part 1 | Yes: Part 2, then Part 4c, then Part 3 |
 
 ---
 
