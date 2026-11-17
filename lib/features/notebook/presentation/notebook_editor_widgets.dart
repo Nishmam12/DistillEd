@@ -669,3 +669,85 @@ class _ImportProgressDialogState extends State<_ImportProgressDialog> {
     );
   }
 }
+
+/// Asks for a protected PDF's password and unlocks it. Pops with the unlocked
+/// copy's path; stays open on a wrong password so it can be typed again.
+class PdfPasswordDialog extends StatefulWidget {
+  final String fileName;
+  final Future<String?> Function(String password) unlock;
+
+  const PdfPasswordDialog(
+      {super.key, required this.fileName, required this.unlock});
+
+  @override
+  State<PdfPasswordDialog> createState() => _PdfPasswordDialogState();
+}
+
+class _PdfPasswordDialogState extends State<PdfPasswordDialog> {
+  final _password = TextEditingController();
+  bool _busy = false;
+  bool _wrong = false;
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_busy || _password.text.isEmpty) return;
+    setState(() => _busy = true);
+    String? unlocked;
+    try {
+      unlocked = await widget.unlock(_password.text);
+    } catch (_) {
+      unlocked = null;
+    }
+    if (!mounted) return;
+    if (unlocked != null) {
+      Navigator.of(context).pop(unlocked);
+      return;
+    }
+    setState(() {
+      _busy = false;
+      _wrong = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Password needed'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('"${widget.fileName}" is protected. Margo imports an unlocked '
+              'copy; the password is not kept.'),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _password,
+            autofocus: true,
+            obscureText: true,
+            enabled: !_busy,
+            onSubmitted: (_) => _submit(),
+            onChanged: (_) {
+              if (_wrong) setState(() => _wrong = false);
+            },
+            decoration: InputDecoration(
+              labelText: 'Password',
+              errorText: _wrong ? 'That password did not open it.' : null,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+            onPressed: _busy ? null : () => Navigator.of(context).pop(),
+            child: const Text('Cancel')),
+        FilledButton(
+            onPressed: _busy ? null : _submit, child: const Text('Unlock')),
+      ],
+    );
+  }
+}

@@ -166,6 +166,45 @@ class PdfiumTextSource implements PdfTextSource {
   @override
   Future<List<PageWords?>> pagesWords(String pdfPath) async =>
       [for (final p in await _read(pdfPath)) p.words];
+
+  // ---- password-protected PDFs ----------------------------------------------
+  // Android's own renderer (pdfx) cannot take a password; PDFium can. So a
+  // locked PDF is unlocked once, into a copy, and that copy is imported.
+
+  /// Whether [pdfPath] opens only with a password. Throws when it is not a PDF.
+  Future<bool> isLocked(String pdfPath) async {
+    await _initialize();
+    try {
+      final document = await PdfDocument.openFile(pdfPath,
+          passwordProvider: createSimplePasswordProvider(null));
+      await document.dispose();
+      return false;
+    } on PdfPasswordException {
+      return true;
+    }
+  }
+
+  /// Writes a copy of [pdfPath] without its password to [outPath]. False when
+  /// [password] is wrong.
+  Future<bool> unlock(String pdfPath, String password, String outPath) async {
+    await _initialize();
+    final PdfDocument document;
+    try {
+      document = await PdfDocument.openFile(pdfPath,
+          passwordProvider: createSimplePasswordProvider(password),
+          firstAttemptByEmptyPassword: false);
+    } on PdfPasswordException {
+      return false;
+    }
+    try {
+      final bytes = await document.encodePdf(removeSecurity: true);
+      await (await File(outPath).create(recursive: true))
+          .writeAsBytes(bytes, flush: true);
+      return true;
+    } finally {
+      await document.dispose();
+    }
+  }
 }
 
 /// A character's bounds in PDF points, origin bottom-left (as PDFium gives

@@ -16,6 +16,12 @@ class ImportException implements Exception {
   String toString() => 'ImportException: $message';
 }
 
+/// Thrown by [PdfService.pageCount] when the PDF opens only with a password;
+/// [PdfService.unlock] makes a copy that opens without one.
+class PdfLockedException extends ImportException {
+  const PdfLockedException() : super('That PDF is protected with a password.');
+}
+
 /// Thrown by [PdfService.renderAll] when the caller cancelled the import.
 /// Pages already rendered stay in the cache, so importing again is quicker.
 class ImportCancelledException implements Exception {
@@ -49,9 +55,14 @@ class _PdfRenderPayload {
 class PdfService {
   /// [textLayers] keeps each page's own text beside its image so reading the page
   /// later needs no OCR (see `pdf_text_layer.dart`); tests pass a fake.
-  PdfService({PdfTextLayerWriter? textLayers})
-    : _textLayers = textLayers ?? PdfTextLayerWriter(PdfiumTextSource());
+  /// [pdfium] also unlocks password-protected PDFs.
+  PdfService({PdfTextLayerWriter? textLayers, PdfiumTextSource? pdfium})
+    : this._(pdfium ?? PdfiumTextSource(), textLayers);
 
+  PdfService._(this._pdfium, PdfTextLayerWriter? textLayers)
+    : _textLayers = textLayers ?? PdfTextLayerWriter(_pdfium);
+
+  final PdfiumTextSource _pdfium;
   final PdfTextLayerWriter _textLayers;
 
   /// How many pages are rendered per background job. Small enough that
@@ -71,10 +82,29 @@ class PdfService {
       document = await PdfDocument.openFile(filePath);
       return document.pagesCount;
     } catch (_) {
+      if (await _isLocked(filePath)) throw const PdfLockedException();
       throw const ImportException('File is not a valid PDF');
     } finally {
       await document?.close();
     }
+  }
+
+  Future<bool> _isLocked(String filePath) async {
+    try {
+      return await _pdfium.isLocked(filePath);
+    } catch (_) {
+      return false; // PDFium can't read it either: simply not a PDF
+    }
+  }
+
+  /// Unlocks the protected PDF at [filePath] with [password] into a copy with
+  /// the same file name (the name an import shows) under the temp directory.
+  /// Returns the copy's path, or null when the password is wrong.
+  Future<String?> unlock(String filePath, String password) async {
+    final name = filePath.split(RegExp(r'[/\\]')).last;
+    final out = '${(await getTemporaryDirectory()).path}/unlocked/'
+        '${DateTime.now().microsecondsSinceEpoch}/$name';
+    return await _pdfium.unlock(filePath, password, out) ? out : null;
   }
 
   /// Renders pages [firstPage]..[lastPage] (1-based, inclusive; null = to the

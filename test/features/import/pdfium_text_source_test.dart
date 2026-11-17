@@ -71,4 +71,28 @@ void main() {
         'Mitosis divides one cell into two.');
     expect(File('${dir.path}/p_2.txt').readAsStringSync().trim(), isEmpty);
   }, skip: skip, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('a locked PDF is unlocked into a copy with the right password only',
+      () async {
+    final plain = await pdfWith(['Osmosis moves water across a membrane']);
+    final locked = '${dir.path}/locked.pdf';
+    // qpdf makes the locked fixture; without it this test cannot run.
+    final made = Process.runSync('qpdf',
+        ['--encrypt', 'secret', 'secret', '256', '--', plain, locked]);
+    if (made.exitCode != 0) {
+      markTestSkipped('qpdf is needed to make a locked PDF');
+      return;
+    }
+    final source = PdfiumTextSource(cacheDir: () async => dir.path);
+
+    expect(await source.isLocked(plain), isFalse);
+    expect(await source.isLocked(locked), isTrue);
+    expect(await source.unlock(locked, 'wrong', '${dir.path}/x.pdf'), isFalse);
+
+    final out = '${dir.path}/unlocked/locked.pdf';
+    expect(await source.unlock(locked, 'secret', out), isTrue);
+    expect(await source.isLocked(out), isFalse);
+    expect((await source.pagesText(out)).single.trim(),
+        'Osmosis moves water across a membrane');
+  }, skip: skip, timeout: const Timeout(Duration(minutes: 2)));
 }

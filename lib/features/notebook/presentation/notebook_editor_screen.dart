@@ -33,7 +33,10 @@ import '../../ai/presentation/widgets/cloud_send_dialog.dart';
 import '../../../domain/model/page_size.dart';
 import '../../../domain/model/template_type.dart';
 import '../../import/pdf_service.dart'
-    show ImportCancelledException, ImportException;
+    show ImportCancelledException, ImportException, PdfLockedException;
+import '../../../editor/import/text_pages.dart' show paginateText;
+import '../../../editor/render/scene_element_painter.dart'
+    show SceneElementPainter;
 import '../../audio/presentation/audio_providers.dart';
 import '../../audio/presentation/lecture_transcript_sheet.dart';
 import '../../audio/presentation/lecture_transcription_notifier.dart';
@@ -153,7 +156,7 @@ Rect placeImageInView({
 }
 
 /// What the user picked from the import sheet.
-enum _ImportSource { gallery, camera, pdf }
+enum _ImportSource { gallery, camera, pdf, text }
 
 class NotebookEditorScreen extends ConsumerStatefulWidget {
   final int notebookId;
@@ -958,8 +961,10 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
     final images = [for (final f in share.files) if (f.isImage) f.path];
     final pdfs = [for (final f in share.files) if (f.isPdf) f.path];
+    final texts = [for (final f in share.files) if (f.isText) f.path];
     final skipped = [
-      for (final f in share.files) if (!f.isImage && !f.isPdf) f.name
+      for (final f in share.files)
+        if (!f.isImage && !f.isPdf && !f.isText) f.name
     ];
     try {
       if (images.isNotEmpty) await _importPhotos(key, paths: images);
@@ -967,14 +972,23 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
         if (!mounted) return;
         await _importPdf(given: pdf);
       }
+      for (final file in texts) {
+        if (!mounted) return;
+        await _importTextFile(given: file);
+      }
     } on ImportException catch (e) {
       _toast(e.message);
     }
     if (!mounted) return;
-    final text = share.text;
-    if (text != null) _insertNote(key, text);
+    final note = share.noteText;
+    if (note != null) _insertNote(key, note);
     if (skipped.isNotEmpty) {
       _toast('Margo can\'t open ${skipped.join(', ')} yet.');
+    }
+    // "A note each": on to the next note's share.
+    final next = share.next;
+    if (next != null && mounted) {
+      context.pushReplacement('/note2/${next.notebookId}', extra: next.share);
     }
   }
 
@@ -1013,6 +1027,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
               subtitle: const Text('One page per PDF page'),
               onTap: () => Navigator.of(context).pop(_ImportSource.pdf),
             ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Text or Markdown file'),
+              subtitle: const Text('Becomes typed pages'),
+              onTap: () => Navigator.of(context).pop(_ImportSource.text),
+            ),
           ],
         ),
       ),
@@ -1027,6 +1047,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           await _importCapture(key);
         case _ImportSource.pdf:
           await _importPdf();
+        case _ImportSource.text:
+          await _importTextFile();
       }
     } on ImportException catch (e) {
       _toast(e.message);
@@ -1093,8 +1115,9 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
   /// Imports the PDF at [given], or one the user picks.
   Future<void> _importPdf({String? given}) async {
-    final path = given ?? await _import.pickPdfPath();
-    if (path == null || !mounted) return;
+    final picked = given ?? await _import.pickPdfPath();
+    if (picked == null || !mounted) return;
+    var path = picked;
     // Every page needs a sheet to be fitted to, so fail up front rather than
     // rendering the whole document and silently dropping each page.
     if (_pageSheet == null || _pageSheet!.isEmpty) {
@@ -1102,7 +1125,23 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       return;
     }
 
-    final count = await _import.pdfPageCount(path);
+    int count;
+    try {
+      count = await _import.pdfPageCount(path);
+    } on PdfLockedException {
+      if (!mounted) return;
+      final locked = path;
+      final unlocked = await showDialog<String>(
+        context: context,
+        builder: (_) => PdfPasswordDialog(
+          fileName: SceneImportService.importSourceNameOf(locked),
+          unlock: (password) => _import.unlockPdf(locked, password),
+        ),
+      );
+      if (unlocked == null || !mounted) return;
+      path = unlocked;
+      count = await _import.pdfPageCount(path);
+    }
     if (!mounted) return;
     if (count < 1) {
       _toast('That PDF had no pages to import.');
@@ -1161,6 +1200,40 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
         readNow: options.readText);
   }
 
+  /// Imports a text or Markdown file — the one at [given], or one the user
+  /// picks — as typed text pages, grouped like a PDF so it can be named as a
+  /// scope.
+  Future<void> _importTextFile({String? given}) async {
+    final path = given ?? await _import.pickTextPath();
+    if (path == null || !mounted) return;
+    final sheet = _pageSheet;
+    if (sheet == null || sheet.isEmpty) {
+      _toast('The page is still loading — try again in a moment.');
+      return;
+    }
+    final text = await _import.readTextFile(path);
+    if (!mounted) return;
+
+    const margin = 56.0;
+    final width = sheet.width - 2 * margin;
+    TextElement typed(String t, int zOrder) => TextElement(
+          id: '${DateTime.now().microsecondsSinceEpoch}_tx${_noteSeq++}',
+          zOrder: zOrder,
+          geometryData: [margin, margin, sheet.width - margin, sheet.height - margin],
+          text: t,
+          color: 0xFF1A1A1A,
+        );
+    final chunks = paginateText(text, sheet.height - 2 * margin,
+        (t) => SceneElementPainter.layOutText(typed(t, 0), width).height);
+    if (chunks.isEmpty) {
+      _toast('That file had no text to import.');
+      return;
+    }
+    await _addPagesAsImport(
+        chunks.length, (i) => _addOnNewPage((_, z) => typed(chunks[i], z)),
+        sourceName: SceneImportService.importSourceNameOf(path));
+  }
+
   /// Adds one page per image of a multi-page import (a PDF, a scan) — right
   /// after the page the user was on when [afterCurrent], else at the end — and
   /// starts reading the whole document for search.
@@ -1168,6 +1241,14 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// With [readNow] off the pages are only imported: each is read when it is
   /// opened with the AI panel, or by "Index all pages".
   Future<void> _addImportedPages(List<ImportedImage> pages,
+          {required String sourceName,
+          bool afterCurrent = true,
+          bool readNow = true}) =>
+      _addPagesAsImport(pages.length, (i) => _addImageOnNewPage(pages[i]),
+          sourceName: sourceName, afterCurrent: afterCurrent, readNow: readNow);
+
+  /// [_addImportedPages] for any page: [count] pages, each made by [addPage].
+  Future<void> _addPagesAsImport(int count, Future<int?> Function(int i) addPage,
       {required String sourceName,
       bool afterCurrent = true,
       bool readNow = true}) async {
@@ -1181,8 +1262,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     final repository = ref.read(pageRepositoryProvider);
     final createdPageIds = <int>[];
 
-    for (final page in pages) {
-      final pageId = await _addImageOnNewPage(page);
+    for (var i = 0; i < count; i++) {
+      final pageId = await addPage(i);
       if (!mounted) return;
       if (pageId == null) continue;
       await repository.tagImport(
@@ -1199,7 +1280,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
           .movePagesAfter(createdPageIds, afterIndex: startedOn);
       if (!mounted) return;
     }
-    _toast('Imported ${pages.length} page${pages.length == 1 ? '' : 's'}.');
+    _toast('Imported $count page${count == 1 ? '' : 's'}.');
 
     // Read and embed the whole document NOW, rather than waiting for the user
     // to open each page. The live RagIndexScheduler is driven by the Context
@@ -1361,7 +1442,25 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// freshly built page triggers [_ensureLoaded], and [SceneController.load]
   /// *replaces* the scene with whatever the store holds — so adding first and
   /// loading second would discard the image.
-  Future<int?> _addImageOnNewPage(ImportedImage imported) async {
+  Future<int?> _addImageOnNewPage(ImportedImage imported) =>
+      _addOnNewPage((sheet, zOrder) {
+        // A size we couldn't measure fills the sheet rather than failing.
+        final source = imported.pixelSize.isEmpty ? sheet : imported.pixelSize;
+        final box = fitCentred(source, Offset.zero & sheet);
+        if (box.isEmpty) return null;
+        // Locked: a page-sized import is the paper, not something on it.
+        // Unlocked, the Select tool grabbed it from under the ink written
+        // over it, so annotations could not be selected and the page slid
+        // away. It is still selected by a tap (for Unlock / Extract text);
+        // Unlock from the selection bar to move or resize it.
+        return _imageElement(imported, box, zOrder, locked: true);
+      });
+
+  /// Appends a page holding the element [make] builds for the page's [sheet];
+  /// returns the page's id, or null when no page could be made (or [make]
+  /// gave nothing). See [_addImageOnNewPage] for why it loads first.
+  Future<int?> _addOnNewPage(
+      SceneElement? Function(Size sheet, int zOrder) make) async {
     final sheet = _pageSheet;
     if (sheet == null || sheet.isEmpty) return null;
 
@@ -1376,25 +1475,10 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     await ref.read(sceneControllerProvider(key).notifier).load();
     if (!mounted) return null;
 
-    // A size we couldn't measure fills the sheet rather than failing the import.
-    final source =
-        imported.pixelSize.isEmpty ? sheet : imported.pixelSize;
-    final box = fitCentred(source, Offset.zero & sheet);
-    if (box.isEmpty) return null;
-
-    ref.read(historyProvider(key).notifier).push(AddElementsCommand([
-          _imageElement(
-            imported,
-            box,
-            ref.read(sceneControllerProvider(key).notifier).nextZOrder(),
-            // Locked: a page-sized import is the paper, not something on it.
-            // Unlocked, the Select tool grabbed it from under the ink written
-            // over it, so annotations could not be selected and the page slid
-            // away. It is still selected by a tap (for Unlock / Extract text);
-            // Unlock from the selection bar to move or resize it.
-            locked: true,
-          ),
-        ]));
+    final element = make(
+        sheet, ref.read(sceneControllerProvider(key).notifier).nextZOrder());
+    if (element == null) return null;
+    ref.read(historyProvider(key).notifier).push(AddElementsCommand([element]));
     // The image is only in the page once its write has landed; the caller
     // reports the import as done after this returns.
     await SceneController.flushPage(key.pageId);

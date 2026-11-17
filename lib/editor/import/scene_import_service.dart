@@ -17,6 +17,7 @@ import '../../core/constants/storage_paths.dart';
 import '../../features/import/pdf_service.dart';
 import 'document_scanner_port.dart';
 import 'png_size.dart';
+import 'text_pages.dart';
 
 /// One imported picture, ready to be turned into an [ImageElement] once the
 /// caller has decided where it goes.
@@ -67,6 +68,33 @@ class SceneImportService {
       allowedExtensions: ['pdf'],
     );
     return file?.path;
+  }
+
+  /// Lets the user choose a text or Markdown file. Null when they cancel.
+  Future<String?> pickTextPath() async {
+    final file = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: ['txt', 'md', 'markdown'],
+    );
+    return file?.path;
+  }
+
+  /// A copy of the password-protected PDF at [filePath] that opens without
+  /// one; null when [password] is wrong. See [PdfService.unlock].
+  Future<String?> unlockPdf(String filePath, String password) =>
+      _pdf.unlock(filePath, password);
+
+  /// The text of the file at [filePath], Markdown syntax removed for a `.md`.
+  ///
+  /// Throws [ImportException] when it cannot be read or is too big to be notes.
+  Future<String> readTextFile(String filePath) async {
+    final file = File(filePath);
+    // ponytail: 2 MB cap, about 600 pages of text; raise if anyone needs more.
+    if (!await file.exists() || await file.length() > 2 * 1024 * 1024) {
+      throw const ImportException('That file is too big to import as text.');
+    }
+    final text = decodeTextFile(await file.readAsBytes());
+    return isMarkdownName(filePath) ? plainFromMarkdown(text) : text;
   }
 
   /// A fresh identifier for one import, stamped onto every page it produces

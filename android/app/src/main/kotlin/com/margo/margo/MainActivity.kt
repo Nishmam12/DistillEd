@@ -94,7 +94,9 @@ class MainActivity : FlutterActivity() {
                     "name" to name,
                 )
             } catch (e: Exception) {
-                null // unreadable (revoked grant, deleted file): skip it
+                // Unreadable (revoked grant, deleted file): skip it.
+                android.util.Log.w("MargoShare", "could not read $uri", e)
+                null
             }
         }
         val text = if (intent.action == Intent.ACTION_SEND && uris.isEmpty())

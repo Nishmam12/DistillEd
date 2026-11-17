@@ -5,6 +5,8 @@
 // should go (a new note or an existing one), and opens the editor with it. The
 // editor runs it through the same import paths its own import sheet uses.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +31,12 @@ class SharedFile {
   bool get isImage =>
       mimeType.startsWith('image/') ||
       const {'jpg', 'jpeg', 'png', 'webp', 'heic', 'gif', 'bmp'}.contains(_ext);
+  bool get isText =>
+      !isPdf &&
+      !isImage &&
+      (mimeType == 'text/plain' ||
+          mimeType.contains('markdown') ||
+          const {'txt', 'md', 'markdown'}.contains(_ext));
 }
 
 @immutable
@@ -37,7 +45,37 @@ class SharedPayload {
   final String? subject;
   final List<SharedFile> files;
 
-  const SharedPayload({this.text, this.subject, this.files = const []});
+  /// "A note each" for several PDFs: the next note to open once this one has
+  /// taken its share in.
+  final ({int notebookId, SharedPayload share})? next;
+
+  const SharedPayload(
+      {this.text, this.subject, this.files = const [], this.next});
+
+  /// The shared text when it is nothing but a web address.
+  Uri? get link {
+    final t = text;
+    if (t == null || t.contains(RegExp(r'\s'))) return null;
+    final uri = Uri.tryParse(t);
+    return uri != null &&
+            (uri.isScheme('http') || uri.isScheme('https')) &&
+            uri.host.isNotEmpty
+        ? uri
+        : null;
+  }
+
+  /// What goes on the page for the shared text: a link becomes a small card
+  /// (title, site, address) from what the sharing app sent, fetching nothing.
+  String? get noteText {
+    final uri = link;
+    if (uri == null) return text;
+    final site = uri.host.replaceFirst(RegExp(r'^www\.'), '');
+    return [
+      if (subject != null && subject!.isNotEmpty && subject != text) subject!,
+      site,
+      uri.toString(),
+    ].join('\n');
+  }
 
   /// From the map MainActivity's `take` returns; null when there is nothing.
   static SharedPayload? fromMap(Map<Object?, Object?>? map) {
@@ -68,6 +106,8 @@ class SharedPayload {
       final dot = name.lastIndexOf('.');
       return dot > 0 ? name.substring(0, dot) : name;
     }
+    final uri = link;
+    if (uri != null) return uri.host.replaceFirst(RegExp(r'^www\.'), '');
     final firstLine = text!.split('\n').first.trim();
     return firstLine.length > 40 ? '${firstLine.substring(0, 40)}…' : firstLine;
   }
@@ -142,12 +182,66 @@ Future<void> _deliver(Ref ref, SharedPayload share) async {
       ),
     ),
   );
-  if (choice == null) return;
-  final id = choice == -1
-      ? (await home.createNotebook(share.suggestedTitle.isEmpty
-              ? 'Shared note'
-              : share.suggestedTitle))
-          .id
-      : choice;
-  await appRouter.push('/note2/$id', extra: share);
+  if (choice == null || !context.mounted) return;
+  if (choice != -1) {
+    unawaited(appRouter.push('/note2/$choice', extra: share));
+    return;
+  }
+
+  final pdfs = share.files.where((f) => f.isPdf).toList();
+  var eachOwnNote = false;
+  if (pdfs.length > 1) {
+    final each = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${pdfs.length} PDFs'),
+        content: const Text('Put them in one note, or give each its own?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('One note')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('A note each')),
+        ],
+      ),
+    );
+    if (each == null) return;
+    eachOwnNote = each;
+  }
+
+  Future<int> create(String title) async =>
+      (await home.createNotebook(title.isEmpty ? 'Shared note' : title)).id;
+
+  if (!eachOwnNote) {
+    unawaited(appRouter.push('/note2/${await create(share.suggestedTitle)}',
+        extra: share));
+    return;
+  }
+  // A note per PDF. The first also takes everything that is not a PDF; the
+  // editor opens each in turn once the one before has imported its share.
+  final notes = <({int id, SharedPayload share})>[];
+  for (var i = 0; i < pdfs.length; i++) {
+    final own = SharedPayload(
+      files: [
+        pdfs[i],
+        if (i == 0) ...share.files.where((f) => !f.isPdf),
+      ],
+      text: i == 0 ? share.text : null,
+      subject: i == 0 ? share.subject : null,
+    );
+    notes.add((id: await create(own.suggestedTitle), share: own));
+  }
+  ({int notebookId, SharedPayload share})? next;
+  for (final note in notes.reversed) {
+    next = (
+      notebookId: note.id,
+      share: SharedPayload(
+          files: note.share.files,
+          text: note.share.text,
+          subject: note.share.subject,
+          next: next),
+    );
+  }
+  unawaited(appRouter.push('/note2/${next!.notebookId}', extra: next.share));
 }
