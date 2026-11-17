@@ -28,6 +28,39 @@ Commits: <first>..<last>
 
 ## Push log
 
+### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: the commit after `a44587b` (this push)
+
+**What changed:**
+- `docs/COMPETITOR_UPGRADE_PLAN.md` now covers Evernote 11.42.4 as well as
+  Samsung Notes. Samsung Notes was decompiled with JADX, so the plan records
+  how its features actually work (note replay, the retrying search indexer,
+  suggested titles and tags, note lock). Evernote is a React Native app; its
+  feature set was read from the compiled bundle's strings and its editor code.
+- The plan has 8 phases, from "Share to / Open with Margo" to templates and
+  export, each checked against Margo's code. It corrects the first draft:
+  linking ink to audio and recolouring/straightening ink already exist.
+- Decisions recorded: note lock will hide notes (not encrypt them) using
+  `local_auth`; the stored-data additions in phases 2, 3 and 6 are approved.
+- `.gitignore` now also ignores `*.xapk`, so competitor packages stay local.
+
+**What you need to do:** nothing. Docs and `.gitignore` only; no code,
+package or database change. Nothing in the plan is built yet.
+
+**Tested:** not applicable (no code changed).
+
+### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `a44587b`
+
+*Added from the git history by Afnan's Claude.*
+
+**What changed:** added `docs/COMPETITOR_UPGRADE_PLAN.md`, the first version
+of the upgrade plan, based on Samsung Notes only.
+
+**What you need to do:** nothing. Docs only.
+
+**Tested:** not applicable (no code changed).
+
 ### 2026-11-17 · Nabil (RTX 4070 Ti Super) · `release/5.5.0-37` · 5.5.0+37
 Commits: `fbe07be`..(this release commit), including Afnan's `1ae6e71`, `14c30c8` and `a5ebd54`
 

@@ -83,3 +83,4 @@ ios/Runner/GeneratedPluginRegistrant.*
 
 # Local APKs
 *.apk
+*.xapk
