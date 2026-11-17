@@ -102,6 +102,7 @@ import '../data/tools/wikipedia_tool.dart';
 import 'ask_notes_notifier.dart';
 import 'study_planner_notifier.dart';
 import 'study_planner/pinned_deadlines.dart';
+import 'study_recipes_store.dart';
 import 'context_engine_notifier.dart';
 import 'page_figures.dart';
 import 'explain_notifier.dart';

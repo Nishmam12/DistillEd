@@ -17,6 +17,7 @@ import '../data/llm/llm_exceptions.dart';
 import '../data/llm/model_download_manager.dart';
 import '../domain/ai_provider.dart';
 import '../domain/ai_scope.dart';
+import '../domain/study_recipes.dart';
 import '../domain/catalog/ai_model_entry.dart';
 import '../domain/catalog/answer_route.dart';
 import '../domain/chat_commands.dart';
@@ -186,6 +187,12 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
   /// Null sends without asking, which only tests rely on.
   final Future<bool> Function(AiModelEntry model)? _confirmSend;
 
+  /// The study recipes a `/name` runs, and saving or removing the student's
+  /// own. Null: the built-in ones only, and nothing can be saved.
+  final List<StudyRecipe> Function()? _recipes;
+  final Future<void> Function(String name, String instruction)? _saveRecipe;
+  final Future<bool> Function(String name)? _removeRecipe;
+
   AskNotesNotifier({
     required this._qa,
     required this._llmDownloads,
@@ -198,6 +205,9 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     this._figureQa,
     this._route,
     this._confirmSend,
+    this._recipes,
+    this._saveRecipe,
+    this._removeRecipe,
   })  : super(const AskNotesIdle());
 
   String? _lastQuestion;
@@ -229,11 +239,16 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
 
     // Commands are intercepted BEFORE retrieval, so "/cloud on" never reaches
     // the model as a question about clouds.
-    final command = parseChatCommand(trimmed);
-    if (command != null) {
+    final command = parseChatCommand(trimmed,
+        recipes: _recipes?.call() ?? kBuiltInRecipes);
+    // A recipe is answered like a question, over the whole scope rather than
+    // what a search finds: it is an instruction, not something to look up.
+    final recipe = command is RunRecipeCommand ? command : null;
+    if (command != null && recipe == null) {
       await _handleCommand(command);
       return;
     }
+    final prompt = recipe?.recipe.promptWith(recipe.focus) ?? trimmed;
 
     _lastQuestion = trimmed;
     _lastNotebookId = notebookId;
@@ -241,8 +256,10 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     _running = true;
     try {
       state = AskNotesSearching(trimmed, scope: scope);
-      final sources = _qa.fitToBudget(await _qa.findSources(
-          question: trimmed, notebookId: notebookId, scope: scope));
+      final sources = _qa.fitToBudget(recipe != null
+          ? await _qa.scopeSources(notebookId: notebookId, scope: scope)
+          : await _qa.findSources(
+              question: trimmed, notebookId: notebookId, scope: scope));
       if (!mounted) return;
       if (sources.isEmpty) {
         // Grounded refusal decided WITHOUT the LLM — nothing to answer from.
@@ -265,13 +282,14 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
         if (!mounted) return;
       }
 
-      final figure = await _lookAtFigure(trimmed, sources, scope);
+      final figure =
+          recipe != null ? null : await _lookAtFigure(trimmed, sources, scope);
       if (!mounted) return;
 
       state = AskNotesAnswering(trimmed, '', sources,
           scope: scope, figure: figure);
-      final answer = await _generate(trimmed, sources, scope, figure,
-          picked: picked);
+      final answer = await _generate(prompt, sources, scope, figure,
+          picked: picked, shown: trimmed);
       if (!mounted) return;
 
       final text = answer.text.trim();
@@ -309,8 +327,39 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     switch (command) {
       case UnknownSlashCommand(:final raw):
         state = AskNotesNotice(
-            "I don't know the command \"$raw\". Try /cloud on, /cloud off "
-            'or /model.');
+            "I don't know the command \"$raw\". Try /recipes to see the "
+            'study recipes, or /cloud on, /cloud off or /model.');
+
+      case RunRecipeCommand():
+        break; // answered in [ask]
+
+      case ListRecipesCommand():
+        final all = _recipes?.call() ?? kBuiltInRecipes;
+        state = AskNotesNotice([
+          'Study recipes run on what the panel is looking at:',
+          for (final r in all) '/${r.name}${r.builtIn ? '' : ' (yours)'}',
+          'Save your own: /recipe name what to do. '
+              'Remove one: /recipe remove name.',
+        ].join('\n'));
+
+      case SaveRecipeCommand(:final name, :final instruction):
+        final save = _saveRecipe;
+        if (save == null) {
+          state = const AskNotesNotice("Recipes can't be saved here.");
+        } else if (name == null || instruction.isEmpty) {
+          state = const AskNotesNotice(
+              'Give the recipe a short name and what it should do, e.g. '
+              '/recipe exam-prep List what is most likely to be asked.');
+        } else {
+          await save(name, instruction);
+          state = AskNotesNotice('Saved. Type /$name to run it.');
+        }
+
+      case RemoveRecipeCommand(:final name):
+        final removed = await _removeRecipe?.call(name) ?? false;
+        state = AskNotesNotice(removed
+            ? 'Removed /$name.'
+            : 'There is no recipe of yours called /$name.');
 
       case ModelPickerCommand():
         // The panel opens the picker itself when it sees this command; this is
@@ -377,10 +426,11 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     AiScope? scope,
     FigureAnswer? figure, {
     AiModelEntry? picked,
+    String? shown,
   }) async {
     void onPartial(String partial) {
       if (mounted) {
-        state = AskNotesAnswering(question, partial, sources,
+        state = AskNotesAnswering(shown ?? question, partial, sources,
             scope: scope, figure: figure);
       }
     }

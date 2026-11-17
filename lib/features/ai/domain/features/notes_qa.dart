@@ -92,6 +92,18 @@ class NotesQa {
     );
   }
 
+  /// The whole of [scope] (or the notebook) as sources, in page order, for a
+  /// study recipe: it has an instruction to follow, not a question to search
+  /// with. Callers fit it to the budget like any sources.
+  Future<List<RetrievedChunk>> scopeSources({
+    required int notebookId,
+    AiScope? scope,
+  }) =>
+      _retriever.wholeScope(
+        notebookId: notebookId,
+        pageIds: scope?.kind == AiScopeKind.notebook ? null : scope?.pageIdSet,
+      );
+
   /// Sampling for a grounded answer. Low temperature: this is grounded
   /// extraction, not creative writing. A constant so the quality guard's cloud
   /// re-run asks the cloud tier for the same thing the local tier was asked.

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:margo/features/ai/data/embeddings/embedder_download_manager.dart';
 import 'package:margo/features/ai/data/llm/model_download_manager.dart';
 import 'package:margo/features/ai/domain/ai_provider.dart';
+import 'package:margo/features/ai/domain/ai_scope.dart';
 import 'package:margo/features/ai/domain/features/figure_qa.dart';
 import 'package:margo/features/ai/domain/figure.dart';
 import 'package:margo/features/ai/domain/image_transcriber.dart';
@@ -252,6 +253,58 @@ void main() {
       expect(provider.prompts.single, isNot(contains('Seen by looking')));
       expect((n.state as AskNotesAnswered).figure, isNull);
     });
+  });
+
+  test('a recipe runs over the whole scope, not a search, and shows as typed',
+      () async {
+    final provider = _ScriptedProvider(const ['Q: What is ATP?\nA: Energy.']);
+    final qa = NotesQa(
+      provider: provider,
+      retriever: RagRetriever(
+        embedder: _FixedEmbedder(),
+        loadChunks: (_) async => const [],
+        loadPageTexts: (_) async => const [
+          (pageId: 7, text: 'Mitochondria make ATP.'),
+          (pageId: 8, text: 'Another page, not in scope.'),
+        ],
+      ),
+    );
+    final n = AskNotesNotifier(
+      qa: qa,
+      llmDownloads: ModelDownloadManager(),
+      embedderDownloads: EmbedderDownloadManager(authToken: () => null),
+    );
+    await n.ask('/flashcards',
+        notebookId: 1,
+        scope: const AiScope(
+            kind: AiScopeKind.page, notebookId: 1, pageIds: [7]));
+
+    final s = n.state;
+    expect(s, isA<AskNotesAnswered>());
+    s as AskNotesAnswered;
+    expect(s.question, '/flashcards');
+    expect(s.sources.map((c) => c.chunk.pageId), [7]);
+    expect(provider.prompts.single, contains('Write 10 flashcards'));
+    expect(provider.prompts.single, contains('Mitochondria make ATP.'));
+    expect(provider.prompts.single, isNot(contains('Another page')));
+  });
+
+  test('saving a recipe goes through the callback and says how to run it',
+      () async {
+    final saved = <String, String>{};
+    final n = AskNotesNotifier(
+      qa: NotesQa(
+        provider: _ScriptedProvider(const []),
+        retriever: RagRetriever(
+            embedder: _FixedEmbedder(), loadChunks: (_) async => const []),
+      ),
+      llmDownloads: ModelDownloadManager(),
+      embedderDownloads: EmbedderDownloadManager(authToken: () => null),
+      saveRecipe: (name, instruction) async => saved[name] = instruction,
+    );
+    await n.ask('/recipe exam-prep List likely questions.', notebookId: 1);
+    expect(saved, {'exam-prep': 'List likely questions.'});
+    expect((n.state as AskNotesNotice).message, contains('/exam-prep'));
   });
 }
 

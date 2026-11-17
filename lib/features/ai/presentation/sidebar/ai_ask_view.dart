@@ -638,7 +638,9 @@ class _ErrorBody extends ConsumerWidget {
       downloadLabel = null;
     }
 
-    return Column(
+    // Scrolls as a whole in a short panel, so the button stays reachable.
+    return SingleChildScrollView(
+        child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         _Centered(
@@ -666,7 +668,7 @@ class _ErrorBody extends ConsumerWidget {
                 style: TextStyle(color: context.colors.accent)),
           ),
       ],
-    );
+    ));
   }
 }
 
@@ -684,7 +686,9 @@ class _Centered extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Scrolls when the panel is short: a small floating panel, large text,
+    // or a long notice (the /recipes list).
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,

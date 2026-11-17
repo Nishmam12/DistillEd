@@ -1,8 +1,9 @@
 // Things a student types into the Ask box that are instructions to the APP
 // rather than questions for the model.
 //
-// Just one family today: turning cloud AI on and off. It earns a command
-// because the alternative is a trip out to Settings in the middle of a
+// Two families: study recipes (`/cornell`, `/recipe name ...`, `/recipes`,
+// see `study_recipes.dart`), and turning cloud AI on and off. The cloud one
+// earns a command because the alternative is a trip out to Settings in the middle of a
 // question, and because the moment someone wants the cloud model is usually the
 // moment the on-device one has just given them a poor answer — three taps away
 // from where they are looking.
@@ -17,6 +18,8 @@
 //     cloud computing" is a question and must reach the model untouched.
 //     Getting this wrong in the permissive direction silently eats questions,
 //     which is far worse than making someone type the slash version.
+
+import 'study_recipes.dart';
 
 /// A recognised app-level instruction.
 sealed class ChatCommand {
@@ -34,6 +37,33 @@ class ModelPickerCommand extends ChatCommand {
   const ModelPickerCommand();
 }
 
+/// Run a study recipe over the current scope; [focus] is whatever followed
+/// its name.
+class RunRecipeCommand extends ChatCommand {
+  final StudyRecipe recipe;
+  final String focus;
+  const RunRecipeCommand(this.recipe, this.focus);
+}
+
+/// `/recipes`: list them.
+class ListRecipesCommand extends ChatCommand {
+  const ListRecipesCommand();
+}
+
+/// `/recipe name what to do`: save (or replace) one of the student's own.
+/// [name] is null when the name given was not usable.
+class SaveRecipeCommand extends ChatCommand {
+  final String? name;
+  final String instruction;
+  const SaveRecipeCommand(this.name, this.instruction);
+}
+
+/// `/recipe remove name`.
+class RemoveRecipeCommand extends ChatCommand {
+  final String name;
+  const RemoveRecipeCommand(this.name);
+}
+
 /// A `/`-prefixed word that isn't a command we know. Recognised so the app can
 /// say so, rather than sending `/clod on` to the model as a question.
 class UnknownSlashCommand extends ChatCommand {
@@ -42,18 +72,41 @@ class UnknownSlashCommand extends ChatCommand {
 }
 
 /// Parses [input] as a command, or null when it is an ordinary question.
-ChatCommand? parseChatCommand(String input) {
+/// [recipes] are the study recipes a `/name` may run.
+ChatCommand? parseChatCommand(
+  String input, {
+  List<StudyRecipe> recipes = kBuiltInRecipes,
+}) {
   final trimmed = input.trim();
   if (trimmed.isEmpty) return null;
 
-  if (trimmed.startsWith('/')) return _parseSlash(trimmed);
+  if (trimmed.startsWith('/')) return _parseSlash(trimmed, recipes);
   return _parseNatural(trimmed);
 }
 
-ChatCommand? _parseSlash(String input) {
+ChatCommand? _parseSlash(String input, List<StudyRecipe> recipes) {
   final parts = input.substring(1).trim().split(RegExp(r'\s+'));
   final name = parts.first.toLowerCase();
   final argument = parts.length > 1 ? parts[1].toLowerCase() : '';
+  // What followed the first word, as typed.
+  final rest = parts.length > 1
+      ? input.substring(1).trim().substring(parts.first.length).trim()
+      : '';
+
+  if (name == 'recipes') {
+    return rest.isEmpty ? const ListRecipesCommand() : UnknownSlashCommand(input);
+  }
+  if (name == 'recipe') {
+    if (argument == 'remove' && parts.length == 3) {
+      return RemoveRecipeCommand(parts[2].toLowerCase());
+    }
+    if (parts.length < 3) return UnknownSlashCommand(input);
+    final instruction = rest.substring(parts[1].length).trim();
+    return SaveRecipeCommand(recipeName(parts[1]), instruction);
+  }
+  for (final r in recipes) {
+    if (r.name == name) return RunRecipeCommand(r, rest);
+  }
 
   // Exact, like every slash command: `/model` and nothing after it. A model is
   // chosen from the list the picker shows, not by typing a name here.

@@ -159,6 +159,40 @@ class RagRetriever {
     ];
   }
 
+  /// Every passage of the pages in scope ([pageIds], or the whole notebook
+  /// when null), in page order and unranked: what a study recipe runs over,
+  /// where there is an instruction rather than a question to search with.
+  /// Read from the plain page text, so it needs no embedding model. Empty
+  /// when page text is not wired.
+  Future<List<RetrievedChunk>> wholeScope({
+    required int notebookId,
+    Set<int>? pageIds,
+  }) async {
+    final loadPageTexts = _loadPageTexts;
+    if (loadPageTexts == null) return const [];
+    return [
+      for (final page in await loadPageTexts(notebookId))
+        if (pageIds == null || pageIds.contains(page.pageId))
+          for (final draft in chunkPage(
+            text: page.text,
+            notebookId: notebookId,
+            pageId: page.pageId,
+            maxWords: _embedder.chunkWords,
+            overlapWords: _embedder.chunkOverlapWords,
+          ))
+            RetrievedChunk(
+              chunk: NoteChunk.fromDraft(
+                draft,
+                embedding: const [],
+                embeddingModelId: '',
+                contentSignature: '',
+                embeddedAt: _notStored,
+              ),
+              score: 1,
+            ),
+    ];
+  }
+
   /// Every chunk the keyword search may read: the stored, current-model chunks
   /// of the pages in scope, plus chunks cut on the fly from the plain text of
   /// pages that have none.

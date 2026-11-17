@@ -465,5 +465,8 @@ final askNotesNotifierProvider =
         route: ref.watch(answerRouteProvider),
         confirmSend: (model) =>
             ref.read(cloudSendGateProvider.notifier).confirm(model),
+        recipes: () => ref.read(studyRecipesProvider),
+        saveRecipe: ref.read(studyRecipesProvider.notifier).save,
+        removeRecipe: ref.read(studyRecipesProvider.notifier).remove,
       );
     });
