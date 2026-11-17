@@ -39,7 +39,8 @@ void main() {
     ];
     final victims = scribbleVictims(
       scene,
-      const Rect.fromLTRB(0, 0, 80, 60),
+      // Tall enough for one stroke per pen, however many pens there are.
+      Rect.fromLTRB(0, 0, 80, 20.0 + PenKind.values.length * 10),
       excludeId: 'scribble',
     );
     expect(victims.map((e) => e.id), [
