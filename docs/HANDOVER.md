@@ -322,6 +322,11 @@ Fable 5.2 only for figure-pipeline bugs.
 | 23 | G: handwriting spellcheck, maths step-checking | Opus |
 | 24 | H: R8 with keep rules, APK size | Opus |
 | 25 | H: font replacement, error-log export, golden tests, store text | Sonnet |
+| 26 | AI tutor part 1: own-key cloud models, model picker, routing. **Code-complete on branch `ai-own-key-models` (2026-11-17), unmerged, not tablet-tested.** Plan, progress and open decisions: `docs/AI_TUTOR_PLAN.md`. Remaining: tablet check with a real key, and the decisions in its section 10 | Opus for changes to routing or consent; Sonnet for screens |
+| 27 | AI tutor part 2: one teacher persona for every feature (draft text in the plan, section 5) | Opus |
+| 28 | AI tutor part 4c: retrieval depth and answer length that follow the model and what the student asked for. The user's stated priority after part 1 | Opus |
+| 29 | AI tutor part 3: Margo's own free, budget and premium tiers (gateway is not deployed) | Opus |
+| 30 | AI tutor part 4: tutor conversation, citations, notebook guide (needs its own design session; saved chats are a schema change) | Opus |
 
 Usage habits agreed in principle: one step per session, Sonnet steps run
 back to back, Opus sessions kept to one item, device tests batched after B,

@@ -22,22 +22,32 @@ merged, not tested on a tablet.
 | 7 `SelectedAnswerProvider`, `CloudSendGate` | Done | `c9da08b` |
 | 6 `answerModelId` setting (+ `setCloudPrivacy`) | Done | `502506e` |
 | 7 Riverpod wiring (`ai_model_providers.dart`) | Done | `e0528b2` |
-| 8 Ask, confirm dialog | Done | see `git log` |
-| 8–9 Explain, quiz, flashcards | Done | see `git log` |
-| 10 Summarize | Done | see `git log` |
-| 11 Research | Done | see `git log` |
+| 8 Ask, confirm dialog | Done | `7966893` |
+| 8–9 Explain, quiz, flashcards | Done | `48e05ae` |
+| 10 Summarize | Done | `14e9661` |
+| 11 Research | Done | `c1b99de` |
 | 12 Key scrubbing in the error log | Done | `024d7ad` |
-| 13 Settings section, add screen, picker, `/model` | **Not started** | |
+| 13 Cloud models card, Add an AI screen | Done | `c299f12` |
+| 13 Model picker, header button, `/model` | Done | `a0ce30f` |
 | 14 Tablet check with a real key | **Not started** | |
 
-`flutter analyze` clean. Full suite: 3,374 pass, 44 skipped, 1 failure, which is
+`flutter analyze` clean. Full suite: 3,393 pass, 44 skipped, 1 failure, which is
 the known flaky `test/core/error_log_test.dart` ("once past 100 KB…"); it passes
 alone.
 
-**Until step 13 exists there is no way to add a key or pick a model in the app.**
-Everything is driven by `SettingsNotifier.setAnswerModelId` and
-`userConnectionsProvider.notifier.save`, which only tests call today. With the
-default `auto`, behaviour is what it was before this branch.
+With the default `auto`, behaviour is what it was before this branch. To use a
+cloud model: Settings, AI Models, Add an AI; then the model button in the AI
+panel's header (or type `/model`).
+
+### Left out of step 13 on purpose
+
+- **Editing a connection.** A connection can be added and removed, not renamed
+  or given a new key or different models. Remove it and add it again.
+- **A privacy control** and a way to stop being asked on every question
+  (section 10, items 11 and 12). These are the user's decisions.
+- **A context-size field.** A model whose provider does not report a size gets
+  8,000 tokens with no way to raise it.
+- **Local-network servers** (Ollama, LM Studio): https only.
 
 ### Where the build differs from the design below
 
