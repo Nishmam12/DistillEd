@@ -5,6 +5,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:margo/data/persistence/lecture_recording_store.dart';
+import 'package:margo/domain/model/scene_element.dart';
 import 'package:margo/features/audio/domain/audio_ports.dart';
 import 'package:margo/features/audio/domain/lecture_recording.dart';
 import 'package:margo/features/audio/domain/recording_session.dart';
@@ -359,6 +360,30 @@ void main() {
 
     test('a negative offset reads as zero', () {
       expect(LectureRecording.formatOffset(-1), '0:00');
+    });
+  });
+
+  group('inkDuring — transcript line to ink', () {
+    FreehandElement stroke(String id, {int? rec, int? at}) => FreehandElement(
+        id: id,
+        zOrder: 0,
+        points: const [],
+        color: 0,
+        size: 2,
+        recordingId: rec,
+        audioOffsetMs: at);
+
+    test('picks the strokes begun during the line, of that recording only', () {
+      final ids = inkDuring([
+        stroke('before', rec: 1, at: 900),
+        stroke('start', rec: 1, at: 1000),
+        stroke('mid', rec: 1, at: 1500),
+        stroke('end', rec: 1, at: 2000),
+        stroke('after', rec: 1, at: 2001),
+        stroke('other lecture', rec: 2, at: 1500),
+        stroke('unrecorded'),
+      ], recordingId: 1, fromMs: 1000, toMs: 2000);
+      expect(ids, ['start', 'mid', 'end']);
     });
   });
 }

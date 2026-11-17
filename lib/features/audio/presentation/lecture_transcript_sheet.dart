@@ -7,8 +7,16 @@
 // also part of the page the AI reads (see `PageContent.lectureTranscript`) —
 // this sheet is how a student sees and uses them directly.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../domain/geometry/element_bounds.dart';
+import '../../../editor/state/editor_tool_controller.dart';
+import '../../../editor/state/scene_controller.dart';
+import '../../../editor/state/selection_controller.dart';
+import '../../../editor/state/viewport_controller.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../domain/lecture_recording.dart';
@@ -232,12 +240,7 @@ class _RecordingSectionState extends ConsumerState<_RecordingSection> {
             for (final segment in transcript.segments)
               InkWell(
                 borderRadius: BorderRadius.circular(8),
-                onTap: () => ref
-                    .read(recordingNotifierProvider(widget.notebookId).notifier)
-                    .playFromStroke(
-                      recordingId: recording.id,
-                      audioOffsetMs: segment.startMs,
-                    ),
+                onTap: () => _playLine(recording, segment),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
@@ -268,5 +271,35 @@ class _RecordingSectionState extends ConsumerState<_RecordingSection> {
         );
       },
     );
+  }
+
+  /// Plays the lecture from [segment] and, when ink was written while it was
+  /// being said, closes the sheet and shows that ink: selected and in view.
+  void _playLine(LectureRecording recording, TranscriptSegment segment) {
+    unawaited(ref
+        .read(recordingNotifierProvider(widget.notebookId).notifier)
+        .playFromStroke(
+            recordingId: recording.id, audioOffsetMs: segment.startMs));
+    final key = (notebookId: widget.notebookId, pageId: recording.pageId);
+    final elements = ref.read(sceneControllerProvider(key));
+    final ids = inkDuring(elements,
+        recordingId: recording.id,
+        fromMs: segment.startMs,
+        toMs: segment.endMs);
+    if (ids.isEmpty) return;
+    Navigator.of(context).pop();
+
+    ref.read(editorToolProvider.notifier).useTool(EditorTool.select);
+    ref.read(selectionProvider.notifier).selectMany(ids);
+    final wanted = ids.toSet();
+    final bounds = elements
+        .where((e) => wanted.contains(e.id))
+        .map(ElementBounds.of)
+        .reduce((a, b) => a.expandToInclude(b));
+    final viewport = ref.read(viewportProvider.notifier);
+    final size = viewport.viewportSize;
+    if (size.isEmpty) return;
+    viewport.pan(size.center(Offset.zero) -
+        ref.read(viewportProvider).toViewport(bounds.center));
   }
 }

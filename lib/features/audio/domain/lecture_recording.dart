@@ -14,6 +14,8 @@
 // independent of any clock.
 
 /// One audio recording captured alongside a page.
+import '../../../domain/model/scene_element.dart';
+
 class LectureRecording {
   /// Storage id. 0 for a recording not yet persisted.
   final int id;
@@ -161,3 +163,19 @@ InkSeekTarget? seekTargetFor({
     offsetMs: clamped < 0 ? 0 : clamped,
   );
 }
+
+/// Transcript ↔ ink: the ids of strokes in [elements] begun during
+/// [fromMs]..[toMs] of recording [recordingId] — what was written while a
+/// transcript line was being said.
+List<String> inkDuring(Iterable<SceneElement> elements,
+    {required int recordingId, required int fromMs, required int toMs}) => [
+      for (final e in elements)
+        if (e case FreehandElement(
+              recordingId: final id?,
+              audioOffsetMs: final at?,
+              id: final elementId,
+              isEraser: false,
+            )
+            when id == recordingId && at >= fromMs && at <= toMs)
+          elementId,
+    ];
