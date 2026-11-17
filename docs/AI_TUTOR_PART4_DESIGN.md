@@ -351,7 +351,10 @@ inputWords   = AiRouter.inputWordBudgetFor(capabilities,
 poolSize     = max(topK * 3, 20)
 
 small window:
-  historyWords = hasHistory ? inputWords ~/ 4 : 0
+  passageFloor = window <= 2048 ? 450 : 1000
+  historyWords = hasHistory
+      ? max(0, min(inputWords ~/ 4, inputWords - passageFloor))
+      : 0
   passageWords = inputWords - historyWords
 
 larger window:
@@ -363,6 +366,21 @@ larger window:
 `passageWords`: passages are packed whole, in rank order, until the words run
 out (3.5). Many pages are shorter than 250 words, so five chunks often cost
 far less than 1,250 words, and the rest is spent on neighbours.
+
+**The 1,250-word rule is a rule for a first question.** With no history,
+passages get the whole input on a small window, and the rule holds as tested.
+A follow-up (4a) may spend up to a quarter of the input on the earlier
+exchange, and passages then never fall under 1,000 words on the 4,096 window
+(four full chunks) or 450 on the 2,048 window. Measured on 4,096: a standard
+follow-up keeps 1,187 words of passages and gives 395 to history; a detailed
+one keeps 1,017 and gives 338. This only takes effect when 4a is built, and
+section 9 puts it to the user with the question about 4a.
+
+**A turn that will be guided plans as `standard`.** When the guide style line
+is going to be emitted, `NotesQa.prepare` calls `planAnswer` with
+`AnswerDepth.standard` whatever was detected. The depth line is suppressed
+for a guided turn (3.2), a hint needs little reply, and reserving 768 reply
+tokens for it would take 190 words from the passages for nothing.
 
 On a larger window the fifth of the input not given to passages or history is
 deliberate slack. The token estimate is 3.5 characters per token, a cloud
@@ -393,11 +411,14 @@ Three decisions inside that table:
 
 1. **On the 4,096 window a detailed answer gets 768 reply tokens, not 1,024.**
    At 1,024 the passages fall to about 1,200 words, under the 1,250-word rule.
-   At 768 they are 1,355. With the worst-case tail (guide style and a full
-   profile of five 40-character names) it is 1,182, but the guide style
-   suppresses the depth line and its hint needs little reply, so the case
-   that matters is the first. The 1,250-word test stays as it is, at standard
-   depth.
+   At 768 they are 1,355 with the plain context. A full learner profile (five
+   40-character names, the most it can hold) costs about 100 words, which
+   leaves about 1,255: still five passages, with nothing to spare. Add a
+   test for that case; if it lands under 1,250, lower the detailed reply on
+   this window to 704 before touching any wording. A guided turn never
+   reaches this case, because it plans as standard (below). The existing
+   1,250-word test stays as it is, at standard depth with the worst-case
+   tail.
 2. **On the 2,048 window a detailed answer cannot have a longer reply.**
    There is no room. It still gets the depth line.
 3. **A large window does not mean a huge prompt.** 20 chunks and 5,000 words
@@ -409,9 +430,9 @@ Tests, `test/features/ai/domain/rag/answer_plan_test.dart`: the table above,
 row by row, as assertions with a tolerance of zero on reply tokens and `topK`
 and of ±15 words on the word columns (the system prompt may be re-measured);
 `replyTokens` never exceeds `replyCapFor(window)`; `hasHistory: true` on a
-small window moves exactly a quarter of the input to history and passages
-keep the rest; the sum of passage and history words never exceeds input
-words.
+small window moves a quarter of the input to history when the passage floor
+allows it and less when it does not, and passages never fall under the
+floor; the sum of passage and history words never exceeds input words.
 
 ### 3.4 Step 4: the retriever returns candidates worth choosing from
 
@@ -688,7 +709,8 @@ static QualityContext qualityContextForTurn(AskTurn turn, {FigureAnswer? figure}
 
 `prepare` does, in order: `detectAnswerDepth`; compose the system prompt with
 `systemPromptFor(context, windowTokens: window, depth: depth)`;
-`planAnswer`; `findSources` with the plan's numbers; load page labels;
+`planAnswer` (with `standard` when the turn will be guided, see 3.3);
+`findSources` with the plan's numbers; load page labels;
 `buildPassages(hits, wordBudget: plan.passageWords, labels: …)`; build
 `options` as `answerOptions.copyWith(maxTokens: plan.replyTokens)`.
 
@@ -698,8 +720,9 @@ them and they remain the constant part and the default. Remove `fitToBudget`,
 `qualityContextFor` once nothing calls them; until then they may stay and
 delegate.
 
-**Ask's contract changes by one sentence.** In `NotesQa.systemPrompt`,
-replace
+**Ask's contract changes by one sentence**, if the Part 2 wiring has not
+already made the change (plan 5.0 asks for it there; do it once). In
+`NotesQa.systemPrompt`, replace
 
 ```
 Answer in a few clear sentences, and refer to the passages by their number (e.g. [1]) when you use them.
@@ -888,8 +911,11 @@ string holds the previous question's terms; a first question is case 1;
   grounding contract refers to.
 - Budget: `plan.historyWords`. Walk back from the newest turn, adding whole
   turns while they fit. The newest turn is always included; if it alone is
-  too long, cut its answer at the end and append ` …`. Passages are never
-  given up for history: `planAnswer` already took the history share out.
+  too long, cut its answer at the end and append ` …`. History never takes
+  more than `planAnswer` gave it, and `planAnswer` keeps the passage floor
+  of 3.3 (1,000 words on 4,096, 450 on 2,048). The 1,250-word rule applies
+  to a first question; a follow-up trades up to a fifth passage for the
+  earlier exchange.
 - Citation numbers in an old answer refer to that turn's passages, which the
   model no longer sees. Strip `[n]` markers from answers placed in history
   (`stripCitations`, section 5.1), so the model cannot confuse them with this
@@ -1156,6 +1182,18 @@ overflow a window that small, and the true size is unknown.
 `tutorEngineProvider` makes the choice from `answerRouteProvider`, the same
 way `_PickedToolsClient` in `ai_model_providers.dart` decides for Research.
 
+**A prerequisite, or this engine will rarely run.** A model's window and its
+tool support are only known when the provider's model list reports them:
+`model_connection_tester.dart` reads `context_length` or `context_window`,
+and `tools` among `supported_parameters`. A provider that reports neither
+leaves the model at 8,000 tokens with tools off, and there is no field in
+the app to correct it (plan, "Left out of step 13 on purpose"). So before
+4e, add to the connection screen a context-size field and a "supports tools"
+tick per model, both stored in the connection's prefs entry, which already
+holds `contextWindowTokens` and `supportsTools`. No Isar change. The same
+field is what lets the 32,000 and 128,000 rows of the table in 3.3 apply to
+such a model in 4c, so it is worth building with 4c.
+
 **First call.** The engine starts exactly like the pipeline: depth, plan,
 search, passages. The first model call already holds those passages. Most
 questions are answered from them with no tool call, so the agent path costs
@@ -1401,7 +1439,9 @@ works as written if every answer is no.
 1. **Order.** The agreed order is Part 2, then 4c, then Part 3. This design
    recommends Part 2 wiring, 4c, then **4a** before Part 3: 4a needs no
    schema change, and without it "explain that in more detail" and the guide
-   style do not work. Is that order acceptable?
+   style do not work. Is that order acceptable? It comes with one trade: on
+   the on-device model a follow-up question keeps at least 1,000 words of
+   passages, not 1,250, because the earlier exchange takes the rest (3.3).
 2. **Page numbers** in headers: the notebook's page number (no schema
    change), or also the file's own page number (section 8, item 1)?
 3. **Depth chips.** Depth is read from the question's words. Should the
@@ -1426,9 +1466,16 @@ works as written if every answer is no.
 - `QualityIssue` is referenced in three files, none of them a record.
 - `CloudSendGate.confirm(model)` asks once per user action and remembers a
   yes through `markConsented`.
-- The budget figures in 2.5 and 3.3 were produced by calling
-  `AiRouter.inputWordBudgetFor` on the real prompts, with the contract
-  sentence already replaced as in 3.6 and the depth lines as written in 3.2.
+- `SelectedAnswerProvider.capabilities` follows the picked model at call
+  time, so `planAnswer` sees the window of the model that will answer.
+- A user's model takes its window from the provider's model list
+  (`context_length` or `context_window`), else 8,000; tool support comes from
+  `supported_parameters`, else off.
+- The budget figures were produced by calling `AiRouter.inputWordBudgetFor`
+  on the real prompts. Those in 2.5 are on the code as committed, with the
+  persona inserted the way the budget test inserts it. Those in 3.3 also have
+  the contract sentence replaced as in 3.6 and the depth lines of 3.2, and
+  the two history figures use the formula in 3.3.
 
 ### 10.2 Not checked; verify before relying on it
 
@@ -1437,7 +1484,14 @@ works as written if every answer is no.
   capabilities from `spec.maxTokens`; confirm the spec in use is the lite one
   when the device loaded lite. If it reports 4,096 on a lite load, every
   plan is built for a window twice the real size.
+- Which providers report a window and tool support in their model list. The
+  code reads two field names for the window. OpenRouter and Groq are believed
+  to use them; OpenAI, Gemini, DeepSeek and xAI are believed to report no
+  size, and Mistral to use a third name. None of this was checked against a
+  live list this session. Until the context-size field exists, assume most
+  own-key models run at 8,000 tokens on the pipeline.
 - Whether `generateWithTools` sends a reply cap at all on either provider.
+  The `ToolCallingClient` interface takes no options.
 - How long `session.addTurn` takes per replayed token on the tablet.
 - Whether the embedding model's `chunkOverlapWords` is 30 for every embedder
   in the rollout list. `stitchChunks` does not depend on the number, only on

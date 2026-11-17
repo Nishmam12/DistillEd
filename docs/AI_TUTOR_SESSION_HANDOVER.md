@@ -15,7 +15,7 @@ profile, a `teachingStyle` setting and a provider) in `7431bb7` and `5aeebbe`,
 plus the Part 4 design in `285cb3d` and `8c91b6b`. **Nothing is pushed, merged
 or run on a tablet. The persona is not wired into any feature, so no prompt
 the app sends has changed.** `flutter analyze` is clean. Full suite on
-`ai-tutor-persona`: 3,445 pass, 44 skipped, 1 failure, which is the known
+`ai-tutor-persona`: 3,446 pass, 44 skipped, 1 failure, which is the known
 flaky `test/core/error_log_test.dart` ("once past 100 KB…"); it passes alone.
 
 ## 2. Do this first

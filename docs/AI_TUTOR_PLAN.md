@@ -58,7 +58,7 @@ draft in 5.2 to 5.4, and the code is the truth.
 (retrieval depth), 4a (conversation in memory), 4d (citations) and 4e (the two
 engines). It replaces section 7 of this file for those pieces.
 
-Full suite on `ai-tutor-persona`: 3,445 pass, 44 skipped, 1 failure, the same
+Full suite on `ai-tutor-persona`: 3,446 pass, 44 skipped, 1 failure, the same
 flaky `error_log_test`. `flutter analyze` clean.
 
 ### Part 1, on branch `ai-own-key-models`
