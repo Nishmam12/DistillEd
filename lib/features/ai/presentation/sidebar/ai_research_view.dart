@@ -1,5 +1,5 @@
 // The sidebar's Research surface (Phase 3, Loop 3.4): a free-form question
-// box whose answer may come from Calculator / Wikipedia / Web Search rather
+// box whose answer may come from Calculator / Wikipedia rather
 // than the model's own words — the opposite of "Ask your notes", which
 // refuses to look anywhere but the notes. Query-box shape mirrors
 // `ai_ask_view.dart`; the confirm-cloud gate and cloud badge mirror
@@ -76,14 +76,16 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
         Icon(Icons.manage_search, size: 18, color: context.colors.accent),
         const SizedBox(width: 8),
         Expanded(
-          child: Text('Research',
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'ModulusPro',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: context.colors.textPrimary,
-              )),
+          child: Text(
+            'Research',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'ModulusPro',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: context.colors.textPrimary,
+            ),
+          ),
         ),
         if (fromCloud) const _CloudBadge(),
         IconButton(
@@ -91,7 +93,11 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
           visualDensity: VisualDensity.compact,
           constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           padding: EdgeInsets.zero,
-          icon: Icon(Icons.close, size: 18, color: context.colors.textSecondary),
+          icon: Icon(
+            Icons.close,
+            size: 18,
+            color: context.colors.textSecondary,
+          ),
           onPressed: () => ref.read(researchNotifierProvider.notifier).reset(),
         ),
       ],
@@ -113,15 +119,23 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
         hintStyle: TextStyle(color: context.colors.textSecondary, fontSize: 13),
         filled: true,
         fillColor: context.colors.surfaceSubtle,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         suffixIcon: IconButton(
           tooltip: 'Ask',
-          icon: Icon(Icons.arrow_upward,
-              size: 20, color: enabled ? context.colors.accent : context.colors.textSecondary),
+          icon: Icon(
+            Icons.arrow_upward,
+            size: 20,
+            color: enabled
+                ? context.colors.accent
+                : context.colors.textSecondary,
+          ),
           onPressed: enabled ? _submit : null,
         ),
       ),
@@ -133,26 +147,27 @@ class _AiResearchViewState extends ConsumerState<AiResearchView> {
       ResearchComposing() || ResearchIdle() => const _Hint(),
       ResearchConfirmCloud() => _ConfirmCloudBody(state: state),
       ResearchStreaming(:final text, :final toolsUsed) => _Answer(
-          text: text,
-          toolsUsed: toolsUsed,
-          streaming: true,
-          onInsertNote: widget.onInsertNote,
-          onStop: () => ref.read(researchNotifierProvider.notifier).stop(),
-        ),
+        text: text,
+        toolsUsed: toolsUsed,
+        streaming: true,
+        onInsertNote: widget.onInsertNote,
+        onStop: () => ref.read(researchNotifierProvider.notifier).stop(),
+      ),
       ResearchReady(:final text, :final toolsUsed) => _Answer(
-          text: text,
-          toolsUsed: toolsUsed,
-          streaming: false,
-          onInsertNote: widget.onInsertNote,
-        ),
+        text: text,
+        toolsUsed: toolsUsed,
+        streaming: false,
+        onInsertNote: widget.onInsertNote,
+      ),
       ResearchError() => _ErrorBody(state: state),
       ResearchUnavailable() => const _Centered(
-          icon: Icons.cloud_off_outlined,
-          title: 'Research needs cloud access',
-          subtitle: 'Research uses tools (calculator, lookups, web search) '
-              'that only work through the cloud tier. Allow cloud use in '
-              'Settings to use this feature.',
-        ),
+        icon: Icons.cloud_off_outlined,
+        title: 'Research needs cloud access',
+        subtitle:
+            'Research uses tools (a calculator and Wikipedia) that '
+            'only work through a cloud AI provider. Add a cloud AI key in '
+            'Settings, and allow cloud use there, to use this feature.',
+      ),
     };
   }
 }
@@ -165,8 +180,9 @@ class _Hint extends StatelessWidget {
     return const _Centered(
       icon: Icons.lightbulb_outline,
       title: 'Ask anything',
-      subtitle: 'Research can reach beyond your notes — arithmetic, '
-          'encyclopedia lookups, and web search — using the cloud tier.',
+      subtitle:
+          'Research can reach beyond your notes — arithmetic and '
+          'Wikipedia lookups — using your cloud AI provider.',
     );
   }
 }
@@ -241,12 +257,15 @@ class _Answer extends StatelessWidget {
             width: 14,
             height: 14,
             child: CircularProgressIndicator(
-                strokeWidth: 2, color: context.colors.accent),
+              strokeWidth: 2,
+              color: context.colors.accent,
+            ),
           ),
           const SizedBox(width: 8),
-          Text('Researching…',
-              style:
-                  TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+          Text(
+            'Researching…',
+            style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+          ),
           const Spacer(),
           TextButton.icon(
             onPressed: onStop,
@@ -254,10 +273,12 @@ class _Answer extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               padding: const EdgeInsets.symmetric(horizontal: 10),
             ),
-            icon: Icon(Icons.stop_circle_outlined,
-                size: 18, color: context.colors.accent),
-            label: Text('Stop',
-                style: TextStyle(color: context.colors.accent)),
+            icon: Icon(
+              Icons.stop_circle_outlined,
+              size: 18,
+              color: context.colors.accent,
+            ),
+            label: Text('Stop', style: TextStyle(color: context.colors.accent)),
           ),
         ],
       );
@@ -273,24 +294,34 @@ class _Answer extends StatelessWidget {
                   Clipboard.setData(ClipboardData(text: trimmed));
                   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                     const SnackBar(
-                        content: Text('Answer copied'),
-                        duration: Duration(seconds: 1)),
+                      content: Text('Answer copied'),
+                      duration: Duration(seconds: 1),
+                    ),
                   );
                 },
-          icon: Icon(Icons.copy_outlined,
-              size: 18, color: context.colors.textSecondary),
+          icon: Icon(
+            Icons.copy_outlined,
+            size: 18,
+            color: context.colors.textSecondary,
+          ),
         ),
         const Spacer(),
         Flexible(
           child: FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
-            onPressed:
-                trimmed.isEmpty ? null : () => onInsertNote(trimmed),
-            icon: Icon(Icons.note_add_outlined,
-                size: 18, color: context.colors.onAccent),
-            label: Text('Insert as note',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: context.colors.onAccent)),
+            style: FilledButton.styleFrom(
+              backgroundColor: context.colors.accent,
+            ),
+            onPressed: trimmed.isEmpty ? null : () => onInsertNote(trimmed),
+            icon: Icon(
+              Icons.note_add_outlined,
+              size: 18,
+              color: context.colors.onAccent,
+            ),
+            label: Text(
+              'Insert as note',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: context.colors.onAccent),
+            ),
           ),
         ),
       ],
@@ -305,14 +336,9 @@ class _ToolUsedChip extends StatelessWidget {
   static const _icons = {
     'calculator': Icons.calculate_outlined,
     'wikipedia': Icons.menu_book_outlined,
-    'web_search': Icons.public,
   };
 
-  static const _labels = {
-    'calculator': 'Calculator',
-    'wikipedia': 'Wikipedia',
-    'web_search': 'Web search',
-  };
+  static const _labels = {'calculator': 'Calculator', 'wikipedia': 'Wikipedia'};
 
   @override
   Widget build(BuildContext context) {
@@ -326,12 +352,16 @@ class _ToolUsedChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_icons[toolName] ?? Icons.build_outlined,
-              size: 12, color: context.colors.textSecondary),
+          Icon(
+            _icons[toolName] ?? Icons.build_outlined,
+            size: 12,
+            color: context.colors.textSecondary,
+          ),
           const SizedBox(width: 4),
-          Text(_labels[toolName] ?? toolName,
-              style: TextStyle(
-                  fontSize: 11, color: context.colors.textSecondary)),
+          Text(
+            _labels[toolName] ?? toolName,
+            style: TextStyle(fontSize: 11, color: context.colors.textSecondary),
+          ),
         ],
       ),
     );
@@ -358,12 +388,14 @@ class _CloudBadge extends StatelessWidget {
         children: [
           Icon(Icons.cloud_outlined, size: 13, color: context.colors.accent),
           const SizedBox(width: 4),
-          Text('Cloud',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: context.colors.accent,
-              )),
+          Text(
+            'Cloud',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: context.colors.accent,
+            ),
+          ),
         ],
       ),
     );
@@ -381,21 +413,22 @@ class _ConfirmCloudBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(researchNotifierProvider.notifier);
     final subtitle = state.isFirstEver
-        ? 'Research can use tools — a calculator, Wikipedia, and web '
-            'search — that only work through the cloud tier, so this '
-            'question (and only this one) would be sent there to answer. '
-            'Nothing else about your notebook leaves the device, and '
-            "you'll see this prompt every time unless you change it in "
-            'Settings.'
-        : 'This question would be sent to the cloud to answer.';
+        ? 'Research can use tools — a calculator and Wikipedia — that '
+              'only work through the cloud, so this question (and only this '
+              'one) would be sent to ${state.providerName} to answer. '
+              'Nothing else about your notebook leaves the device, and '
+              "you'll see this prompt every time unless you change it in "
+              'Settings.'
+        : 'This question would be sent to ${state.providerName} to answer.';
     // A model the student picked themselves: say which, and whose servers.
     final picked = state.modelName;
-    final destination =
-        (state.host ?? '').isEmpty ? 'a cloud service' : state.host!;
+    final destination = (state.host ?? '').isEmpty
+        ? 'a cloud service'
+        : state.host!;
     final pickedSubtitle = state.isFirstEver
         ? 'This question would go to $destination to be answered. That text '
-            'leaves this device. Nothing else about your notebook does, and '
-            'you can switch cloud AI off at any time.'
+              'leaves this device. Nothing else about your notebook does, and '
+              'you can switch cloud AI off at any time.'
         : 'This question would go to $destination.';
 
     return Column(
@@ -414,15 +447,21 @@ class _ConfirmCloudBody extends ConsumerWidget {
           children: [
             TextButton(
               onPressed: notifier.cancelCloud,
-              child: Text('Cancel',
-                  style: TextStyle(color: context.colors.textSecondary)),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: context.colors.textSecondary),
+              ),
             ),
             const SizedBox(width: 8),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
+              style: FilledButton.styleFrom(
+                backgroundColor: context.colors.accent,
+              ),
               onPressed: notifier.confirmCloudAndAsk,
-              child: Text('Send',
-                  style: TextStyle(color: context.colors.onAccent)),
+              child: Text(
+                'Send',
+                style: TextStyle(color: context.colors.onAccent),
+              ),
             ),
           ],
         ),
@@ -451,8 +490,10 @@ class _ErrorBody extends ConsumerWidget {
           TextButton.icon(
             onPressed: notifier.retry,
             icon: Icon(Icons.refresh, size: 18, color: context.colors.accent),
-            label: Text('Try again',
-                style: TextStyle(color: context.colors.accent)),
+            label: Text(
+              'Try again',
+              style: TextStyle(color: context.colors.accent),
+            ),
           ),
       ],
     );
@@ -474,20 +515,27 @@ class _Centered extends StatelessWidget {
         children: [
           Icon(icon, size: 34, color: context.colors.textSecondary),
           const SizedBox(height: 14),
-          Text(title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'ModulusPro',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: context.colors.textPrimary,
-              )),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'ModulusPro',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: context.colors.textPrimary,
+            ),
+          ),
           if (subtitle != null) ...[
             const SizedBox(height: 6),
-            Text(subtitle!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 13, height: 1.4, color: context.colors.textSecondary)),
+            Text(
+              subtitle!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: context.colors.textSecondary,
+              ),
+            ),
           ],
         ],
       ),

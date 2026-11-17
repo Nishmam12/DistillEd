@@ -23,7 +23,11 @@ import '../data/llm/model_download_manager.dart';
 import '../domain/ai_provider.dart';
 import '../domain/features/explainer.dart';
 import '../domain/quality/ai_quality_guard.dart';
-import '../domain/routing/intelligent_router.dart' show CloudRouteDecision, CloudTier;
+import '../domain/routing/intelligent_router.dart'
+    show CloudRouteDecision, CloudTier;
+
+/// Named in the confirm copy when no provider name is wired.
+const _defaultProviderName = 'your cloud AI provider';
 
 sealed class ExplainState {
   const ExplainState();
@@ -98,11 +102,13 @@ class ExplainConfirmCloud extends ExplainState {
 
   /// The cloud model the student picked, and where it is. Null when the cloud
   /// was chosen because the passage did not fit on the device.
+  final String providerName;
   final String? modelName;
   final String? host;
   const ExplainConfirmCloud({
     required this.tier,
     required this.isFirstEver,
+    this.providerName = _defaultProviderName,
     this.modelName,
     this.host,
   });
@@ -137,9 +143,11 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
   /// Null when Explain isn't routed (e.g. any test/caller not wired to the
   /// Phase 3 router) — the cloud-confirm gate is then simply skipped,
   /// preserving pre-Phase-3 behavior exactly.
-  final Future<CloudRouteDecision?> Function(String content)? _evaluateCloudRoute;
+  final Future<CloudRouteDecision?> Function(String content)?
+  _evaluateCloudRoute;
   final bool Function() _hasSeenFirstCloudCall;
   final Future<void> Function() _markFirstCloudCallSeen;
+  final String Function() _providerName;
 
   /// The accuracy fail-safe. Optional, so a caller that hasn't wired it keeps
   /// the plain local stream.
@@ -156,9 +164,11 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
     bool Function()? hasSeenFirstCloudCall,
     Future<void> Function()? markFirstCloudCallSeen,
     this._guard,
-  })  : _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
-        _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
-        super(const ExplainIdle());
+    String Function()? providerName,
+  }) : _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
+       _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
+       _providerName = providerName ?? (() => _defaultProviderName),
+       super(const ExplainIdle());
 
   ExplainRequest? _last;
   bool _running = false;
@@ -166,7 +176,10 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
   /// [cloudConfirmed] skips a re-check of [_evaluateCloudRoute] — set only by
   /// [confirmCloudAndRun], after the user has already said yes once for this
   /// specific request.
-  Future<void> run(ExplainRequest request, {bool cloudConfirmed = false}) async {
+  Future<void> run(
+    ExplainRequest request, {
+    bool cloudConfirmed = false,
+  }) async {
     if (_running) return;
     _last = request;
     _running = true;
@@ -196,21 +209,32 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
             isFirstEver: !_hasSeenFirstCloudCall(),
             modelName: decision.modelName,
             host: decision.host,
+            providerName: _providerName(),
           );
           return;
         }
       }
 
-      state = ExplainStreaming('', request.mode,
-          fromCloud: fromCloud, modelName: modelName);
-      final result = await _generate(content, request.mode,
-          fromCloud: fromCloud, modelName: modelName);
+      state = ExplainStreaming(
+        '',
+        request.mode,
+        fromCloud: fromCloud,
+        modelName: modelName,
+      );
+      final result = await _generate(
+        content,
+        request.mode,
+        fromCloud: fromCloud,
+        modelName: modelName,
+      );
 
       if (!mounted) return;
       final text = result.text.trim();
       state = text.isEmpty
-          ? const ExplainError("The model didn't return an explanation. "
-              'Try again.')
+          ? const ExplainError(
+              "The model didn't return an explanation. "
+              'Try again.',
+            )
           : ExplainReady(
               text,
               request.mode,
@@ -245,8 +269,12 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
   }) async {
     void onPartial(String partial) {
       if (mounted) {
-        state = ExplainStreaming(partial, mode,
-            fromCloud: fromCloud, modelName: modelName);
+        state = ExplainStreaming(
+          partial,
+          mode,
+          fromCloud: fromCloud,
+          modelName: modelName,
+        );
       }
     }
 
@@ -261,8 +289,9 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
     }
 
     final buffer = StringBuffer();
-    await for (final chunk
-        in _explainer.explain(ExplainInput(content: content, mode: mode))) {
+    await for (final chunk in _explainer.explain(
+      ExplainInput(content: content, mode: mode),
+    )) {
       if (!mounted) break;
       buffer.write(chunk);
       onPartial(buffer.toString());
@@ -380,12 +409,14 @@ class ExplainNotifier extends StateNotifier<ExplainState> {
     final e = error is ProviderException ? error.exception : error;
     return switch (e) {
       AiModelNotReadyException _ => const ExplainError(
-          'The on-device model needs to be downloaded first.',
-          offerModelDownload: true),
+        'The on-device model needs to be downloaded first.',
+        offerModelDownload: true,
+      ),
       AiException(:final message) => ExplainError(message),
       RecognitionException(:final message) => ExplainError(message),
-      InsufficientStorageException(:final message) =>
-        ExplainError('Not enough storage for the model. $message'),
+      InsufficientStorageException(:final message) => ExplainError(
+        'Not enough storage for the model. $message',
+      ),
       ModelDownloadCancelledException _ => const ExplainIdle(),
       LlmException(:final message) => ExplainError(message),
       _ => const ExplainError('Something went wrong while explaining.'),

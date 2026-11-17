@@ -148,6 +148,10 @@ class AskNotesError extends AskNotesState {
   });
 }
 
+/// The reply to `/cloud on` when no cloud AI key is saved.
+const cloudNeedsKeyMessage =
+    'Cloud AI needs a key first. Add a cloud AI key in Settings.';
+
 class AskNotesNotifier extends StateNotifier<AskNotesState> {
   final NotesQa _qa;
   final ModelDownloadManager _llmDownloads;
@@ -164,6 +168,11 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
   final bool Function()? _cloudEnabled;
   final Future<void> Function(bool enabled)? _setCloudEnabled;
   final bool Function()? _privacyAsksEachTime;
+
+  /// Whether a cloud AI key is saved. Without one `/cloud on` is refused before
+  /// anything is written, the same as the sidebar switch, so the mode never
+  /// flips to cloud silently and cloud cannot start later when a key is added.
+  final bool Function()? _hasCloudKey;
 
   /// Looks at a figure when the question is about one. Null answers from the
   /// passages alone, as before.
@@ -185,6 +194,7 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
     this._cloudEnabled,
     this._setCloudEnabled,
     this._privacyAsksEachTime,
+    this._hasCloudKey,
     this._figureQa,
     this._route,
     this._confirmSend,
@@ -319,6 +329,11 @@ class AskNotesNotifier extends StateNotifier<AskNotesState> {
         }
         if (enable == null) {
           state = AskNotesNotice(cloudStateReport(enabled: read()));
+          return;
+        }
+        // No key, no cloud: refuse before writing anything (see _hasCloudKey).
+        if (enable && !(_hasCloudKey?.call() ?? true)) {
+          state = const AskNotesNotice(cloudNeedsKeyMessage);
           return;
         }
         await write(enable);

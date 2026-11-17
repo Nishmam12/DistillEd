@@ -121,7 +121,9 @@ void main() {
 
     await notifier.setHuggingFaceToken('hf_abc');
 
-    expect(notifier.state.cloudAiEnabled, isTrue);
+    // The mode, not cloudAiEnabled: with no cloud key saved, cloud is off
+    // whatever the mode says.
+    expect(notifier.state.aiMode, AiProcessingMode.auto);
     expect(notifier.state.recognitionLanguage, 'bn');
   });
 }

@@ -1,5 +1,22 @@
 # AI tutor: session handover (2026-11-17, second session)
 
+## Release integration update (2026-11-17)
+
+Version `5.5.0+37` integrates Afnan's remote `1ae6e71`, `14c30c8` and
+`a5ebd54` with the local work described below. The old Render gateway and
+web-search tool are removed. A single OpenAI-compatible provider supports
+the default cloud connection (including image reading) and the answer-only
+connections. The default appears in the model picker; Auto in cloud-first
+mode uses it for answers after consent. Explicit on-device and selected
+model choices take precedence. Answer-only keys are not used for background
+page reads. Research offers Calculator and Wikipedia.
+
+Persona feature wiring and conversation memory are still pending. The
+historical local-only and remote-ancestry statements below describe the
+earlier session, before this integration. See `TEAM_CHANGELOG.md` for the
+release's checks and push record. No APK, tablet or live-provider check was
+performed for this integration.
+
 For the next Claude session picking up the Margo AI tutor work. This is the
 short version of where things stand. The full design is
 `docs/AI_TUTOR_PLAN.md` (its "Progress" section is the source of truth) and

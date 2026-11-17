@@ -28,6 +28,81 @@ Commits: <first>..<last>
 
 ## Push log
 
+### 2026-11-17 · Nabil (RTX 4070 Ti Super) · `release/5.5.0-37` · 5.5.0+37
+Commits: `fbe07be`..(this release commit), including Afnan's `1ae6e71`, `14c30c8` and `a5ebd54`
+
+**What changed:**
+- Vector PDF export with searchable typed text, imported-page text and optional
+  on-device handwriting recognition; PDF contents, page links and search-hit
+  tinting are retained on import.
+- Home search finds pages across notebooks; a Recent strip and multi-notebook
+  selection support opening, pinning, filing, tagging and trashing notes.
+- Backups keep five dated snapshots per notebook, with a restore browser and
+  fixes for a cleared destination folder and leaving the restore screen.
+- Own-key cloud AI: a default connection for cloud page reading, additional
+  answer-only connections, a model picker and `/model`, selected-model routing
+  across answer features, consent prompts and error-log key scrubbing.
+- Integrated Afnan's independent cloud implementation and gateway removal.
+  One provider retains both implementations' text, tool and image behavior;
+  both provider test suites are kept. The default connection appears in the
+  picker, and answer-only connections work without a default page-reading key.
+- Published on a new release branch; the remote `margo-device-fixes` branch
+  is unchanged by this push.
+- Teacher-persona constants and learner-profile helpers are in the code;
+  feature wiring is still pending. Retrieval and conversation work is design
+  only. No teaching-style control or conversation memory is claimed here.
+
+**What you need to do:**
+- Pull and run `flutter pub get` to register the embedded PDF font assets.
+  No new package or database schema change in this release.
+- Configure your own key under Settings → AI Models to use cloud AI. The
+  Render gateway and its web-search tool are removed; Research offers
+  Calculator and Wikipedia. Margo's bundled cloud tiers remain unavailable.
+- A default cloud connection may read pages when the processing mode and
+  privacy setting permit it. Connections added with "Add an AI" are used only
+  when selected to answer. Cloud-off and an explicit on-device pick still win.
+- Re-import older PDFs to add their contents and links. No existing notebook
+  needs to be migrated.
+- The unrelated local R8/Gradle edits, `pubspec.lock` edit and `.vscode/` are
+  excluded from this push and preserved on this machine.
+
+**Tested:** `flutter analyze --no-pub` clean. Full `flutter test --no-pub`:
+3,517 passed, 44 skipped, no failures, including the error-log test that had
+failed in earlier full runs. Cloud integration regressions also passed
+separately. Flutter 3.47.6 / Dart 3.13.5 with this machine's resolved packages;
+the pre-existing local `pubspec.lock` edit is excluded from the commit.
+No APK build, tablet check or live-provider call has been performed here.
+
+### 2026-11-17 · Afnan (RTX 2070 Super) · `margo-device-fixes` · no version bump
+Commits: `a5ebd54`
+
+**What changed:** Added `docs/CLOUD_KEY_PLAN.md`, an implementation plan for
+using a student's own cloud provider key.
+
+**What you need to do:** No dependency or database change; read the plan for
+the default cloud-provider workflow. The integrated implementation is
+documented in the 5.5.0+37 entry above.
+
+**Tested:** No test result recorded in this commit; documentation only.
+
+*Added from the git history by Nabil's Codex.*
+
+### 2026-11-15 · Afnan (RTX 2070 Super) · `margo-device-fixes` · no version bump
+Commits: `1ae6e71`..`14c30c8`
+
+**What changed:** Cloud AI calls the user's own OpenAI-compatible provider
+directly, with a Settings dialog for a key and model, streamed answers, tool
+calls and image reading. Removed the Render gateway, its server sources,
+web-search tool and gateway CI job. Added cloud-connection and settings tests.
+
+**What you need to do:** Configure your own cloud key and model in Settings.
+The old Render gateway is no longer used. No new package or database change.
+
+**Tested:** Not independently recorded here; the merged code is covered by the
+verification in the 5.5.0+37 entry above. No device result inferred.
+
+*Added from the git history by Nabil's Codex.*
+
 ### 2026-11-15 · Nabil (RTX 4070 Ti Super) · `margo-device-fixes` · 5.4.0+36
 Commits: `2a84c44`..(this release commit), including the merge of Afnan's `0bb8452` and `b990117`
 

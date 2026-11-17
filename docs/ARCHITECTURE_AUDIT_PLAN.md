@@ -20,7 +20,7 @@ Already in good shape (keep as is):
 | DI | Riverpod everywhere, with overrides for docs path, device profile and library. `retry: null` is set on purpose for model loads. |
 | Resilience | Boot splash, `StartupFailureApp` with retry, `ErrorWidget` boundary, on-device `ErrorLog`. |
 | Secrets | HF token kept in the keystore. `dev_secrets.dart` is empty and debug-only. |
-| Quality gates | `flutter analyze`: no issues. `flutter test`: 2678 pass, 3 skipped. CI runs analyze, test, the 16 KB alignment check, gateway pytest, a Docker build and `pip-audit`. `strict-casts` and `unawaited_futures` are on. |
+| Quality gates | `flutter analyze`: no issues. `flutter test`: 2678 pass, 3 skipped. CI runs analyze, test, and the 16 KB alignment check (the gateway jobs were removed with the gateway, 2026-11-15). `strict-casts` and `unawaited_futures` are on. |
 | Heavy work | PDF import, export and checksums run on isolates. Isar queries are async. |
 
 Deliberate choices that are fine and should stay:

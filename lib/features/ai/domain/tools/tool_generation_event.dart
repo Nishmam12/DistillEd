@@ -1,4 +1,4 @@
-// Events streamed by `CloudGatewayProvider.generateWithTools` (Loop 3.4) —
+// Events streamed by the cloud AI provider's `generateWithTools` (Loop 3.4) —
 // distinct from the plain `AiProvider.generate` contract's `Stream<String>`
 // because a tool-aware call can ask the caller to run something and come
 // back, which a bare text stream can't express.

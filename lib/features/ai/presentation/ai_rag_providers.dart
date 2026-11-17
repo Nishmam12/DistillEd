@@ -183,7 +183,8 @@ final embedderRolloutRunnerProvider = Provider<EmbedderRolloutRunner>((ref) {
         deleteChunks: store.deleteForPage,
         indexStateOf: store.indexStateForPage,
         titleOf: _memoizedPageTitle(ref),
-        pageExists: (notebookId, pageId) => _pageExists(ref, notebookId, pageId),
+        pageExists: (notebookId, pageId) =>
+            _pageExists(ref, notebookId, pageId),
       ),
       // The same rule the bulk indexer follows: wait while hot or low on power.
       pauseReason: () async =>
@@ -394,7 +395,7 @@ final ragRetrieverProvider = Provider<RagRetriever>(
 final aiQualityGuardProvider = Provider<AiQualityGuard>((ref) {
   return AiQualityGuard(
     local: ref.watch(localAiProvider),
-    cloud: ref.watch(cloudGatewayMidProvider),
+    cloud: ref.watch(cloudAiProvider),
     cloudEnabled: () => ref.read(settingsProvider).cloudAiEnabled,
     privacy: () => ref.read(settingsProvider).cloudPrivacy,
     isOnline: () => const Reachability().isOnline(),
@@ -421,7 +422,7 @@ final notesQaProvider = Provider<NotesQa>(
 /// other page image ([mayUploadImages]), read at call time.
 final figureQaProvider = Provider<FigureQa>((ref) {
   final extractor = ref.watch(pageContentExtractorProvider);
-  final cloud = ref.watch(cloudGatewayMidProvider);
+  final cloud = ref.watch(cloudAiProvider);
   return FigureQa(
     // The page's figures as already read: a page that Ask found was indexed
     // with a deep read, so this is served from the read cache.
@@ -429,14 +430,13 @@ final figureQaProvider = Provider<FigureQa>((ref) {
       pageId,
       languageCode: ref.read(settingsProvider).recognitionLanguage,
       useVision: true,
-    ))
-        .figures,
+    )).figures,
     imageOf: extractor.figureImage,
     pictureOf: extractor.largestPicture,
     local: ref.watch(imageTranscriberProvider),
     cloud: cloud,
     canUseCloud: () async => mayUploadImages(ref.read(settingsProvider)),
-    preferCloud: () => ref.read(settingsProvider).aiMode.prefersCloud,
+    preferCloud: () => ref.read(settingsProvider).prefersCloud,
     localModelId: ref.watch(localAiProvider).capabilities.modelId,
     cloudModelId: cloud.capabilities.modelId,
   );
@@ -456,9 +456,10 @@ final askNotesNotifierProvider =
         figureQa: ref.watch(figureQaProvider),
         // The `/cloud on|off` command and the sidebar switch write the same stored
         // setting, so neither can drift from the other.
-        cloudEnabled: () => ref.read(settingsProvider).cloudAiEnabled,
+        cloudEnabled: () => ref.read(answerCloudEnabledProvider),
         setCloudEnabled: (enabled) =>
             ref.read(settingsProvider.notifier).setCloudAiEnabled(enabled),
+        hasCloudKey: () => ref.read(hasAnswerCloudKeyProvider),
         privacyAsksEachTime: () =>
             ref.read(settingsProvider).cloudPrivacy == CloudPrivacy.askEachTime,
         route: ref.watch(answerRouteProvider),

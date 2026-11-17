@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'secret_store.dart';
 
 /// The user's comfort level with the Phase 3 Intelligent Router sending a
-/// request to the cloud gateway. `askEachTime` is the spec-mandated default —
+/// request to the cloud AI provider. `askEachTime` is the spec-mandated default —
 /// cloud never happens silently. Lives here (not in `features/ai`) because
 /// `core/` settings must stay feature-agnostic; the AI feature imports this
 /// type rather than the reverse.
@@ -230,6 +230,22 @@ class SettingsState {
   /// SharedPreferences copy is migrated on first read.
   final String huggingFaceToken;
 
+  /// The user's own cloud AI provider: a preset id ('openrouter', 'custom',
+  /// ...; '' when none was chosen), its OpenAI-compatible base URL with no
+  /// trailing slash, and the model to call. Plain SharedPreferences: none of
+  /// these is a secret.
+  final String cloudPresetId;
+  final String cloudBaseUrl;
+  final String cloudModel;
+
+  /// The chosen model's context window in tokens, as the provider's model list
+  /// reported it. 0 means unknown, and the provider then uses its default.
+  final int cloudContextTokens;
+
+  /// The user's cloud AI API key. '' means "not set". Stored in the platform
+  /// keystore only (see [SecretStore]), never in SharedPreferences.
+  final String cloudApiKey;
+
   /// False until [SettingsNotifier] has finished reading SharedPreferences.
   ///
   /// Exists because that read is asynchronous while the first frame is not:
@@ -264,19 +280,37 @@ class SettingsState {
     this.autoBackup = false,
     this.backupFrequency = BackupFrequency.afterEditing,
     this.huggingFaceToken = '',
+    this.cloudPresetId = '',
+    this.cloudBaseUrl = '',
+    this.cloudModel = '',
+    this.cloudContextTokens = 0,
+    this.cloudApiKey = '',
     this.loaded = false,
   });
 
   /// True when gated model downloads can be attempted.
   bool get hasHuggingFaceToken => huggingFaceToken.trim().isNotEmpty;
 
+  /// True when a cloud provider is fully set up: a key, a base URL and a model.
+  /// Any one missing and there is nothing to call.
+  bool get hasCloudKey =>
+      cloudApiKey.trim().isNotEmpty &&
+      cloudBaseUrl.trim().isNotEmpty &&
+      cloudModel.trim().isNotEmpty;
+
   /// Whether a cloud call is permitted at all.
   ///
-  /// Kept as the name every escalation predicate already asks for. It is now
-  /// DERIVED from [aiMode] rather than stored: `onDevice` forbids the cloud,
-  /// `auto` and `cloudFirst` both permit it — they differ only in whether the
-  /// local model is tried first, which is [AiProcessingMode.prefersCloud].
-  bool get cloudAiEnabled => aiMode.allowsCloud;
+  /// Kept as the name every escalation predicate already asks for. It is
+  /// DERIVED, not stored: [aiMode] must allow the cloud (`onDevice` forbids it,
+  /// `auto` and `cloudFirst` both permit it) AND the user must have saved a
+  /// cloud key ([hasCloudKey]). A cloud mode with no key is cloud-off.
+  bool get cloudAiEnabled => aiMode.allowsCloud && hasCloudKey;
+
+  /// Whether cloud-first is actually in effect: the mode asks for it and a key
+  /// is saved. Read this, not [AiProcessingMode.prefersCloud], wherever the
+  /// local model would be skipped, so a keyless cloud-first user still gets
+  /// on-device AI.
+  bool get prefersCloud => aiMode.prefersCloud && cloudAiEnabled;
 
   SettingsState copyWith({
     AppThemeMode? themeMode,
@@ -302,6 +336,11 @@ class SettingsState {
     bool? autoBackup,
     BackupFrequency? backupFrequency,
     String? huggingFaceToken,
+    String? cloudPresetId,
+    String? cloudBaseUrl,
+    String? cloudModel,
+    int? cloudContextTokens,
+    String? cloudApiKey,
     bool? loaded,
   }) {
     return SettingsState(
@@ -328,6 +367,11 @@ class SettingsState {
       autoBackup: autoBackup ?? this.autoBackup,
       backupFrequency: backupFrequency ?? this.backupFrequency,
       huggingFaceToken: huggingFaceToken ?? this.huggingFaceToken,
+      cloudPresetId: cloudPresetId ?? this.cloudPresetId,
+      cloudBaseUrl: cloudBaseUrl ?? this.cloudBaseUrl,
+      cloudModel: cloudModel ?? this.cloudModel,
+      cloudContextTokens: cloudContextTokens ?? this.cloudContextTokens,
+      cloudApiKey: cloudApiKey ?? this.cloudApiKey,
       loaded: loaded ?? this.loaded,
     );
   }
@@ -376,6 +420,13 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kAutoBackup = 'backup.auto';
   static const _kBackupFrequency = 'backup.frequency';
   static const _kHuggingFaceToken = 'ai.huggingFaceToken';
+  static const _kCloudPresetId = 'ai.cloudPresetId';
+  static const _kCloudBaseUrl = 'ai.cloudBaseUrl';
+  static const _kCloudModel = 'ai.cloudModel';
+  static const _kCloudContextTokens = 'ai.cloudContextTokens';
+
+  /// Keystore only.
+  static const _kCloudApiKey = 'ai.cloudApiKey';
 
   /// Export formats the Settings picker offers. A persisted value outside this
   /// set (an older build's format, or hand-edited prefs) falls back to the
@@ -388,6 +439,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   }
 
   final SecretStore _secrets;
+
+  /// Set by [setCloudApiKey] before it awaits anything, so a key saved or
+  /// cleared while [_restore] is still reading the keystore is not overwritten
+  /// by the older stored value (an empty field cannot tell "cleared" from "not
+  /// read yet").
+  bool _cloudKeyWritten = false;
 
   /// Restores every persisted setting. Runs asynchronously from the
   /// constructor, so the first frame renders defaults and then settles onto the
@@ -424,14 +481,23 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       backupFrequency:
           BackupFrequency.values.asNameMap()[prefs.getString(_kBackupFrequency)] ??
               BackupFrequency.afterEditing,
+      cloudPresetId: prefs.getString(_kCloudPresetId) ?? '',
+      cloudBaseUrl: prefs.getString(_kCloudBaseUrl) ?? '',
+      cloudModel: prefs.getString(_kCloudModel) ?? '',
+      cloudContextTokens: prefs.getInt(_kCloudContextTokens) ?? 0,
     );
     // The keystore is slower than prefs, so everything else lands first; `loaded`
-    // waits for the token, because the download UI reads it as "nothing stored".
+    // waits for both secrets, because the UI reads an empty one as "nothing
+    // stored".
     final token = await _restoreHuggingFaceToken(prefs);
     if (!mounted) return;
-    // A token pasted while the keystore was still being read is newer.
+    final cloudKey = await _secrets.read(_kCloudApiKey);
+    if (!mounted) return;
+    // A token pasted, or a cloud key saved or cleared, while the keystore was
+    // still being read is newer.
     state = state.copyWith(
       huggingFaceToken: state.huggingFaceToken.isEmpty ? token : null,
+      cloudApiKey: _cloudKeyWritten ? null : (cloudKey ?? ''),
       loaded: true,
     );
   }
@@ -640,17 +706,18 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     await prefs.setString(_kRecognitionLanguage, languageCode);
   }
 
-  /// Stores the user's HuggingFace token. Passing a blank value clears it.
+  /// Cleans every pasted secret: the HuggingFace token and the cloud AI key.
   ///
   /// The value is sanitized, not merely trimmed, because every one of these
-  /// mangles a token that the user believes they pasted correctly and produces
+  /// mangles a secret that the user believes they pasted correctly and produces
   /// an unexplained 401 hours later:
   ///
   /// • ALL whitespace is stripped, not just the ends — copying from a wrapped
-  ///   terminal or a soft-wrapped web page embeds newlines mid-token. HF tokens
-  ///   are `hf_` + alphanumerics, so no internal whitespace is ever legitimate.
-  /// • Surrounding quotes are dropped — pasting from a `HF_TOKEN="hf_…"` line
-  ///   or a JSON snippet is a common way to get here.
+  ///   terminal or a soft-wrapped web page embeds newlines mid-token. Neither
+  ///   HF tokens nor provider API keys ever contain whitespace.
+  /// • Surrounding quotes are dropped — pasting from a `HF_TOKEN="hf_…"` or
+  ///   `OPENAI_API_KEY="sk-…"` line or a JSON snippet is a common way to get
+  ///   here.
   static String sanitizeToken(String token) {
     final stripped = token.replaceAll(RegExp(r'\s'), '');
     if (stripped.length >= 2) {
@@ -662,6 +729,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     return stripped;
   }
 
+  /// Stores the user's HuggingFace token. Passing a blank value clears it.
   Future<void> setHuggingFaceToken(String token) async {
     final cleaned = sanitizeToken(token);
     state = state.copyWith(huggingFaceToken: cleaned);
@@ -673,6 +741,55 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     }
     // Never leave an older plain copy behind (kept if the keystore refused).
     await (await SharedPreferences.getInstance()).remove(_kHuggingFaceToken);
+  }
+
+  /// Trimmed, with trailing slashes dropped, so `…/v1/` and `…/v1` are the
+  /// same provider. A private copy of `normalizeCloudBaseUrl`, because `core/`
+  /// must not import `features/`.
+  static String _normalizeBaseUrl(String raw) =>
+      raw.trim().replaceFirst(RegExp(r'/+$'), '');
+
+  /// Stores which cloud provider and model to call. Not a secret, so it goes
+  /// to SharedPreferences. Save this BEFORE [setCloudApiKey], so
+  /// [SettingsState.hasCloudKey] only turns true once everything is in place.
+  /// [contextTokens] 0 means unknown.
+  Future<void> setCloudProvider({
+    required String presetId,
+    required String baseUrl,
+    required String model,
+    int contextTokens = 0,
+  }) async {
+    final id = presetId.trim();
+    final url = _normalizeBaseUrl(baseUrl);
+    final name = model.trim();
+    final tokens = contextTokens < 0 ? 0 : contextTokens;
+    state = state.copyWith(
+      cloudPresetId: id,
+      cloudBaseUrl: url,
+      cloudModel: name,
+      cloudContextTokens: tokens,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kCloudPresetId, id);
+    await prefs.setString(_kCloudBaseUrl, url);
+    await prefs.setString(_kCloudModel, name);
+    if (tokens == 0) {
+      await prefs.remove(_kCloudContextTokens);
+    } else {
+      await prefs.setInt(_kCloudContextTokens, tokens);
+    }
+  }
+
+  /// Stores the user's cloud AI key in the keystore. A blank value clears it.
+  /// Returns false when the keystore refused it; the key then lasts this
+  /// session only.
+  Future<bool> setCloudApiKey(String key) async {
+    final cleaned = sanitizeToken(key);
+    _cloudKeyWritten = true;
+    state = state.copyWith(cloudApiKey: cleaned);
+    final stored = await _secrets.write(_kCloudApiKey, cleaned);
+    if (!stored) debugPrint('Cloud AI key could not be saved to the keystore');
+    return stored;
   }
 }
 

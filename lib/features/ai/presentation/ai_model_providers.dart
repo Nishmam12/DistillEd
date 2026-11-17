@@ -19,10 +19,42 @@ final modelConnectionTesterProvider = Provider<ModelConnectionTester>(
   (ref) => ModelConnectionTester(),
 );
 
-/// Margo's own cloud models. All "coming soon" until the gateway serves a
-/// catalogue.
+/// Margo's own cloud models remain unavailable. The old gateway was removed.
 final margoCatalogProvider = Provider<List<AiModelEntry>>(
   (ref) => kBundledMargoCatalog,
+);
+
+/// The default cloud connection also appears in the answer picker. It remains
+/// separate from answer-only connections because it may read pages in the
+/// background when the processing mode and privacy setting allow that.
+final defaultCloudModelProvider = Provider<AiModelEntry?>((ref) {
+  final settings = ref.watch(settingsProvider);
+  if (!settings.hasCloudKey) return null;
+  final cloud = ref.watch(cloudAiProvider);
+  return AiModelEntry(
+    id: 'default:${cloud.capabilities.modelId}',
+    displayName:
+        '${cloudProviderName(presetId: settings.cloudPresetId, baseUrl: settings.cloudBaseUrl)} · ${settings.cloudModel}',
+    source: ModelSource.userKey,
+    contextWindowTokens: cloud.capabilities.contextWindowTokens,
+    supportsTools: true,
+    supportsVision: true,
+    host: Uri.tryParse(settings.cloudBaseUrl)?.host,
+  );
+});
+
+/// Cloud permission for answers can use either a default connection or an
+/// answer-only connection. Background reads still require the default key.
+final hasAnswerCloudKeyProvider = Provider<bool>(
+  (ref) =>
+      ref.watch(settingsProvider.select((s) => s.hasCloudKey)) ||
+      ref.watch(userConnectionsProvider).any((c) => c.models.isNotEmpty),
+);
+
+final answerCloudEnabledProvider = Provider<bool>(
+  (ref) =>
+      ref.watch(settingsProvider.select((s) => s.aiMode.allowsCloud)) &&
+      ref.watch(hasAnswerCloudKeyProvider),
 );
 
 /// Every cloud model that can be shown in the picker: Margo's, then one row per
@@ -31,6 +63,7 @@ final margoCatalogProvider = Provider<List<AiModelEntry>>(
 final modelCatalogueProvider = Provider<List<AiModelEntry>>(
   (ref) => [
     ...ref.watch(margoCatalogProvider),
+    ?ref.watch(defaultCloudModelProvider),
     for (final connection in ref.watch(userConnectionsProvider))
       ...connection.entries,
   ],
@@ -44,6 +77,13 @@ final modelCatalogueProvider = Provider<List<AiModelEntry>>(
 final answerRouteProvider = Provider<AnswerRoute Function()>(
   (ref) => () {
     final settings = ref.read(settingsProvider);
+    final defaultModel = ref.read(defaultCloudModelProvider);
+    if (settings.answerModelId == kAnswerAuto &&
+        settings.prefersCloud &&
+        settings.cloudPrivacy != CloudPrivacy.localOnly &&
+        defaultModel != null) {
+      return CloudDirect(defaultModel);
+    }
     return resolveAnswerRoute(
       aiMode: settings.aiMode,
       privacy: settings.cloudPrivacy,
@@ -64,7 +104,7 @@ final userModelProviderFamily =
         if (connection.id != target.connectionId) continue;
         for (final model in connection.models) {
           if (model.modelId != target.modelId) continue;
-          return OpenAiCompatibleProvider(
+          return OpenAiCompatibleProvider.connection(
             baseUrl: connection.baseUrl,
             modelId: model.modelId,
             displayName: '${connection.label} · ${model.displayName}',
@@ -74,7 +114,7 @@ final userModelProviderFamily =
             apiKey: () => ref
                 .read(userConnectionsProvider.notifier)
                 .keyFor(connection.id),
-            isCloudAllowed: () => _mayUseCloud(ref),
+            isCloudAllowed: () => _mayUseAnswerCloud(ref),
           );
         }
       }
@@ -108,13 +148,16 @@ class _GoneModelProvider implements AiProvider {
 /// Turns a catalogue entry into the provider that reaches it. A provider of its
 /// own so tests can answer with a fake instead of the network.
 final cloudProviderForProvider = Provider<AiProvider Function(AiModelEntry)>(
-  (ref) => (entry) => switch (entry.source) {
-    ModelSource.userKey =>
-      ref.read(userModelProviderFamily(entry.id)) ?? const _GoneModelProvider(),
-    // One gateway tier until the gateway serves a catalogue of its own.
-    ModelSource.margo => ref.read(cloudGatewayMidProvider),
-    ModelSource.onDevice => ref.read(localAiProvider),
-  },
+  (ref) =>
+      (entry) => switch (entry.source) {
+        ModelSource.userKey =>
+          entry.id == ref.read(defaultCloudModelProvider)?.id
+              ? ref.read(cloudAiProvider)
+              : ref.read(userModelProviderFamily(entry.id)) ??
+                    const _GoneModelProvider(),
+        ModelSource.margo => const _GoneModelProvider(),
+        ModelSource.onDevice => ref.read(localAiProvider),
+      },
 );
 
 /// The [AiProvider] for features that answer the student: the on-device model,
@@ -132,9 +175,7 @@ final answerAiProvider = Provider<AiProvider>(
   ),
 );
 
-/// Whether Margo's own cloud can answer right now. False until the gateway
-/// serves a catalogue; anything that goes through the gateway (web search)
-/// follows this.
+/// Whether Margo's own cloud can answer right now. Currently unavailable.
 final margoCloudAvailableProvider = Provider<bool>(
   (ref) => ref.watch(margoCatalogProvider).any((entry) => entry.pickable),
 );
@@ -143,14 +184,14 @@ final margoCloudAvailableProvider = Provider<bool>(
 ///
 /// Research needs a model that can call tools. A cloud model the student picked
 /// is used when it can; when it cannot, Research says so instead of quietly
-/// sending the question to a different service. With nothing picked it goes to
-/// Margo's cloud, as it did before there was a picker.
+/// sending the question to a different service. With nothing picked it uses
+/// the default cloud connection, after Research's confirmation.
 class _PickedToolsClient implements ToolCallingClient {
   final AnswerRoute Function() _route;
   final AiProvider Function(AiModelEntry) _cloudFor;
-  final ToolCallingClient _margo;
+  final ToolCallingClient _defaultCloud;
 
-  const _PickedToolsClient(this._route, this._cloudFor, this._margo);
+  const _PickedToolsClient(this._route, this._cloudFor, this._defaultCloud);
 
   @override
   Stream<ToolGenerationEvent> generateWithTools({
@@ -160,8 +201,15 @@ class _PickedToolsClient implements ToolCallingClient {
     required List<Tool> tools,
   }) {
     final route = _route();
+    if (route is LocalOnly) {
+      return Stream.error(
+        const AiUnavailableException(
+          'Research needs a cloud model. Pick one or enable cloud AI in Settings.',
+        ),
+      );
+    }
     if (route is! CloudDirect) {
-      return _margo.generateWithTools(
+      return _defaultCloud.generateWithTools(
         prompt: prompt,
         systemPrompt: systemPrompt,
         history: history,
@@ -188,10 +236,11 @@ class _PickedToolsClient implements ToolCallingClient {
 
 /// Whether the model that would answer now can call tools.
 final answerSupportsToolsProvider = Provider<bool Function()>(
-  (ref) => () => switch (ref.read(answerRouteProvider)()) {
-    CloudDirect(:final model) => model.supportsTools,
-    LocalOnly() || LocalFirst() => false,
-  },
+  (ref) =>
+      () => switch (ref.read(answerRouteProvider)()) {
+        CloudDirect(:final model) => model.supportsTools,
+        LocalOnly() || LocalFirst() => false,
+      },
 );
 
 /// For a feature about to send a page to [answerAiProvider]: yes at once when

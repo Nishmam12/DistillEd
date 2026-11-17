@@ -11,6 +11,15 @@ Each part waits for its own go-ahead.
 
 ## Progress (updated 2026-11-17)
 
+**Release integration:** `5.5.0+37` combines this work with Afnan's default
+own-key cloud connection and removal of the Render gateway. Default and
+answer-only connections share one provider; the default is available in the
+picker, and Auto uses it for cloud-first answers after consent. Background
+page reading still uses only the default connection. The branch/merge state
+in the earlier progress notes below is historical; see `TEAM_CHANGELOG.md`
+and `docs/AI_TUTOR_SESSION_HANDOVER.md` for the release integration. Persona
+feature wiring, the style control and conversation memory remain pending.
+
 Branch **`ai-own-key-models`**, cut from `margo-device-fixes`. Not pushed, not
 merged, not tested on a tablet.
 

@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:margo/core/providers/secret_store.dart';
 import 'package:margo/core/providers/settings_provider.dart';
 import 'package:margo/features/ai/data/llm/gemma_adapter.dart';
 import 'package:margo/features/ai/data/llm/llm_model_spec.dart';
@@ -102,8 +103,23 @@ void main() {
 
     test('does nothing in cloud-first mode — the local model is not used',
         () async {
+      // Cloud-first is only in effect with a saved provider, model and key;
+      // without one the local model answers, so warming it is right.
+      SharedPreferences.setMockInitialValues({
+        'ai.cloudBaseUrl': 'https://openrouter.ai/api/v1',
+        'ai.cloudModel': 'test-model',
+      });
       final runtime = _Runtime();
-      final c = container(runtime);
+      final c = ProviderContainer(retry: (_, _) => null, overrides: [
+        llmRuntimeProvider.overrideWithValue(runtime),
+        secretStoreProvider.overrideWithValue(
+            InMemorySecretStore()..values['ai.cloudApiKey'] = 'sk-test'),
+      ]);
+      addTearDown(c.dispose);
+      c.read(settingsProvider.notifier);
+      while (!c.read(settingsProvider).loaded) {
+        await Future<void>.delayed(Duration.zero);
+      }
       await c.read(settingsProvider.notifier).setAiMode(AiProcessingMode.cloudFirst);
 
       c.read(localModelWarmerProvider)();

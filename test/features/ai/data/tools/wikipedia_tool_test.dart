@@ -18,7 +18,7 @@ class _StubResponse {
 /// Matches requests by a substring of the URL — enough to distinguish the
 /// direct summary lookup from the search fallback without modeling dio's
 /// real HTTP status pipeline. Same "hand-written fake at the boundary"
-/// pattern as `cloud_gateway_provider_test.dart`'s `_FakeAdapter`.
+/// pattern as `openai_compatible_provider_test.dart`'s `_FakeAdapter`.
 class _FakeAdapter implements HttpClientAdapter {
   final List<MapEntry<String, _StubResponse>> routes;
   final DioException? alwaysThrow;

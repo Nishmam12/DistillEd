@@ -1,7 +1,7 @@
 // Provider-agnostic chat message for multi-turn AI context.
 //
 // Part of the Phase 0 AI provider abstraction (see `ai_provider.dart`). Every AI
-// backend — on-device Gemma, cloud Gemma, or a frontier API — consumes and
+// backend — on-device Gemma or the cloud AI provider — consumes and
 // produces these, so a history assembled once can be replayed against whichever
 // provider the Phase 3 router selects.
 
@@ -24,7 +24,7 @@ class AiMessage {
   final String content;
 
   /// Set on a [AiRole.tool] turn: which prior call this answers. Mirrors the
-  /// OpenAI-shape `tool_call_id` field the gateway forwards to the model.
+  /// OpenAI-shape `tool_call_id` field sent to the cloud AI provider.
   final String? toolCallId;
 
   /// Set on an [AiRole.assistant] turn that requested tool call(s) — carried

@@ -25,14 +25,24 @@ tool/check_16kb_alignment.sh build/app/outputs/flutter-apk/app-debug.apk
 Release signing reads `android/key.properties` (gitignored):
 `storeFile`, `storePassword`, `keyAlias`, `keyPassword`.
 
-The cloud gateway URL and certificate pin are build-time settings:
-`--dart-define=GATEWAY_URL=http://localhost:8000`,
-`--dart-define=GATEWAY_CERT_SHA256=<hex>[,<hex>]`.
-
 R8 shrinking is off on purpose (see `android/app/build.gradle.kts`): turning it on
 needs keep rules for the on-device ML libraries and a run on a real device.
 
+## Cloud AI
+
+Settings → AI Models → Cloud AI provider configures the default connection
+for cloud page reading and Research. The default also appears in the AI
+panel's answer-model picker. Use "Add an AI" for additional connections whose
+keys are used only when their models are selected to answer; `/model` opens
+the same picker. Cloud-first uses the configured default for answers when
+the picker is on Auto. Explicit model choices take precedence.
+
+Keys are kept in the device's secure storage. Sending text follows the cloud
+privacy and confirmation settings; background image reading requires the
+default connection and permission to use cloud AI without asking. The Render
+gateway has been removed. Research has Calculator and Wikipedia tools;
+Margo's bundled cloud models are not available yet.
+
 ## Docs
 
-`docs/ARCHITECTURE.md`, `docs/AI_PIPELINE_PLAN.md`, and
-`server/ai-gateway/README.md` for the cloud gateway.
+`docs/ARCHITECTURE.md` and `docs/AI_PIPELINE_PLAN.md`.

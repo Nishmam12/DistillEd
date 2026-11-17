@@ -1,6 +1,6 @@
 // The single contract every AI backend implements.
 //
-// On-device Gemma and the cloud gateway implement it, and the intelligent
+// On-device Gemma and the cloud AI provider implement it, and the intelligent
 // router dispatches across them using [AiCapabilities]. Designed so adding a provider never requires
 // changing this file: implement [AiProvider], expose your [capabilities], done.
 

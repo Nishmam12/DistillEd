@@ -1,13 +1,14 @@
 // "Research" (Phase 3, Loop 3.4): answer a free-form question, letting the
-// model reach outside the notes when it needs to — Calculator, Wikipedia,
-// Web Search. The opposite of `notes_qa.dart`'s "Ask your notes": that
+// model reach outside the notes when it needs to — Calculator and
+// Wikipedia. The opposite of `notes_qa.dart`'s "Ask your notes": that
 // feature refuses to answer from anything but the notes; this one exists
 // precisely for questions the notes can't cover. Cloud-only this loop (see
-// `cloud_gateway_provider.dart`'s `generateWithTools` header).
+// `OpenAiCompatibleProvider.generateWithTools` in
+// `openai_compatible_provider.dart`).
 //
-// Owns the call → tool-call → execute → recall loop client-side, since the
-// gateway stays stateless/one-shot per call by design (phase spec §1) — each
-// `generateWithTools` call here is exactly one gateway round-trip.
+// Owns the call → tool-call → execute → recall loop client-side, since each
+// chat-completions call is stateless and one-shot — each `generateWithTools`
+// call here is exactly one round-trip to the cloud AI provider.
 
 import '../untrusted_text.dart';
 import 'dart:async';
@@ -32,7 +33,7 @@ class ResearchToolUsed extends ResearchEvent {
   const ResearchToolUsed(this.toolName);
 }
 
-/// The narrow surface `Researcher` needs from `CloudGatewayProvider` —
+/// The narrow surface `Researcher` needs from `OpenAiCompatibleProvider` —
 /// declared here rather than depending on the concrete class, so tests can
 /// fake it without a real `Dio`/HTTP stack.
 abstract class ToolCallingClient {
@@ -60,10 +61,9 @@ class Researcher {
       '$kUntrustedDataRule\n\n'
       'You are a research assistant inside a note-taking app. Answer the '
       "user's question directly and concisely. Use the available tools when "
-      'they would make your answer more accurate or current: use the '
-      'calculator instead of computing arithmetic yourself, look up facts '
-      'you are unsure of, and search the web for anything recent, specific, '
-      'or outside your own knowledge. If no tool is needed, just answer.';
+      'they would make your answer more accurate: use the calculator instead '
+      'of computing arithmetic yourself, and look up facts you are unsure of '
+      'on Wikipedia. If no tool is needed, just answer.';
 
   Stream<ResearchEvent> research(String question) async* {
     final history = <AiMessage>[];

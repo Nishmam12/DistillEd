@@ -13,11 +13,11 @@ enum AiRanOn {
   /// The on-device model. No note content left the device.
   onDevice,
 
-  /// The cloud gateway, because the user chose cloud-first. Note content was
+  /// The cloud AI provider, because the user chose cloud-first. Note content was
   /// sent off the device.
   cloudPreferred,
 
-  /// The cloud gateway, reached for only after the on-device read failed its
+  /// The cloud AI provider, reached for only after the on-device read failed its
   /// quality check. Note content was sent off the device.
   cloudEscalated;
 
@@ -39,9 +39,9 @@ enum AiRanOn {
           'Read on this device. Nothing was sent anywhere.',
         AiRanOn.cloudPreferred =>
           'Read in the cloud, because AI processing is set to Cloud. '
-              'This page was sent to the gateway.',
+              'This page was sent to your cloud AI provider.',
         AiRanOn.cloudEscalated =>
           'The on-device model could not read this page, so it was re-read '
-              'in the cloud. This page was sent to the gateway.',
+              'in the cloud. This page was sent to your cloud AI provider.',
       };
 }

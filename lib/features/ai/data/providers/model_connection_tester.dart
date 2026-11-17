@@ -51,11 +51,15 @@ class ModelConnectionTester {
   final Dio _dio;
 
   ModelConnectionTester({Dio? dio})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               connectTimeout: OpenAiCompatibleProvider.connectTimeout,
               receiveTimeout: const Duration(seconds: 20),
-            ));
+              followRedirects: false,
+            ),
+          );
 
   /// Asks the provider at [baseUrl] which models [apiKey] can use.
   Future<ConnectionTestResult> listModels({
@@ -68,22 +72,39 @@ class ModelConnectionTester {
     final base = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
     final host = Uri.parse(base).host;
     try {
+      // OpenRouter's model list is public; it does not establish that the
+      // supplied key works. Retain the default connection's explicit check.
+      if (host == 'openrouter.ai') {
+        await _dio.get<Object?>(
+          '$base/key',
+          options: Options(
+            headers: {'Authorization': 'Bearer ${apiKey.trim()}'},
+            followRedirects: false,
+          ),
+        );
+      }
       final response = await _dio.get<dynamic>(
         '$base/models',
-        options: Options(headers: {'Authorization': 'Bearer ${apiKey.trim()}'}),
+        options: Options(
+          headers: {'Authorization': 'Bearer ${apiKey.trim()}'},
+          followRedirects: false,
+        ),
       );
       return _parseModelList(response.data) ?? const ConnectionNoModelList();
     } on DioException catch (e) {
       return switch (e.response?.statusCode) {
         401 || 403 => const ConnectionFailed(
-            'The provider rejected the key. Check that it was copied in full.'),
+          'The provider rejected the key. Check that it was copied in full.',
+        ),
         // No such address: the provider simply has no model list.
         404 || 405 => const ConnectionNoModelList(),
         429 => const ConnectionFailed(
-            "The provider's limit was reached. Try again in a moment."),
+          "The provider's limit was reached. Try again in a moment.",
+        ),
         null => ConnectionFailed("Couldn't reach $host."),
-        final status =>
-          ConnectionFailed('The provider answered with an error (HTTP $status).'),
+        final status => ConnectionFailed(
+          'The provider answered with an error (HTTP $status).',
+        ),
       };
     }
   }
@@ -98,7 +119,7 @@ class ModelConnectionTester {
     final invalid = validateBaseUrl(baseUrl);
     if (invalid != null) return ConnectionFailed(invalid);
 
-    final provider = OpenAiCompatibleProvider(
+    final provider = OpenAiCompatibleProvider.connection(
       baseUrl: baseUrl,
       modelId: modelId,
       displayName: modelId,
@@ -134,10 +155,15 @@ class ModelConnectionTester {
     final tools = <String>{};
     for (final item in list) {
       if (item is! Map<String, dynamic>) continue;
-      final id = item['id'];
-      if (id is! String) continue;
+      final rawId = item['id'];
+      if (rawId is! String || rawId.isEmpty) continue;
+      final id = rawId.startsWith('models/') ? rawId.substring(7) : rawId;
+      if (ids.contains(id)) continue;
       ids.add(id);
-      final window = item['context_length'] ?? item['context_window'];
+      final window =
+          item['context_length'] ??
+          item['context_window'] ??
+          item['max_context_length'];
       if (window is int && window > 0) windows[id] = window;
       final supported = item['supported_parameters'];
       if (supported is List && supported.contains('tools')) tools.add(id);

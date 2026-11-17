@@ -16,7 +16,20 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
 
 ## [Unreleased]
 
+## [5.5.0] - 2026-11-17
+
 ### Added
+- **Use cloud AI with your own key.** Set up a default cloud provider in
+  Settings → AI Models, or use "Add an AI" to save several connections and
+  models. The AI panel's model button and `/model` command choose who answers
+  Ask, Explain, Summarize, quiz, flashcards and Research. The default cloud
+  connection also appears in that picker. Keys stay in the device's secure
+  storage; requests go directly to the selected provider.
+- **Confirm before sending notes to a selected cloud model.** The prompt names
+  the model and destination. Turning cloud AI off or choosing the on-device
+  model keeps answers on the device. Answer-only connections do not change
+  where pages are read in the background. Research requires a cloud model
+  that supports tools; its available tools are Calculator and Wikipedia.
 - **Search the pages of every notebook from the home screen.** Typing in the
   home search still lists notebooks by title and text; under it an "On pages"
   section lists matching pages from any notebook (notebook, page number and the
@@ -65,6 +78,14 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   (`.links.json`), carried in backups. No database change, no new dependency.
 
 ### Changed
+- **Cloud AI no longer uses Margo's Render gateway.** The old gateway, web
+  search tool and gateway CI job have been removed. Configure your own default
+  provider to use cloud page reading; it still follows the processing mode
+  and privacy setting. Margo's bundled cloud tiers remain unavailable.
+- **Teacher-persona groundwork and retrieval/conversation design are saved.**
+  Persona constants, learner-profile helpers and tests are present, but are
+  not wired into feature prompts. There is no new teaching-style control or
+  conversation memory in this release.
 - **PDF export is now a real vector PDF with searchable text.** Ink, shapes and
   the paper pattern are drawn as vector lines, so the PDF stays sharp at any
   zoom and is much smaller than pictures of the pages. Typed text is real text
@@ -84,6 +105,17 @@ Versioning: `MAJOR.MINOR.PATCH+BUILD`
   pages and says so.
 - Fonts embedded in PDFs: Noto Sans and Noto Sans Bengali (SIL Open Font
   Licence), only the letters each PDF uses. No new package, no database change.
+
+### Fixed
+- Home selection follows the visible results, the selection bar fits narrow
+  screens, and page search handles its tint and keyboard state correctly.
+- A forced backup repairs a cleared backup folder; leaving the restore screen
+  during a restore no longer updates a disposed screen.
+- Cloud errors are scrubbed before entering the shared error log. The merged
+  cloud provider keeps streaming, image reading and tool calls, reads selected
+  connections' keys at request time, and adapts to models that reject
+  `max_tokens` or `temperature`. OpenRouter keys are checked before its public
+  model list is accepted; authenticated requests do not follow redirects.
 
 ## [5.4.0] - 2026-11-15
 ### Added

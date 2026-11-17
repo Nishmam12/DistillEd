@@ -193,8 +193,9 @@ Nothing below has been confirmed on the tablet.
    list, try Re-read / Ask the cloud / Fix it, ask a question about a figure,
    and note how long each takes.
 6. **Benchmark.** Needs about 40 test pages with `Q:` / `A:` text boxes, and
-   the cloud gateway deployed for the cloud column. The gateway is still not
-   deployed.
+   a cloud provider key for the cloud column (Settings, Cloud AI provider).
+   Cloud features now use the user's own key; the gateway was removed
+   2026-11-15.
 7. **Settings (new layout).** Open Settings on the tablet (two columns) and
    on a phone or a narrow window (one column). Check Backup, Pen and the
    AI Models screen (download a model, add the HuggingFace token) still work,

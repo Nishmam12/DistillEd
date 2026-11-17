@@ -15,6 +15,9 @@ import '../../../../core/utils/external_links.dart';
 import '../../../../widgets/app_chip_group.dart';
 import '../../../../widgets/app_segmented_control.dart';
 import '../../../ai/data/embeddings/embedder_spec.dart';
+import '../../../ai/data/providers/cloud_presets.dart';
+import '../../../ai/data/providers/openai_compatible_provider.dart'
+    show CloudModel, CloudModelListException, OpenAiCompatibleProvider;
 import '../../../ai/data/rag/embedder_mobile_data_choice.dart';
 import '../../../ai/data/llm/hf_token_check.dart';
 import '../../../ai/data/providers/model_connection_tester.dart';
@@ -52,6 +55,7 @@ part 'settings_cloud_models.dart';
 part 'settings_maintenance.dart';
 part 'settings_backup.dart';
 part 'ai_models_screen.dart';
+part 'settings_cloud.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -79,7 +83,12 @@ class SettingsScreen extends ConsumerWidget {
       children: [
         // SET-12. Three-way, because "on" never meant "use the cloud", only
         // "you may fall back to it".
-        _AiModeRow(value: settings.aiMode, onChanged: notifier.setAiMode),
+        _AiModeRow(
+          value: settings.aiMode,
+          onChanged: notifier.setAiMode,
+          hasCloudKey: settings.hasCloudKey,
+          loaded: settings.loaded,
+        ),
         // SET-13.
         Column(
           mainAxisSize: MainAxisSize.min,
@@ -441,9 +450,70 @@ Future<void> _editHuggingFaceToken(BuildContext context, WidgetRef ref) async {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
+/// Prompts for the cloud AI provider, model and key. The dialog checks a new
+/// key before it closes, so whatever comes back is saved as is: the provider
+/// first, then the key, so [SettingsState.hasCloudKey] turns true last.
+Future<void> _editCloudProvider(BuildContext context, WidgetRef ref) async {
+  final s = ref.read(settingsProvider);
+  final result = await showDialog<CloudProviderResult>(
+    context: context,
+    builder: (_) => CloudProviderDialog(
+      presetId: s.cloudPresetId,
+      baseUrl: s.cloudBaseUrl,
+      model: s.cloudModel,
+      hasKey: s.cloudApiKey.trim().isNotEmpty,
+    ),
+  );
+  if (result == null) return;
+  final notifier = ref.read(settingsProvider.notifier);
+  if (result.clearKey) {
+    final removed = await notifier.setCloudApiKey('');
+    if (!removed && context.mounted) {
+      _showCloudSnack(context, 'Could not remove the key from this device.');
+    }
+    return;
+  }
+  // A key saved for another provider must never be live against the new one,
+  // not even for the moment between the two saves below: clear it first.
+  final providerChanged = result.presetId != s.cloudPresetId ||
+      result.baseUrl != s.cloudBaseUrl;
+  if (providerChanged && result.newKey != null) {
+    final cleared = await notifier.setCloudApiKey('');
+    if (!cleared) {
+      // Saving the new provider now would pair the old key with it, if the
+      // keystore refuses this delete but later reads the old key back.
+      if (context.mounted) {
+        _showCloudSnack(
+          context,
+          'Could not clear the old key on this device, so the provider was not changed.',
+        );
+      }
+      return;
+    }
+  }
+  await notifier.setCloudProvider(
+    presetId: result.presetId,
+    baseUrl: result.baseUrl,
+    model: result.model,
+    contextTokens: result.contextTokens,
+  );
+  final newKey = result.newKey;
+  if (newKey == null) return;
+  final ok = await notifier.setCloudApiKey(newKey);
+  if (ok || !context.mounted) return;
+  _showCloudSnack(
+    context,
+    'Could not save the key on this device. It will last until the app closes.',
+  );
+}
+
+void _showCloudSnack(BuildContext context, String text) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+}
+
 /// Opens [url] in a browser, or tells the user where to go if none exists.
 ///
-/// Every HuggingFace hand-off routes through here so that a device without a
+/// Every HuggingFace and cloud key page hand-off routes through here so that a device without a
 /// browser degrades to a readable URL instead of a button that does nothing.
 Future<void> _openHuggingFace(BuildContext context, String url) async {
   final opened = await openExternalUrl(url);

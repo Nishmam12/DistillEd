@@ -1,7 +1,7 @@
 // Common contract for anything the AI can call to reach outside its own
-// context (Phase 3, Loop 3.4). Cloud-only this loop — see
-// `cloud_gateway_provider.dart`'s `generateWithTools` header for why
-// on-device Gemma doesn't get tool calling yet.
+// context (Phase 3, Loop 3.4). Cloud-only this loop: only the cloud AI
+// provider (`openai_compatible_provider.dart`) implements tool calling;
+// on-device Gemma doesn't get it yet.
 
 /// One tool the model may call. [parameterSchema] is a JSON-schema `object`
 /// (OpenAI function-calling convention:
@@ -30,8 +30,9 @@ class ToolExecutionResult {
   const ToolExecutionResult.error(this.content) : success = false;
 }
 
-/// The OpenAI-shape function declaration for [tool], as sent to the gateway
-/// (`POST /v1/generate`'s `tools` field — see `cloud_gateway_provider.dart`).
+/// The OpenAI-shape function declaration for [tool], as sent to the cloud AI
+/// provider (the chat-completions `tools` field — see
+/// `openai_compatible_provider.dart`).
 /// A free function rather than a `Tool` method: `Tool` stays a pure
 /// interface, matching `AiProvider`'s own style of zero concrete members.
 Map<String, dynamic> toolSchema(Tool tool) => {

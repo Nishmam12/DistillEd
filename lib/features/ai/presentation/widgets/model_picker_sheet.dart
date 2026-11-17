@@ -20,7 +20,8 @@ import '../../domain/catalog/answer_route.dart';
 import '../ai_providers.dart';
 
 /// Opens the model picker over [context].
-Future<void> showModelPicker(BuildContext context) => showModalBottomSheet<void>(
+Future<void> showModelPicker(BuildContext context) =>
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -99,7 +100,7 @@ class _ModelPickerSheetState extends ConsumerState<_ModelPickerSheet> {
 
   Future<void> _pick(String id, {AiModelEntry? cloud}) async {
     final notifier = ref.read(settingsProvider.notifier);
-    if (cloud != null && !ref.read(settingsProvider).cloudAiEnabled) {
+    if (cloud != null && !ref.read(settingsProvider).aiMode.allowsCloud) {
       final turnOn = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -139,7 +140,7 @@ class _ModelPickerSheetState extends ConsumerState<_ModelPickerSheet> {
     final c = context.colors;
     final settings = ref.watch(settingsProvider);
     final catalogue = ref.watch(modelCatalogueProvider);
-    final cloudOn = settings.cloudAiEnabled;
+    final cloudOn = settings.aiMode.allowsCloud;
     final current = answerChoiceIsUsable(settings.answerModelId, catalogue)
         ? settings.answerModelId
         : kAnswerAuto;
@@ -209,7 +210,9 @@ class _ModelPickerSheetState extends ConsumerState<_ModelPickerSheet> {
               for (final entry in margo)
                 _Choice(
                   title: entry.displayName,
-                  subtitle: entry.locked ? 'Premium · Coming soon' : 'Coming soon',
+                  subtitle: entry.locked
+                      ? 'Premium · Coming soon'
+                      : 'Coming soon',
                   selected: false,
                   onTap: entry.pickable
                       ? () => _pick(entry.id, cloud: entry)

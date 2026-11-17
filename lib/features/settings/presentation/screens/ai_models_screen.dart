@@ -1,7 +1,7 @@
 part of 'settings_screen.dart';
 
-/// The AI models screen: the HuggingFace token, then every model that can be
-/// downloaded. Reached from the "AI Models" row on the settings page.
+/// The AI models screen: the cloud AI provider, the HuggingFace token, then
+/// every model that can be downloaded. Reached from the "AI Models" row on the settings page.
 ///
 /// This is a part of the settings library rather than a free-standing file
 /// because the model rows and the token dialog are private to it.
@@ -27,6 +27,31 @@ class AiModelsScreen extends ConsumerWidget {
               children: [
                 _AiModelsCard(
                   leading: [
+                    // Before the keystore is read every key looks missing, so
+                    // the row claims nothing until then.
+                    _SettingsRow(
+                      icon: AppIcons.cloud,
+                      title: 'Cloud AI provider',
+                      subtitle: !settings.loaded
+                          ? null
+                          : settings.hasCloudKey
+                          ? '${cloudProviderName(presetId: settings.cloudPresetId, baseUrl: settings.cloudBaseUrl)}'
+                                ' · ${settings.cloudModel}'
+                          : 'Add a key to use cloud AI',
+                      trailing: TextButton(
+                        onPressed: settings.loaded
+                            ? () => _editCloudProvider(context, ref)
+                            : null,
+                        child: Text(
+                          settings.hasCloudKey ? 'Change' : 'Add',
+                          style: TextStyle(
+                            fontFamily: 'ModulusPro',
+                            fontWeight: FontWeight.w600,
+                            color: c.accent,
+                          ),
+                        ),
+                      ),
+                    ),
                     // SET-14. Token storage and verification are unchanged; only
                     // the row's place and styling are new.
                     _SettingsRow(

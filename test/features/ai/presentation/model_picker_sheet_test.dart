@@ -32,43 +32,51 @@ void main() {
     bool withConnection = true,
   }) async {
     SharedPreferences.setMockInitialValues({});
-    container = ProviderContainer(overrides: [
-      secretStoreProvider.overrideWithValue(InMemorySecretStore()),
-    ]);
+    container = ProviderContainer(
+      overrides: [secretStoreProvider.overrideWithValue(InMemorySecretStore())],
+    );
     addTearDown(container.dispose);
     container.read(settingsProvider);
     container.read(userConnectionsProvider);
     await tester.pump(const Duration(milliseconds: 30));
     if (withConnection) {
-      await tester.runAsync(() => container
-          .read(userConnectionsProvider.notifier)
-          .save(_connection, apiKey: 'sk-test-1234567890abcdef'));
+      await tester.runAsync(
+        () => container
+            .read(userConnectionsProvider.notifier)
+            .save(_connection, apiKey: 'sk-test-1234567890abcdef'),
+      );
     }
     await tester.runAsync(() async {
-      await container.read(settingsProvider.notifier).setCloudAiEnabled(cloudOn);
+      await container
+          .read(settingsProvider.notifier)
+          .setCloudAiEnabled(cloudOn);
       if (stored != null) {
-        await container.read(settingsProvider.notifier).setAnswerModelId(stored);
+        await container
+            .read(settingsProvider.notifier)
+            .setAnswerModelId(stored);
       }
     });
 
     tester.view.physicalSize = const Size(900, 1800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(UncontrolledProviderScope(
-      container: container,
-      child: MaterialApp(
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: Center(
-              child: TextButton(
-                onPressed: () => showModelPicker(context),
-                child: const Text('open'),
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => showModelPicker(context),
+                  child: const Text('open'),
+                ),
               ),
             ),
           ),
         ),
       ),
-    ));
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
   }
@@ -86,8 +94,9 @@ void main() {
     expect(find.textContaining('Coming soon'), findsWidgets);
   });
 
-  testWidgets('picking the on-device model stores that and closes',
-      (tester) async {
+  testWidgets('picking the on-device model stores that and closes', (
+    tester,
+  ) async {
     await pump(tester);
 
     await tester.tap(find.text('On-device (Gemma)'));
@@ -105,6 +114,12 @@ void main() {
 
     expect(settings().answerModelId, _bigId);
     expect(settings().aiMode, AiProcessingMode.auto);
+    expect(
+      settings().hasCloudKey,
+      isFalse,
+      reason: 'an answer connection needs no default page-reading key',
+    );
+    expect(container.read(answerCloudEnabledProvider), isTrue);
   });
 
   testWidgets('with cloud AI off, picking a cloud model asks before turning it '
@@ -113,8 +128,11 @@ void main() {
 
     await tester.tap(find.text('My AI · Big'));
     await tester.pumpAndSettle();
-    expect(settings().aiMode, AiProcessingMode.onDevice,
-        reason: 'nothing changes before the answer');
+    expect(
+      settings().aiMode,
+      AiProcessingMode.onDevice,
+      reason: 'nothing changes before the answer',
+    );
     expect(settings().answerModelId, 'auto');
 
     await tester.tap(find.text('Turn on'));
@@ -136,8 +154,9 @@ void main() {
     expect(settings().answerModelId, 'auto');
   });
 
-  testWidgets('a model that is not available yet cannot be picked',
-      (tester) async {
+  testWidgets('a model that is not available yet cannot be picked', (
+    tester,
+  ) async {
     await pump(tester);
 
     await tester.tap(find.text('Margo Free'));
@@ -146,11 +165,13 @@ void main() {
     expect(settings().answerModelId, 'auto');
   });
 
-  testWidgets('a stored pick whose model is gone falls back to auto and says so',
-      (tester) async {
-    await pump(tester, stored: 'user:deleted:model');
+  testWidgets(
+    'a stored pick whose model is gone falls back to auto and says so',
+    (tester) async {
+      await pump(tester, stored: 'user:deleted:model');
 
-    expect(find.textContaining('no longer available'), findsOneWidget);
-    expect(settings().answerModelId, 'auto');
-  });
+      expect(find.textContaining('no longer available'), findsOneWidget);
+      expect(settings().answerModelId, 'auto');
+    },
+  );
 }

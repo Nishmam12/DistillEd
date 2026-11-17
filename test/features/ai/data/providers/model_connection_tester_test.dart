@@ -42,54 +42,78 @@ ModelConnectionTester _tester(_FakeAdapter adapter) =>
     ModelConnectionTester(dio: Dio()..httpClientAdapter = adapter);
 
 void main() {
-  test('a good key returns the models it can use, in name order', () async {
-    final adapter = _FakeAdapter(jsonEncode({
-      'data': [
-        {'id': 'zeta'},
-        {'id': 'alpha'},
-      ],
-    }));
+  test(
+    'OpenRouter checks the key before accepting its public model list',
+    () async {
+      final adapter = _FakeAdapter('{"data":[]}');
+      await _tester(adapter)
+          .listModels(baseUrl: 'https://openrouter.ai/api/v1', apiKey: _key);
+      expect(adapter.requests.map((r) => r.uri.path), [
+        '/api/v1/key',
+        '/api/v1/models',
+      ]);
+      expect(adapter.requests.every((r) => r.followRedirects == false), isTrue);
+    },
+  );
 
-    final result =
-        await _tester(adapter).listModels(baseUrl: _base, apiKey: _key);
+  test('a good key returns the models it can use, in name order', () async {
+    final adapter = _FakeAdapter(
+      jsonEncode({
+        'data': [
+          {'id': 'zeta'},
+          {'id': 'alpha'},
+        ],
+      }),
+    );
+
+    final result = await _tester(adapter)
+        .listModels(baseUrl: _base, apiKey: _key);
 
     expect((result as ConnectionOk).modelIds, ['alpha', 'zeta']);
   });
 
-  test('reads each model\'s context size when the provider reports one',
-      () async {
-    final adapter = _FakeAdapter(jsonEncode({
-      'data': [
-        {'id': 'a', 'context_length': 128000},
-        {'id': 'b', 'context_window': 32768},
-        {'id': 'c'},
-        {'id': 'd', 'context_length': 'lots'},
-      ],
-    }));
+  test(
+    'reads each model\'s context size when the provider reports one',
+    () async {
+      final adapter = _FakeAdapter(
+        jsonEncode({
+          'data': [
+            {'id': 'a', 'context_length': 128000},
+            {'id': 'b', 'context_window': 32768},
+            {'id': 'c'},
+            {'id': 'd', 'context_length': 'lots'},
+          ],
+        }),
+      );
 
-    final result = await _tester(adapter)
-        .listModels(baseUrl: _base, apiKey: _key) as ConnectionOk;
+      final result = await _tester(
+        adapter,
+      ).listModels(baseUrl: _base, apiKey: _key) as ConnectionOk;
 
-    expect(result.contextWindows, {'a': 128000, 'b': 32768});
-  });
+      expect(result.contextWindows, {'a': 128000, 'b': 32768});
+    },
+  );
 
   test('knows which models can call tools when the provider says', () async {
-    final adapter = _FakeAdapter(jsonEncode({
-      'data': [
-        {
-          'id': 'with-tools',
-          'supported_parameters': ['temperature', 'tools'],
-        },
-        {
-          'id': 'without',
-          'supported_parameters': ['temperature'],
-        },
-        {'id': 'unknown'},
-      ],
-    }));
+    final adapter = _FakeAdapter(
+      jsonEncode({
+        'data': [
+          {
+            'id': 'with-tools',
+            'supported_parameters': ['temperature', 'tools'],
+          },
+          {
+            'id': 'without',
+            'supported_parameters': ['temperature'],
+          },
+          {'id': 'unknown'},
+        ],
+      }),
+    );
 
-    final result = await _tester(adapter)
-        .listModels(baseUrl: _base, apiKey: _key) as ConnectionOk;
+    final result = await _tester(
+      adapter,
+    ).listModels(baseUrl: _base, apiKey: _key) as ConnectionOk;
 
     expect(result.toolModels, {'with-tools'});
   });
@@ -112,13 +136,15 @@ void main() {
     expect((result as ConnectionFailed).message, contains('rejected the key'));
   });
 
-  test('a provider with no model list says there is none to pick from',
-      () async {
-    final result = await _tester(_FakeAdapter('{}', status: 404))
-        .listModels(baseUrl: _base, apiKey: _key);
+  test(
+    'a provider with no model list says there is none to pick from',
+    () async {
+      final result = await _tester(_FakeAdapter('{}', status: 404))
+          .listModels(baseUrl: _base, apiKey: _key);
 
-    expect(result, isA<ConnectionNoModelList>());
-  });
+      expect(result, isA<ConnectionNoModelList>());
+    },
+  );
 
   test('a reply in an unknown shape is treated as no model list', () async {
     final result = await _tester(_FakeAdapter('{"hello":"world"}'))
@@ -136,22 +162,24 @@ void main() {
       ),
     );
 
-    final result =
-        await _tester(adapter).listModels(baseUrl: _base, apiKey: _key);
+    final result = await _tester(adapter)
+        .listModels(baseUrl: _base, apiKey: _key);
 
     expect((result as ConnectionFailed).message, contains('api.example.com'));
   });
 
-  test('an address that is not https is refused before anything is sent',
-      () async {
-    final adapter = _FakeAdapter('{"data":[]}');
+  test(
+    'an address that is not https is refused before anything is sent',
+    () async {
+      final adapter = _FakeAdapter('{"data":[]}');
 
-    final result = await _tester(adapter)
-        .listModels(baseUrl: 'http://api.example.com/v1', apiKey: _key);
+      final result = await _tester(adapter)
+          .listModels(baseUrl: 'http://api.example.com/v1', apiKey: _key);
 
-    expect(result, isA<ConnectionFailed>());
-    expect(adapter.requests, isEmpty);
-  });
+      expect(result, isA<ConnectionFailed>());
+      expect(adapter.requests, isEmpty);
+    },
+  );
 
   test('a failure never repeats the key', () async {
     for (final status in [400, 401, 403, 429, 500]) {
@@ -159,13 +187,17 @@ void main() {
         _FakeAdapter('{"error":"bad key $_key"}', status: status),
       ).listModels(baseUrl: _base, apiKey: _key);
 
-      expect((result as ConnectionFailed).message, isNot(contains(_key)),
-          reason: 'HTTP $status');
+      expect(
+        (result as ConnectionFailed).message,
+        isNot(contains(_key)),
+        reason: 'HTTP $status',
+      );
     }
   });
 
   group('checking one typed model', () {
-    const sse = 'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n'
+    const sse =
+        'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n'
         'data: [DONE]\n\n';
 
     test('a model that answers is confirmed', () async {

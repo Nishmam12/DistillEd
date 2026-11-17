@@ -11,7 +11,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../data/llm/llm_model_spec.dart';
 import '../../domain/features/explainer.dart';
 import '../../domain/quality/ai_quality_guard.dart';
-import '../../domain/routing/intelligent_router.dart' show CloudTier;
 import '../ai_providers.dart';
 import '../explain_notifier.dart';
 import '../widgets/answer_tier_banner.dart';
@@ -29,29 +28,26 @@ class AiExplainView extends ConsumerWidget {
 
     return switch (state) {
       ExplainPreparing() => const _Header(
-          child: _Centered(
-            icon: Icons.menu_book_outlined,
-            title: 'Reading your selection…',
-            showSpinner: true,
-          ),
+        child: _Centered(
+          icon: Icons.menu_book_outlined,
+          title: 'Reading your selection…',
+          showSpinner: true,
         ),
-      ExplainDownloadingModel(:final progress) =>
-        _Header(child: _Downloading(progress: progress)),
+      ),
+      ExplainDownloadingModel(:final progress) => _Header(
+        child: _Downloading(progress: progress),
+      ),
       ExplainStreaming(
         :final text,
         :final mode,
         :final fromCloud,
-        :final modelName
+        :final modelName,
       ) =>
         _Header(
           mode: mode,
           fromCloud: fromCloud,
           modelName: modelName,
-          child: _Body(
-            text: text,
-            streaming: true,
-            onInsertNote: onInsertNote,
-          ),
+          child: _Body(text: text, streaming: true, onInsertNote: onInsertNote),
         ),
       ExplainReady(
         :final text,
@@ -59,7 +55,7 @@ class AiExplainView extends ConsumerWidget {
         :final fromCloud,
         :final tier,
         :final canRetryOnCloud,
-        :final modelName
+        :final modelName,
       ) =>
         _Header(
           mode: mode,
@@ -71,13 +67,13 @@ class AiExplainView extends ConsumerWidget {
             onInsertNote: onInsertNote,
             tier: tier,
             onVerifyWithCloud: canRetryOnCloud
-                ? () =>
-                    ref.read(explainNotifierProvider.notifier).verifyWithCloud()
+                ? () => ref
+                      .read(explainNotifierProvider.notifier)
+                      .verifyWithCloud()
                 : null,
           ),
         ),
-      ExplainConfirmCloud() =>
-        _Header(child: _ConfirmCloudBody(state: state)),
+      ExplainConfirmCloud() => _Header(child: _ConfirmCloudBody(state: state)),
       ExplainError() => _Header(child: _ErrorBody(state: state)),
       ExplainIdle() => const SizedBox.shrink(),
     };
@@ -115,14 +111,16 @@ class _Header extends ConsumerWidget {
             Icon(Icons.school_outlined, size: 18, color: context.colors.accent),
             const SizedBox(width: 8),
             Expanded(
-              child: Text('Explain',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: 'ModulusPro',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: context.colors.textPrimary,
-                  )),
+              child: Text(
+                'Explain',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'ModulusPro',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: context.colors.textPrimary,
+                ),
+              ),
             ),
             if (fromCloud) _CloudBadge(modelName: modelName),
             if (mode != null) _ModeSelector(mode: mode!),
@@ -131,8 +129,11 @@ class _Header extends ConsumerWidget {
               visualDensity: VisualDensity.compact,
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
               padding: EdgeInsets.zero,
-              icon: Icon(Icons.close,
-                  size: 18, color: context.colors.textSecondary),
+              icon: Icon(
+                Icons.close,
+                size: 18,
+                color: context.colors.textSecondary,
+              ),
               onPressed: () =>
                   ref.read(explainNotifierProvider.notifier).reset(),
             ),
@@ -165,7 +166,9 @@ class _ModeSelector extends ConsumerWidget {
                 Icon(
                   m == mode ? Icons.check : Icons.tune,
                   size: 16,
-                  color: m == mode ? context.colors.accent : context.colors.textSecondary,
+                  color: m == mode
+                      ? context.colors.accent
+                      : context.colors.textSecondary,
                 ),
                 const SizedBox(width: 10),
                 Text(m.label),
@@ -182,14 +185,15 @@ class _ModeSelector extends ConsumerWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(mode.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: context.colors.accent,
-                )),
-            Icon(Icons.arrow_drop_down,
-                size: 18, color: context.colors.accent),
+            Text(
+              mode.label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: context.colors.accent,
+              ),
+            ),
+            Icon(Icons.arrow_drop_down, size: 18, color: context.colors.accent),
           ],
         ),
       ),
@@ -257,12 +261,18 @@ class _Body extends StatelessWidget {
                       width: 12,
                       height: 12,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: context.colors.accent),
+                        strokeWidth: 2,
+                        color: context.colors.accent,
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Text('Writing…',
-                        style: TextStyle(
-                            fontSize: 12, color: context.colors.textSecondary)),
+                    Text(
+                      'Writing…',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.colors.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               )
@@ -276,26 +286,36 @@ class _Body extends StatelessWidget {
                         Clipboard.setData(ClipboardData(text: trimmed));
                         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                           const SnackBar(
-                              content: Text('Explanation copied'),
-                              duration: Duration(seconds: 1)),
+                            content: Text('Explanation copied'),
+                            duration: Duration(seconds: 1),
+                          ),
                         );
                       },
-                icon: Icon(Icons.copy_outlined,
-                    size: 18, color: context.colors.textSecondary),
+                icon: Icon(
+                  Icons.copy_outlined,
+                  size: 18,
+                  color: context.colors.textSecondary,
+                ),
               ),
             const Spacer(),
             Flexible(
               child: FilledButton.icon(
-                style:
-                    FilledButton.styleFrom(backgroundColor: context.colors.accent),
+                style: FilledButton.styleFrom(
+                  backgroundColor: context.colors.accent,
+                ),
                 onPressed: (streaming || trimmed.isEmpty)
                     ? null
                     : () => onInsertNote(trimmed),
-                icon: Icon(Icons.note_add_outlined,
-                    size: 18, color: context.colors.onAccent),
-                label: Text('Insert as note',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: context.colors.onAccent)),
+                icon: Icon(
+                  Icons.note_add_outlined,
+                  size: 18,
+                  color: context.colors.onAccent,
+                ),
+                label: Text(
+                  'Insert as note',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: context.colors.onAccent),
+                ),
               ),
             ),
           ],
@@ -342,14 +362,16 @@ class _CloudBadge extends StatelessWidget {
           Icon(Icons.cloud_outlined, size: 13, color: context.colors.accent),
           const SizedBox(width: 4),
           Flexible(
-            child: Text(label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: context.colors.accent,
-                )),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: context.colors.accent,
+              ),
+            ),
           ),
         ],
       ),
@@ -367,52 +389,53 @@ class _ConfirmCloudBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(explainNotifierProvider.notifier);
-    final tierLabel =
-        state.tier == CloudTier.frontier ? 'a frontier cloud model' : 'a cloud model';
     final picked = state.modelName;
-    final destination =
-        (state.host ?? '').isEmpty ? 'a cloud service' : state.host!;
+    final destination = (state.host ?? '').isEmpty
+        ? 'a cloud service'
+        : state.host!;
     // A model the student picked themselves: say which, and whose servers.
     final title = picked == null
         ? 'Use the cloud for this one?'
         : 'Send this to $picked?';
     final pickedSubtitle = state.isFirstEver
         ? 'This passage would go to $destination to be explained. That text '
-            'leaves this device. Everything else stays here, and you can '
-            'switch cloud AI off at any time.'
+              'leaves this device. Everything else stays here, and you can '
+              'switch cloud AI off at any time.'
         : 'This passage would go to $destination.';
     final routedSubtitle = state.isFirstEver
         ? 'This passage is long enough that explaining it well needs more '
-            'than the on-device model can do — so this one request (and only '
-            'this one) would be sent to $tierLabel to answer. Nothing else '
-            'about your notebook leaves the device, and you\'ll see this '
-            'prompt every time unless you change it in Settings.'
-        : 'This would be sent to $tierLabel to answer.';
+              'than the on-device model can do — so this one request (and only '
+              'this one) would be sent to ${state.providerName} to answer. Nothing else '
+              'about your notebook leaves the device, and you\'ll see this '
+              'prompt every time unless you change it in Settings.'
+        : 'This would be sent to ${state.providerName} to answer.';
     final subtitle = picked == null ? routedSubtitle : pickedSubtitle;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _Centered(
-          icon: Icons.cloud_outlined,
-          title: title,
-          subtitle: subtitle,
-        ),
+        _Centered(icon: Icons.cloud_outlined, title: title, subtitle: subtitle),
         const SizedBox(height: 14),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextButton(
               onPressed: notifier.cancelCloud,
-              child: Text('Cancel',
-                  style: TextStyle(color: context.colors.textSecondary)),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: context.colors.textSecondary),
+              ),
             ),
             const SizedBox(width: 8),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
+              style: FilledButton.styleFrom(
+                backgroundColor: context.colors.accent,
+              ),
               onPressed: notifier.confirmCloudAndRun,
-              child: Text('Send',
-                  style: TextStyle(color: context.colors.onAccent)),
+              child: Text(
+                'Send',
+                style: TextStyle(color: context.colors.onAccent),
+              ),
             ),
           ],
         ),
@@ -444,17 +467,23 @@ class _ErrorBody extends ConsumerWidget {
         const SizedBox(height: 14),
         if (state.offerModelDownload)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.colors.accent),
+            style: FilledButton.styleFrom(
+              backgroundColor: context.colors.accent,
+            ),
             onPressed: notifier.downloadModelAndRetry,
-            child: Text('Download model (${sizeGb.toStringAsFixed(1)} GB)',
-                style: TextStyle(color: context.colors.onAccent)),
+            child: Text(
+              'Download model (${sizeGb.toStringAsFixed(1)} GB)',
+              style: TextStyle(color: context.colors.onAccent),
+            ),
           )
         else if (state.retryable)
           TextButton.icon(
             onPressed: notifier.retry,
             icon: Icon(Icons.refresh, size: 18, color: context.colors.accent),
-            label: Text('Try again',
-                style: TextStyle(color: context.colors.accent)),
+            label: Text(
+              'Try again',
+              style: TextStyle(color: context.colors.accent),
+            ),
           ),
       ],
     );
@@ -474,7 +503,8 @@ class _Downloading extends ConsumerWidget {
         _Centered(
           icon: Icons.download_outlined,
           title: 'Setting up AI insights',
-          subtitle: '${LlmModelSpec.active.displayName} · '
+          subtitle:
+              '${LlmModelSpec.active.displayName} · '
               '${sizeGb.toStringAsFixed(1)} GB — one-time download',
         ),
         const SizedBox(height: 16),
@@ -512,20 +542,27 @@ class _Centered extends StatelessWidget {
           else
             Icon(icon, size: 34, color: context.colors.textSecondary),
           const SizedBox(height: 14),
-          Text(title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'ModulusPro',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: context.colors.textPrimary,
-              )),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'ModulusPro',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: context.colors.textPrimary,
+            ),
+          ),
           if (subtitle != null) ...[
             const SizedBox(height: 6),
-            Text(subtitle!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 13, height: 1.4, color: context.colors.textSecondary)),
+            Text(
+              subtitle!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: context.colors.textSecondary,
+              ),
+            ),
           ],
         ],
       ),

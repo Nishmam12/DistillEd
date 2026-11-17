@@ -20,6 +20,9 @@ import '../../../core/providers/settings_provider.dart' show CloudPrivacy;
 import '../domain/ai_provider.dart' show AiException;
 import '../domain/features/researcher.dart';
 
+/// Named in the confirm copy when no provider name is wired.
+const _defaultProviderName = 'your cloud AI provider';
+
 sealed class ResearchState {
   const ResearchState();
 }
@@ -40,10 +43,12 @@ class ResearchConfirmCloud extends ResearchState {
 
   /// The cloud model the student picked, and where it is. Null when no model
   /// is picked and the question goes to Margo's own cloud.
+  final String providerName;
   final String? modelName;
   final String? host;
   const ResearchConfirmCloud({
     required this.isFirstEver,
+    this.providerName = _defaultProviderName,
     this.modelName,
     this.host,
   });
@@ -79,6 +84,7 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
   final CloudPrivacy Function() _privacy;
   final bool Function() _hasSeenFirstCloudCall;
   final Future<void> Function() _markFirstCloudCallSeen;
+  final String Function() _providerName;
 
   /// Whether this question has to wait for a yes. Null always asks, which is
   /// what Research did before there was a model picker; with a model the
@@ -95,9 +101,11 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
     Future<void> Function()? markFirstCloudCallSeen,
     this._needsConfirm,
     this._pickedModel,
-  })  : _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
-        _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
-        super(const ResearchIdle());
+    String Function()? providerName,
+  }) : _hasSeenFirstCloudCall = hasSeenFirstCloudCall ?? (() => true),
+       _markFirstCloudCallSeen = markFirstCloudCallSeen ?? (() async {}),
+       _providerName = providerName ?? (() => _defaultProviderName),
+       super(const ResearchIdle());
 
   String? _lastQuestion;
   bool _running = false;
@@ -129,6 +137,7 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
         isFirstEver: !_hasSeenFirstCloudCall(),
         modelName: picked?.name,
         host: picked?.host,
+        providerName: _providerName(),
       );
       return;
     }
@@ -145,34 +154,42 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
     // them, so "wait for it to finish" is not an acceptable only-exit.
     final completer = Completer<void>();
     _completer = completer;
-    _sub = _researcher.research(trimmed).listen(
-      (event) {
-        if (!mounted) return;
-        switch (event) {
-          case ResearchTextChunk(:final text):
-            buffer.write(text);
-          case ResearchToolUsed(:final toolName):
-            if (!toolsUsed.contains(toolName)) toolsUsed.add(toolName);
-        }
-        state = ResearchStreaming(buffer.toString(),
-            toolsUsed: List.unmodifiable(toolsUsed));
-      },
-      onError: (Object e) {
-        if (mounted) state = _mapError(e);
-        if (!completer.isCompleted) completer.complete();
-      },
-      onDone: () {
-        if (mounted) {
-          final text = buffer.toString().trim();
-          state = text.isEmpty
-              ? const ResearchError(
-                  "The model didn't return an answer. Try again.")
-              : ResearchReady(text, toolsUsed: List.unmodifiable(toolsUsed));
-        }
-        if (!completer.isCompleted) completer.complete();
-      },
-      cancelOnError: true,
-    );
+    _sub = _researcher
+        .research(trimmed)
+        .listen(
+          (event) {
+            if (!mounted) return;
+            switch (event) {
+              case ResearchTextChunk(:final text):
+                buffer.write(text);
+              case ResearchToolUsed(:final toolName):
+                if (!toolsUsed.contains(toolName)) toolsUsed.add(toolName);
+            }
+            state = ResearchStreaming(
+              buffer.toString(),
+              toolsUsed: List.unmodifiable(toolsUsed),
+            );
+          },
+          onError: (Object e) {
+            if (mounted) state = _mapError(e);
+            if (!completer.isCompleted) completer.complete();
+          },
+          onDone: () {
+            if (mounted) {
+              final text = buffer.toString().trim();
+              state = text.isEmpty
+                  ? const ResearchError(
+                      "The model didn't return an answer. Try again.",
+                    )
+                  : ResearchReady(
+                      text,
+                      toolsUsed: List.unmodifiable(toolsUsed),
+                    );
+            }
+            if (!completer.isCompleted) completer.complete();
+          },
+          cancelOnError: true,
+        );
 
     await completer.future;
     _sub = null;
@@ -222,8 +239,8 @@ class ResearchNotifier extends StateNotifier<ResearchState> {
   ///
   /// Deliberately does NOT await `subscription.cancel()`. Cancelling a
   /// subscription to an `async*` parked in an `await for` (which both
-  /// [Researcher.research] and the gateway's `generateWithTools` are) doesn't
-  /// complete its cancel future until the inner stream next emits or closes —
+  /// [Researcher.research] and the cloud provider's `generateWithTools` are)
+  /// doesn't complete its cancel future until the inner stream next emits or closes —
   /// so awaiting it would hang the UI during a cold start, the exact moment a
   /// user most wants out. `cancel()` still stops event delivery immediately
   /// (no `onData`/`onDone` fires afterward), so state can move on now; the

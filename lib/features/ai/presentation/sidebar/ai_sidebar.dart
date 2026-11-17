@@ -8,6 +8,7 @@
 // while an explanation is streaming, plus a Summarize/Explain action footer.
 
 import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -186,7 +187,9 @@ class AiSidebar extends StatelessWidget {
         child: Column(
           children: [
             _SidebarHeader(
-                onClose: onClose, onToggleFloating: onToggleFloating),
+              onClose: onClose,
+              onToggleFloating: onToggleFloating,
+            ),
             Divider(height: 1, color: context.colors.border),
             Expanded(
               child: Padding(
@@ -637,7 +640,9 @@ class _ActionChip extends StatelessWidget {
       button: true,
       enabled: enabled,
       child: Material(
-        color: enabled ? context.colors.accentMuted : context.colors.surfaceSubtle,
+        color: enabled
+            ? context.colors.accentMuted
+            : context.colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -691,8 +696,11 @@ class _SidebarHeader extends StatelessWidget {
       child: Row(
         children: [
           if (floating && onMove != null) ...[
-            Icon(Icons.drag_indicator,
-                size: 18, color: context.colors.textSecondary),
+            Icon(
+              Icons.drag_indicator,
+              size: 18,
+              color: context.colors.textSecondary,
+            ),
             const SizedBox(width: 4),
           ],
           Icon(Icons.auto_awesome, size: 18, color: context.colors.accent),
@@ -715,20 +723,27 @@ class _SidebarHeader extends StatelessWidget {
           if (onToggleFloating case final toggle?)
             IconButton(
               key: const ValueKey('aiPanelFloatToggle'),
-              tooltip: floating ? 'Dock beside the page' : 'Float over the page',
+              tooltip: floating
+                  ? 'Dock beside the page'
+                  : 'Float over the page',
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
               icon: Icon(
-                  floating
-                      ? Icons.vertical_split_outlined
-                      : Icons.picture_in_picture_alt_outlined,
-                  size: 20,
-                  color: context.colors.textSecondary),
+                floating
+                    ? Icons.vertical_split_outlined
+                    : Icons.picture_in_picture_alt_outlined,
+                size: 20,
+                color: context.colors.textSecondary,
+              ),
               onPressed: toggle,
             ),
           IconButton(
             tooltip: 'Close',
             constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-            icon: Icon(Icons.close, size: 20, color: context.colors.textSecondary),
+            icon: Icon(
+              Icons.close,
+              size: 20,
+              color: context.colors.textSecondary,
+            ),
             onPressed: onClose,
           ),
         ],
@@ -771,13 +786,17 @@ class _SidebarHeader extends StatelessWidget {
 /// ASK; it is not a blanket "send my notes". The tooltip names the active mode,
 /// because a switch that silently widened a privacy setting would be exactly
 /// the kind of thing this codebase is careful not to ship.
+///
+/// With no cloud AI key saved it cannot turn on: tapping it leaves the mode
+/// alone and points to Settings, where the key is added.
 class CloudModelToggle extends ConsumerWidget {
   const CloudModelToggle({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
-    final on = settings.cloudAiEnabled;
+    final on = ref.watch(answerCloudEnabledProvider);
+    final hasCloudKey = ref.watch(hasAnswerCloudKeyProvider);
     final asksEachTime = settings.cloudPrivacy == CloudPrivacy.askEachTime;
 
     return Tooltip(
@@ -785,6 +804,7 @@ class CloudModelToggle extends ConsumerWidget {
       // on/off, which is what made "on" look like it should mean "use the
       // cloud" when it really meant "you may fall back to it".
       message: switch (settings.aiMode) {
+        _ when !hasCloudKey => 'Cloud AI needs a key — add one in Settings',
         AiProcessingMode.onDevice =>
           'On-device only — everything runs on your device',
         AiProcessingMode.auto =>
@@ -800,8 +820,17 @@ class CloudModelToggle extends ConsumerWidget {
         excludeSemantics: true,
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: () =>
-              ref.read(settingsProvider.notifier).setCloudAiEnabled(!on),
+          onTap: () {
+            if (!on && !hasCloudKey) {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                const SnackBar(
+                  content: Text('Add a cloud AI key in Settings first.'),
+                ),
+              );
+              return;
+            }
+            ref.read(settingsProvider.notifier).setCloudAiEnabled(!on);
+          },
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 44),
             child: Padding(
@@ -812,7 +841,9 @@ class CloudModelToggle extends ConsumerWidget {
                   Icon(
                     on ? Icons.cloud_outlined : Icons.cloud_off_outlined,
                     size: 17,
-                    color: on ? context.colors.accent : context.colors.textSecondary,
+                    color: on
+                        ? context.colors.accent
+                        : context.colors.textSecondary,
                   ),
                   const SizedBox(width: 4),
                   // A real Switch, scaled down: the affordance has to read as a

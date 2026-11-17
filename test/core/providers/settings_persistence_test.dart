@@ -271,7 +271,8 @@ void main() {
 
       final notifier = await _restored();
 
-      expect(notifier.state.cloudAiEnabled, isTrue);
+      // The restored mode; cloudAiEnabled also needs a saved cloud key.
+      expect(notifier.state.aiMode, AiProcessingMode.auto);
       expect(notifier.state.themeMode, AppThemeMode.dark);
       expect(notifier.state.cloudPrivacy, CloudPrivacy.askEachTime);
     });

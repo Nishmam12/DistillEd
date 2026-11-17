@@ -40,8 +40,8 @@ Future<bool> openExternalUrl(
   UrlLauncher launch = _launchWithPlatform,
 }) async {
   final uri = Uri.tryParse(url);
-  // Web links only: the callers pass HuggingFace pages, and nothing else needs
-  // to leave the app from here.
+  // Web links only: the callers pass HuggingFace pages and cloud AI key
+  // pages, and nothing else needs to leave the app from here.
   if (uri == null || !(uri.isScheme('https') || uri.isScheme('http'))) {
     return false;
   }
