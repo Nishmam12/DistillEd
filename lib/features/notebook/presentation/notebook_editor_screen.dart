@@ -609,13 +609,13 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
                         // rather than sitting in the toolbar's own layout, so
                         // opening/closing it never resizes (and so never
                         // shifts) the page underneath a mid-stroke drawing.
-                        const Positioned(
+                        Positioned(
                           top: 8,
                           left: 8,
                           right: 8,
                           child: Align(
                             alignment: Alignment.topLeft,
-                            child: EditorToolOptionsOverlay(),
+                            child: EditorToolOptionsOverlay(pageKey: key),
                           ),
                         ),
                         if (_placing case final placing?

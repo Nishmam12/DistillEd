@@ -54,6 +54,10 @@ class EditorToolState {
   // Eraser: pixel (clears ink) vs element (removes whole elements).
   final bool eraserPixel;
 
+  /// Either eraser touches only highlighter strokes, so marking can be
+  /// cleaned up without nicking the writing under it.
+  final bool eraserHighlighterOnly;
+
   // Select tool: drag a free-form loop round things instead of a rectangle.
   final bool selectLasso;
 
@@ -88,6 +92,7 @@ class EditorToolState {
     this.fontSize = 20.0,
     this.fontFamily = 'Roboto',
     this.eraserPixel = false,
+    this.eraserHighlighterOnly = false,
     this.selectLasso = false,
     this.selectText = false,
     this.panelOpen = true,
@@ -117,6 +122,7 @@ class EditorToolState {
     double? fontSize,
     String? fontFamily,
     bool? eraserPixel,
+    bool? eraserHighlighterOnly,
     bool? selectLasso,
     bool? selectText,
     bool? panelOpen,
@@ -143,6 +149,8 @@ class EditorToolState {
       fontSize: fontSize ?? this.fontSize,
       fontFamily: fontFamily ?? this.fontFamily,
       eraserPixel: eraserPixel ?? this.eraserPixel,
+      eraserHighlighterOnly:
+          eraserHighlighterOnly ?? this.eraserHighlighterOnly,
       selectLasso: selectLasso ?? this.selectLasso,
       selectText: selectText ?? this.selectText,
       panelOpen: panelOpen ?? this.panelOpen,
@@ -287,6 +295,8 @@ class EditorToolController extends StateNotifier<EditorToolState> {
   void setFontSize(double s) => state = state.copyWith(fontSize: s);
   void setFontFamily(String f) => state = state.copyWith(fontFamily: f);
   void setEraserPixel(bool v) => state = state.copyWith(eraserPixel: v);
+  void setEraserHighlighterOnly(bool v) =>
+      state = state.copyWith(eraserHighlighterOnly: v);
   void setSelectLasso(bool v) =>
       state = state.copyWith(selectLasso: v, selectText: false);
 

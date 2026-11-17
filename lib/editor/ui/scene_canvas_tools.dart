@@ -6,6 +6,11 @@ extension _SceneCanvasTools on _SceneCanvasState {
 
   double _eraserRadius(EditorToolState tool) => math.max(8.0, tool.eraserSize);
 
+  List<SceneElement> _erasable(EditorToolState tool) => EraserService.erasable(
+        ref.read(sceneControllerProvider(_key)),
+        highlighterOnly: tool.eraserHighlighterOnly,
+      );
+
   void _onEraserDown(EditorToolState tool, StrokePoint p) {
     if (tool.eraserPixel) {
       // The preview of what will be cut: a grey ghost, not the pen's colour.
@@ -19,7 +24,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
       a: scene,
       b: scene,
       radius: _eraserRadius(tool),
-      elements: ref.read(sceneControllerProvider(_key)),
+      elements: _erasable(tool),
     );
   }
 
@@ -33,7 +38,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
       a: _lastErase,
       b: scene,
       radius: _eraserRadius(tool),
-      elements: ref.read(sceneControllerProvider(_key)),
+      elements: _erasable(tool),
       skip: _eraserPending.value,
     );
     if (hits.isNotEmpty) {
@@ -55,7 +60,7 @@ extension _SceneCanvasTools on _SceneCanvasState {
       if (eraserPath == null) return;
       final result = ScenePixelEraserService.erase(
         eraserPath: eraserPath,
-        elements: ref.read(sceneControllerProvider(_key)),
+        elements: _erasable(tool),
       );
       if (result.isEmpty) return;
       _history.push(

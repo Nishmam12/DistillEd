@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:margo/domain/model/element_style.dart' show PenKind;
 import 'package:margo/domain/model/scene_element.dart';
 import 'package:margo/domain/services/eraser_service.dart';
 
@@ -68,4 +69,52 @@ void main() {
         elements: [line]);
     expect(hit, isEmpty);
   });
+
+  group('eraser modes', () {
+    const shape = SceneShapeElement(
+      id: 'box',
+      zOrder: 0,
+      shapeType: ShapeType.rectangle,
+      geometryData: [0, 0, 10, 10],
+      color: 0xFF000000,
+      strokeWidth: 1,
+    );
+    final elements = <SceneElement>[
+      _ink('pen'),
+      _ink('marker', kind: PenKind.highlighter),
+      _ink('pdf-ink', locked: true),
+      shape,
+    ];
+
+    test('highlighter only leaves everything else alone', () {
+      expect(
+          EraserService.erasable(elements, highlighterOnly: true)
+              .map((e) => e.id),
+          ['marker']);
+      expect(EraserService.erasable(elements, highlighterOnly: false),
+          same(elements));
+    });
+
+    test('whole-page actions never take a locked element', () {
+      expect(
+          EraserService.pageEraseTargets(elements, PageErase.handwriting)
+              .map((e) => e.id),
+          ['pen', 'marker']);
+      expect(
+          EraserService.pageEraseTargets(elements, PageErase.everything)
+              .map((e) => e.id),
+          ['pen', 'marker', 'box']);
+    });
+  });
 }
+
+FreehandElement _ink(String id, {PenKind kind = PenKind.ballpoint, bool locked = false}) =>
+    FreehandElement(
+      id: id,
+      zOrder: 0,
+      points: const [StrokePoint(x: 0, y: 0, pressure: 0.5), StrokePoint(x: 5, y: 5, pressure: 0.5)],
+      color: 0xFF000000,
+      size: 2,
+      penKind: kind,
+      isLocked: locked,
+    );

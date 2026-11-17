@@ -12,7 +12,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../editor_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/model/scene_element.dart';
+import '../../../domain/commands/scene_command.dart';
+import '../../../domain/services/eraser_service.dart';
 import '../../state/editor_tool_controller.dart';
+import '../../state/history_controller.dart';
+import '../../state/scene_controller.dart';
 
 /// Deliberately *not* part of [EditorBottomBar]'s own layout: callers place it
 /// as an overlay in a [Stack] above the canvas instead, so opening or closing
@@ -26,7 +30,12 @@ class EditorToolOptionsOverlay extends ConsumerWidget {
   /// (anchor to the bottom, slide down to hide instead).
   final bool anchorBottom;
 
-  const EditorToolOptionsOverlay({super.key, this.anchorBottom = false});
+  /// The page on screen, for the eraser's whole-page actions; null leaves
+  /// them out.
+  final ScenePageKey? pageKey;
+
+  const EditorToolOptionsOverlay(
+      {super.key, this.anchorBottom = false, this.pageKey});
 
   /// Fixed rather than filling available width — a compact floating card
   /// (matching the platform's own dropdown menus), not an edge-to-edge bar.
@@ -39,7 +48,8 @@ class EditorToolOptionsOverlay extends ConsumerWidget {
 
     final Widget? content = switch (state.tool) {
       EditorTool.pen => _PenPanel(state: state, ctl: ctl),
-      EditorTool.eraser => _EraserPanel(state: state, ctl: ctl),
+      EditorTool.eraser =>
+        _EraserPanel(state: state, ctl: ctl, pageKey: pageKey),
       EditorTool.shape => _ShapePanel(state: state, ctl: ctl),
       EditorTool.text => _TextPanel(state: state, ctl: ctl),
       EditorTool.select => _SelectPanel(state: state, ctl: ctl),
@@ -305,13 +315,33 @@ class _SelectPanel extends StatelessWidget {
   }
 }
 
-class _EraserPanel extends StatelessWidget {
+class _EraserPanel extends ConsumerWidget {
   final EditorToolState state;
   final EditorToolController ctl;
-  const _EraserPanel({required this.state, required this.ctl});
+  final ScenePageKey? pageKey;
+  const _EraserPanel({required this.state, required this.ctl, this.pageKey});
+
+  /// Removes [what] from the page as one undo step, and says so.
+  void _erasePage(BuildContext context, WidgetRef ref, PageErase what) {
+    final key = pageKey;
+    if (key == null) return;
+    final targets = EraserService.pageEraseTargets(
+        ref.read(sceneControllerProvider(key)), what);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (targets.isEmpty) {
+      messenger?.showSnackBar(const SnackBar(content: Text('Nothing to erase.')));
+      return;
+    }
+    ref.read(historyProvider(key).notifier).push(RemoveElementsCommand(targets));
+    messenger?.showSnackBar(SnackBar(
+      content: Text(what == PageErase.handwriting
+          ? 'Handwriting erased. Undo brings it back.'
+          : 'Page cleared. Undo brings it back.'),
+    ));
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -336,6 +366,12 @@ class _EraserPanel extends StatelessWidget {
               selected: !state.eraserPixel,
               onSelected: (_) => ctl.setEraserPixel(false),
             ),
+            FilterChip(
+              key: const ValueKey('eraserHighlighterOnly'),
+              label: const Text('Highlighter only'),
+              selected: state.eraserHighlighterOnly,
+              onSelected: ctl.setEraserHighlighterOnly,
+            ),
           ],
         ),
         _PanelSlider(
@@ -347,6 +383,24 @@ class _EraserPanel extends StatelessWidget {
           onChanged: ctl.setEraserSize,
           label: _roundedLabel,
         ),
+        if (pageKey != null)
+          Wrap(
+            spacing: 4,
+            children: [
+              TextButton(
+                key: const ValueKey('eraseAllHandwriting'),
+                onPressed: () =>
+                    _erasePage(context, ref, PageErase.handwriting),
+                child: const Text('Erase all handwriting'),
+              ),
+              TextButton(
+                key: const ValueKey('clearPage'),
+                onPressed: () =>
+                    _erasePage(context, ref, PageErase.everything),
+                child: const Text('Clear page'),
+              ),
+            ],
+          ),
       ],
     );
   }
