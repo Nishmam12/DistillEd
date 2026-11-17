@@ -80,3 +80,6 @@ ios/Runner/GeneratedPluginRegistrant.*
 
 # Android only; pub get regenerates windows/flutter/ephemeral symlinks.
 /windows/
+
+# Local APKs
+*.apk
