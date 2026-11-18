@@ -29,6 +29,46 @@ Commits: <first>..<last>
 ## Push log
 
 ### 2026-11-18 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `d508d09` (1 commit), plus this changelog commit
+
+**What changed** (phase 7 of `docs/COMPETITOR_UPGRADE_PLAN.md`):
+- **Today on Home.** A row above Recent with three cards:
+  - cards due today;
+  - today's study-plan tasks;
+  - a scratch pad, which "Make a note" turns into a note.
+
+  Each card has a close button. Settings → "Today on Home" → "Show all"
+  brings them back.
+- **Study reminders** (Settings, off by default). A notification at 5 pm
+  on days with cards due or plan tasks. Switching it on asks for the
+  notification permission.
+- **App shortcuts** (long-press the icon): New note, Scan, Record lecture,
+  Review cards.
+- **Quick Settings tile:** New note.
+- **Home-screen widgets:** "Cards due" and "Pinned note".
+- Hidden notes are left out of all of these.
+- The Recent strip no longer shows inside the Hidden view.
+
+**What you need to do:**
+- Pull, then do a full rebuild: there is new Android code (`Outside.kt`,
+  manifest entries, resources).
+- No new dependency and no database change.
+
+**Tested:**
+- `flutter analyze` clean (no errors or warnings). Full suite: 3,658
+  passing.
+- On the Pixel Tablet emulator:
+  - the New note, Record lecture and Review cards launches;
+  - a reminder fired on time;
+  - the tile opens a new note;
+  - the scratch pad keeps its text and makes a note;
+  - Android lists all four shortcuts and both widgets.
+- Not checked:
+  - the widgets drawn on a home screen;
+  - the Scan shortcut (the emulator has no scanner);
+  - a real phone.
+
+### 2026-11-18 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
 Commits: `3731bd2` (1 commit), plus this changelog commit
 
 **What changed** (phase 6 of `docs/COMPETITOR_UPGRADE_PLAN.md`):
