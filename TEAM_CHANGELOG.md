@@ -28,6 +28,48 @@ Commits: <first>..<last>
 
 ## Push log
 
+### 2026-11-18 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `3731bd2` (1 commit), plus this changelog commit
+
+**What changed** (phase 6 of `docs/COMPETITOR_UPGRADE_PLAN.md`):
+- **Nested folders and folder colours.** Long-press a folder in the
+  sidebar: Rename, New folder inside, Move to…, a colour, Delete. Folders
+  nest up to 5 levels. Deleting a folder moves its notes and subfolders
+  up one level, so no notes are lost. Picking a folder also shows its
+  subfolders' notes.
+- **Hidden notes** (the plan's "note lock", done as hide, not encrypt).
+  "Hide note" is in a note's long-press menu. Hidden notes appear only
+  under "Hidden" in the sidebar, which opens with the fingerprint or
+  screen lock and locks again when you leave Margo. They are left out of
+  the notes list, recents, tags, search, links, backlinks and the share
+  sheet. While one is open, nothing goes to a cloud model and screenshots
+  are blocked. Backups name them "Hidden note (id)" with no `.md` copy.
+  They are not encrypted.
+- Page sorter (item 3) was already there (the page manager grid), so no
+  change.
+
+**What you need to do:**
+- Pull, then run `flutter pub get`: there is a new dependency,
+  `local_auth`.
+- Do a full rebuild, not a hot restart. `MainActivity` is now a
+  `FlutterFragmentActivity`, the Android launch themes are AppCompat, and
+  `androidx.appcompat` was added.
+- Database change: new optional fields `Folder.parentId`, `Folder.color`
+  and `Notebook.hidden`. They are additive; no migration is needed, and
+  the regenerated `.g.dart` files are committed.
+- To try hiding, the device needs a screen lock.
+
+**Tested:**
+- `flutter analyze` clean (no errors or warnings). Full suite: 3,653
+  passing.
+- On the Pixel Tablet emulator:
+  - nested and coloured folders;
+  - hid a note, unlocked with a PIN, and it locked again after leaving
+    the app;
+  - opened the hidden note: the window was secure; back on Home it was
+    cleared.
+- Not tried on a real phone or with a fingerprint.
+
 ### 2026-11-17 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
 Commits: `fc07649`..`821f4c7` (8 commits), plus this changelog commit
 
