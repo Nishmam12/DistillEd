@@ -44,6 +44,8 @@ class SceneElementCodec {
           // Capture timestamps (ms); -1 = unknown. Absent in JSON written
           // before this key existed — both decode to t=null.
           'pointT': [for (final p in e.points) p.t ?? -1],
+          if (e.points.any((p) => p.tilt != 0))
+            'pointTilt': [for (final p in e.points) p.tilt],
           'color': e.color,
           'size': e.size,
           'isEraser': e.isEraser,
@@ -123,7 +125,8 @@ class SceneElementCodec {
           isLocked: isLocked,
           groupId: groupId,
           link: link,
-          points: _points(m['points'], m['pointSim'], m['pointT']),
+          points: _points(
+              m['points'], m['pointSim'], m['pointT'], m['pointTilt']),
           color: (m['color'] as num).toInt(),
           size: _d(m['size'], 1.0),
           isEraser: m['isEraser'] as bool? ?? false,
@@ -222,8 +225,10 @@ class SceneElementCodec {
     }
   }
 
-  static List<StrokePoint> _points(dynamic flat, dynamic sim, dynamic tRaw) {
+  static List<StrokePoint> _points(
+      dynamic flat, dynamic sim, dynamic tRaw, dynamic tiltRaw) {
     final p = _doubles(flat);
+    final tilt = _doubles(tiltRaw);
     final s = (sim is List) ? sim.map((e) => e == true).toList() : const <bool>[];
     final t = (tRaw is List)
         ? [for (final e in tRaw) (e is num) ? e.toInt() : -1]
@@ -238,6 +243,7 @@ class SceneElementCodec {
         pressure: p[i + 2],
         simulatePressure: idx < s.length ? s[idx] : false,
         t: tv < 0 ? null : tv,
+        tilt: idx < tilt.length ? tilt[idx] : 0,
       ));
     }
     return out;

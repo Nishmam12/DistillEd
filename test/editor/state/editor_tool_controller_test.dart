@@ -102,8 +102,10 @@ void main() {
   });
 
   group('options panel visibility', () {
-    test('the panel starts open on the default tool', () {
+    test('a note opens with the panel shut, over nothing on the page', () {
       final c = EditorToolController();
+      expect(c.state.panelOpen, isFalse);
+      c.setTool(EditorTool.pen); // tapping the pen opens it
       expect(c.state.panelOpen, isTrue);
     });
 
@@ -120,13 +122,13 @@ void main() {
     test('re-selecting the already-active tool toggles the panel', () {
       final c = EditorToolController();
       expect(c.state.tool, EditorTool.pen);
-      expect(c.state.panelOpen, isTrue);
-
-      c.setTool(EditorTool.pen); // same tool → toggle closed
       expect(c.state.panelOpen, isFalse);
 
-      c.setTool(EditorTool.pen); // same tool again → toggle back open
+      c.setTool(EditorTool.pen); // same tool → toggle open
       expect(c.state.panelOpen, isTrue);
+
+      c.setTool(EditorTool.pen); // same tool again → toggle back closed
+      expect(c.state.panelOpen, isFalse);
     });
 
     test('closePanel hides the panel and is idempotent', () {

@@ -991,7 +991,10 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// as a [TextElement] through the same undoable history path a manual text
   /// box uses (never bypassing it), sized to the wrapped text and placed in the
   /// first clear spot inside the part of the page currently on screen.
-  void _insertNote(ScenePageKey key, String text, {String link = ''}) {
+  /// [within] is where on the page to look for room; by default the part
+  /// of the page on screen.
+  void _insertNote(ScenePageKey key, String text,
+      {String link = '', Rect? within}) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
@@ -999,7 +1002,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     final canvasSize = ref.read(viewportProvider.notifier).viewportSize;
     if (canvasSize.isEmpty) return; // canvas hasn't laid out yet
 
-    final visible = viewport.visibleSceneRect(canvasSize);
+    final visible = within ?? viewport.visibleSceneRect(canvasSize);
 
     // Size the note in SCENE units so it occupies a constant share of the
     // screen whatever the zoom: at 14% zoom a fixed 360-unit box is a ~50px
@@ -1091,8 +1094,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
 
   Future<void> _receiveShare(SharedPayload share) async {
     // The page's size latches on the canvas's first layout, and the PDF and
-    // note paths need it: wait a few frames for it.
-    for (var i = 0; i < 20 && (_pageSheet?.isEmpty ?? true); i++) {
+    // note paths need it (and the canvas its size): wait a few frames.
+    for (var i = 0;
+        i < 20 &&
+            ((_pageSheet?.isEmpty ?? true) ||
+                ref.read(viewportProvider.notifier).viewportSize.isEmpty);
+        i++) {
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
     }
@@ -1101,6 +1108,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     final page =
         state.pages[state.currentPageIndex.clamp(0, state.pages.length - 1)];
     final key = (notebookId: widget.notebookId, pageId: page.id);
+    // The page's own elements first: added before they load, the share was
+    // saved but then dropped from the canvas by the load, and only showed up
+    // when the note was opened again.
+    _loadedPages.add(key.pageId);
+    await ref.read(sceneControllerProvider(key).notifier).load();
+    if (!mounted) return;
 
     final images = [for (final f in share.files) if (f.isImage) f.path];
     final pdfs = [for (final f in share.files) if (f.isPdf) f.path];
@@ -1127,8 +1140,12 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     final web = share.link;
     // A shared web address is a card that opens it (hand tool, after asking).
     if (note != null) {
+      // At the top of the page, where a new note opens, not wherever the
+      // view stood while it was still settling in.
+      final sheet = _pageSheet;
       _insertNote(key, note,
-          link: web == null ? '' : LinkToWeb(web.toString()).encoded);
+          link: web == null ? '' : LinkToWeb(web.toString()).encoded,
+          within: sheet == null || sheet.isEmpty ? null : Offset.zero & sheet);
     }
     if (skipped.isNotEmpty) {
       _toast('Margo can\'t open ${skipped.join(', ')} yet.');

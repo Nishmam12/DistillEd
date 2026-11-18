@@ -36,12 +36,7 @@ class WritingPad {
         for (final p in points)
           () {
             final at = toPage(Offset(p.x, p.y), padHeight);
-            return StrokePoint(
-                x: at.dx,
-                y: at.dy,
-                pressure: p.pressure,
-                simulatePressure: p.simulatePressure,
-                t: p.t);
+            return p.copyWith(x: at.dx, y: at.dy);
           }(),
       ];
 

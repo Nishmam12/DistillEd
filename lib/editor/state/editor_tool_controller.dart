@@ -96,7 +96,9 @@ class EditorToolState {
     this.eraserHighlighterOnly = false,
     this.selectLasso = false,
     this.selectText = false,
-    this.panelOpen = true,
+    // A note opens with the panel shut: it is for a tool just picked, and
+    // open on arrival it sat over the page's first lines.
+    this.panelOpen = false,
   });
 
   bool get isHand => tool == EditorTool.hand;

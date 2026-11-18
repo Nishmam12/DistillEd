@@ -180,6 +180,8 @@ class _ScenePointerListenerState extends State<ScenePointerListener> {
       // Monotonic engine timestamp (same clock as palm rejection above) — used
       // by handwriting recognition, which only needs deltas between points.
       t: event.timeStamp.inMilliseconds,
+      // Only a stylus leans; anything else reports 0.
+      tilt: _isStylus(event.kind) ? event.tilt : 0,
     );
   }
 

@@ -13,6 +13,10 @@ class StrokePoint {
   // written before this field existed (legacy .ink files) — handwriting
   // recognition synthesizes timestamps for those at read time.
   final int? t;
+  // How far a stylus leaned from upright, in radians: 0 upright (and for a
+  // finger, or a point from before tilt was kept) up to pi/2 flat. The
+  // shading pencil draws broader the flatter it is held.
+  final double tilt;
 
   const StrokePoint({
     required this.x,
@@ -20,6 +24,7 @@ class StrokePoint {
     this.pressure = 0.5,
     this.simulatePressure = false,
     this.t,
+    this.tilt = 0,
   });
 
   /// Creates a StrokePoint from a map (for deserialization).
@@ -30,6 +35,7 @@ class StrokePoint {
       pressure: (map['p'] as num?)?.toDouble() ?? 0.5,
       simulatePressure: map['sim'] as bool? ?? false,
       t: (map['t'] as num?)?.toInt(),
+      tilt: (map['tilt'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -43,6 +49,7 @@ class StrokePoint {
       'p': pressure,
       if (simulatePressure) 'sim': true,
       if (t != null) 't': t,
+      if (tilt != 0) 'tilt': tilt,
     };
   }
 
@@ -52,6 +59,7 @@ class StrokePoint {
     double? pressure,
     bool? simulatePressure,
     int? t,
+    double? tilt,
   }) {
     return StrokePoint(
       x: x ?? this.x,
@@ -59,6 +67,7 @@ class StrokePoint {
       pressure: pressure ?? this.pressure,
       simulatePressure: simulatePressure ?? this.simulatePressure,
       t: t ?? this.t,
+      tilt: tilt ?? this.tilt,
     );
   }
 

@@ -49,6 +49,10 @@ class SceneElementRecord {
   // Empty for rows written before this field existed — both decode to t=null,
   // and handwriting recognition synthesizes timing for those strokes.
   List<int> pointT = const [];
+  // Per-point stylus tilt in radians (StrokePoint.tilt). Empty when no point
+  // of the stroke leaned (a finger, an upright pen, or a row written before
+  // this field existed): all of those read as 0. Additive, approved 2026-11-18.
+  List<double> pointTilt = const [];
   bool isEraser = false;
 
   /// Which pen drew the stroke. Rows written before pen types existed hold

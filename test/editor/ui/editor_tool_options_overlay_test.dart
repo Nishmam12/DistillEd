@@ -10,9 +10,12 @@ void main() {
   Future<ProviderContainer> pumpOverlay(
     WidgetTester tester, {
     bool anchorBottom = false,
+    bool open = true,
   }) async {
     final container = ProviderContainer(retry: (_, _) => null);
     addTearDown(container.dispose);
+    // A note opens with the panel shut; tapping the pen opens it.
+    if (open) container.read(editorToolProvider.notifier).setTool(EditorTool.pen);
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -40,6 +43,11 @@ void main() {
   });
 
   group('panel content per tool', () {
+    testWidgets('a note opens with the panel shut', (tester) async {
+      final container = await pumpOverlay(tester, open: false);
+      expect(container.read(editorToolProvider).panelOpen, isFalse);
+    });
+
     testWidgets('shows the pen panel (size/opacity) for the default tool',
         (tester) async {
       final container = await pumpOverlay(tester);

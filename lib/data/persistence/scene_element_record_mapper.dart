@@ -44,6 +44,9 @@ class SceneElementRecordMapper {
         r.points = pts;
         r.pointSim = sim;
         r.pointT = t;
+        r.pointTilt = element.points.any((p) => p.tilt != 0)
+            ? [for (final p in element.points) p.tilt]
+            : const [];
       case SceneShapeElement():
         r.shapeType = element.shapeType;
         r.geometryData = List<double>.from(element.geometryData);
@@ -100,6 +103,7 @@ class SceneElementRecordMapper {
             simulatePressure:
                 idx < r.pointSim.length ? r.pointSim[idx] : false,
             t: t < 0 ? null : t,
+            tilt: idx < r.pointTilt.length ? r.pointTilt[idx] : 0,
           ));
         }
         return FreehandElement(

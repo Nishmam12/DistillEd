@@ -4,6 +4,7 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -72,6 +73,10 @@ class _WritingPadPanelState extends ConsumerState<WritingPadPanel> {
       pressure: pressure ? e.pressure.clamp(0.01, 1.0) : 0.5,
       simulatePressure: !pressure,
       t: e.timeStamp.inMilliseconds,
+      tilt: e.kind == PointerDeviceKind.stylus ||
+              e.kind == PointerDeviceKind.invertedStylus
+          ? e.tilt
+          : 0,
     );
   }
 

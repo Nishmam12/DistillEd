@@ -130,9 +130,13 @@ void main() {
     lib.notebooks[1] = snap(1, title: 'Diary', hidden: true);
     await service(lib, target, state).run();
 
-    expect(target.files.keys, contains('Hidden note (1) 2026-11-11 1000.margo'));
     expect(target.files.keys.where((n) => n.endsWith('.md')), isEmpty,
         reason: 'the old readable copy goes too');
+    expect(target.files.keys.where((n) => n.contains('Diary')), isEmpty,
+        reason: 'older snapshots lose the title as well');
+    // Two snapshots, both under the neutral name: the history is kept.
+    expect(target.files.keys.where((n) => n.startsWith('Hidden note (1) ')),
+        hasLength(2));
   });
 
   test('an unchanged notebook is not written again', () async {

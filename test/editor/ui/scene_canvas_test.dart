@@ -554,6 +554,8 @@ void main() {
     final container = _container();
     addTearDown(container.dispose);
     await _pump(tester, container);
+    // The pen picked: its panel opens.
+    container.read(editorToolProvider.notifier).setTool(EditorTool.pen);
     expect(container.read(editorToolProvider).panelOpen, isTrue);
 
     final g = await tester.startGesture(const Offset(100, 100),

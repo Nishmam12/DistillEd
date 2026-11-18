@@ -258,6 +258,7 @@ class ScenePixelEraserService {
           t: a.t == null || b.t == null
               ? null
               : (a.t! + (b.t! - a.t!) * f).round(),
+          tilt: a.tilt + (b.tilt - a.tilt) * f,
         ));
       }
     }

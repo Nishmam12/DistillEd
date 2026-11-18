@@ -10,6 +10,8 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 // perfect_freehand also exports a `StrokePoint`; hide it so ours is unambiguous.
 import 'package:perfect_freehand/perfect_freehand.dart'
     show getStroke, StrokeOptions, PointVector;
@@ -62,16 +64,26 @@ class FreehandPath {
       return ribbon.isEmpty ? null : _buildPath(ribbon);
     }
 
-    final input =
-        points.map((p) => PointVector(p.x, p.y, p.pressure)).toList();
-    final simulate = points.first.simulatePressure;
-
-    final outline = getStroke(
-      input,
-      options: _options(kind, size, simulate: simulate, isComplete: isComplete),
-    );
+    final outline = FreehandPath.outline(points, size,
+        kind: kind, isComplete: isComplete);
     if (outline.isEmpty) return null;
     return _buildPath(outline);
+  }
+
+  /// Whether the shading pencil should draw [points] by their tilt: only
+  /// when the stylus leaned at all. A finger, an upright pen and a stroke
+  /// from before tilt was kept draw as before, by pressure.
+  static bool _byTilt(PenKind kind, List<StrokePoint> points) =>
+      kind == PenKind.shading && points.any((p) => p.tilt > 0);
+
+  /// The width a shading pencil lays down at [p], as perfect_freehand's
+  /// pressure: like real graphite, upright draws a fine line and laid flat a
+  /// broad one; pressing harder still widens it a little.
+  @visibleForTesting
+  static double tiltPressure(StrokePoint p) {
+    final lean = (p.tilt / (math.pi / 2)).clamp(0.0, 1.0);
+    final press = p.simulatePressure ? 0.5 : p.pressure;
+    return (0.15 + 0.7 * lean + 0.15 * press).clamp(0.0, 1.0);
   }
 
   /// The outline points of a stroke, before they are smoothed into a [Path]:
@@ -82,13 +94,19 @@ class FreehandPath {
     List<StrokePoint> points,
     double size, {
     PenKind kind = PenKind.ballpoint,
+    bool isComplete = true,
   }) {
     if (points.isEmpty) return const [];
     if (kind == PenKind.calligraphy) return _nibOutline(points, size);
+    final tilted = _byTilt(kind, points);
     return getStroke(
-      [for (final p in points) PointVector(p.x, p.y, p.pressure)],
+      [
+        for (final p in points)
+          PointVector(p.x, p.y, tilted ? tiltPressure(p) : p.pressure),
+      ],
       options: _options(kind, size,
-          simulate: points.first.simulatePressure, isComplete: true),
+          simulate: !tilted && points.first.simulatePressure,
+          isComplete: isComplete),
     );
   }
 

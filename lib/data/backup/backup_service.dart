@@ -336,6 +336,12 @@ class BackupService {
           } catch (_) {
             // A stale file left behind costs only a little space.
           }
+          // Hidden since: its title goes from the older snapshots' names too
+          // (copied to the neutral name, then removed), keeping the history.
+          if (hidden) {
+            await _renameSnapshots(kept, from: before.fileName, to: name,
+                dir: dir, skip: snapName);
+          }
         }
         // Only now, with the new snapshot safe, drop the oldest. A file that
         // will not go stays on the list for the next run to try again.
@@ -373,6 +379,42 @@ class BackupService {
       failed: failures.length,
       location: location,
     );
+  }
+
+  /// Renames the snapshots in [kept] that start with [from] to start with
+  /// [to] instead, in place in [kept]. One that fails keeps its old name.
+  Future<void> _renameSnapshots(
+    List<String> kept, {
+    required String from,
+    required String to,
+    required String dir,
+    required String skip,
+  }) async {
+    for (var i = 0; i < kept.length; i++) {
+      final old = kept[i];
+      if (old == skip ||
+          !old.startsWith('$from ') ||
+          !old.endsWith('.margo')) {
+        continue;
+      }
+      // Not over a snapshot already there (one made in the same minute).
+      final stem = '$to${old.substring(from.length, old.length - 6)}';
+      var renamed = '$stem.margo';
+      for (var n = 2; kept.contains(renamed); n++) {
+        renamed = '$stem-$n.margo';
+      }
+      final tmp = File('$dir/rename_$i.margo');
+      try {
+        await target.copyOut(old, tmp.path);
+        await target.save(tmp.path, renamed, 'application/octet-stream');
+        kept[i] = renamed;
+        await target.delete(old);
+      } catch (e) {
+        debugPrint('[Backup] could not rename a snapshot: $e');
+      } finally {
+        if (await tmp.exists()) await tmp.delete();
+      }
+    }
   }
 
   /// Adds the notebook in each `.margo` file at [paths] as a new notebook.
