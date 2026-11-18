@@ -29,6 +29,25 @@ Commits: <first>..<last>
 ## Push log
 
 ### 2026-11-18 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `3fcd4d3` (1 commit), plus this changelog commit
+
+**What changed:**
+- Fixed a security issue in phase 7: other apps could send Margo the
+  shortcut actions (new note, scan, record, open a note). Now only Margo's
+  own shortcuts, tile, widgets and reminders can.
+- The "Cards due" widget no longer shows a "0" when nothing is due.
+- Both widgets show their real look in the widget picker.
+
+**What you need to do:** pull and do a full rebuild (Android code changed).
+No new dependency, no database change.
+
+**Tested:**
+- On the Pixel Tablet emulator:
+  - a spoofed launch is ignored;
+  - the launcher's New note shortcut works;
+  - the Cards due widget placed on the home screen and drew correctly.
+
+### 2026-11-18 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
 Commits: `d508d09` (1 commit), plus this changelog commit
 
 **What changed** (phase 7 of `docs/COMPETITOR_UPGRADE_PLAN.md`):
