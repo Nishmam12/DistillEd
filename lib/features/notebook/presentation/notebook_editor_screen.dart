@@ -5,6 +5,7 @@
 // the [Notebook]. All chrome is shared with the dev playground.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1716,6 +1717,8 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      // Taller than the default half screen when it needs to be; it scrolls.
+      isScrollControlled: true,
       builder: (_) => _BackgroundSheet(
         template: _template,
         notebookTemplate: _notebookTemplate,
@@ -1727,8 +1730,40 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
         onColor: _setPaperColor,
         onLayoutMode: _setLayoutMode,
         onPageSize: _setPageSize,
+        onApplyToAll: ref
+                .read(pageProvider(widget.notebookId))
+                .pages
+                .any((p) => p.templateOverride >= 0)
+            ? () => unawaited(ref
+                .read(pageProvider(widget.notebookId).notifier)
+                .clearPageTemplates())
+            : null,
+        onPicture: _layoutMode == 0 ? null : _pictureAsPaper,
       ),
     );
+  }
+
+  /// A photo of the user's own as the page's paper: fitted to the page,
+  /// locked, and beneath everything already on it.
+  Future<void> _pictureAsPaper() async {
+    final sheet = _pageSheet;
+    final state = ref.read(pageProvider(widget.notebookId));
+    if (sheet == null || sheet.isEmpty || state.pages.isEmpty) return;
+    final page =
+        state.pages[state.currentPageIndex.clamp(0, state.pages.length - 1)];
+    final key = (notebookId: widget.notebookId, pageId: page.id);
+    final imported = await _import.importPhotos('${widget.notebookId}');
+    if (imported.isEmpty || !mounted) return;
+    final picture = imported.first;
+    final source = picture.pixelSize.isEmpty ? sheet : picture.pixelSize;
+    final box = fitCentred(source, Offset.zero & sheet);
+    if (box.isEmpty) return;
+    final elements = ref.read(sceneControllerProvider(key));
+    final bottom = elements.isEmpty
+        ? 0
+        : elements.map((e) => e.zOrder).reduce(math.min) - 1;
+    ref.read(historyProvider(key).notifier).push(AddElementsCommand(
+        [_imageElement(picture, box, bottom, locked: true)]));
   }
 
   void _setLayoutMode(int mode) {

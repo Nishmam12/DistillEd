@@ -2,6 +2,7 @@
 // app bar. Drop into AppBar.actions after the primary feature icons.
 
 import 'dart:async' show unawaited;
+import 'dart:convert' show utf8;
 import 'dart:typed_data' show Uint8List;
 
 import 'package:flutter/foundation.dart' show compute;
@@ -106,6 +107,8 @@ class EditorAppBarActions extends ConsumerWidget {
             _exportNotebook(context, ref);
           case 'margo':
             _shareNotebook(context, ref);
+          case 'md':
+            _shareText(context, ref);
         }
       },
       itemBuilder: (_) => [
@@ -192,6 +195,16 @@ class EditorAppBarActions extends ConsumerWidget {
               leading: Icon(Icons.ios_share_outlined),
               title: Text('Share notebook (.margo)'),
               subtitle: Text('Opens in Margo with everything kept'),
+            ),
+          ),
+        if (onChangeBackground != null || onSummarize != null)
+          const PopupMenuItem(
+            value: 'md',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.notes_outlined),
+              title: Text('Export text (Markdown)'),
+              subtitle: Text('Handwriting read as text, and typed text'),
             ),
           ),
       ],
@@ -395,6 +408,22 @@ class EditorAppBarActions extends ConsumerWidget {
       bytes: bytes,
       filename: '${ExportShareService.safeFilename(snapshot.meta.title)}.margo',
       mimeType: 'application/octet-stream',
+    );
+  }
+
+  /// The notebook's words as Markdown: a heading a page, with what was read
+  /// from the handwriting and the typed text, as the backup's readable copy.
+  Future<void> _shareText(BuildContext context, WidgetRef ref) async {
+    final library = ref.read(backupServiceProvider).library;
+    final snapshot = await library.snapshot(pageKey.notebookId);
+    if (snapshot == null) {
+      if (context.mounted) _toast(context, 'Nothing to export');
+      return;
+    }
+    await ExportShareService.shareFile(
+      bytes: Uint8List.fromList(utf8.encode(NotebookArchive.markdown(snapshot))),
+      filename: '${ExportShareService.safeFilename(snapshot.meta.title)}.md',
+      mimeType: 'text/markdown',
     );
   }
 

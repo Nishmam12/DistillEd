@@ -159,7 +159,7 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
                     child: Column(
                       children: [
                         for (var from = 0;
-                            from < TemplateType.values.length;
+                            from < _pickable.length;
                             from += count)
                           Padding(
                             padding: EdgeInsets.only(top: from == 0 ? 0 : 12),
@@ -168,7 +168,7 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
                               children: [
                                 for (var i = from;
                                     i < from + count &&
-                                        i < TemplateType.values.length;
+                                        i < _pickable.length;
                                     i++)
                                   Padding(
                                     padding: EdgeInsets.only(
@@ -179,7 +179,7 @@ class _NewNoteDialogState extends State<NewNoteDialog> {
                                                     tileWidth * count) /
                                                 (count - 1)),
                                     child: _StyleTile(
-                                      type: TemplateType.values[i],
+                                      type: _pickable[i],
                                       width: tileWidth,
                                       paper: newNotePaperColors[_paper],
                                       selected: i == _template,
@@ -380,7 +380,7 @@ class _PaperPainter extends CustomPainter {
       ..strokeWidth = 1;
     const step = 9.0;
 
-    switch (type) {
+    switch (type.family) {
       case TemplateType.blank:
         break;
       case TemplateType.ruled:
@@ -447,6 +447,32 @@ class _PaperPainter extends CustomPainter {
         for (var x = step; x < size.width; x += step) {
           canvas.drawLine(Offset(x, 0), Offset(x, size.height), line);
         }
+      case TemplateType.weeklyPlanner:
+        // A band, then four rows of two day boxes.
+        canvas.drawLine(const Offset(4, 10), Offset(size.width - 4, 10), line);
+        final w = (size.width - 11) / 2, h = (size.height - 19) / 4;
+        for (var r = 0; r < 4; r++) {
+          for (var c = 0; c < 2; c++) {
+            canvas.drawRect(
+                Rect.fromLTWH(4 + c * (w + 3), 13 + r * (h + 1), w, h - 1),
+                line);
+          }
+        }
+      case TemplateType.monthlyPlanner:
+        // A band, then seven days by six weeks.
+        canvas.drawLine(const Offset(4, 10), Offset(size.width - 4, 10), line);
+        final grid = Rect.fromLTRB(4, 14, size.width - 4, size.height - 4);
+        canvas.drawRect(grid, line);
+        for (var c = 1; c < 7; c++) {
+          final x = grid.left + grid.width * c / 7;
+          canvas.drawLine(Offset(x, grid.top), Offset(x, grid.bottom), line);
+        }
+        for (var r = 1; r < 6; r++) {
+          final y = grid.top + grid.height * r / 6;
+          canvas.drawLine(Offset(grid.left, y), Offset(grid.right, y), line);
+        }
+      default:
+        break; // spacings are drawn as their family
     }
   }
 
@@ -454,3 +480,7 @@ class _PaperPainter extends CustomPainter {
   bool shouldRepaint(_PaperPainter old) =>
       old.type != type || old.paper != paper;
 }
+
+/// One tile per pattern; the spacing is chosen later, in the editor's paper
+/// sheet.
+final _pickable = TemplateType.pickable;

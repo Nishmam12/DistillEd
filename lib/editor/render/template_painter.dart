@@ -101,13 +101,14 @@ class TemplatePainter {
     if (type == TemplateType.blank) return;
 
     final config = TemplateConfig.forBackground(type, backgroundColor);
-    final spacing = type == TemplateType.dotted || type == TemplateType.isometric
+    final spacing = type.family == TemplateType.dotted ||
+            type == TemplateType.isometric
         ? config.dotSpacing
         : config.lineSpacing;
     if (spacing * zoom < _minOnScreenSpacing) return;
 
     final r = region;
-    switch (type) {
+    switch (type.family) {
       case TemplateType.blank:
         return;
       case TemplateType.ruled:
@@ -128,6 +129,69 @@ class TemplatePainter {
         _isometric(sink, r, config);
       case TemplateType.checklist:
         _checklist(sink, r, config);
+      // Planners need a page; on an endless canvas they are ruled paper.
+      case TemplateType.weeklyPlanner:
+        bounded ? _weekly(sink, r, config) : _ruled(sink, r, config);
+      case TemplateType.monthlyPlanner:
+        bounded ? _monthly(sink, r, config) : _ruled(sink, r, config);
+      case TemplateType.ruledNarrow ||
+            TemplateType.ruledWide ||
+            TemplateType.gridSmall ||
+            TemplateType.gridLarge ||
+            TemplateType.dottedSmall ||
+            TemplateType.dottedLarge:
+        break; // never a family
+    }
+  }
+
+  /// A week to plan: a band for the dates at the top, then seven day boxes
+  /// and one for notes, two across. Days are left unlabelled: they are
+  /// written in, so any week (and any first day) fits.
+  static void _weekly(TemplateSink sink, Rect page, TemplateConfig config) {
+    final margin = page.width * 0.05;
+    final inner = page.deflate(margin);
+    final top = inner.top + inner.height * 0.08;
+    sink.line(Offset(inner.left, top), Offset(inner.right, top),
+        config.majorLineColor, config.majorLineWidth);
+    final gap = margin / 2;
+    final boxW = (inner.width - gap) / 2;
+    final boxH = (inner.bottom - top - gap * 4) / 4;
+    for (var row = 0; row < 4; row++) {
+      for (var col = 0; col < 2; col++) {
+        final box = Rect.fromLTWH(inner.left + col * (boxW + gap),
+            top + gap + row * (boxH + gap), boxW, boxH);
+        sink.roundRect(box, 6, config.majorLineColor, config.majorLineWidth);
+        // A line under the day's name.
+        final y = box.top + config.lineSpacing;
+        sink.line(Offset(box.left + 8, y), Offset(box.right - 8, y),
+            config.lineColor, config.lineWidth);
+      }
+    }
+  }
+
+  /// A month to plan: a band for its name, a row for the weekdays, then six
+  /// weeks of seven days.
+  static void _monthly(TemplateSink sink, Rect page, TemplateConfig config) {
+    final margin = page.width * 0.05;
+    final inner = page.deflate(margin);
+    final top = inner.top + inner.height * 0.08;
+    final days = top + config.lineSpacing;
+    sink.line(Offset(inner.left, top), Offset(inner.right, top),
+        config.majorLineColor, config.majorLineWidth);
+    final grid = Rect.fromLTRB(inner.left, days, inner.right, inner.bottom);
+    sink.roundRect(Rect.fromLTRB(inner.left, top, inner.right, inner.bottom),
+        6, config.majorLineColor, config.majorLineWidth);
+    sink.line(Offset(grid.left, days), Offset(grid.right, days),
+        config.majorLineColor, config.majorLineWidth);
+    for (var c = 1; c < 7; c++) {
+      final x = grid.left + grid.width * c / 7;
+      sink.line(Offset(x, top), Offset(x, grid.bottom), config.lineColor,
+          config.lineWidth);
+    }
+    for (var w = 1; w < 6; w++) {
+      final y = grid.top + grid.height * w / 6;
+      sink.line(Offset(grid.left, y), Offset(grid.right, y), config.lineColor,
+          config.lineWidth);
     }
   }
 

@@ -24,6 +24,14 @@ void main() {
       'music',
       'isometric',
       'checklist',
+      'ruledNarrow',
+      'ruledWide',
+      'gridSmall',
+      'gridLarge',
+      'dottedSmall',
+      'dottedLarge',
+      'weeklyPlanner',
+      'monthlyPlanner',
     ]);
   });
 }

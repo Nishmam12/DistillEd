@@ -42,7 +42,8 @@ import '../../../ai/domain/memory/concept_mastery.dart' show ConceptMastery;
 import '../../../ai/domain/memory/learning_preferences.dart';
 import '../../../ai/domain/tutor/tutor_prompt.dart' show kMaxAboutMeChars;
 import '../../../ai/presentation/tutor_note_store.dart';
-import '../../../home/presentation/home_notifier.dart' show homeNotifierProvider;
+import '../../../home/presentation/home_notifier.dart'
+    show homeNotifierProvider, noteRepositoryProvider;
 import '../../../ai/presentation/rag_corpus_export.dart';
 import '../../../audio/data/edge_ai_speech.dart';
 import '../../../audio/presentation/speech_model_notifier.dart';
@@ -56,6 +57,7 @@ import '../../../backup/restore_list_screen.dart';
 import '../../../home/data/repositories/note_repository.dart';
 import '../../../home/presentation/widgets/search_popover.dart';
 import '../../../home/presentation/outside_app.dart' show askNotificationPermission;
+import '../../../home/presentation/daily_page.dart' show dailyPageNotebookProvider, dailyPageProvider;
 import '../../../home/presentation/study_today_providers.dart'
     show TodayCard, todayHiddenProvider;
 import '../../../summarize/presentation/summarize_providers.dart';
@@ -138,6 +140,7 @@ class SettingsScreen extends ConsumerWidget {
         _SearchByMeaningRow(),
         _StudyRemindersRow(),
         _TodayCardsRow(),
+        _DailyPageRow(),
         _SettingsRow(
           icon: AppIcons.flashCircle,
           title: 'What the tutor knows about you',

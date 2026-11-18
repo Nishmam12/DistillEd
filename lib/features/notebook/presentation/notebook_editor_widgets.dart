@@ -20,7 +20,16 @@ class _BackgroundSheet extends StatefulWidget {
   final ValueChanged<int> onLayoutMode;
   final ValueChanged<PageSizeKind> onPageSize;
 
+  /// Some pages have paper of their own; this puts them back on the
+  /// notebook's. Null when none do.
+  final VoidCallback? onApplyToAll;
+
+  /// Places a picture as this page's paper (page layouts only).
+  final VoidCallback? onPicture;
+
   const _BackgroundSheet({
+    this.onApplyToAll,
+    this.onPicture,
     required this.template,
     required this.notebookTemplate,
     required this.pageOnly,
@@ -54,9 +63,9 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        child: Column(
+      child: SingleChildScrollView(
+       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+       child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -136,18 +145,63 @@ class _BackgroundSheetState extends State<_BackgroundSheet> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final t in TemplateType.values)
+                for (final t in TemplateType.pickable)
                   ChoiceChip(
                     avatar: Icon(t.iconData, size: 18),
                     label: Text(t.displayName),
-                    selected: _template == t,
+                    selected: _template.family == t,
                     onSelected: (_) {
-                      setState(() => _template = t);
-                      widget.onTemplate(t, _pageOnly);
+                      // A new pattern keeps the spacing chosen.
+                      final next = t.withSpacing(_template.spacing);
+                      setState(() => _template = next);
+                      widget.onTemplate(next, _pageOnly);
                     },
                   ),
               ],
             ),
+            if (_template.hasSpacings) ...[
+              const SizedBox(height: 12),
+              SegmentedButton<TemplateSpacing>(
+                key: const ValueKey('templateSpacing'),
+                showSelectedIcon: false,
+                segments: [
+                  for (final s in TemplateSpacing.values)
+                    ButtonSegment(value: s, label: Text(s.label)),
+                ],
+                selected: {_template.spacing},
+                onSelectionChanged: (s) {
+                  final next = _template.withSpacing(s.first);
+                  setState(() => _template = next);
+                  widget.onTemplate(next, _pageOnly);
+                },
+              ),
+            ],
+            if (!_pageOnly && widget.onApplyToAll != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: const ValueKey('applyToAllPages'),
+                  icon: const Icon(Icons.done_all, size: 18),
+                  label: const Text('Apply to every page'),
+                  onPressed: () {
+                    widget.onApplyToAll!();
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            if (widget.onPicture != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: const ValueKey('pictureAsPaper'),
+                  icon: const Icon(Icons.wallpaper_outlined, size: 18),
+                  label: const Text('Use a picture as this page\'s paper'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    widget.onPicture!();
+                  },
+                ),
+              ),
             const SizedBox(height: 20),
             Text('Paper color', style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),

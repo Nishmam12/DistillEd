@@ -278,6 +278,16 @@ class PageNotifier extends StateNotifier<PageState> {
   Future<void> setPageTemplate(int pageId, int templateIndex) =>
       _setInfo(pageId, templateOverride: templateIndex);
 
+  /// "Apply to every page": pages with paper of their own go back to the
+  /// notebook's.
+  Future<void> clearPageTemplates() async {
+    for (final page in [...state.pages]) {
+      if (page.templateOverride >= 0) {
+        await _setInfo(page.id, templateOverride: kNotebookTemplate);
+      }
+    }
+  }
+
   Future<void> reorderPages(int oldIndex, int newIndex) async {
     await _repository.movePage(_notebookId, oldIndex, newIndex);
     final pages = await _repository.getPagesForNotebook(_notebookId);

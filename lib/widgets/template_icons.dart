@@ -16,5 +16,8 @@ extension TemplateTypeIcon on TemplateType {
         TemplateType.music => Icons.music_note,
         TemplateType.isometric => Icons.change_history,
         TemplateType.checklist => Icons.checklist,
+        TemplateType.weeklyPlanner => Icons.view_week_outlined,
+        TemplateType.monthlyPlanner => Icons.calendar_view_month_outlined,
+        _ => family.iconData,
       };
 }

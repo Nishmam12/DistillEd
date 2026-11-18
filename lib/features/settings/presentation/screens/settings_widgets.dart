@@ -355,6 +355,62 @@ class _StudyRemindersRow extends ConsumerWidget {
   }
 }
 
+final _notebookTitleProvider = FutureProvider.autoDispose.family<String?, int>(
+    (ref, id) async =>
+        (await ref.read(noteRepositoryProvider).getNotebook(id))?.title);
+
+/// "Daily study page": each day a page named for it, in a chosen notebook.
+class _DailyPageRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final id = ref.watch(dailyPageNotebookProvider);
+    final title = id == null ? null : ref.watch(_notebookTitleProvider(id)).value;
+    return _SettingsRow(
+      icon: AppIcons.noteText,
+      title: 'Daily study page',
+      subtitle: id == null
+          ? 'Off. Each day, a new page in a notebook you choose'
+          : 'Each day, a new page in "${title ?? '…'}"',
+      onTap: () async {
+        final notebooks = [
+          for (final n in ref.read(homeNotifierProvider))
+            if (!n.hidden) n,
+        ];
+        // -1 is "Off"; null is the sheet dismissed.
+        final picked = await showModalBottomSheet<int>(
+          context: context,
+          showDragHandle: true,
+          builder: (sheet) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                ListTile(
+                  title: const Text('Off'),
+                  trailing: id == null ? const Icon(Icons.check) : null,
+                  onTap: () => Navigator.pop(sheet, -1),
+                ),
+                for (final n in notebooks)
+                  ListTile(
+                    title: Text(n.title),
+                    trailing: n.id == id ? const Icon(Icons.check) : null,
+                    onTap: () => Navigator.pop(sheet, n.id),
+                  ),
+              ],
+            ),
+          ),
+        );
+        if (picked == null) return;
+        await ref
+            .read(dailyPageNotebookProvider.notifier)
+            .set(picked == -1 ? null : picked);
+        // Today's page comes now, not tomorrow.
+        ref.invalidate(dailyPageProvider);
+        ref.read(dailyPageProvider);
+      },
+    );
+  }
+}
+
 /// "Today on Home": brings back the Today cards that were put away.
 class _TodayCardsRow extends ConsumerWidget {
   @override

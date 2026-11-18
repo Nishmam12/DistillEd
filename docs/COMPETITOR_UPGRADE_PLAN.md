@@ -1,7 +1,11 @@
 # Margo — upgrade plan from competitor teardown
 
-**Status: proposed; three decisions taken.** Written 2026-11-17. Nothing here
-is built.
+**Status: built, 2026-11-18.** Written 2026-11-17. Phases 1 to 8 are on
+`release/5.5.0-37` (see `TEAM_CHANGELOG.md`). Not done: stroke prediction
+(5.7, needs a real stylus to measure first), a tilt-shaded pencil (5.4, stroke
+points don't store tilt, so it would need a schema change), and Word export
+(8.3, only if asked). The page sorter (6.3) was already there as the page
+manager grid.
 
 **Decisions (2026-11-17):**
 

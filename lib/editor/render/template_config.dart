@@ -31,6 +31,13 @@ class TemplateConfig {
 
   /// Light background template config.
   factory TemplateConfig.forLight(TemplateType type) {
+    // Spacings use their pattern's look; [forBackground] scales them. A
+    // planner is drawn with the Cornell page's lines.
+    if (type.family != type) return TemplateConfig.forLight(type.family);
+    if (type == TemplateType.weeklyPlanner ||
+        type == TemplateType.monthlyPlanner) {
+      return TemplateConfig.forLight(TemplateType.cornell);
+    }
     switch (type) {
       case TemplateType.blank:
         return const TemplateConfig();
@@ -92,11 +99,27 @@ class TemplateConfig {
           majorLineColor: Color(0xFF9AA4AF),
           majorLineWidth: 0.8,
         );
+      case TemplateType.ruledNarrow ||
+            TemplateType.ruledWide ||
+            TemplateType.gridSmall ||
+            TemplateType.gridLarge ||
+            TemplateType.dottedSmall ||
+            TemplateType.dottedLarge ||
+            TemplateType.weeklyPlanner ||
+            TemplateType.monthlyPlanner:
+        throw StateError('handled above');
     }
   }
 
   /// Dark background template config — lower contrast to avoid eye strain.
   factory TemplateConfig.forDark(TemplateType type) {
+    // Spacings use their pattern's look; [forBackground] scales them. A
+    // planner is drawn with the Cornell page's lines.
+    if (type.family != type) return TemplateConfig.forDark(type.family);
+    if (type == TemplateType.weeklyPlanner ||
+        type == TemplateType.monthlyPlanner) {
+      return TemplateConfig.forDark(TemplateType.cornell);
+    }
     switch (type) {
       case TemplateType.blank:
         return const TemplateConfig();
@@ -157,14 +180,40 @@ class TemplateConfig {
           majorLineColor: Color(0xFF4A535E),
           majorLineWidth: 0.8,
         );
+      case TemplateType.ruledNarrow ||
+            TemplateType.ruledWide ||
+            TemplateType.gridSmall ||
+            TemplateType.gridLarge ||
+            TemplateType.dottedSmall ||
+            TemplateType.dottedLarge ||
+            TemplateType.weeklyPlanner ||
+            TemplateType.monthlyPlanner:
+        throw StateError('handled above');
     }
   }
 
   /// Returns the appropriate config based on whether the background is dark.
   factory TemplateConfig.forBackground(TemplateType type, Color backgroundColor) {
     final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
-    return brightness == Brightness.dark
+    final config = brightness == Brightness.dark
         ? TemplateConfig.forDark(type)
         : TemplateConfig.forLight(type);
+    return config.scaled(type.spacing.scale);
   }
+
+  /// The same look with lines and dots [factor] times as far apart.
+  TemplateConfig scaled(double factor) => factor == 1
+      ? this
+      : TemplateConfig(
+          lineSpacing: lineSpacing * factor,
+          dotSpacing: dotSpacing * factor,
+          dotRadius: dotRadius,
+          lineWidth: lineWidth,
+          majorLineWidth: majorLineWidth,
+          majorLineInterval: majorLineInterval,
+          lineColor: lineColor,
+          majorLineColor: majorLineColor,
+          marginLineColor: marginLineColor,
+          marginOffset: marginOffset,
+        );
 }
