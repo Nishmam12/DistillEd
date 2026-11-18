@@ -29,6 +29,38 @@ Commits: <first>..<last>
 ## Push log
 
 ### 2026-11-18 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `18360b0` (1 commit), plus this changelog commit
+
+**What changed** (phase 8, the last phase of `docs/COMPETITOR_UPGRADE_PLAN.md`):
+- **Paper:**
+  - Ruled, grid and dotted now come in narrow, medium and wide spacing
+    (a choice under the pattern in Background & paper).
+  - New weekly and monthly planner paper.
+  - "Apply to every page".
+  - "Use a picture as this page's paper".
+- **Daily study page** (Settings): each day a page named for it is
+  added to a notebook you choose.
+- **Export text (Markdown)** in the editor's menu.
+- The Background & paper sheet scrolls instead of overflowing.
+- The plan's status line now lists what is built and what is left: stroke
+  prediction, a tilt pencil, and Word export.
+
+**What you need to do:**
+- Pull. No new dependency and no database change.
+- New template types are added at the end of the list, so existing
+  notebooks are unchanged.
+
+**Tested:**
+- `flutter analyze` clean (no errors or warnings). Full suite: 3,668
+  passing.
+- On the Pixel Tablet emulator:
+  - the weekly planner on an A4 page;
+  - wide ruling;
+  - the daily page;
+  - the Markdown export.
+- Not tried: a picture as paper, "Apply to every page".
+
+### 2026-11-18 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
 Commits: `3fcd4d3` (1 commit), plus this changelog commit
 
 **What changed:**
