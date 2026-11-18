@@ -29,6 +29,36 @@ Commits: <first>..<last>
 ## Push log
 
 ### 2026-11-18 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
+Commits: `4f4ac06` (1 commit), plus this changelog commit
+
+**What changed:**
+- **Tilt-shaded pencil:** with a stylus, the shading pencil draws broader
+  the flatter you hold it, like real graphite. Strokes now keep the pen's
+  tilt.
+- **Hidden notes' older backups:** files in Download/Margo that still had
+  the title are renamed to "Hidden note (id) …" when the note is hidden.
+  The history is kept.
+- **Shared text:** shared text and scratch-pad notes used to appear only
+  after reopening the note, and then sat under the pen panel. Now they
+  show at once, at the top of the page.
+- **Notes open with the tool options panel closed.** It opens when you
+  pick a tool. Before, it covered the top-left of every note.
+
+**What you need to do:**
+- Pull.
+- Database change: new optional field
+  `SceneElementRecord.pointTilt`. It is additive (approved), needs no
+  migration, and the `.g.dart` is committed.
+- No new dependency.
+
+**Tested:**
+- `flutter analyze` clean (no errors or warnings). Full suite: 3,673
+  passing.
+- On the Pixel Tablet emulator: shared text shows at once at the top
+  left.
+- Not tried: tilt (needs a real stylus).
+
+### 2026-11-18 · Afnan (RTX 2070 Super) · `release/5.5.0-37` · no version bump
 Commits: `18360b0` (1 commit), plus this changelog commit
 
 **What changed** (phase 8, the last phase of `docs/COMPETITOR_UPGRADE_PLAN.md`):
