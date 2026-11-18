@@ -67,6 +67,12 @@ class Notebook {
   @Index()
   DateTime? deletedAt;
 
+  /// Hidden (Phase 6 note lock): kept out of the notes list, search, links,
+  /// previews and cloud calls, and opened only after the device's fingerprint
+  /// or screen lock. Not encrypted; the interface says "hidden", never
+  /// "encrypted". Additive; an older build shows the note as usual.
+  bool hidden = false;
+
   /// Convenience for the many call sites that only care whether it is live.
   @ignore
   bool get isInTrash => deletedAt != null;

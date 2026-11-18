@@ -30,8 +30,13 @@ final backlinksProvider = FutureProvider.autoDispose
     final page = await pages.getPage(id);
     if (page == null) continue;
     final notebook = await notes.getNotebook(page.notebookId);
-    // A page in the trash is not somewhere to go.
-    if (notebook == null || notebook.isInTrash) continue;
+    // A page in the trash is not somewhere to go; a hidden one is not
+    // shown, unless it is this notebook.
+    if (notebook == null ||
+        notebook.isInTrash ||
+        (notebook.hidden && notebook.id != key.notebookId)) {
+      continue;
+    }
     out.add((
       pageId: page.id,
       pageIndex: page.pageIndex,

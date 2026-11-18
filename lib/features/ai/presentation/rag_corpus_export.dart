@@ -22,6 +22,7 @@ Future<String> _buildRagCorpus({
 }) async {
   final corpus = <CorpusPage>[];
   for (final notebook in await notes.getAllNotebooks()) {
+    if (notebook.hidden) continue; // the export leaves the device
     // An imported document's name is part of its page's title, as it is when
     // the page is indexed, so the eval embeds what the app embeds.
     final sources = {

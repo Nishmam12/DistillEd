@@ -148,7 +148,10 @@ Future<void> _deliver(Ref ref, SharedPayload share) async {
   final home = ref.read(homeNotifierProvider.notifier);
   await home.loadNotebooks();
   if (!context.mounted) return;
-  final notebooks = ref.read(homeNotifierProvider);
+  final notebooks = [
+    for (final n in ref.read(homeNotifierProvider))
+      if (!n.hidden) n,
+  ];
 
   // null = cancelled, -1 = new note, else the notebook id.
   final choice = await showModalBottomSheet<int>(

@@ -283,7 +283,10 @@ class BackupService {
       try {
         final snapshot = await library.snapshot(id);
         if (snapshot == null) continue;
-        final name = backupFileName(snapshot.meta.title, id);
+        // A hidden note's title stays out of Downloads, and so does its text.
+        final hidden = snapshot.meta.hidden;
+        final name =
+            backupFileName(hidden ? 'Hidden note' : snapshot.meta.title, id);
         final fingerprint = await _run(NotebookArchive.fingerprint, snapshot);
         final before = records[id];
         // Nothing changed: no new snapshot, not even for "Back up now", or a
@@ -310,11 +313,14 @@ class BackupService {
         final md = File('$dir/backup_$id.md');
         try {
           await margo.writeAsBytes(bytes, flush: true);
-          await md.writeAsString(NotebookArchive.markdown(snapshot), flush: true);
           // octet-stream: a known zip type makes Android add ".zip" to the name.
           location = await target.save(
               margo.path, snapName, 'application/octet-stream');
-          await target.save(md.path, '$name.md', 'text/markdown');
+          if (!hidden) {
+            await md.writeAsString(NotebookArchive.markdown(snapshot),
+                flush: true);
+            await target.save(md.path, '$name.md', 'text/markdown');
+          }
         } finally {
           if (await margo.exists()) await margo.delete();
           if (await md.exists()) await md.delete();

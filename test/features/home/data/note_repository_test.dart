@@ -154,6 +154,26 @@ Future<void> main() async {
       expect(kept!.folderId, isNull);
     }, skip: skip);
 
+    test('nested folders: delete moves contents up, moves stay legal',
+        () async {
+      final physics = await repo.createFolder('Physics');
+      final optics = await repo.createFolder('Optics', parentId: physics.id);
+      final lab = await repo.createFolder('Lab', parentId: optics.id);
+      final notebook = await repo.createNotebook('Lenses');
+      await repo.setFolder(notebook.id, optics.id);
+
+      expect(await repo.moveFolder(physics.id, lab.id), isFalse,
+          reason: 'not into its own branch');
+      await repo.setFolderColor(lab.id, 0xFF7FA38A);
+
+      await repo.deleteFolder(optics.id);
+
+      expect((await repo.getNotebook(notebook.id))!.folderId, physics.id);
+      final left = {for (final f in await repo.getFolders()) f.id: f};
+      expect(left[lab.id]!.parentId, physics.id);
+      expect(left[lab.id]!.color, 0xFF7FA38A);
+    }, skip: skip);
+
     test('a title change is saved and shown in the list', () async {
       final notebook = await repo.createNotebook('Draft');
 

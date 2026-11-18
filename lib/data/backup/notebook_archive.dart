@@ -43,6 +43,10 @@ class NotebookMeta {
   final List<String> tags;
   final DateTime createdAt;
 
+  /// A hidden notebook: backed up under a neutral name, with no readable
+  /// copy. Not stored in the archive; a restored note comes back shown.
+  final bool hidden;
+
   const NotebookMeta({
     required this.title,
     required this.backgroundColor,
@@ -51,6 +55,7 @@ class NotebookMeta {
     this.pageSize = 0,
     required this.tags,
     required this.createdAt,
+    this.hidden = false,
   });
 }
 

@@ -164,6 +164,7 @@ dependencies:
   # ── Homepage redesign: vuesax SVG icon set (assets/icons) ─
   flutter_svg: ^2.3.0
   flutter_secure_storage: ^11.2.0
+  local_auth: ^3.0.2
   # phosphor_flutter removed: 2.1.0 (latest) declares
   # `class PhosphorIconData extends IconData`, which cannot compile against
   # Flutter 3.44+ where IconData became a final class. Upstream fix PRs

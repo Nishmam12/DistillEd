@@ -14,14 +14,17 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.StatFs
 import android.provider.MediaStore
+import android.view.WindowManager
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.Executors
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+// A FragmentActivity because local_auth (hidden notes) shows its prompt as a
+// fragment.
+class MainActivity : FlutterFragmentActivity() {
     // Free-space check used before downloading the on-device LLM (~2.4 GB).
     // Reports the available bytes on the volume backing the app's files dir —
     // the same volume flutter_edge_ai installs models to.
@@ -165,6 +168,18 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                 }
+            }
+        // While a hidden note is open: no screenshots, and a blank recents
+        // thumbnail.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.margo.margo/secure")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "set") return@setMethodCallHandler result.notImplemented()
+                if (call.arguments == true) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                }
+                result.success(null)
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, recordingChannel)
             .setMethodCallHandler { call, result ->

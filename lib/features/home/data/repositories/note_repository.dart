@@ -7,6 +7,7 @@ import '../../../../data/persistence/content_purge.dart';
 import '../../../../domain/model/page_size.dart';
 import '../../../../data/persistence/page_text_record.dart';
 import '../../../../data/persistence/scene_element_record.dart';
+import '../../domain/folder_tree.dart';
 import '../../domain/models/folder.dart';
 import '../../domain/models/notebook.dart';
 import '../../domain/models/note_page.dart';
@@ -248,6 +249,17 @@ class NoteRepository {
     });
   }
 
+  /// Hides a notebook, or shows it again. Like pinning, not an edit:
+  /// [Notebook.modifiedAt] stays.
+  Future<void> setHidden(int id, bool hidden) async {
+    await _isar.writeTxn(() async {
+      final notebook = await _isar.notebooks.get(id);
+      if (notebook == null) return;
+      notebook.hidden = hidden;
+      await _isar.notebooks.put(notebook);
+    });
+  }
+
   /// Moves a notebook into [folderId], or out of any folder when null.
   Future<void> setFolder(int id, int? folderId) async {
     await _isar.writeTxn(() async {
@@ -291,6 +303,7 @@ class NoteRepository {
   Future<Map<String, int>> tagCounts() async {
     final counts = <String, int>{};
     for (final notebook in await getAllNotebooks()) {
+      if (notebook.hidden) continue;
       for (final tag in notebook.tags) {
         counts[tag] = (counts[tag] ?? 0) + 1;
       }
@@ -311,10 +324,16 @@ class NoteRepository {
     return folders;
   }
 
-  Future<Folder> createFolder(String name) async {
+  /// Creates a folder, inside [parentId] when given. Throws [StateError]
+  /// when that would nest deeper than [kMaxFolderDepth].
+  Future<Folder> createFolder(String name, {int? parentId}) async {
+    if (!canAddFolderIn(await getFolders(), parentId)) {
+      throw StateError('Folders nest at most $kMaxFolderDepth deep');
+    }
     final folder = Folder()
       ..name = name.trim()
       ..createdAt = DateTime.now()
+      ..parentId = parentId
       ..sortIndex = (await _isar.folders.count());
     await _isar.writeTxn(() async {
       await _isar.folders.put(folder);
@@ -331,18 +350,50 @@ class NoteRepository {
     });
   }
 
-  /// Deletes a folder. The notebooks inside it are kept and become unfiled —
-  /// deleting a container must never delete the contents.
+  /// Moves folder [id] into [parentId] (null: the top level). False, and
+  /// nothing changes, when [canMoveFolder] forbids it.
+  Future<bool> moveFolder(int id, int? parentId) async {
+    if (!canMoveFolder(await getFolders(), id, parentId)) return false;
+    await _isar.writeTxn(() async {
+      final folder = await _isar.folders.get(id);
+      if (folder == null) return;
+      folder.parentId = parentId;
+      await _isar.folders.put(folder);
+    });
+    return true;
+  }
+
+  /// Colours folder [id]'s glyph; null for the plain one.
+  Future<void> setFolderColor(int id, int? color) async {
+    await _isar.writeTxn(() async {
+      final folder = await _isar.folders.get(id);
+      if (folder == null) return;
+      folder.color = color;
+      await _isar.folders.put(folder);
+    });
+  }
+
+  /// Deletes a folder. What was inside it, notebooks and folders, moves up
+  /// into its parent (or the top level): deleting a container must never
+  /// delete the contents.
   Future<void> deleteFolder(int id) async {
     await _isar.writeTxn(() async {
+      final folder = await _isar.folders.get(id);
+      final parent = folder?.parentId;
       final inside = await _isar.notebooks
           .filter()
           .folderIdEqualTo(id)
           .findAll();
       for (final notebook in inside) {
-        notebook.folderId = null;
+        notebook.folderId = parent;
       }
       await _isar.notebooks.putAll(inside);
+      final subfolders =
+          await _isar.folders.filter().parentIdEqualTo(id).findAll();
+      for (final f in subfolders) {
+        f.parentId = parent;
+      }
+      await _isar.folders.putAll(subfolders);
       await _isar.folders.delete(id);
     });
   }

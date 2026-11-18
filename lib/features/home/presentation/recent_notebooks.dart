@@ -20,7 +20,10 @@ List<int> pushRecent(List<int> ids, int id, {int cap = kRecentNotebooksKept}) =>
 /// The cards for [ids], in that order, skipping notebooks that are not there.
 List<NoteCardData> recentCards(List<NoteCardData> cards, List<int> ids) {
   final byId = {for (final c in cards) c.id: c};
-  return [for (final id in ids) ?byId[id]];
+  return [
+    for (final id in ids)
+      if (byId[id] case final c? when !c.hidden) c,
+  ];
 }
 
 class RecentNotebooksNotifier extends StateNotifier<List<int>> {

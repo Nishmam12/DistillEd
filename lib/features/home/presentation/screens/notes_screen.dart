@@ -15,6 +15,7 @@ import '../../../../core/icons/app_icon.dart';
 import '../../../../core/layout/window_size.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../editor/state/scene_image_cache_provider.dart';
+import '../hidden_notes.dart';
 import '../home_notifier.dart';
 import '../models/note_card_data.dart';
 import '../note_cards_provider.dart';
@@ -195,7 +196,9 @@ class _Main extends ConsumerWidget {
         : recentCards(ref.watch(noteCardsProvider).value ?? const [],
             ref.watch(recentNotebooksProvider));
 
-    final title = favoritesOnly
+    final title = ref.watch(notesHiddenViewProvider)
+        ? 'Hidden'
+        : favoritesOnly
         ? 'Favorites'
         : folder == FolderFilter.unfiled
         ? 'Unfiled'
@@ -612,7 +615,9 @@ class _NotesGrid extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => SafeArea(
-        child: Column(
+        // Scrolls on a short (landscape) screen rather than overflowing.
+        child: SingleChildScrollView(
+         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
@@ -638,6 +643,13 @@ class _NotesGrid extends ConsumerWidget {
               subtitle: note.tags.isEmpty ? null : Text(note.tags.join(', ')),
               onTap: () => Navigator.of(context).pop('tags'),
             ),
+            ListTile(
+              leading: Icon(note.hidden
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined),
+              title: Text(note.hidden ? 'Stop hiding' : 'Hide note'),
+              onTap: () => Navigator.of(context).pop('hide'),
+            ),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.auto_stories_outlined),
@@ -661,6 +673,7 @@ class _NotesGrid extends ConsumerWidget {
               onTap: () => Navigator.of(context).pop('delete'),
             ),
           ],
+         ),
         ),
       ),
     );
@@ -677,6 +690,8 @@ class _NotesGrid extends ConsumerWidget {
         await showMoveToFolderSheet(context, ref, note: note);
       case 'tags':
         await showEditTagsDialog(context, ref, note: note);
+      case 'hide':
+        await setNotesHidden(context, ref, {note.id}, hidden: !note.hidden);
       case 'book':
         unawaited(context.push('/note2/${note.id}/book'));
       case 'graph':

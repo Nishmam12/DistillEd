@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart' show GlobalKey, NavigatorState;
 import 'package:go_router/go_router.dart';
 
+import '../features/home/presentation/hidden_notes.dart' show HiddenGate;
 import '../features/home/presentation/screens/notes_screen.dart';
 import '../features/share/share_intake.dart' show SharedPayload;
 import '../features/home/presentation/screens/trash_screen.dart';
@@ -31,10 +32,7 @@ final GoRouter appRouter = GoRouter(
     return id != null && int.tryParse(id) == null ? '/' : null;
   },
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const NotesScreen(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const NotesScreen()),
     // Canvas 2.0 — the unified drawing engine, now the default editor.
     GoRoute(
       path: '/note2/:id',
@@ -42,13 +40,17 @@ final GoRouter appRouter = GoRouter(
         final id = int.parse(state.pathParameters['id']!);
         // From a search result: open on this page and tint these words.
         final page = int.tryParse(state.uri.queryParameters['page'] ?? '');
-        return NotebookEditorScreen(
+        return HiddenGate(
           notebookId: id,
-          initialPageIndex: page,
-          searchQuery: state.uri.queryParameters['q'],
-          // From "Share to Margo": import this once the page is ready.
-          pendingShare:
-              state.extra is SharedPayload ? state.extra as SharedPayload : null,
+          child: NotebookEditorScreen(
+            notebookId: id,
+            initialPageIndex: page,
+            searchQuery: state.uri.queryParameters['q'],
+            // From "Share to Margo": import this once the page is ready.
+            pendingShare: state.extra is SharedPayload
+                ? state.extra as SharedPayload
+                : null,
+          ),
         );
       },
       routes: [
@@ -56,21 +58,30 @@ final GoRouter appRouter = GoRouter(
           path: 'book',
           builder: (context, state) {
             final id = int.parse(state.pathParameters['id']!);
-            return NotebookBookViewScreen(notebookId: id);
+            return HiddenGate(
+              notebookId: id,
+              child: NotebookBookViewScreen(notebookId: id),
+            );
           },
         ),
         GoRoute(
           path: 'pages',
           builder: (context, state) {
             final id = int.parse(state.pathParameters['id']!);
-            return PageManagerScreen(notebookId: id);
+            return HiddenGate(
+              notebookId: id,
+              child: PageManagerScreen(notebookId: id),
+            );
           },
         ),
         GoRoute(
           path: 'outline',
           builder: (context, state) {
             final id = int.parse(state.pathParameters['id']!);
-            return PageOutlineScreen(notebookId: id);
+            return HiddenGate(
+              notebookId: id,
+              child: PageOutlineScreen(notebookId: id),
+            );
           },
         ),
         GoRoute(
@@ -82,30 +93,37 @@ final GoRouter appRouter = GoRouter(
             // scopes. Reached without it (a deep link), the graph is
             // notebook-wide and the scope menu is hidden.
             final pageId = int.tryParse(
-                state.uri.queryParameters['pageId'] ?? '');
-            return KnowledgeGraphScreen(notebookId: id, pageId: pageId);
+              state.uri.queryParameters['pageId'] ?? '',
+            );
+            return HiddenGate(
+              notebookId: id,
+              child: KnowledgeGraphScreen(notebookId: id, pageId: pageId),
+            );
           },
         ),
         GoRoute(
           path: 'review',
           builder: (context, state) {
             final id = int.parse(state.pathParameters['id']!);
-            return ReviewScreen(notebookId: id);
+            return HiddenGate(
+              notebookId: id,
+              child: ReviewScreen(notebookId: id),
+            );
           },
         ),
         GoRoute(
           path: 'plan',
           builder: (context, state) {
             final id = int.parse(state.pathParameters['id']!);
-            return StudyPlannerScreen(notebookId: id);
+            return HiddenGate(
+              notebookId: id,
+              child: StudyPlannerScreen(notebookId: id),
+            );
           },
         ),
       ],
     ),
-    GoRoute(
-      path: '/trash',
-      builder: (context, state) => const TrashScreen(),
-    ),
+    GoRoute(path: '/trash', builder: (context, state) => const TrashScreen()),
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
@@ -122,10 +140,7 @@ final GoRouter appRouter = GoRouter(
       path: '/settings/models/add',
       builder: (context, state) => const AddConnectionScreen(),
     ),
-    GoRoute(
-      path: '/about',
-      builder: (context, state) => const AboutScreen(),
-    ),
+    GoRoute(path: '/about', builder: (context, state) => const AboutScreen()),
     // Dev-only: unified canvas playground (Phase 2). Surfaced from Settings when
     // Developer Mode is enabled. Debug builds only.
     if (kDebugMode)

@@ -118,7 +118,7 @@ class _TrashRow extends ConsumerWidget {
 
     return ListTile(
       title: Text(
-        notebook.title,
+        _name(notebook),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(color: context.colors.textPrimary),
@@ -160,7 +160,7 @@ class _TrashRow extends ConsumerWidget {
     // again until it happened to reload.
     await home.loadNotebooks();
     messenger.showSnackBar(
-      SnackBar(content: Text('Restored "${notebook.title}"')),
+      SnackBar(content: Text('Restored "${_name(notebook)}"')),
     );
   }
 
@@ -171,7 +171,7 @@ class _TrashRow extends ConsumerWidget {
         backgroundColor: context.colors.surface,
         title: const Text('Delete forever'),
         content: Text(
-          'Permanently delete "${notebook.title}" and everything in it? '
+          'Permanently delete "${_name(notebook)}" and everything in it? '
           'This cannot be undone.',
         ),
         actions: [
@@ -191,3 +191,7 @@ class _TrashRow extends ConsumerWidget {
     await ref.read(trashNotifierProvider.notifier).deleteForever(notebook.id);
   }
 }
+
+/// A hidden note's title stays hidden in the trash too.
+String _name(Notebook notebook) =>
+    notebook.hidden ? 'Hidden note' : notebook.title;

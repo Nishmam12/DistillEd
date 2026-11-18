@@ -33,30 +33,31 @@ const NotebookSchema = CollectionSchema(
       type: IsarType.dateTime,
     ),
     r'folderId': PropertySchema(id: 3, name: r'folderId', type: IsarType.long),
+    r'hidden': PropertySchema(id: 4, name: r'hidden', type: IsarType.bool),
     r'layoutMode': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'layoutMode',
       type: IsarType.long,
     ),
     r'modifiedAt': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'modifiedAt',
       type: IsarType.dateTime,
     ),
     r'pageCount': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'pageCount',
       type: IsarType.long,
     ),
-    r'pageSize': PropertySchema(id: 7, name: r'pageSize', type: IsarType.long),
-    r'pinned': PropertySchema(id: 8, name: r'pinned', type: IsarType.bool),
-    r'tags': PropertySchema(id: 9, name: r'tags', type: IsarType.stringList),
+    r'pageSize': PropertySchema(id: 8, name: r'pageSize', type: IsarType.long),
+    r'pinned': PropertySchema(id: 9, name: r'pinned', type: IsarType.bool),
+    r'tags': PropertySchema(id: 10, name: r'tags', type: IsarType.stringList),
     r'templateIndex': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'templateIndex',
       type: IsarType.long,
     ),
-    r'title': PropertySchema(id: 11, name: r'title', type: IsarType.string),
+    r'title': PropertySchema(id: 12, name: r'title', type: IsarType.string),
   },
 
   estimateSize: _notebookEstimateSize,
@@ -167,14 +168,15 @@ void _notebookSerialize(
   writer.writeDateTime(offsets[1], object.createdAt);
   writer.writeDateTime(offsets[2], object.deletedAt);
   writer.writeLong(offsets[3], object.folderId);
-  writer.writeLong(offsets[4], object.layoutMode);
-  writer.writeDateTime(offsets[5], object.modifiedAt);
-  writer.writeLong(offsets[6], object.pageCount);
-  writer.writeLong(offsets[7], object.pageSize);
-  writer.writeBool(offsets[8], object.pinned);
-  writer.writeStringList(offsets[9], object.tags);
-  writer.writeLong(offsets[10], object.templateIndex);
-  writer.writeString(offsets[11], object.title);
+  writer.writeBool(offsets[4], object.hidden);
+  writer.writeLong(offsets[5], object.layoutMode);
+  writer.writeDateTime(offsets[6], object.modifiedAt);
+  writer.writeLong(offsets[7], object.pageCount);
+  writer.writeLong(offsets[8], object.pageSize);
+  writer.writeBool(offsets[9], object.pinned);
+  writer.writeStringList(offsets[10], object.tags);
+  writer.writeLong(offsets[11], object.templateIndex);
+  writer.writeString(offsets[12], object.title);
 }
 
 Notebook _notebookDeserialize(
@@ -188,15 +190,16 @@ Notebook _notebookDeserialize(
   object.createdAt = reader.readDateTime(offsets[1]);
   object.deletedAt = reader.readDateTimeOrNull(offsets[2]);
   object.folderId = reader.readLongOrNull(offsets[3]);
+  object.hidden = reader.readBool(offsets[4]);
   object.id = id;
-  object.layoutMode = reader.readLong(offsets[4]);
-  object.modifiedAt = reader.readDateTime(offsets[5]);
-  object.pageCount = reader.readLong(offsets[6]);
-  object.pageSize = reader.readLong(offsets[7]);
-  object.pinned = reader.readBool(offsets[8]);
-  object.tags = reader.readStringList(offsets[9]) ?? [];
-  object.templateIndex = reader.readLong(offsets[10]);
-  object.title = reader.readString(offsets[11]);
+  object.layoutMode = reader.readLong(offsets[5]);
+  object.modifiedAt = reader.readDateTime(offsets[6]);
+  object.pageCount = reader.readLong(offsets[7]);
+  object.pageSize = reader.readLong(offsets[8]);
+  object.pinned = reader.readBool(offsets[9]);
+  object.tags = reader.readStringList(offsets[10]) ?? [];
+  object.templateIndex = reader.readLong(offsets[11]);
+  object.title = reader.readString(offsets[12]);
   return object;
 }
 
@@ -216,20 +219,22 @@ P _notebookDeserializeProp<P>(
     case 3:
       return (reader.readLongOrNull(offset)) as P;
     case 4:
-      return (reader.readLong(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 5:
-      return (reader.readDateTime(offset)) as P;
-    case 6:
       return (reader.readLong(offset)) as P;
+    case 6:
+      return (reader.readDateTime(offset)) as P;
     case 7:
       return (reader.readLong(offset)) as P;
     case 8:
-      return (reader.readBool(offset)) as P;
-    case 9:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 10:
       return (reader.readLong(offset)) as P;
+    case 9:
+      return (reader.readBool(offset)) as P;
+    case 10:
+      return (reader.readStringList(offset) ?? []) as P;
     case 11:
+      return (reader.readLong(offset)) as P;
+    case 12:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1192,6 +1197,16 @@ extension NotebookQueryFilter
     });
   }
 
+  QueryBuilder<Notebook, Notebook, QAfterFilterCondition> hiddenEqualTo(
+    bool value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'hidden', value: value),
+      );
+    });
+  }
+
   QueryBuilder<Notebook, Notebook, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -1957,6 +1972,18 @@ extension NotebookQuerySortBy on QueryBuilder<Notebook, Notebook, QSortBy> {
     });
   }
 
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByHidden() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hidden', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByHiddenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hidden', Sort.desc);
+    });
+  }
+
   QueryBuilder<Notebook, Notebook, QAfterSortBy> sortByLayoutMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'layoutMode', Sort.asc);
@@ -2092,6 +2119,18 @@ extension NotebookQuerySortThenBy
     });
   }
 
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> thenByHidden() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hidden', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Notebook, Notebook, QAfterSortBy> thenByHiddenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hidden', Sort.desc);
+    });
+  }
+
   QueryBuilder<Notebook, Notebook, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -2215,6 +2254,12 @@ extension NotebookQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Notebook, Notebook, QDistinct> distinctByHidden() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'hidden');
+    });
+  }
+
   QueryBuilder<Notebook, Notebook, QDistinct> distinctByLayoutMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'layoutMode');
@@ -2295,6 +2340,12 @@ extension NotebookQueryProperty
   QueryBuilder<Notebook, int?, QQueryOperations> folderIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'folderId');
+    });
+  }
+
+  QueryBuilder<Notebook, bool, QQueryOperations> hiddenProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'hidden');
     });
   }
 

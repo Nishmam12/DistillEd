@@ -92,3 +92,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // AppCompat launch themes: local_auth's prompt (hidden notes) can crash on
+    // Android 8 without them.
+    implementation("androidx.appcompat:appcompat:1.7.0")
+}

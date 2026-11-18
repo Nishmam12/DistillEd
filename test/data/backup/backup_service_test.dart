@@ -7,7 +7,8 @@ import 'package:margo/data/backup/backup_service.dart';
 import 'package:margo/data/backup/notebook_archive.dart';
 import 'package:margo/domain/model/scene_element.dart';
 
-NotebookSnapshot snap(int id, {String title = 'Notes', String text = 'hello'}) =>
+NotebookSnapshot snap(int id,
+        {String title = 'Notes', String text = 'hello', bool hidden = false}) =>
     NotebookSnapshot(
       sourceId: id,
       meta: NotebookMeta(
@@ -17,6 +18,7 @@ NotebookSnapshot snap(int id, {String title = 'Notes', String text = 'hello'}) =
         layoutMode: 0,
         tags: const [],
         createdAt: DateTime.utc(2026),
+        hidden: hidden,
       ),
       pages: [
         PageSnapshot(text: text, elements: const [
@@ -115,6 +117,22 @@ void main() {
     final back = NotebookArchive.decode(
         target.files['Biology (1) 2026-11-11 1000.margo']!);
     expect(back.meta.title, 'Biology');
+  });
+
+  test('a hidden notebook is backed up by a neutral name, with no .md',
+      () async {
+    final lib = _FakeLibrary({1: snap(1, title: 'Diary')});
+    final target = _FakeTarget();
+    final state = _MemoryState();
+    await service(lib, target, state).run();
+    expect(target.files.keys, contains('Diary (1).md'));
+
+    lib.notebooks[1] = snap(1, title: 'Diary', hidden: true);
+    await service(lib, target, state).run();
+
+    expect(target.files.keys, contains('Hidden note (1) 2026-11-11 1000.margo'));
+    expect(target.files.keys.where((n) => n.endsWith('.md')), isEmpty,
+        reason: 'the old readable copy goes too');
   });
 
   test('an unchanged notebook is not written again', () async {

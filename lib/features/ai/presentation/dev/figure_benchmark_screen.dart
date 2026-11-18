@@ -27,7 +27,8 @@ class FigureBenchmarkScreen extends ConsumerStatefulWidget {
 
 class _FigureBenchmarkScreenState extends ConsumerState<FigureBenchmarkScreen> {
   late final Future<List<Notebook>> _notebooks =
-      ref.read(noteRepositoryProvider).getAllNotebooks();
+      ref.read(noteRepositoryProvider).getAllNotebooks().then(
+          (all) => [for (final n in all) if (!n.hidden) n]);
 
   int? _notebookId;
   bool _running = false;

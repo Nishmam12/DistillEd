@@ -22,6 +22,8 @@ import '../../../editor/render/scene_exporter.dart';
 import '../../../editor/render/scene_image_cache.dart';
 import '../../../editor/state/page_notifier.dart' show pageRepositoryProvider;
 import '../../../editor/state/scene_controller.dart';
+import '../../home/presentation/hidden_notes.dart'
+    show openHiddenNotebooksProvider;
 import '../../home/presentation/home_notifier.dart' show noteRepositoryProvider;
 import '../data/catalog/margo_catalog.dart';
 import '../data/catalog/user_connection_store.dart';
@@ -527,16 +529,23 @@ final cloudAiProvider = Provider<OpenAiCompatibleProvider>((ref) {
 /// device unless cloud AI is enabled (the mode allows it and a key is saved) and
 /// privacy is not `localOnly`. Callers still ask for
 /// their own confirmations; this is the floor under all of them.
+///
+/// Nor while a hidden notebook is open: AI only ever works on the open
+/// notebook, so this keeps every hidden note's content on the device.
 bool _mayUseCloud(Ref ref) {
   final s = ref.read(settingsProvider);
-  return s.cloudAiEnabled && s.cloudPrivacy != CloudPrivacy.localOnly;
+  return s.cloudAiEnabled &&
+      s.cloudPrivacy != CloudPrivacy.localOnly &&
+      ref.read(openHiddenNotebooksProvider).isEmpty;
 }
 
 // A picked answer connection has its own key; the default page-reading
 // connection need not be configured for it to answer a confirmed question.
 bool _mayUseAnswerCloud(Ref ref) {
   final s = ref.read(settingsProvider);
-  return s.aiMode.allowsCloud && s.cloudPrivacy != CloudPrivacy.localOnly;
+  return s.aiMode.allowsCloud &&
+      s.cloudPrivacy != CloudPrivacy.localOnly &&
+      ref.read(openHiddenNotebooksProvider).isEmpty;
 }
 
 /// Decides local vs. cloud-mid vs. cloud-frontier per request. Additive

@@ -128,6 +128,20 @@ void main() {
       expect(await repo.getFolders(), isEmpty);
     });
 
+    test('deleting a nested folder moves its notes and folders up', () async {
+      final n = await repo.createNotebook('Lenses');
+      final physics = await repo.createFolder('Physics');
+      final optics = await repo.createFolder('Optics', parentId: physics.id);
+      final lab = await repo.createFolder('Lab', parentId: optics.id);
+      await home.setFolder(n.id, optics.id);
+
+      await repo.deleteFolder(optics.id);
+
+      expect(repo.notebooks.single.folderId, physics.id);
+      expect((await repo.getFolders()).firstWhere((f) => f.id == lab.id)
+          .parentId, physics.id);
+    });
+
     test('renaming a folder does not move its notes', () async {
       final n = await repo.createNotebook('Cells');
       final folder = await repo.createFolder('Biology');

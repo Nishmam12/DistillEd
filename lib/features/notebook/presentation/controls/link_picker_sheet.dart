@@ -40,7 +40,11 @@ class _LinkPicker extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // This notebook first: most links are to another page of the same notes.
-    final notebooks = [...ref.watch(homeNotifierProvider)]
+    // Hidden notebooks are not offered, except this one when it is open.
+    final notebooks = [
+      for (final n in ref.watch(homeNotifierProvider))
+        if (!n.hidden || n.id == currentNotebookId) n,
+    ]
       ..sort((a, b) => (a.id == currentNotebookId ? 0 : 1)
           .compareTo(b.id == currentNotebookId ? 0 : 1));
     return SafeArea(

@@ -19,8 +19,10 @@ import '../../../domain/model/scene_element.dart';
 import '../../../editor/state/page_notifier.dart';
 import '../../../editor/state/scene_controller.dart';
 import '../../../editor/state/scene_image_cache_provider.dart';
+import '../domain/folder_tree.dart';
 import '../domain/models/folder.dart';
 import '../domain/tag_tree.dart';
+import 'hidden_notes.dart';
 import 'home_notifier.dart';
 import 'models/note_card_data.dart';
 import 'widgets/note_scene_preview.dart';
@@ -34,6 +36,12 @@ final noteCardsProvider = FutureProvider<List<NoteCardData>>((ref) async {
 
   final cards = <NoteCardData>[];
   for (final notebook in notebooks) {
+    // A hidden note's page and text are never read for a card: it shows by
+    // title only, and its words don't make it findable from the search box.
+    if (notebook.hidden) {
+      cards.add(NoteCardData.fromNotebook(notebook));
+      continue;
+    }
     final pages = await pageRepository.getPagesForNotebook(notebook.id);
     final scene = pages.isEmpty
         ? const <SceneElement>[]
@@ -88,6 +96,15 @@ final visibleNoteCardsProvider = Provider<AsyncValue<List<NoteCardData>>>((ref) 
   final tags = ref.watch(notesTagFilterProvider);
   final favoritesOnly = ref.watch(notesFavoritesOnlyProvider);
   final more = ref.watch(notesMoreFiltersProvider);
+  // The Hidden view shows hidden notes only, and only while unlocked; the
+  // notes list never shows them.
+  final hiddenView = ref.watch(notesHiddenViewProvider) &&
+      ref.watch(hiddenUnlockedProvider);
+  // A folder takes in the folders under it.
+  final within = switch (folder.folderIdOrNull) {
+    final id? => folderWithin(ref.watch(foldersProvider).value ?? const [], id),
+    null => null,
+  };
   // Only read when a filter needs it, so the plain list never waits on it.
   final facts = more.inkOnly || more.recordingOnly
       ? ref.watch(notebookFactsProvider).value
@@ -97,9 +114,10 @@ final visibleNoteCardsProvider = Provider<AsyncValue<List<NoteCardData>>>((ref) 
     final now = DateTime.now();
     final visible = [
       for (final card in cards)
-        if (card.matches(query) &&
+        if (card.hidden == hiddenView &&
+            card.matches(query) &&
             (!favoritesOnly || card.pinned) &&
-            folder.accepts(card) &&
+            (within?.contains(card.folderId) ?? folder.accepts(card)) &&
             _hasEveryTag(card, tags) &&
             more.accepts(card, facts: facts, now: now))
           card,

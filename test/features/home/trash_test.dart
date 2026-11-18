@@ -7,6 +7,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:margo/features/home/data/repositories/note_repository.dart';
+import 'package:margo/features/home/domain/folder_tree.dart';
 import 'package:margo/features/home/domain/models/folder.dart';
 import 'package:margo/features/home/domain/models/notebook.dart';
 import 'package:margo/features/home/presentation/home_notifier.dart';
@@ -147,9 +148,13 @@ class FakeNoteRepository implements NoteRepository {
   Future<List<Folder>> getFolders() async => List.of(folders);
 
   @override
-  Future<Folder> createFolder(String name) async {
+  Future<Folder> createFolder(String name, {int? parentId}) async {
+    if (!canAddFolderIn(folders, parentId)) {
+      throw StateError('too deep');
+    }
     final folder = Folder()
       ..id = _nextFolderId++
+      ..parentId = parentId
       ..name = name.trim()
       ..createdAt = DateTime.now()
       ..sortIndex = folders.length;
@@ -163,9 +168,30 @@ class FakeNoteRepository implements NoteRepository {
   }
 
   @override
+  Future<void> setHidden(int id, bool hidden) async {
+    notebooks.firstWhere((n) => n.id == id).hidden = hidden;
+  }
+
+  @override
+  Future<bool> moveFolder(int id, int? parentId) async {
+    if (!canMoveFolder(folders, id, parentId)) return false;
+    folders.firstWhere((f) => f.id == id).parentId = parentId;
+    return true;
+  }
+
+  @override
+  Future<void> setFolderColor(int id, int? color) async {
+    folders.firstWhere((f) => f.id == id).color = color;
+  }
+
+  @override
   Future<void> deleteFolder(int id) async {
+    final parent = folders.firstWhere((f) => f.id == id).parentId;
     for (final n in notebooks.where((n) => n.folderId == id)) {
-      n.folderId = null;
+      n.folderId = parent;
+    }
+    for (final f in folders.where((f) => f.parentId == id)) {
+      f.parentId = parent;
     }
     folders.removeWhere((f) => f.id == id);
   }

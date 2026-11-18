@@ -39,6 +39,7 @@ class NoteCardData {
     this.pinned = false,
     this.folderId,
     this.tags = const [],
+    this.hidden = false,
   });
 
   final int id;
@@ -63,6 +64,9 @@ class NoteCardData {
 
   /// Normalised (lowercase) labels, as stored.
   final List<String> tags;
+
+  /// Hidden notes show only in the unlocked Hidden view, without a preview.
+  final bool hidden;
 
   /// Builds a card from a notebook plus whatever preview could be resolved.
   ///
@@ -96,6 +100,7 @@ class NoteCardData {
       pinned: pinned ?? notebook.pinned,
       folderId: notebook.folderId,
       tags: List.unmodifiable(notebook.tags),
+      hidden: notebook.hidden,
     );
   }
 

@@ -77,6 +77,7 @@ class AppBackupLibrary implements BackupLibrary {
         pageSize: notebook.pageSize,
         tags: notebook.tags,
         createdAt: notebook.createdAt,
+        hidden: notebook.hidden,
       ),
       pages: pageSnapshots,
       media: media,

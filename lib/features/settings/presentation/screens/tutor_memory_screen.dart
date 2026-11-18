@@ -37,6 +37,7 @@ class _TutorMemoryScreenState extends ConsumerState<TutorMemoryScreen> {
     final prefs = await memory.loadPreferences();
     final tricky = <_Tricky>[];
     for (final book in ref.read(homeNotifierProvider)) {
+      if (book.hidden) continue;
       for (final c in await memory.allConcepts(book.id)) {
         if (c.timesMissedInQuiz > 0 || c.timesFlaggedAsGap > 0) {
           tricky.add((notebook: book.title, notebookId: book.id, concept: c));

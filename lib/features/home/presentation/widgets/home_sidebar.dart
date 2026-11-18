@@ -1,5 +1,5 @@
 // The sage sidebar of the margo home screen: wordmark, the Notes / Favorites /
-// Shared entries, then the user's folders (and tags, once they exist).
+// Shared entries, then the user's folders (nested) and tags.
 //
 // The selected entry is a 232-wide pill in the page-background colour cut
 // into the sage panel, in both brightnesses (`bgPrimary` on `surfaceSubtle`).
@@ -12,7 +12,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../note_cards_provider.dart';
 import '../notes_palette.dart';
 import 'organize_sheets.dart';
+import '../../domain/folder_tree.dart';
 import '../../domain/tag_tree.dart';
+import '../hidden_notes.dart';
 import '../home_notifier.dart' show homeNotifierProvider;
 import '../tag_colors.dart';
 
@@ -37,11 +39,17 @@ class HomeSidebar extends ConsumerWidget {
     final selectedTags = ref.watch(notesTagFilterProvider);
 
     final allSelected =
+        !ref.watch(notesHiddenViewProvider) &&
         !favoritesOnly &&
         folderFilter == FolderFilter.all &&
         selectedTags.isEmpty;
 
+    final hiddenView = ref.watch(notesHiddenViewProvider);
+    final anyHidden =
+        ref.watch(noteCardsProvider).value?.any((c) => c.hidden) ?? false;
+
     void resetScope() {
+      ref.read(notesHiddenViewProvider.notifier).state = false;
       ref.read(notesFavoritesOnlyProvider.notifier).state = false;
       ref.read(notesFolderFilterProvider.notifier).state = FolderFilter.all;
       ref.read(notesTagFilterProvider.notifier).state = const {};
@@ -122,6 +130,20 @@ class HomeSidebar extends ConsumerWidget {
                   ref.read(notesFavoritesOnlyProvider.notifier).state = true;
                 }),
               ),
+              // Only once something is hidden; opening it asks the device.
+              if (anyHidden || hiddenView)
+                _Entry(
+                  icon: AppIcons.lock,
+                  label: 'Hidden',
+                  selected: hiddenView,
+                  onTap: () async {
+                    if (!await unlockHidden(context, ref)) return;
+                    choose(() {
+                      resetScope();
+                      ref.read(notesHiddenViewProvider.notifier).state = true;
+                    });
+                  },
+                ),
               // Drawn like its siblings, as in the design; sharing isn't built
               // yet, so a tap says so instead of doing nothing.
               _Entry(
@@ -159,11 +181,19 @@ class HomeSidebar extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 18),
-              for (final folder in folders)
+              // Nested; long-press for rename, colour, move and delete.
+              for (final (:folder, :depth) in folderTree(folders))
                 _Entry(
                   icon: AppIcons.folder,
+                  iconColor: switch (folder.color) {
+                    final v? => Color(v),
+                    null => null,
+                  },
                   label: folder.name,
                   small: true,
+                  depth: depth,
+                  onLongPress: () =>
+                      showFolderActionsSheet(context, ref, folder: folder),
                   selected:
                       !favoritesOnly &&
                       folderFilter == FolderFilter.only(folder.id),
@@ -212,7 +242,10 @@ class HomeSidebar extends ConsumerWidget {
                 // Nested: `physics/optics` under `physics`. Long-press to
                 // colour a tag.
                 for (final node in tagTree(
-                    [for (final n in ref.watch(homeNotifierProvider)) n.tags]))
+                    [
+                  for (final n in ref.watch(homeNotifierProvider))
+                    if (!n.hidden) n.tags,
+                ]))
                   _Entry(
                     label: '#${node.label}',
                     small: true,
@@ -300,13 +333,17 @@ class _Entry extends StatelessWidget {
     this.onLongPress,
     this.depth = 0,
     this.dot,
+    this.iconColor,
   });
+
+  /// A folder's colour, for its glyph.
+  final Color? iconColor;
 
   final String label;
   final String? icon;
   final bool selected;
 
-  /// Nesting level of a tag under its parent; each step indents.
+  /// Nesting level of a tag or folder under its parent; each step indents.
   final int depth;
 
   /// A tag's colour, shown as a dot before it.
@@ -364,7 +401,7 @@ class _Entry extends StatelessWidget {
                           const SizedBox(width: 8),
                         ],
                         if (icon != null) ...[
-                          AppIcon(icon!, size: glyph, color: ink),
+                          AppIcon(icon!, size: glyph, color: iconColor ?? ink),
                           const SizedBox(width: 11),
                         ],
                         Expanded(

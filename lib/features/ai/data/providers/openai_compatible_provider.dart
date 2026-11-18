@@ -168,7 +168,8 @@ class OpenAiCompatibleProvider
   void _requireCloudAllowed() {
     if (!_isCloudAllowed()) {
       throw const AiUnavailableException(
-        'Cloud AI is turned off in Settings, so nothing was sent.',
+        'Cloud AI is turned off in Settings, or a hidden note is open, so '
+        'nothing was sent.',
       );
     }
   }

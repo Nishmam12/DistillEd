@@ -34,6 +34,7 @@ abstract final class AppIcons {
   static const flashCircle = 'icons/flash-circle';
   static const infoCircle = 'icons/info-circle';
   static const key = 'icons/key';
+  static const lock = 'icons/lock';
   static const languageCircle = 'icons/language-circle';
   static const trash = 'icons/trash';
 

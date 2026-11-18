@@ -24,6 +24,7 @@ final globalSearchCorpusProvider =
   final texts = ref.read(pageTextStoreProvider);
   final corpus = <NotebookCorpus>[];
   for (final book in notebooks) {
+    if (book.hidden) continue; // hidden notes are never searched
     final rows = await texts.forNotebook(book.id);
     if (rows.isEmpty) continue;
     final order = await pages.getPagesForNotebook(book.id);

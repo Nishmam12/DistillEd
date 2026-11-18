@@ -82,6 +82,16 @@ class HomeNotifier extends StateNotifier<List<Notebook>> {
     }
   }
 
+  Future<void> setHiddenMany(Iterable<int> ids, bool hidden) async {
+    try {
+      for (final id in ids) {
+        await _repository.setHidden(id, hidden);
+      }
+    } finally {
+      await loadNotebooks();
+    }
+  }
+
   Future<void> setFolderMany(Iterable<int> ids, int? folderId) async {
     try {
       for (final id in ids) {

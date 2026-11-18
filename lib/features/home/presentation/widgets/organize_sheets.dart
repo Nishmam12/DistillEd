@@ -10,6 +10,9 @@ import '../suggested_terms_loader.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../data/repositories/note_repository.dart';
+import '../../domain/folder_tree.dart';
+import '../../domain/models/folder.dart';
+import '../tag_colors.dart' show kTagColors;
 import '../home_notifier.dart';
 import '../models/note_card_data.dart';
 import '../note_cards_provider.dart';
@@ -64,9 +67,11 @@ Future<bool> _moveToFolder(
                 Navigator.pop(sheetContext, const _FolderChoice.none()),
           ),
           const Divider(height: 1),
-          for (final folder in folders)
+          for (final (:folder, :depth) in folderTree(folders))
             ListTile(
-              leading: const Icon(Icons.folder_outlined),
+              contentPadding:
+                  EdgeInsetsDirectional.only(start: 16 + depth * 20.0, end: 16),
+              leading: _folderGlyph(folder),
               title: Text(folder.name),
               trailing:
                   ids.length == 1 && currentFolderId == folder.id
@@ -136,20 +141,218 @@ class _FolderChoice {
         folderId = id;
 }
 
-Future<String?> _promptFolderName(BuildContext context) => showDialog<String>(
-  context: context,
-  builder: (_) => const _FolderNameDialog(),
-);
+Future<String?> _promptFolderName(
+  BuildContext context, {
+  String title = 'New folder',
+  String initial = '',
+  String confirm = 'Create',
+}) =>
+    showDialog<String>(
+      context: context,
+      builder: (_) =>
+          _FolderNameDialog(title: title, initial: initial, confirm: confirm),
+    );
+
+/// A folder's glyph, in its colour when it has one.
+Widget _folderGlyph(Folder folder) => Icon(
+      Icons.folder_outlined,
+      color: folder.color == null ? null : Color(folder.color!),
+    );
+
+/// Long-press on a folder in the sidebar: rename it, add a folder inside,
+/// move it, colour it, or delete it.
+Future<void> showFolderActionsSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required Folder folder,
+}) async {
+  final repo = ref.read(noteRepositoryProvider);
+  final folders = await repo.getFolders();
+  if (!context.mounted) return;
+  final parentName = folders
+      .where((f) => f.id == folder.parentId)
+      .map((f) => f.name)
+      .firstOrNull;
+
+  final action = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    backgroundColor: context.colors.surface,
+    builder: (sheet) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(folder.name,
+                style: Theme.of(sheet).textTheme.titleMedium),
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('Rename'),
+            onTap: () => Navigator.pop(sheet, 'rename'),
+          ),
+          if (canAddFolderIn(folders, folder.id))
+            ListTile(
+              leading: const Icon(Icons.create_new_folder_outlined),
+              title: const Text('New folder inside'),
+              onTap: () => Navigator.pop(sheet, 'add'),
+            ),
+          ListTile(
+            leading: const Icon(Icons.drive_file_move_outline),
+            title: const Text('Move to…'),
+            onTap: () => Navigator.pop(sheet, 'move'),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final color in [...kTagColors, null])
+                  Semantics(
+                    button: true,
+                    selected: folder.color == color,
+                    label: color == null ? 'No colour' : 'Colour',
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () => Navigator.pop(sheet, 'color:${color ?? ''}'),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color == null ? null : Color(color),
+                          border: Border.all(
+                            width: folder.color == color ? 3 : 1,
+                            color: sheet.colors.textSecondary
+                                .withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: color == null
+                            ? const Icon(Icons.block, size: 16)
+                            : null,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: const Text('Delete folder'),
+            onTap: () => Navigator.pop(sheet, 'delete'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (action == null || !context.mounted) return;
+
+  switch (action) {
+    case 'rename':
+      final name = await _promptFolderName(context,
+          title: 'Rename folder', initial: folder.name, confirm: 'Rename');
+      if (name == null) return;
+      await repo.renameFolder(folder.id, name);
+    case 'add':
+      final name = await _promptFolderName(context);
+      if (name == null) return;
+      await repo.createFolder(name, parentId: folder.id);
+    case 'move':
+      final target = await _pickFolderParent(context, folders, folder);
+      if (target == null) return;
+      await repo.moveFolder(folder.id, target.folderId);
+    case 'delete':
+      final where = parentName ?? 'the top level';
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (d) => AlertDialog(
+          title: Text('Delete “${folder.name}”?'),
+          content: Text('Its notes and folders move to $where. '
+              'No notes are deleted.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(d),
+                child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(d, true),
+                child: const Text('Delete')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+      await repo.deleteFolder(folder.id);
+      final filter = ref.read(notesFolderFilterProvider);
+      if (filter == FolderFilter.only(folder.id)) {
+        ref.read(notesFolderFilterProvider.notifier).state = FolderFilter.all;
+      }
+      // Notebooks were refiled, so the cards' folder ids changed too.
+      await ref.read(homeNotifierProvider.notifier).loadNotebooks();
+    default:
+      final hex = action.substring('color:'.length);
+      await repo.setFolderColor(folder.id, hex.isEmpty ? null : int.parse(hex));
+  }
+  ref.invalidate(foldersProvider);
+}
+
+/// Where [folder] can move: the top level or any folder [canMoveFolder]
+/// allows. Null when dismissed.
+Future<_FolderChoice?> _pickFolderParent(
+  BuildContext context,
+  List<Folder> folders,
+  Folder folder,
+) =>
+    showModalBottomSheet<_FolderChoice>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: context.colors.surface,
+      builder: (sheet) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.vertical_align_top),
+              title: const Text('Top level'),
+              trailing: folder.parentId == null ? const Icon(Icons.check) : null,
+              onTap: () => Navigator.pop(sheet, const _FolderChoice.none()),
+            ),
+            const Divider(height: 1),
+            for (final (folder: f, :depth) in folderTree(folders))
+              ListTile(
+                enabled: canMoveFolder(folders, folder.id, f.id),
+                contentPadding: EdgeInsetsDirectional.only(
+                    start: 16 + depth * 20.0, end: 16),
+                leading: _folderGlyph(f),
+                title: Text(f.name),
+                trailing:
+                    folder.parentId == f.id ? const Icon(Icons.check) : null,
+                onTap: () =>
+                    Navigator.pop(sheet, _FolderChoice.existing(f.id)),
+              ),
+          ],
+        ),
+      ),
+    );
 
 class _FolderNameDialog extends StatefulWidget {
-  const _FolderNameDialog();
+  const _FolderNameDialog({
+    required this.title,
+    required this.initial,
+    required this.confirm,
+  });
+
+  final String title;
+  final String initial;
+  final String confirm;
 
   @override
   State<_FolderNameDialog> createState() => _FolderNameDialogState();
 }
 
 class _FolderNameDialogState extends State<_FolderNameDialog> {
-  final _controller = TextEditingController();
+  late final _controller = TextEditingController(text: widget.initial);
 
   @override
   void dispose() {
@@ -161,7 +364,7 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: context.colors.surface,
-      title: const Text('New folder'),
+      title: Text(widget.title),
       content: TextField(
         controller: _controller,
         autofocus: true,
@@ -178,7 +381,7 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
             final name = _controller.text.trim();
             Navigator.pop(context, name.isEmpty ? null : name);
           },
-          child: const Text('Create'),
+          child: Text(widget.confirm),
         ),
       ],
     );
