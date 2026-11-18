@@ -55,6 +55,9 @@ import '../../../backup/backup_controller.dart';
 import '../../../backup/restore_list_screen.dart';
 import '../../../home/data/repositories/note_repository.dart';
 import '../../../home/presentation/widgets/search_popover.dart';
+import '../../../home/presentation/outside_app.dart' show askNotificationPermission;
+import '../../../home/presentation/study_today_providers.dart'
+    show TodayCard, todayHiddenProvider;
 import '../../../summarize/presentation/summarize_providers.dart';
 
 part 'settings_widgets.dart';
@@ -133,6 +136,8 @@ class SettingsScreen extends ConsumerWidget {
         _LectureTranscriptsRow(),
         _LectureSummaryRow(),
         _SearchByMeaningRow(),
+        _StudyRemindersRow(),
+        _TodayCardsRow(),
         _SettingsRow(
           icon: AppIcons.flashCircle,
           title: 'What the tutor knows about you',

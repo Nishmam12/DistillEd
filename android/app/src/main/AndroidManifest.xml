@@ -16,6 +16,8 @@
          (features/ai/data/llm/gemma_adapter.dart) — on the plugin's size-based
          auto path nothing requests it and this declaration alone does nothing. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Study reminders are armed again after a restart. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Android 14+: required together with the SystemForegroundService
          override below for >500 MB foreground downloads (see flutter_gemma
          1.11 README, "Foreground Service" section). -->
@@ -58,6 +60,11 @@
             <meta-data
               android:name="flutter_deeplinking_enabled"
               android:value="false"
+              />
+            <!-- App shortcuts: New note, Scan, Record lecture, Review cards. -->
+            <meta-data
+              android:name="android.app.shortcuts"
+              android:resource="@xml/shortcuts"
               />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -107,6 +114,41 @@
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+
+        <!-- Phase 7, outside the app (Outside.kt): study reminders, the New
+             note tile and the two home-screen widgets. -->
+        <receiver android:name=".ReminderReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+        <service
+            android:name=".NewNoteTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_note"
+            android:label="@string/tile_new_note"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <receiver android:name=".DueCardsWidget" android:exported="false"
+            android:label="@string/widget_due_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/widget_due_info" />
+        </receiver>
+        <receiver android:name=".PinnedNoteWidget" android:exported="false"
+            android:label="@string/widget_pinned_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/widget_pinned_info" />
+        </receiver>
 
         <!-- Holds the microphone while a lecture is recorded in the background. -->
         <service

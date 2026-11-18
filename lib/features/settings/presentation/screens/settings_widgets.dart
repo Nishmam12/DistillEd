@@ -327,6 +327,61 @@ class _SearchByMeaningRow extends ConsumerWidget {
   }
 }
 
+/// "Study reminders": a notification at 5 pm on days with cards due or plan
+/// tasks. Switching it on asks for the notification permission first.
+class _StudyRemindersRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = ref.watch(settingsProvider.select((s) => s.studyReminders));
+    return _SettingsRow(
+      icon: AppIcons.clock,
+      title: 'Study reminders',
+      subtitle: 'At 5 pm on days with cards due or a study plan',
+      trailing: Switch(
+        value: on,
+        onChanged: (value) async {
+          if (value && !await askNotificationPermission()) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Allow notifications for Margo to get '
+                      'reminders')));
+            }
+            return;
+          }
+          await ref.read(settingsProvider.notifier).setStudyReminders(value);
+        },
+      ),
+    );
+  }
+}
+
+/// "Today on Home": brings back the Today cards that were put away.
+class _TodayCardsRow extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(todayHiddenProvider);
+    return _SettingsRow(
+      icon: AppIcons.noteText,
+      title: 'Today on Home',
+      subtitle: hidden.isEmpty
+          ? 'Cards due, today\'s plan and a scratch pad'
+          : '${hidden.length} put away',
+      trailing: TextButton(
+        onPressed: hidden.isEmpty
+            ? null
+            : () async {
+                for (final card in TodayCard.values) {
+                  await ref
+                      .read(todayHiddenProvider.notifier)
+                      .set(card, hidden: false);
+                }
+              },
+        child: const Text('Show all'),
+      ),
+    );
+  }
+}
+
 /// "Summarise lectures": after a transcript, a study summary of its page, made
 /// on the device. Only means something while transcripts are on.
 class _LectureSummaryRow extends ConsumerWidget {

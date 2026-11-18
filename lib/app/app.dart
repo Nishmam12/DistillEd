@@ -11,6 +11,7 @@ import '../features/ai/data/embeddings/embedder_spec.dart';
 import '../features/ai/data/rag/embedder_mobile_data_choice.dart';
 import '../features/backup/backup_controller.dart';
 import '../features/home/presentation/hidden_notes.dart';
+import '../features/home/presentation/outside_app.dart';
 import '../features/search/presentation/page_index_provider.dart';
 import '../features/share/share_intake.dart';
 import 'router.dart';
@@ -33,6 +34,8 @@ class MargoApp extends ConsumerWidget {
     ref.read(shareIntakeProvider); // "Share to Margo" / "Open with Margo"
     ref.read(pageIndexLifecycleProvider); // keeps search text current
     ref.read(hiddenRelockProvider); // hidden notes lock when Margo is left
+    ref.read(launchIntakeProvider); // shortcuts, the tile, widgets, reminders
+    ref.read(outsideSyncProvider); // reminders and widget data, when left
     ref.listen(embedderMobileDataPromptProvider, (_, asking) {
       if (!asking) return;
       WidgetsBinding.instance.addPostFrameCallback((_) async {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_new_note">New note</string>
+    <string name="shortcut_scan">Scan</string>
+    <string name="shortcut_record">Record lecture</string>
+    <string name="shortcut_review">Review cards</string>
+    <string name="tile_new_note">New note</string>
+    <string name="widget_due_name">Cards due</string>
+    <string name="widget_pinned_name">Pinned note</string>
+</resources>

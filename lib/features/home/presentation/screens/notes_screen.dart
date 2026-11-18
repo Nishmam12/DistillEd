@@ -27,6 +27,8 @@ import '../widgets/new_note_dialog.dart';
 import '../widgets/note_card.dart';
 import '../widgets/organize_sheets.dart';
 import '../widgets/recent_strip.dart';
+import '../widgets/today_strip.dart';
+import '../study_today_providers.dart';
 import '../widgets/selection_bar.dart';
 import '../widgets/search_popover.dart';
 import '../widgets/sort_filter_sheet.dart';
@@ -158,7 +160,11 @@ void _openNotebook(BuildContext context, WidgetRef ref, int id,
     if (page != null) 'page=$page',
     if (query != null && query.isNotEmpty) 'q=${Uri.encodeQueryComponent(query)}',
   ];
-  unawaited(context.push('/note2/$id${args.isEmpty ? '' : '?${args.join('&')}'}'));
+  // Cards reviewed or a plan changed inside: Today reads them again after.
+  final container = ProviderScope.containerOf(context, listen: false);
+  unawaited(context
+      .push('/note2/$id${args.isEmpty ? '' : '?${args.join('&')}'}')
+      .then((_) => container.invalidate(studyNotebooksProvider)));
 }
 
 /// Title, chrome icons, sort row and the grid.
@@ -187,6 +193,7 @@ class _Main extends ConsumerWidget {
     // The Recent strip only belongs on the plain, unfiltered list.
     final plain = folder == FolderFilter.all &&
         !favoritesOnly &&
+        !ref.watch(notesHiddenViewProvider) &&
         ref.watch(notesSearchQueryProvider).trim().isEmpty &&
         ref.watch(notesTagFilterProvider).isEmpty &&
         !ref.watch(notesMoreFiltersProvider).isActive;
@@ -360,11 +367,26 @@ class _Main extends ConsumerWidget {
             const SizedBox(height: 24 - _SortButton.padding),
             if (selecting)
               SelectionBar(visible: cards.value ?? const [], padding: pad),
-            if (recents.isNotEmpty)
-              RecentStrip(
-                notes: recents,
-                padding: pad,
-                onOpen: (note) => _openNotebook(context, ref, note.id),
+            // Today and Recent scroll in at most half the room when space is
+            // short (a phone, or the keyboard up for the scratch pad).
+            if ((plain && !selecting) || recents.isNotEmpty)
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (plain && !selecting) TodayStrip(padding: pad),
+                      if (recents.isNotEmpty)
+                        RecentStrip(
+                          notes: recents,
+                          padding: pad,
+                          onOpen: (note) =>
+                              _openNotebook(context, ref, note.id),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             Expanded(
               child: cards.when(

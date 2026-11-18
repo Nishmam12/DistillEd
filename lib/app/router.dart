@@ -46,6 +46,8 @@ final GoRouter appRouter = GoRouter(
             notebookId: id,
             initialPageIndex: page,
             searchQuery: state.uri.queryParameters['q'],
+            // From an app shortcut: scan or record once the page is ready.
+            startWith: state.uri.queryParameters['start'],
             // From "Share to Margo": import this once the page is ready.
             pendingShare: state.extra is SharedPayload
                 ? state.extra as SharedPayload

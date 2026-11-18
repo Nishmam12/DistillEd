@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="14dp" android:background="@drawable/widget_bg">
+    <TextView android:id="@+id/widget_pinned_title"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:maxLines="1" android:ellipsize="end"
+        android:textColor="@color/widget_text" android:textSize="17sp" android:textStyle="bold" />
+    <TextView android:id="@+id/widget_pinned_text"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="6dp" android:ellipsize="end" android:maxLines="8"
+        android:textColor="@color/widget_text_secondary" android:textSize="14sp" />
+</LinearLayout>

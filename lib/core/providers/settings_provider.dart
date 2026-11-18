@@ -225,6 +225,10 @@ class SettingsState {
   /// meaning"), from the on-device search model.
   final bool searchByMeaning;
 
+  /// A notification on days with cards due or study-plan tasks. Off until
+  /// asked for (it needs the notification permission).
+  final bool studyReminders;
+
   /// ML Kit digital-ink model for handwriting recognition: 'en', 'bn' (Bangla
   /// script) or 'bn-Latn' (Bangla written in English letters).
   final String recognitionLanguage;
@@ -278,6 +282,7 @@ class SettingsState {
     this.transcribeLectures = false,
     this.summarizeLectures = true,
     this.searchByMeaning = true,
+    this.studyReminders = false,
     this.snapShapes = false,
     this.scribbleErase = false,
     this.straightenLines = false,
@@ -336,6 +341,7 @@ class SettingsState {
     bool? transcribeLectures,
     bool? summarizeLectures,
     bool? searchByMeaning,
+    bool? studyReminders,
     bool? snapShapes,
     bool? scribbleErase,
     bool? straightenLines,
@@ -369,6 +375,7 @@ class SettingsState {
       transcribeLectures: transcribeLectures ?? this.transcribeLectures,
       summarizeLectures: summarizeLectures ?? this.summarizeLectures,
       searchByMeaning: searchByMeaning ?? this.searchByMeaning,
+      studyReminders: studyReminders ?? this.studyReminders,
       snapShapes: snapShapes ?? this.snapShapes,
       scribbleErase: scribbleErase ?? this.scribbleErase,
       straightenLines: straightenLines ?? this.straightenLines,
@@ -415,6 +422,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   static const _kTranscribeLectures = 'ai.transcribeLectures';
   static const _kSummarizeLectures = 'ai.summarizeLectures';
   static const _kSearchByMeaning = 'ai.searchByMeaning';
+  static const _kStudyReminders = 'home.studyReminders';
   static const _kSnapShapes = 'ui.snapShapes';
   static const _kScribbleErase = 'ui.scribbleErase';
   static const _kStraightenLines = 'ui.straightenLines';
@@ -486,6 +494,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       transcribeLectures: prefs.getBool(_kTranscribeLectures) ?? false,
       summarizeLectures: prefs.getBool(_kSummarizeLectures) ?? true,
       searchByMeaning: prefs.getBool(_kSearchByMeaning) ?? true,
+      studyReminders: prefs.getBool(_kStudyReminders) ?? false,
       snapShapes: prefs.getBool(_kSnapShapes) ?? false,
       scribbleErase: prefs.getBool(_kScribbleErase) ?? false,
       straightenLines: prefs.getBool(_kStraightenLines) ?? false,
@@ -717,6 +726,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = state.copyWith(searchByMeaning: value);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kSearchByMeaning, value);
+  }
+
+  Future<void> setStudyReminders(bool value) async {
+    state = state.copyWith(studyReminders: value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kStudyReminders, value);
   }
 
   Future<void> setSummarizeLectures(bool value) async {

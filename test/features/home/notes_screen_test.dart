@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:margo/core/theme/app_colors.dart';
 import 'package:margo/features/home/presentation/models/note_card_data.dart';
 import 'package:margo/features/home/presentation/note_cards_provider.dart';
@@ -64,6 +65,27 @@ Future<ProviderContainer> _pump(
 }
 
 void main() {
+  // The Today strip's scratch pad is put away, so the grid has its room; the
+  // strip has its own group below.
+  setUp(() => SharedPreferences.setMockInitialValues({
+        'home.todayHidden': ['pad'],
+      }));
+
+  group('today strip', () {
+    testWidgets('the scratch pad shows, and its close button puts it away',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await _pump(tester);
+      expect(find.byKey(const ValueKey('todayPad')), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Hide from Today'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('todayPad')), findsNothing);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getStringList('home.todayHidden'), ['pad']);
+    });
+  });
+
   group('chrome', () {
     testWidgets('sits on the cream canvas', (tester) async {
       await _pump(tester);
@@ -265,7 +287,11 @@ void main() {
 
       await tester.tap(find.byTooltip('Search'));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'better');
+      await tester.enterText(
+          find.descendant(
+              of: find.byType(SearchBarWidget),
+              matching: find.byType(TextField)),
+          'better');
       await tester.pumpAndSettle();
 
       expect(find.text('Better Creator'), findsNWidgets(2)); // row + card
@@ -278,7 +304,11 @@ void main() {
 
       await tester.tap(find.byTooltip('Search'));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), 'zzz');
+      await tester.enterText(
+          find.descendant(
+              of: find.byType(SearchBarWidget),
+              matching: find.byType(TextField)),
+          'zzz');
       await tester.pumpAndSettle();
 
       expect(find.text('No notes match'), findsOneWidget);

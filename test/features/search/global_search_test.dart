@@ -5,6 +5,7 @@ import 'package:margo/data/persistence/page_text_store.dart';
 import 'package:margo/features/home/presentation/models/note_card_data.dart';
 import 'package:margo/features/home/presentation/note_cards_provider.dart';
 import 'package:margo/features/home/presentation/screens/notes_screen.dart';
+import 'package:margo/features/home/presentation/widgets/search_bar_widget.dart';
 import 'package:margo/features/search/domain/global_search.dart';
 import 'package:margo/features/search/presentation/global_search_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -84,7 +85,10 @@ void main() {
 
     await tester.tap(find.byTooltip('Search'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'mitochondria');
+    await tester.enterText(
+        find.descendant(
+            of: find.byType(SearchBarWidget), matching: find.byType(TextField)),
+        'mitochondria');
     await tester.pumpAndSettle();
     expect(find.text('On pages'), findsOneWidget);
     expect(find.text('Chemistry · Page 2'), findsOneWidget);

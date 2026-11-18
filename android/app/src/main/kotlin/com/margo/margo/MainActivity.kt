@@ -56,12 +56,30 @@ class MainActivity : FlutterFragmentActivity() {
     private var shareChannel: MethodChannel? = null
     @Volatile private var pendingShare: Intent? = null // set on main, taken on backupIo
 
+    // Shortcuts, the Quick Settings tile, widgets and reminders (Outside.kt)
+    // open the app with a launch action, held like a share until Dart takes it.
+    private var launchChannel: MethodChannel? = null
+    private var pendingLaunch: Intent? = null
+    private var pendingPermission: MethodChannel.Result? = null
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (isShare(intent)) {
             pendingShare = intent
             shareChannel?.invokeMethod("arrived", null)
         }
+        if (Launch.isLaunch(intent)) {
+            pendingLaunch = intent
+            launchChannel?.invokeMethod("arrived", null)
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onRequestPermissionsResult(code: Int, permissions: Array<out String>, results: IntArray) {
+        super.onRequestPermissionsResult(code, permissions, results)
+        if (code != NOTIFY_PERMISSION) return
+        pendingPermission?.success(results.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED)
+        pendingPermission = null
     }
 
     private fun isShare(intent: Intent?): Boolean = when (intent?.action) {
@@ -167,6 +185,49 @@ class MainActivity : FlutterFragmentActivity() {
                             mainThread.post { result.error("SHARE_ERROR", e.message, null) }
                         }
                     }
+                }
+            }
+        if (Launch.isLaunch(intent)) pendingLaunch = intent
+        launchChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.margo.margo/launch")
+            .apply {
+                setMethodCallHandler { call, result ->
+                    if (call.method != "take") return@setMethodCallHandler result.notImplemented()
+                    val launch = pendingLaunch
+                    pendingLaunch = null
+                    result.success(launch?.let { Launch.describe(it) })
+                }
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.margo.margo/outside")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "reminders" -> {
+                        Reminders.save(this, call.arguments as String)
+                        result.success(null)
+                    }
+                    "widgets" -> {
+                        val a = call.arguments as Map<*, *>
+                        Widgets.save(
+                            this,
+                            (a["due"] as Number).toInt(),
+                            (a["pinnedId"] as Number?)?.toInt(),
+                            a["pinnedTitle"] as String?,
+                            a["pinnedText"] as String?,
+                        )
+                        result.success(null)
+                    }
+                    "askNotifications" -> {
+                        if (Build.VERSION.SDK_INT < 33 ||
+                            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+                            android.content.pm.PackageManager.PERMISSION_GRANTED
+                        ) {
+                            result.success(true)
+                        } else {
+                            pendingPermission?.success(false)
+                            pendingPermission = result
+                            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), NOTIFY_PERMISSION)
+                        }
+                    }
+                    else -> result.notImplemented()
                 }
             }
         // While a hidden note is open: no screenshots, and a blank recents
@@ -409,5 +470,9 @@ class MainActivity : FlutterFragmentActivity() {
                 (getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager)
                     .isActiveNetworkMetered,
         )
+    }
+
+    private companion object {
+        const val NOTIFY_PERMISSION = 71
     }
 }

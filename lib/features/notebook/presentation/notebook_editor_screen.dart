@@ -177,12 +177,17 @@ class NotebookEditorScreen extends ConsumerStatefulWidget {
   /// What was shared into Margo for this note; imported once the page is ready.
   final SharedPayload? pendingShare;
 
+  /// From an app shortcut: `scan` opens the scanner, `record` starts a
+  /// lecture recording, once the page is ready.
+  final String? startWith;
+
   const NotebookEditorScreen({
     super.key,
     required this.notebookId,
     this.initialPageIndex,
     this.searchQuery,
     this.pendingShare,
+    this.startWith,
   });
 
   @override
@@ -302,6 +307,7 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
       if (mounted) setState(() => _notebook = nb);
       final share = widget.pendingShare;
       if (share != null && mounted) unawaited(_receiveShare(share));
+      if (widget.startWith != null && mounted) unawaited(_start(widget.startWith!));
     } catch (e, st) {
       unawaited(ErrorLog.record(e, st));
       if (mounted) setState(() => _unavailable = true);
@@ -1060,6 +1066,28 @@ class _NotebookEditorScreenState extends ConsumerState<NotebookEditorScreen> {
   /// Brings in what was shared into Margo: pictures onto the current page (or
   /// a page each, as the photo import offers), each PDF as its own document,
   /// and text as a note on the page.
+  /// An app shortcut's action: scan a document, or record a lecture.
+  Future<void> _start(String action) async {
+    for (var i = 0; i < 20 && (_pageSheet?.isEmpty ?? true); i++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+    final state = ref.read(pageProvider(widget.notebookId));
+    if (state.pages.isEmpty) return;
+    final page =
+        state.pages[state.currentPageIndex.clamp(0, state.pages.length - 1)];
+    switch (action) {
+      case 'scan':
+        await _importCapture((notebookId: widget.notebookId, pageId: page.id));
+      case 'record':
+        final language = await pickLectureLanguage(context);
+        if (language == null || !mounted) return;
+        await ref
+            .read(recordingNotifierProvider(widget.notebookId).notifier)
+            .start(page.id, language: language);
+    }
+  }
+
   Future<void> _receiveShare(SharedPayload share) async {
     // The page's size latches on the canvas's first layout, and the PDF and
     // note paths need it: wait a few frames for it.
