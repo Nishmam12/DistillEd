@@ -29,8 +29,31 @@ object Launch {
     const val OPEN = PREFIX + "OPEN"
     const val REVIEW = PREFIX + "REVIEW"
     const val EXTRA_NOTEBOOK = "notebookId"
+    private const val EXTRA_TOKEN = "launchToken"
 
-    fun isLaunch(intent: Intent?): Boolean = intent?.action?.startsWith(PREFIX) == true
+    // MainActivity is exported (it is the launcher entry and takes shares), so
+    // any app could send it these actions. Only Margo's own launches carry
+    // this per-install secret, which other apps cannot read.
+    private fun token(context: Context): String {
+        val prefs = context.getSharedPreferences("margo_outside", Context.MODE_PRIVATE)
+        return prefs.getString(EXTRA_TOKEN, null) ?: java.util.UUID.randomUUID().toString().also {
+            prefs.edit().putString(EXTRA_TOKEN, it).apply()
+        }
+    }
+
+    fun isLaunch(context: Context, intent: Intent?): Boolean =
+        intent?.action?.startsWith(PREFIX) == true &&
+            intent.getStringExtra(EXTRA_TOKEN) == token(context)
+
+    /** An intent for MainActivity carrying [action] and the secret. */
+    fun intent(context: Context, action: String, notebookId: Int?): Intent {
+        val intent = Intent(context, MainActivity::class.java)
+            .setAction(action)
+            .putExtra(EXTRA_TOKEN, token(context))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        if (notebookId != null) intent.putExtra(EXTRA_NOTEBOOK, notebookId)
+        return intent
+    }
 
     /** {action: "new_note" | "scan" | ..., notebookId?} for Dart. */
     fun describe(intent: Intent): Map<String, Any?> = mapOf(
@@ -38,15 +61,21 @@ object Launch {
         "notebookId" to intent.getIntExtra(EXTRA_NOTEBOOK, -1).takeIf { it >= 0 },
     )
 
-    fun pending(context: Context, action: String, notebookId: Int?, code: Int): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java)
-            .setAction(action)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        if (notebookId != null) intent.putExtra(EXTRA_NOTEBOOK, notebookId)
-        return PendingIntent.getActivity(
-            context, code, intent,
+    fun pending(context: Context, action: String, notebookId: Int?, code: Int): PendingIntent =
+        PendingIntent.getActivity(
+            context, code, intent(context, action, notebookId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+}
+
+/** App shortcuts are static XML, so they can't hold the secret: they open
+ *  this non-exported activity (only the launcher, acting for Margo, can),
+ *  which adds it and hands over to MainActivity. */
+class LaunchTrampoline : android.app.Activity() {
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        intent.action?.let { startActivity(Launch.intent(this, it, null)) }
+        finish()
     }
 }
 
@@ -155,11 +184,7 @@ class NewNoteTileService : TileService() {
             startActivityAndCollapse(pending)
         } else {
             @Suppress("DEPRECATION", "StartActivityAndCollapseDeprecated")
-            startActivityAndCollapse(
-                Intent(this, MainActivity::class.java)
-                    .setAction(Launch.NEW_NOTE)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
+            startActivityAndCollapse(Launch.intent(this, Launch.NEW_NOTE, null))
         }
     }
 }
@@ -205,6 +230,8 @@ class DueCardsWidget : AppWidgetProvider() {
         val due = Widgets.due(context)
         val views = RemoteViews(context.packageName, R.layout.widget_due).apply {
             setTextViewText(R.id.widget_due_count, due.toString())
+            // "0 / No cards due" says it twice.
+            setViewVisibility(R.id.widget_due_count, if (due == 0) android.view.View.GONE else android.view.View.VISIBLE)
             setTextViewText(
                 R.id.widget_due_label,
                 when (due) {

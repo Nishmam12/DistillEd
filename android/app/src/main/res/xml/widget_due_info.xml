@@ -4,4 +4,5 @@
     android:targetCellWidth="2" android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical" android:widgetCategory="home_screen"
     android:updatePeriodMillis="0" android:initialLayout="@layout/widget_due"
+    android:previewLayout="@layout/widget_due"
     android:description="@string/widget_due_name" />

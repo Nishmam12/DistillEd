@@ -117,6 +117,13 @@
 
         <!-- Phase 7, outside the app (Outside.kt): study reminders, the New
              note tile and the two home-screen widgets. -->
+        <activity
+            android:name=".LaunchTrampoline"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <receiver android:name=".ReminderReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

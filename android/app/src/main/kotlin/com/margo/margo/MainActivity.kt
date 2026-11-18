@@ -68,7 +68,7 @@ class MainActivity : FlutterFragmentActivity() {
             pendingShare = intent
             shareChannel?.invokeMethod("arrived", null)
         }
-        if (Launch.isLaunch(intent)) {
+        if (Launch.isLaunch(this, intent)) {
             pendingLaunch = intent
             launchChannel?.invokeMethod("arrived", null)
         }
@@ -187,7 +187,7 @@ class MainActivity : FlutterFragmentActivity() {
                     }
                 }
             }
-        if (Launch.isLaunch(intent)) pendingLaunch = intent
+        if (Launch.isLaunch(this, intent)) pendingLaunch = intent
         launchChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.margo.margo/launch")
             .apply {
                 setMethodCallHandler { call, result ->

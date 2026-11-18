@@ -5,24 +5,24 @@
         android:icon="@drawable/ic_outside_note" android:shortcutShortLabel="@string/shortcut_new_note">
         <intent android:action="com.margo.margo.action.NEW_NOTE"
             android:targetPackage="com.margo.margo"
-            android:targetClass="com.margo.margo.MainActivity" />
+            android:targetClass="com.margo.margo.LaunchTrampoline" />
     </shortcut>
     <shortcut android:shortcutId="scan" android:enabled="true"
         android:icon="@drawable/ic_outside_scan" android:shortcutShortLabel="@string/shortcut_scan">
         <intent android:action="com.margo.margo.action.SCAN"
             android:targetPackage="com.margo.margo"
-            android:targetClass="com.margo.margo.MainActivity" />
+            android:targetClass="com.margo.margo.LaunchTrampoline" />
     </shortcut>
     <shortcut android:shortcutId="record" android:enabled="true"
         android:icon="@drawable/ic_outside_mic" android:shortcutShortLabel="@string/shortcut_record">
         <intent android:action="com.margo.margo.action.RECORD"
             android:targetPackage="com.margo.margo"
-            android:targetClass="com.margo.margo.MainActivity" />
+            android:targetClass="com.margo.margo.LaunchTrampoline" />
     </shortcut>
     <shortcut android:shortcutId="review" android:enabled="true"
         android:icon="@drawable/ic_outside_cards" android:shortcutShortLabel="@string/shortcut_review">
         <intent android:action="com.margo.margo.action.REVIEW"
             android:targetPackage="com.margo.margo"
-            android:targetClass="com.margo.margo.MainActivity" />
+            android:targetClass="com.margo.margo.LaunchTrampoline" />
     </shortcut>
 </shortcuts>
